@@ -13118,3 +13118,15 @@ The owner pasted M531–M533's "left out" list and chose "build all of them"; th
   double `pinv(A) * b`; pinv of a rank-1 matrix; in C a wide, a singular, a tall and an all-zero system, native and
   `-DHYPERION_FX_PORTABLE`, equal to Hyperion.
 - **Left out:** `lsqminnorm`'s tolerance and `'warn'` inputs; plain-number (double) lsqminnorm in C.
+
+## M536 (24 Nov): Hyperion's C matrix division past 4096 bits
+
+- **Faster big numbers** (`codegen.ts` `fxbC`): `fxb_div` is long division on the 32-bit pieces (Knuth's algorithm D,
+  normalised, two-digit estimate, add back), not bit by bit; carries of signed steps use `FXB_HI` (an exact division,
+  never a shift of a negative number).
+- **The limits:** `FXB_MAX` 65,536 bits (4096 before), and the working memory at most `FXB_MEM` 16 MB, refused past it
+  with the size named; a working over `FXB_STACK` 64 KB is declared `static` (not on the stack; the function is then not
+  re-entrant, like the rest of the generated code's fixed buffers). In practice the memory limit comes first.
+- **Checked:** `codegen.test.ts` M536: a 20×20 system of 120-bit values (about 4,700 bits of working, `static fxb_t`)
+  native and portable, equal to Hyperion; a 60×60 of 126 bits refused for memory, a 300×300 for bits. M531's tests (the
+  fxb_t paths) pass with the new division.

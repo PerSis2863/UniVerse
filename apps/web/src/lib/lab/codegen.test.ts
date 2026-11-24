@@ -297,7 +297,7 @@ end`;
   it('refuses a matrix division too big to work exactly, naming the fix', () => {
     const files = new FileStore(), l = new Lab({ out: () => {}, files });
     l.run(SOLVE);
-    expect(() => l.run("codegen('solve2', {fi(zeros(30), 1, 100, 50), fi(zeros(30, 1), 1, 100, 50)})")).toThrow(/needs \d+ bits of working .*shorter words/);
+    expect(() => l.run("codegen('solve2', {fi(zeros(300), 1, 126, 63), fi(zeros(300, 1), 1, 126, 63)})")).toThrow(/needs \d+ bits of working .*shorter words/);
     // M531: a 2×2 of 16 bits fits 64-bit working; a 5×5 of 32 bits is worked in 32-bit pieces
     l.run("codegen('solve2', {fi(zeros(2), 1, 16, 8), fi(zeros(2, 1), 1, 16, 8)})");
     expect(files.text('solve2.c')).toContain('typedef int64_t fxw_t;');
@@ -586,4 +586,43 @@ int main(void) {
       expect(execFileSync(exe).toString().trim().split(/\s+/).map(Number)).toEqual(want);
     }
   });
+  it.skipIf(!hasCc)('M536: a matrix division past the old 4096 bits gives Hyperion’s stored integers in C; past the new limits it is refused', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    l.run('function x = big(A, b)\n  x = mldivide(A, b, numerictype(1, 126, 48));\nend\nfunction x = huge(A, b)\n  x = A \\ b;\nend');
+    let seed = 11;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return ((seed % 32) - 16) / 4; };
+    const N = 20, A = Array.from({ length: N * N }, rnd), b = Array.from({ length: N }, rnd);
+    const a = `fi(reshape([${A.join(' ')}], ${N}, ${N}), 1, 120, 56)`, bb = `fi([${b.join('; ')}], 1, 120, 56)`;
+    l.run(`codegen('big', {${a}, ${bb}});`);
+    const c = files.text('big.c'), k = Number(c.match(/uint32_t d\[(\d+)\]/)![1]);
+    expect(32 * k).toBeGreaterThan(4096);
+    expect(c).toMatch(/static fxb_t sv_m\[/);
+    const want = st(l, `big(${a}, ${bb})`);
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-fx536-'));
+    writeFileSync(join(dir, 'big.c'), c);
+    writeFileSync(join(dir, 'big.h'), files.text('big.h'));
+    const mk = (v: number[]) => v.map((x) => `MK(${BigInt(x * 4) * BigInt(2) ** BigInt(54)})`).join(', ');
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+#include "big.h"
+#ifdef HYPERION_FX128_NATIVE
+#define MK(v) ((fx128_t)(v##LL))
+#define LO(z) (long long)(z)
+#else
+#define MK(v) ((fx128_t){ (uint64_t)(int64_t)(v##LL), (v##LL) < 0 ? ~(uint64_t)0 : 0 })
+#define LO(z) (long long)z.lo
+#endif
+int main(void) {
+  fx128_t a[] = {${mk(A)}}, b[] = {${mk(b)}}, x[${N}];
+  big(a, b, x);
+  for (int i = 0; i < ${N}; i++) printf("%lld ", LO(x[i]));
+  return 0;
+}`);
+    for (const portable of [false, true]) {
+      const exe = join(dir, portable ? 'run-p' : 'run-n');
+      execFileSync('cc', ['-std=c99', '-Wall', '-Werror', ...(portable ? ['-DHYPERION_FX_PORTABLE'] : []), '-o', exe, join(dir, 'main.c'), join(dir, 'big.c'), '-lm'], { cwd: dir });
+      expect(execFileSync(exe).toString().trim().split(/\s+/).map(Number)).toEqual(want);
+    }
+    expect(() => l.run("codegen('huge', {fi(zeros(60), 1, 126, 0), fi(zeros(60, 1), 1, 126, 0)});")).toThrow(/MB of working \(at most 16 MB here\)/);
+    expect(() => l.run("codegen('huge', {fi(zeros(300), 1, 126, 0), fi(zeros(300, 1), 1, 126, 0)});")).toThrow(/at most 65536 here/);
+  }, 60000);
 });

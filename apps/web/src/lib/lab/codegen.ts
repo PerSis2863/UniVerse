@@ -50,8 +50,9 @@ function lim(t: Nt): [string, string] {
 }
 /** M527: the quotient's fraction and the bits its working needs (numerator scaled up, or denominator). */
 const divPlan = (a: Nt, b: Nt, to: Nt) => { const s = to.fl - a.fl + b.fl; return { s, need: Math.max(a.wl + Math.max(s, 0), b.wl + Math.max(-s, 0)) + 2 }; };
-/** M531: past 128 bits a matrix division is worked in fxb_t (32-bit pieces); this many bits at most. */
-const FXB_MAX = 4096;
+/** M531: past 128 bits a matrix division is worked in fxb_t (32-bit pieces); this many bits at most (M536: 4096 before,
+ * now long division on the pieces keeps it quick) and this much working memory at most; past 64 KB it is static. */
+const FXB_MAX = 65536, FXB_MEM = 16 * 1024 * 1024, FXB_STACK = 64 * 1024;
 /** M531: the bits an exact matrix division's working needs. Every number the elimination keeps is a minor of [A | B]
  * (of AᵀA and AᵀB for least squares), at most Hadamard's bound D(k) for order k; a step's difference before its exact
  * division is the old pivot times the new number (D(k)·D(k+1)), and the products inside it may wrap (the working wraps
@@ -377,13 +378,21 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         const q = S === 'w' ? `fx_div(${M}[sv_piv[sc] + (${N} + sj) * ${N}], sv_det, ${s}, ${lo}, ${hi}, ${fmC(t.fx!)})` : `fxb_tow(fxb_divfit(${M}[sv_piv[sc] + (${N} + sj) * ${N}], sv_det, ${s}, fxb_ofw(${lo}), fxb_ofw(${hi}), ${fmC(t.fx!)}))`;
         out(`${pad}for (int sj = 0; sj < ${m}; sj++) for (int sc = 0; sc < ${N}; sc++) ${xAt('sc', 'sj')} = ${E.to(`sv_piv[sc] < 0 ? ${E.zero} : ${q}`, t.fx!)};`);
       };
+      // M536: a big fxb_t working is kept static (not on the stack); past FXB_MEM it is refused.
+      const keep = (S: 'w' | 'b', count: number) => {
+        if (S !== 'b') return '';
+        const bytes = count * fxbK * 4;
+        if (bytes > FXB_MEM) fail(`this ${R}×${N} fixed-point matrix division needs ${Math.ceil(bytes / 2 ** 20)} MB of working (at most ${FXB_MEM / 2 ** 20} MB here): use shorter words or a smaller system.`);
+        return bytes > FXB_STACK ? 'static ' : '';
+      };
       helpers.add(`elim_${ls}`);
       if (mn) {
         // M535: lsqminnorm: the smallest least-squares answer, exact (the engine's minNormStored), each answer rounded once.
         const q = ls === 'w' ? `fx_div(sv_x[sc + sj * ${N}], sv_det, ${s}, ${lo}, ${hi}, ${fmC(t.fx!)})` : `fxb_tow(fxb_divfit(sv_x[sc + sj * ${N}], sv_det, ${s}, fxb_ofw(${lo}), fxb_ofw(${hi}), ${fmC(t.fx!)}))`;
         out(`{ /* lsqminnorm(A, B): the smallest least-squares answer, exact on whole numbers, then each answer rounded once */`);
         out(`  int sv_piv[${N}], sv_p[${N}];`);
-        out(`  fx${ls}_t sv_a[${R * w}], sv_g[${N * w}], sv_h[${N * w}], sv_x[${N * m}], sv_det;`);
+        out(`  ${keep(ls, R * w + 2 * N * w + N * m)}fx${ls}_t sv_a[${R * w}], sv_g[${N * w}], sv_h[${N * w}], sv_x[${N * m}];`);
+        out(`  fx${ls}_t sv_det;`);
         load(ls, 'sv_a');
         out(`  fx${ls}_normal(sv_a, ${R}, ${N}, ${w}, sv_g);`);
         out(`  fx${ls}_minnorm(sv_g, ${N}, ${m}, sv_h, sv_piv, sv_p, sv_x, &sv_det);`);
@@ -396,7 +405,8 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       if (direct) {
         helpers.add(`elim_${direct}`);
         out(`  { /* square: solved directly */`);
-        out(`    fx${direct}_t sv_m[${N * w}], sv_det;`);
+        out(`    ${keep(direct, N * w)}fx${direct}_t sv_m[${N * w}];`);
+        out(`    fx${direct}_t sv_det;`);
         load(direct, 'sv_m');
         out(`    if (fx${direct}_elim(sv_m, ${N}, ${N}, ${w}, sv_piv, &sv_det) == ${N}) {`);
         answers(direct, 'sv_m', '      ');
@@ -405,7 +415,8 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         out('  }');
       }
       out(`  if (!sv_done) { /* ${direct ? 'singular' : 'not square'}: the least-squares answer, through AᵀA x = AᵀB */`);
-      out(`    fx${ls}_t sv_a[${R * w}], sv_m[${N * w}], sv_det;`);
+      out(`    ${keep(ls, R * w + N * w)}fx${ls}_t sv_a[${R * w}], sv_m[${N * w}];`);
+      out(`    fx${ls}_t sv_det;`);
       load(ls, 'sv_a');
       out(`    fx${ls}_normal(sv_a, ${R}, ${N}, ${w}, sv_m);`);
       out(`    (void)fx${ls}_elim(sv_m, ${N}, ${N}, ${w}, sv_piv, &sv_det);`);
@@ -1120,14 +1131,45 @@ static inline int fxb_cmp(fxb_t a, fxb_t b) { int na = fxb_isneg(a), nb = fxb_is
 static inline fxb_t fxb_p2(int d) { fxb_t r = fxb_ofu(0); r.d[d / 32] = (uint32_t)1 << (d % 32); return r; }
 static inline fxb_t fxb_shl(fxb_t a, int d) { return fxb_mul(a, fxb_p2(d)); }
 static inline int fxb_odd(fxb_t a) { return (int)(a.d[0] & 1); }
-/* a / b towards zero: shift and subtract on the sizes, then the sign */
+/* the carry of a signed step: t's part above 32 bits, rounded down (exact, no shift of a negative number) */
+#define FXB_HI(t) (((t) - (int64_t)(uint32_t)(t)) / 4294967296LL)
+/* a / b towards zero (M536): long division on the sizes' 32-bit pieces (Knuth's algorithm D), then the sign; b is never 0 */
 static inline fxb_t fxb_div(fxb_t a, fxb_t b) {
-  int na = fxb_isneg(a), nb = fxb_isneg(b);
-  fxb_t n = na ? fxb_neg(a) : a, d = nb ? fxb_neg(b) : b, q = fxb_ofu(0), r = fxb_ofu(0);
-  for (int i = ${32 * k - 1}; i >= 0; i--) {
-    r = fxb_add(r, r);
-    r.d[0] |= (n.d[i / 32] >> (i % 32)) & 1;
-    if (fxb_ucmp(r, d) >= 0) { r = fxb_sub(r, d); q.d[i / 32] |= (uint32_t)1 << (i % 32); }
+  int na = fxb_isneg(a), nb = fxb_isneg(b), m = ${k}, n = ${k}, s = 0;
+  fxb_t u = na ? fxb_neg(a) : a, v = nb ? fxb_neg(b) : b, q = fxb_ofu(0);
+  uint32_t un[${k + 1}], vn[${k}];
+  while (m > 0 && u.d[m - 1] == 0) m--;
+  while (n > 0 && v.d[n - 1] == 0) n--;
+  if (n == 0 || m < n) return q;
+  if (n == 1) {
+    uint64_t r = 0;
+    for (int i = m - 1; i >= 0; i--) { uint64_t t = (r << 32) | u.d[i]; q.d[i] = (uint32_t)(t / v.d[0]); r = t % v.d[0]; }
+    return na != nb ? fxb_neg(q) : q;
+  }
+  while (!((v.d[n - 1] << s) & 0x80000000u)) s++;
+  for (int i = n - 1; i > 0; i--) vn[i] = (v.d[i] << s) | (uint32_t)((uint64_t)v.d[i - 1] >> (32 - s));
+  vn[0] = v.d[0] << s;
+  un[m] = (uint32_t)((uint64_t)u.d[m - 1] >> (32 - s));
+  for (int i = m - 1; i > 0; i--) un[i] = (u.d[i] << s) | (uint32_t)((uint64_t)u.d[i - 1] >> (32 - s));
+  un[0] = u.d[0] << s;
+  for (int j = m - n; j >= 0; j--) {
+    uint64_t top = ((uint64_t)un[j + n] << 32) | un[j + n - 1], qh = top / vn[n - 1], rh = top % vn[n - 1];
+    while (qh >> 32 || qh * vn[n - 2] > ((rh << 32) | un[j + n - 2])) { qh--; rh += vn[n - 1]; if (rh >> 32) break; }
+    int64_t t, c = 0;
+    for (int i = 0; i < n; i++) {
+      uint64_t p = qh * vn[i];
+      t = (int64_t)un[i + j] - c - (int64_t)(p & 0xffffffffu);
+      un[i + j] = (uint32_t)t;
+      c = (int64_t)(p >> 32) - FXB_HI(t);
+    }
+    t = (int64_t)un[j + n] - c;
+    un[j + n] = (uint32_t)t;
+    if (t < 0) {
+      qh--; c = 0;
+      for (int i = 0; i < n; i++) { t = (int64_t)un[i + j] + vn[i] + c; un[i + j] = (uint32_t)t; c = FXB_HI(t); }
+      un[j + n] = (uint32_t)((int64_t)un[j + n] + c);
+    }
+    q.d[j] = (uint32_t)qh;
   }
   return na != nb ? fxb_neg(q) : q;
 }
