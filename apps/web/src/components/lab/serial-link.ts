@@ -155,13 +155,18 @@ export const pinName = (p: number, analogMap: number[]) => (analogMap[p] >= 0 ? 
 export function engineView(s: LinkState) {
   return { open: s.open, name: s.name, baud: s.baud, firmata: s.firmata, pins: s.pins.map((p, i) => ({ name: pinName(i, s.analogMap), modes: Object.keys(p.modes), mode: p.mode, value: p.value })) };
 }
+/** M521: lines kept for an engine that asks for them (one that can wait, page-answers.ts) instead of being sent. */
+export const heldLines: string[] = [];
 /** Keeps the Code window's engine told of the device (its state, new lines) for as long as the window is open. */
-export function bridgeToEngine(engine: () => Worker | null): () => void {
+export function bridgeToEngine(engine: () => Worker | null, asks: () => boolean = () => false): () => void {
   return serialLink.subscribe((e) => {
     const w = engine();
     if (!w) return;
     if (e.state) w.postMessage({ serial: { state: engineView(e.state) } });
-    if (e.lines?.length) w.postMessage({ serial: { lines: e.lines } });
+    if (!e.lines?.length) return;
+    if (!asks()) { w.postMessage({ serial: { lines: e.lines } }); return; }
+    heldLines.push(...e.lines);
+    if (heldLines.length > MAX_LINES) heldLines.splice(0, heldLines.length - MAX_LINES);
   });
 }
 /** A script's write, done on the page (the engine's thread has no port). */

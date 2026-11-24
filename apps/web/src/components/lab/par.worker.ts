@@ -16,10 +16,14 @@ import '@/lib/lab/codegen-lab';
 import '@/lib/lab/embedded-lab';
 import '@/lib/lab/des-lab';
 import { runTask, type Task } from '@/lib/lab/parallel-lab';
+import { answer } from '@/lib/lab/wait';
 
 // M477: one of Hyperion's parallel workers (started by the engine's own worker, lab.worker.ts): a whole engine that
 // runs its share of a parfor's iterations, or one parfeval call, and answers with the variables it changed.
-self.onmessage = (e: MessageEvent<{ id: number; task: Task }>) => {
-  const { id, task } = e.data;
-  postMessage({ id, result: runTask(task) });
+// M521: a task that comes with a slot of shared memory is answered there (the engine sleeps on it); a ping says ready.
+self.onmessage = (e: MessageEvent<{ id: number; task: Task; slot?: SharedArrayBuffer } | { ping: true }>) => {
+  if ('ping' in e.data) { postMessage({ ready: true }); return; }
+  const { id, task, slot } = e.data, result = runTask(task);
+  if (!slot) { postMessage({ id, result }); return; }
+  try { answer(slot, result); } catch (err) { answer(slot, { error: err instanceof Error ? err.message : String(err), out: '', ms: 0 }); }
 };

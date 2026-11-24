@@ -310,8 +310,8 @@ thd | r = thd(x, fs, n) | Total harmonic distortion in dB against the fundamenta
 
 # Hardware: serial devices and Arduino
 serialportlist | serialportlist | The device connected in Signals → Devices (a real port or the simulated Arduino), as a cell of names.
-serialport | s = serialport(port, baudrate) | The serial device connected in Signals → Devices (connect it there first: browsers let only the page open ports).
-readline | line = readline(s) | The next line the device sent that the script hasn't read yet (empty when none: a script sees what arrived before it started).
+serialport | s = serialport(port, baudrate, 'Timeout', 10) | The serial device connected in Signals → Devices (connect it there first: browsers let only the page open ports). Timeout: how many seconds readline waits for a line.
+readline | line = readline(s) | The device's next line: waits for it (up to the port's Timeout) in Chrome, Edge, Firefox and the computer app, inside loops and functions too; empty if none came. In Safari, only lines that arrived before the run.
 writeline | writeline(s, 'LED ON') | Sends text and a new line to the device.
 write | write(s, data, 'uint8') | Sends bytes (or 'string' text) to the device.
 flush | flush(s) | Forgets the lines not read yet.

@@ -85,6 +85,19 @@ export const SANDBOX_CSP = [
 ].join('; ');
 export const sandboxHeaders = [
   { key: 'Content-Security-Policy', value: SANDBOX_CSP },
+  // Framed by Hyperion's cross-origin-isolated pages (below), so it must take part too.
+  { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'no-referrer' },
+];
+
+// Hyperion's pages are cross-origin isolated (M521): its engine's background thread may then sleep on memory shared
+// with the page (SharedArrayBuffer and Atomics.wait) until a device's next line, a pin's next reading or another
+// thread's result arrives, inside loops and functions too. Pages from other sites still load (credentialless: they
+// come without cookies); popups opened from here lose their link back, which Hyperion doesn't use (sign-in happens
+// elsewhere). Isolation is decided when a page is loaded, so the Hyperion pages reload once when entered from the
+// rest of the site and the page reloads when left (src/components/lab/Isolated.tsx).
+export const isolationHeaders = [
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
 ];

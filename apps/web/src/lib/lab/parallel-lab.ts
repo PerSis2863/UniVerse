@@ -5,15 +5,17 @@ import { cmat, imOf, mat, num, sizeOf, str, toMat, type Cell, type Fn, type Mat,
 
 // Hyperion's parallel computing (M477): parfor, parfeval / fetchOutputs / fetchNext / wait, parpool, gcp.
 // The engine runs a script straight through on one background thread, and browsers let a thread wait on another only
-// on cross-origin-isolated sites (this one isn't). So a parfor written at a script's top level pauses the run: its
+// on cross-origin-isolated pages (Hyperion's are since M521; Safari's aren't). A parfor written at a script's top level pauses the run: its
 // iterations are split among a pool of other workers (each a whole engine), the results are merged back (arrays
 // indexed by the loop variable, sums, products and concatenations), and the run carries on from the next statement,
-// with the speed-up printed. A parfor inside a function or another loop runs in order (as MATLAB does without a pool).
+// with the speed-up printed. A parfor inside a function or another loop (M521) hands its iterations to the pool's
+// waiting engines and sleeps until they answer, where the page is isolated; elsewhere it runs in order (as MATLAB does
+// without a pool).
 // parfeval sends a call to the pool at once; the first fetchOutputs / fetchNext / wait that finds it unfinished pauses
 // the run until the pool has answered, then that top-level statement runs again (so put fetches in their own loop).
 
 /** What the engine's worker gives this module: a pool of engines. */
-export interface Pool { size: number; run(task: Task): Promise<TaskResult> }
+export interface Pool { size: number; run(task: Task): Promise<TaskResult>; canWait?: boolean; runNow?(tasks: Task[]): TaskResult[] }
 export type Task =
   | { kind: 'parfor'; vars: [string, Value][]; fns: [string, FnDef][]; body: Stmt[]; loopVar: string; items: Value[]; reductions: Reduction[] }
   | { kind: 'call'; vars: [string, Value][]; fns: [string, FnDef][]; fn: Value; args: Value[]; nout: number };
@@ -112,8 +114,8 @@ function combine(lab: Lab, op: string, a: Value, b: Value): Value {
 const chunks = <T,>(xs: T[], n: number) => Array.from({ length: Math.min(n, xs.length) }, (_, k) => xs.slice(Math.floor((k * xs.length) / Math.min(n, xs.length)), Math.floor(((k + 1) * xs.length) / Math.min(n, xs.length))));
 const shareable = (vars: Map<string, Value>) => [...vars].filter(([, v]) => v.k !== 'fn' || !v.name?.startsWith('@')) as [string, Value][];
 parHook.parfor = (lab, st, vars) => {
-  const pool = parallel.pool;
-  if (!pool || pool.size < 2 || !topLevel.has(st) || st.v.k !== 'id') return false;
+  const pool = parallel.pool, top = topLevel.has(st);
+  if (!pool || pool.size < 2 || st.v.k !== 'id' || (!top && !pool.canWait)) return false;
   const range = lab.ev(st.e, { vars, nargin: 0, nargout: 0, depth: 0 } as never);
   const [r, c] = sizeOf(range);
   if (c < 2) return false;
@@ -121,10 +123,9 @@ parHook.parfor = (lab, st, vars) => {
   const loopVar = st.v.name, { sliced, reductions } = classify(st.body, loopVar);
   for (const red of reductions) if (!vars.has(red.name)) throw new LabError(`parfor: give ${red.name} a starting value before the loop (it adds up across iterations).`);
   const base = shareable(vars), fns = [...lab.fns], workers = parallel.wanted ? Math.min(parallel.wanted, pool.size) : pool.size;
-  throw new Pause(async () => {
-    const t0 = performance.now();
-    const results = await Promise.all(chunks(items, workers).map((part) => pool.run({ kind: 'parfor', vars: base, fns, body: st.body, loopVar, items: part, reductions })));
-    const wall = performance.now() - t0, busy = results.reduce((s, x) => s + x.ms, 0);
+  const tasks: Task[] = chunks(items, workers).map((part) => ({ kind: 'parfor', vars: base, fns, body: st.body, loopVar, items: part, reductions }));
+  const finish = (results: TaskResult[], wall: number) => {
+    const busy = results.reduce((s, x) => s + x.ms, 0);
     for (const res of results) if (res.out) lab.host.out(res.out);
     const bad = results.find((x) => x.error);
     if (bad) throw new LabError(`In a parfor iteration: ${bad.error}`, st.at);
@@ -132,7 +133,13 @@ parHook.parfor = (lab, st, vars) => {
     for (const n of sliced) { const m = mergeSliced(vars.get(n), got.map((g) => g.get(n))); if (m) vars.set(n, m); }
     for (const red of reductions) { let acc = vars.get(red.name)!; for (const g of got) { const p = g.get(red.name); if (p) acc = combine(lab, red.op, acc, p); } vars.set(red.name, acc); }
     vars.delete(loopVar);
-    lab.host.out(`parfor: ${items.length} iterations on ${results.length} workers in ${(wall / 1000).toFixed(2)} s (${(busy / 1000).toFixed(2)} s of work: about ${(busy / Math.max(wall, 1)).toFixed(1)}× one worker)\n`);
+    if (top) lab.host.out(`parfor: ${items.length} iterations on ${results.length} workers in ${(wall / 1000).toFixed(2)} s (${(busy / 1000).toFixed(2)} s of work: about ${(busy / Math.max(wall, 1)).toFixed(1)}× one worker)\n`);
+  };
+  if (!top) { const t0 = performance.now(); finish(pool.runNow!(tasks), performance.now() - t0); return true; }
+  throw new Pause(async () => {
+    const t0 = performance.now();
+    const results = await Promise.all(tasks.map((t) => pool.run(t)));
+    finish(results, performance.now() - t0);
   }, false);
 };
 

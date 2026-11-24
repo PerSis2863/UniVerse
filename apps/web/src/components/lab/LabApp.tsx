@@ -4,6 +4,7 @@ import { SIGNAL_EXAMPLES } from './examples-signals';
 import { TestResults } from './TestResults';
 import type { TestReport } from '@/lib/lab/verify-lab';
 import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
+import { asksOf, onAsk, onChannel } from './page-answers';
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
@@ -227,6 +228,8 @@ export function LabApp() {
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
       if ('tested' in m) { setTests(m.tested); return; }
       if ('serialOut' in m) { applySerialOut(m.serialOut); return; }
+      if ('channel' in m) { onChannel(w, m.channel); return; }
+      if ('ask' in m) { onAsk(w, m.ask); return; }
       if ('sound' in m) { playSound(m.sound.channels, m.sound.fs); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
@@ -293,7 +296,7 @@ export function LabApp() {
     if (list.length) { worker.current?.postMessage({ upload: list } satisfies ToLab); listFiles(); }
   });
   useEffect(() => { void restore(); }, []);
-  useEffect(() => bridgeToEngine(() => worker.current), []);
+  useEffect(() => bridgeToEngine(() => worker.current, () => asksOf(worker.current)), []);
   useEffect(() => {
     const readHash = () => { void readShare(window.location.hash).then((s) => { if (s) setIncoming(s); }); };
     readHash();

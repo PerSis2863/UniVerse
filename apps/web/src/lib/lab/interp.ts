@@ -112,7 +112,7 @@ export class Lab {
         if (st.other) this.exec(st.other, f);
         return;
       case 'for': {
-        if (st.par && f.depth === 0 && parHook.parfor?.(this, st, f.vars)) return;
+        if (st.par && parHook.parfor?.(this, st, f.vars)) return;
         const v = this.ev(st.e, f);
         const [r, c0] = sizeOf(v), c = c0 * pages(v); // a 3D array's pages continue its columns
         for (let j = 0; j < c; j++) {

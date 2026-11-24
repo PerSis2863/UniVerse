@@ -26,6 +26,7 @@ import '@/lib/lab/des-lab';
 import '@/lib/lab/codegen-lab';
 import '@/lib/lab/embedded-lab';
 import { initGpu } from '@/lib/lab/gpu';
+import { canShare, newSlot, sleepOn, slotOf, waits } from '@/lib/lab/wait';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
 import { Profiler, type Profile } from '@/lib/lab/profile';
@@ -51,6 +52,8 @@ export type FromLab =
   | { names: string[] }
   | { sound: { channels: Float32Array[]; fs: number } }
   | { serialOut: SerialOut }
+  | { channel: SharedArrayBuffer }
+  | { ask: { kind: string; body: unknown; ms: number; n: number } }
   | { tested: TestReport }
   | { trace: { steps: TraceStep[]; full: boolean } }
   | { traceFig: { index: number; light: string; dark: string } }
@@ -103,12 +106,50 @@ class WorkerPool implements Pool {
       w.postMessage({ id, task: job.task });
     }
   }
+  // M521: on an isolated page a second set of engines, each with a slot of shared memory, so a parfor inside a
+  // function or a loop can hand out its iterations and sleep until every slot is answered. They are started (and
+  // seen to be ready) before a run that has a parfor: a thread that sleeps can't start new ones.
+  private ready: { w: Worker; sab: SharedArrayBuffer }[] = [];
+  async warm() {
+    if (!canShare() || this.ready.length) return;
+    this.ready = await Promise.all(Array.from({ length: this.size }, () => new Promise<{ w: Worker; sab: SharedArrayBuffer }>((ok) => {
+      const w = new Worker(new URL('./par.worker.ts', import.meta.url)), sab = newSlot(32 << 20);
+      w.onmessage = () => ok({ w, sab });
+      w.postMessage({ ping: true });
+    })));
+  }
+  get canWait() { return this.ready.length > 0; }
+  runNow(tasks: Task[]): TaskResult[] {
+    const used = tasks.map((task, i) => { const r = this.ready[i]; Atomics.store(slotOf(r.sab).ctl, 0, 0); r.w.postMessage({ id: 0, task, slot: r.sab }); return r; });
+    return used.map((r) => sleepOn<TaskResult>(r.sab, Infinity)!);
+  }
 }
 const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2;
 if (typeof Worker !== 'undefined' && cores > 2) parallel.pool = new WorkerPool(Math.min(8, cores - 1));
 // M478: the graphics chip, asked for once (asynchronously) so gpuArray finds it ready.
 void initGpu();
 testReports.onReport = (r) => postMessage({ tested: r } satisfies FromLab);
+// M521: the line to the page, where the browser lets this thread sleep (the page is cross-origin isolated): a script
+// waits for a device's next line or reading (serial-lab.ts) and a channel's readings (iot-lab.ts) where it asks.
+if (canShare()) {
+  const sab = newSlot(8 << 20);
+  let n = 0;
+  postMessage({ channel: sab } satisfies FromLab);
+  waits.page = (kind, body, ms) => {
+    flush();
+    const id = ++n, end = performance.now() + ms + 2000;
+    Atomics.store(slotOf(sab).ctl, 0, 0);
+    postMessage({ ask: { kind, body, ms, n: id } } satisfies FromLab);
+    for (;;) {
+      const left = end - performance.now();
+      if (left <= 0) return undefined;
+      const r = sleepOn<{ n: number; v?: unknown; error?: string }>(sab, left);
+      if (!r) return undefined;
+      if (r.n === id) { if (r.error) throw new LabError(r.error); return r.v; }
+      Atomics.store(slotOf(sab).ctl, 0, 0); // a late answer to an earlier question
+    }
+  };
+}
 let size = { w: 720, h: 520 };
 // The editor colours and suggests the engine's functions (M389).
 postMessage({ names: Object.keys(BUILTINS).sort() } satisfies FromLab);
@@ -177,7 +218,7 @@ self.onmessage = async (e: MessageEvent<ToLab>) => {
   graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
   try {
     // M476: the Test button runs the script's %% sections (and test functions) as tests.
-    if ('test' in m) { const r = runScriptTests(lab, code, m.test); host.out(reportText(r)); testReports.onReport?.(r); } else if ('run' in m) await runResumable(lab, code); else lab.run(code);
+    if ('test' in m) { const r = runScriptTests(lab, code, m.test); host.out(reportText(r)); testReports.onReport?.(r); } else if ('run' in m) { if (/\bparfor\b/.test(code)) await (parallel.pool as WorkerPool | null)?.warm(); await runResumable(lab, code); } else lab.run(code);
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;

@@ -12752,3 +12752,37 @@ Not built: SVMs, k-NN, ensembles and linear models in C; CMSIS-NN / TensorFlow L
 `parse.ts` (`parfor`), `help.ts` (new sections after Signals), `lab.worker.ts`, `LabApp.tsx` (examples spread from
 `examples-signals.ts`, the Test button and results panel, sound, the serial bridge), `SimulateApp.tsx` (Queues),
 `Sidebar.tsx` / `app-tabs.ts` (Signals), `app.ts` (the iot module), `route-gates.test.ts`, `account-deletion.ts`.
+
+## M521 (24 Nov): Hyperion scripts wait for live data mid-run
+
+The owner, 24 Nov, on M472–M481's left-outs: "please work on this". Before, the engine ran a script straight through on
+its thread: a device read gave what had arrived before the run, and only a top-level `parfor` could pause for the pool.
+Now **Hyperion's pages are cross-origin isolated** (`security-headers.ts` `isolationHeaders`: COOP `same-origin`, COEP
+`credentialless`, by `next.config.ts` on `/hyperion` and `/hyperion/:path*`), so the engine's worker may sleep on a
+`SharedArrayBuffer` with `Atomics.wait` until the page (or a pool worker) writes the answer (`src/lib/lab/wait.ts`:
+`newSlot`, `answer`, `sleepOn`, `pack` / `unpack` keep NaN, ±Inf, −0, typed arrays and Maps exact; `waits.page`,
+`askPage`).
+
+- **Traps:** a worker started by an isolated page refuses a script that doesn't send COEP: the built scripts get it
+  (`/_next/static/*` in `next.config.ts` and `public/_headers`; without it the engine never starts and every command
+  stays "running…"). The sealed Python/R frame sends it too (`sandboxHeaders` and `_headers`). Isolation is decided when
+  a page loads: `components/lab/Isolated.tsx` (in Hyperion's layout) reloads a page entered by an in-app link once
+  (`sessionStorage` `uv-isolation`: `trying`, `ok`, `failed`; Safari has no `credentialless` and is tried once a tab), and
+  reloads when the person leaves Hyperion, so the other pages keep their popups (Google sign-in) and framed pages.
+- **The page side:** the engine posts `{ channel: sab }` once and `{ ask: { kind, body, ms, n } }` per question;
+  `components/lab/page-answers.ts` answers by kind (`answers('serial', …)`, `answers('iot', …)`) in the slot, only the
+  newest `n`. A thread that sleeps can't start workers or receive messages: everything it needs comes in the answer
+  (serial lines are held in `heldLines` for an engine that asks, instead of being posted, so none arrive twice).
+- **Serial:** `readline` waits for the next line up to the port's `Timeout` (`serialport(…, 'Timeout', t)`, 10 s);
+  `readVoltage` waits for the next analog report (≤ 300 ms); `readDigitalPin`, `serialport`, `flush`, `arduino` take
+  what's there. The engine's own pin modes and outputs stand; inputs take the page's values.
+- **parfor:** `parHook` no longer needs depth 0: inside a function or a loop it uses the pool's waiting engines
+  (`WorkerPool.warm()` starts them before a run whose code says `parfor`, `runNow` hands out the chunks with a 32 MB slot
+  each). A top-level `parfor` still pauses as before (and prints the speed-up). `parfeval`'s futures are unchanged.
+- **Checked:** `wait.test.ts` (packing, slots, readline inside a function in a loop, the in-function parfor); in Chromium,
+  `scripts/checks/hyperion-wait-ui.mjs`: the headers, isolation, 20 lines from the simulated Arduino read inside a
+  function (1.5 s), a parfor in a function; entering from `/hub` and leaving reload once each; the sealed runner says
+  ready under isolation.
+- **Left out:** Safari waits as before (no isolation there); `pause` is left to the sciences branch (M506); a pool
+  answer over 32 MB is refused with a message.
+
