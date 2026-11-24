@@ -139,4 +139,38 @@ describe('Hyperion railways (M491)', () => {
     expect(d('mv')[0]).toBeGreaterThan(400); expect(d('mv')[0]).toBeLessThan(750);
     expect(d('dl')[0]).toBeCloseTo(0, 5); expect(d('dl')[2]).toBeGreaterThan(0.3); expect(d('nr')).toEqual([3]); expect(d('hm')[1]).toBeGreaterThan(20);
   });
+  it('passing loops, non-stop trains, a junction and the dispatcher (M491f)', { timeout: 60_000 }, () => {
+    const r = rl.ROUTES.intercity(), t = rl.TRAINS.intercity, loops = [21000, 71000];
+    const two = [{ train: t, dir: 1 as const, depart: 0 }, { train: t, dir: -1 as const, depart: 1200, priority: 3 }];
+    // Without loops the return train waits ~17 minutes at the far end; loops let them pass in between.
+    const plain = rl.railSingle(r, two), looped = rl.railSingle(r, two, { loops });
+    expect(plain.trains[1].delay).toBeGreaterThan(900);
+    expect(looped.totalDelay).toBeLessThan(plain.totalDelay / 3);
+    expect(looped.nodes).toEqual([0, 21000, 42000, 71000, 100000]);
+    // A loop isn't a stop: a train alone runs through it without waiting.
+    const alone = rl.railSingle(r, [two[0]], { loops }).trains[0];
+    expect(alone.stops).toEqual([true, false, true, false, true]); expect(alone.waits).toEqual([]); expect(Math.abs(alone.delay)).toBeLessThan(120);
+    // The dispatcher: by priority the important train goes first, and its weighted delay is lower than first come.
+    const pr = rl.railSingle(r, two, { dispatch: 'priority' });
+    expect(pr.trains[1].delay).toBeLessThan(60);
+    expect(pr.trains[0].waits.reduce((s, x) => s + x.seconds, 0)).toBeGreaterThan(600);
+    expect(pr.trains.reduce((s, x) => s + x.priority * Math.max(0, x.delay), 0)).toBeLessThan(pr.firstCome);
+    // The best order is never worse than first come, first served.
+    const m = rl.ROUTES.metro(), mt = rl.TRAINS.metro;
+    const many = [0, 1, 2].flatMap((k) => [{ train: mt, dir: 1 as const, depart: k * 300, priority: k === 1 ? 4 : 1 }, { train: mt, dir: -1 as const, depart: k * 300 + 120, late: k === 0 ? 120 : 0 }]);
+    const best = rl.railSingle(m, many, { dispatch: 'best' });
+    expect(best.trains.reduce((s, x) => s + x.priority * Math.max(0, x.delay), 0)).toBeLessThanOrEqual(best.firstCome + 1e-6);
+    // An express that runs through four stations is there sooner.
+    const all = rl.railSingle(m, [{ train: mt, dir: 1, depart: 0 }]).trains[0], fast = rl.railSingle(m, [{ train: mt, dir: 1, depart: 0, skip: [1, 2, 3, 4] }]).trains[0];
+    expect(fast.arrive).toBeLessThan(all.arrive - 150); expect(fast.stops.filter(Boolean).length).toBe(2);
+    // A branch train joins at the junction (station 3) and another leaves there: neither runs on the rest of the line.
+    const br = rl.railSingle(m, [{ train: mt, dir: 1, depart: 0, from: 2 }, { train: mt, dir: -1, depart: 0, to: 2 }]);
+    expect(br.trains[0].nodes[0]).toBe(2100); expect(Math.min(...br.trains[0].s)).toBeGreaterThan(2099);
+    expect(br.trains[1].nodes.at(-1)).toBe(2100); expect(Number.isFinite(br.trains[1].arrive)).toBe(true);
+    expect(Number.isFinite(br.deadlock)).toBe(false);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("st = railSingle('intercity', trainModel('intercity'), [1 -1], [0 1200], 'Loops', [21e3 71e3], 'Dispatch', 'priority', 'Priority', [1 3]); d = st.Delay; e = railSingle('metro', trainModel('metro'), 1, 0, 'Skip', {[2 3 4 5]}); b = railSingle('metro', trainModel('metro'), 1, 0, 'From', 3); figure; railSingle('intercity', trainModel('intercity'), [1 -1], [0 1200], 'Loops', [21e3 71e3]);");
+    expect((lab.vars.get('d') as { d: Float64Array }).d[1]).toBeLessThan(1);
+    expect((lab.vars.get('e') as { d: Float64Array }) ).toBeTruthy();
+  });
 });

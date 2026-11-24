@@ -13015,7 +13015,7 @@ engine-out yaw, the propeller's torque and slipstream, wind shear with height, l
 
 ## M490d (24 Nov): Hyperion orbits, the Sun's cycle in the air's thickness
 
-The owner pasted M489c's left-outs (24 Nov), read as "build these". `space.ts`: the air's density now takes the Sun's
+The owner pasted M489c's left-outs (24 Nov), then: "Build them all and push it". `space.ts`: the air's density now takes the Sun's
 10.7 cm radio flux, `airDensity(h, F)` (150 = the old table exactly). Jacchia's exospheric temperature
 T∞ ≈ 1.15·(379 + 3.24·F); above 150 km each layer's scale height is stretched by √(T∞(F)/T∞(150)) (a fit to MSIS's swing,
 not NRLMSISE-00: at 400 km 0.29× at F 70, 2.2× at F 230; the swing grows with height); below 150 km nothing changes.
@@ -13027,6 +13027,33 @@ average, ~200 active; launched 2025 ~300, 2030 ~1,010). `propagate`'s `flux`. La
 `orbitDecay(h, bc, F107 or year)`, `solarFlux(year)`, `orbitPropagate(..., 'SolarFlux', F)`. Window: Orbit → Air drag →
 The Sun (Quiet / Average / Active) with a line each. Browser check tab `sunact`. Example orbits.m. Not built: the
 day–night bulge, magnetic storms (Ap), a satellite's attitude changing its area, solar radiation pressure.
+
+## M491f (24 Nov): Hyperion railways, passing loops, non-stop trains, junctions and a dispatcher
+
+The owner, 24 Nov: "Build them all and push it" (M489c's left-outs). `rail.ts`: `railSingle` now runs on **places**
+(`nodes`: the stations plus `loops`, positions in metres); a section is the track between two neighbouring places, still
+one train at a time. Each train has a path (forward node indices from `from` to `to`, station indices, default the line's
+ends) and `stops` (its ends and stations not in `skip`); loops and skipped stations are run through. **How a train runs
+through:** its holding ("reservation") is a run of sections; within braking distance + 200 m of a place it needn't stop
+at it asks for the section beyond (`take`: free, room at the far place unless that's a terminal or its own end, and the
+dispatcher's yes); refused, it brakes to stop there and waits like at a station (no dwell; it leaves no earlier than its
+planned passing time). A section is freed when the front passes its far end (**shortcut:** the train's length is left
+out). The timetable (`plan`, one time per place on its path) is its run alone through the non-stops, padded, with dwells
+only at stops. Branch trains (`from` mid-line) appear at their junction when due and a track is free; trains ending
+mid-line (`to`) leave the line there. **The dispatcher** (`dispatch`): 'fcfs' is M491e's rule exactly (old tests and
+results unchanged); with ranks (`singleRun(…, rank)`), a train about to take a section yields when a better-ranked train
+facing it reaches that section (its plan there + its lateness so far) before this one would be through (`yields`, waits
+`for: 'dispatch'`); 'priority' ranks by `priority` then departure, 'best' tries every swap of two ranks (≤ 4 rounds) and
+keeps what cuts Σ priority × lateness (a lock-up costs 1e9). Both fall back to first come when that is no worse ('best')
+or when holding back locked the line up ('priority'); `firstCome` is first come's weighted delay. Checked: intercity, the
+return train 20 min behind is ~17 min late with no loops and ~3 with loops at 21 and 71 km; by priority it's on time and
+the weighted delay drops; an express through four metro stations is >150 s sooner; branch trains start and end at
+station 3. Language: `railSingle(…, 'Loops', m, 'Skip', {…}, 'From', n, 'To', n, 'Priority', w, 'Dispatch', 'fcfs' |
+'priority' | 'best')`, the table's Held and Priority columns, loops dotted on the graph. Window: Single track → Passing
+loops midway between stations, the second train out an express, a branch train joining at the middle station, Who goes
+first (First come / Priority / Best order) with the weighted delay against first come. Browser check tab `loops`.
+Example railways.m. Not built: trains overtaking each other at loops (same direction), a junction's own crossing moves
+(the branch is off the model), the train's length in freeing sections.
 
 ## M452: the owner's handwritten style for headings (23 Nov)
 

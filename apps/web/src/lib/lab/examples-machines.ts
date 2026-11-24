@@ -282,6 +282,14 @@ fprintf('Substations only at the ends: down to %.0f V, trains tripped for %.0f s
 figure; railSingle('metro', trainModel('metro'), [1 -1 1 -1], [0 120 600 720])
 [t1, clashes] = railSingle('metro', trainModel('metro'), [1 -1], [0 125], 'Late', [150 0])
 [~, ~, stuck] = railSingle('metro', trainModel('metro'), [1 1 -1 -1], [0 60 0 60], 'Tracks', 1);
+% Passing loops between stations, and a dispatcher that lets the important train through first
+ic = trainModel('intercity');
+t0 = railSingle('intercity', ic, [1 -1], [0 1200]);
+t1 = railSingle('intercity', ic, [1 -1], [0 1200], 'Loops', [21e3 71e3]);
+t2 = railSingle('intercity', ic, [1 -1], [0 1200], 'Dispatch', 'priority', 'Priority', [1 3]);
+fprintf('Return train late: %.1f min, with loops %.1f, put first %.1f\\n', t0.Delay(2), t1.Delay(2), t2.Delay(2))
+% An express through the middle stations, and a branch train joining at station 3
+figure; railSingle('metro', trainModel('metro'), [1 1 -1 1], [0 240 120 360], 'Skip', {[], [2 3 4 5], [], []}, 'From', [NaN NaN NaN 3], 'Dispatch', 'best')
 fprintf('With one track at each station they lock up after %.1f minutes\\n', stuck)
 % 25 kV AC: rail return against autotransformers, three intercity trains five minutes apart
 for s = {'ac25', 'ac25at'}
