@@ -219,7 +219,8 @@ self.onmessage = async (e: MessageEvent<ToLab>) => {
   graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
   try {
     // M476: the Test button runs the script's %% sections (and test functions) as tests.
-    if ('test' in m) { const r = runScriptTests(lab, code, m.test); host.out(reportText(r)); testReports.onReport?.(r); } else if ('run' in m) { if (/\bparfor\b/.test(code)) await (parallel.pool as WorkerPool | null)?.warm(); await runResumable(lab, code); } else lab.run(code);
+    // M523: Run on a test class (classdef … < matlab.unittest.TestCase) runs its tests too.
+    if ('test' in m || ('run' in m && /^\s*classdef\b/m.test(code))) { const r = runScriptTests(lab, code, 'test' in m ? m.test : 'tests'); host.out(reportText(r)); testReports.onReport?.(r); } else if ('run' in m) { if (/\bparfor\b/.test(code)) await (parallel.pool as WorkerPool | null)?.warm(); await runResumable(lab, code); } else lab.run(code);
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;

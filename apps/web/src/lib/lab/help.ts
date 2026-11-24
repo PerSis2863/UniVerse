@@ -326,7 +326,36 @@ iotread | [data, t, names] = iotread('Greenhouse', 'NumPoints', 100, 'Fields', [
 iotwrite | r = iotwrite(key, [21.5 40]) | Sends a reading to a channel with its write key, as a device would (one a second at most); r.ok says whether it was taken. Its alerts are checked.
 
 # Unit tests
-runtests | results = runtests('t_math.m') | Runs tests: a test script's %% sections (each after the set-up code, in its own workspace), or with no file the local functions named test… (with setupOnce, setup, teardown, teardownOnce). Prints a report and gives a table (Name, Passed, Failed, Duration, Details). The Test button runs the open script.
+runtests | results = runtests('t_math.m') | Runs tests: a test script's %% sections (each after the set-up code, in its own workspace), a test class (classdef Name < matlab.unittest.TestCase: its Test methods, set-up and teardown methods, TestParameter properties), or with no file the local functions named test… (with setupOnce, setup, teardown, teardownOnce). Prints a report and gives a table (Name, Passed, Failed, Duration, Details). The Test button runs the open script.
+addTeardown | tc.addTeardown(@() delete('out.csv')) | In a class-based test: a function to call after this test, even when it fails (the last added runs first).
+fatalAssertEqual | tc.fatalAssertEqual(…) | As assertEqual: stops the test at a failure.
+assumeEqual | tc.assumeEqual(…) | As verifyEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertNotEqual | tc.fatalAssertNotEqual(…) | As assertNotEqual: stops the test at a failure.
+assumeNotEqual | tc.assumeNotEqual(…) | As verifyNotEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertTrue | tc.fatalAssertTrue(…) | As assertTrue: stops the test at a failure.
+assumeTrue | tc.assumeTrue(…) | As verifyTrue, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertFalse | tc.fatalAssertFalse(…) | As assertFalse: stops the test at a failure.
+assumeFalse | tc.assumeFalse(…) | As verifyFalse, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertEmpty | tc.fatalAssertEmpty(…) | As assertEmpty: stops the test at a failure.
+assumeEmpty | tc.assumeEmpty(…) | As verifyEmpty, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertNotEmpty | tc.fatalAssertNotEmpty(…) | As assertNotEmpty: stops the test at a failure.
+assumeNotEmpty | tc.assumeNotEmpty(…) | As verifyNotEmpty, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertSize | tc.fatalAssertSize(…) | As assertSize: stops the test at a failure.
+assumeSize | tc.assumeSize(…) | As verifySize, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertClass | tc.fatalAssertClass(…) | As assertClass: stops the test at a failure.
+assumeClass | tc.assumeClass(…) | As verifyClass, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertLessThan | tc.fatalAssertLessThan(…) | As assertLessThan: stops the test at a failure.
+assumeLessThan | tc.assumeLessThan(…) | As verifyLessThan, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertLessThanOrEqual | tc.fatalAssertLessThanOrEqual(…) | As assertLessThanOrEqual: stops the test at a failure.
+assumeLessThanOrEqual | tc.assumeLessThanOrEqual(…) | As verifyLessThanOrEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertGreaterThan | tc.fatalAssertGreaterThan(…) | As assertGreaterThan: stops the test at a failure.
+assumeGreaterThan | tc.assumeGreaterThan(…) | As verifyGreaterThan, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertGreaterThanOrEqual | tc.fatalAssertGreaterThanOrEqual(…) | As assertGreaterThanOrEqual: stops the test at a failure.
+assumeGreaterThanOrEqual | tc.assumeGreaterThanOrEqual(…) | As verifyGreaterThanOrEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertError | tc.fatalAssertError(…) | As assertError: stops the test at a failure.
+assumeError | tc.assumeError(…) | As verifyError, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertFail | tc.fatalAssertFail(…) | As assertFail: stops the test at a failure.
+assumeFail | tc.assumeFail(…) | As verifyFail, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
 assertEqual | assertEqual(actual, expected, 'AbsTol', 1e-9) | Stops the test unless the values match (size, class and every element; within a tolerance when given). verifyEqual records the failure and goes on.
 verifyEqual | verifyEqual(tc, actual, expected, 'RelTol', 1e-6) | Like assertEqual, but the test goes on after a failure (every failed check is listed).
 assertTrue | assertTrue(condition, 'message') | Stops the test unless the condition is true.

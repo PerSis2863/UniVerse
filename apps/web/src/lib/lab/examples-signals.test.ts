@@ -20,6 +20,7 @@ import { SIGNAL_EXAMPLES } from '@/components/lab/examples-signals';
 it('the signals examples run', () => {
   for (const e of SIGNAL_EXAMPLES) {
     const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: new FileStore(), sound: () => {} });
+    if (e.name === 'RootsTest.m') { expect(runScriptTests(lab, e.code).tests.every((t) => t.passed)).toBe(true); continue; }
     if (e.name === 'tests.m') expect(runScriptTests(lab, e.code).tests.map((t) => t.passed)).toEqual([true, true, true, true, false, true]);
     else lab.run(e.code);
   }

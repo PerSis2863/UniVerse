@@ -20,6 +20,7 @@ import './gpu-lab';
 import './des-lab';
 import './codegen-lab';
 import './embedded-lab';
+import './iot-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';

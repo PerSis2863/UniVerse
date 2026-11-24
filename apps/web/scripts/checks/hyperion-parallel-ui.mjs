@@ -13,10 +13,10 @@ try {
   await page.goto(`${base}/hyperion`, { waitUntil: 'load', timeout: 240_000 });
   out.cores = await page.evaluate(() => navigator.hardwareConcurrency);
   await page.getByRole('tab', { name: 'parallel.m' }).click({ timeout: 120_000 });
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.getByRole('region', { name: 'Script editor' }).getByRole('button', { name: 'Run', exact: true }).click();
   await page.getByText(/Primes up to 80000/).waitFor({ timeout: 180_000 });
   // Again, with the pool's workers already started (the first run includes loading the engine in each).
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.getByRole('region', { name: 'Script editor' }).getByRole('button', { name: 'Run', exact: true }).click();
   await page.waitForFunction(() => (document.body.innerText.match(/Primes up to 80000/g) ?? []).length >= 2, null, { timeout: 180_000 });
   const text = await page.evaluate(() => document.body.innerText);
   out.parfor = text.match(/parfor: \d.*/g) ?? [];

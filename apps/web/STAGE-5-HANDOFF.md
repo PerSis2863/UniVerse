@@ -12803,3 +12803,29 @@ Now **Hyperion's pages are cross-origin isolated** (`security-headers.ts` `isola
 - **Checked:** `iot.test.ts` (fires only when broken, once per quiet time, owner only), `iot-lab.test.ts`; in Chromium
   `hyperion-signals-ui.mjs` (an alert added, the simulated device breaks it, "told 1×", notifications stored, axe clean
   light and dark) and `hyperion-wait-ui.mjs` (`iotread` of a channel mid-run).
+
+## M523 (24 Nov): Hyperion class-based tests
+
+MATLAB's object-based tests, without classes in the engine: `src/lib/lab/testclass.ts` `readTestClass(code)` finds a
+`classdef Name < matlab.unittest.TestCase` file's properties and methods blocks (a small scanner: `end`s inside
+brackets, after a dot, in strings and comments don't count; `endfunction` and friends do); any other `classdef` is
+refused with a message. `verify-lab.ts` `runClassTests` parses each methods block's functions with the engine's own
+parser and runs them; `runScriptTests` hands a class to it, so the Test button, Run (`lab.worker.ts`: code starting
+with `classdef`) and `runtests('Name')` all work.
+
+- **Handle-like test case:** a method without outputs is registered with its first parameter as its output, so what a
+  set-up stores (`tc.Data = magic(4)`) comes back and goes on; each test gets a copy of the class set-up's test case
+  (`TestName` is `Class/method(param=value)`).
+- **`tc.method(…)`:** `interp.ts` `methodHook` (a struct without that field, when the hook says so): a test case calls
+  the class's own helper or the builtin with itself first (`verifyEqual`, `addTeardown`…); `x.f(…)` on other structs is
+  unchanged (the field is read once). `interp.ts` also now keeps a `LabError`'s subclass when it adds the line number
+  (`new (e.constructor)(…)`): the assertion and skip kinds survive a function call.
+- **New:** `addTeardown` (last added runs first, also after a failure), `fatalAssert…` (as `assert…`), `assume…` (the
+  test is skipped: "(skipped)", counted as passed, MATLAB's Incomplete). TestParameter values: a cell (labels from short
+  values, else `value1`…) or a struct (its field names); several parameters run every combination.
+- **Checked:** `testclass.test.ts` (blocks, 13 tests from one class, set-up kept, parameters, teardown, skip, runtests
+  from Hyperion's files); `examples-signals.test.ts` runs `RootsTest.m`; in Chromium `hyperion-tests-ui.mjs` (Run on
+  RootsTest.m: "All 6 passed", the GPU test skipped without a chip; axe clean light and dark). The checks now press the
+  editor's Run (the toolstrip from PR #156 has one too).
+- **Left out:** class-level attributes beyond the test kinds (TestTags, shared fixtures, `applyFixture`), `log`, and
+  classes that aren't tests.

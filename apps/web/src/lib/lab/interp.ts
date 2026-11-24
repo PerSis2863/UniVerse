@@ -40,6 +40,8 @@ export class Flow { constructor(readonly kind: 'break' | 'continue' | 'return' |
 /** M477: a parfor at a script's top level may be run on other workers (parallel-lab.ts sets this). */
 /** M478: arithmetic for gpuArray values (gpu-lab.ts sets it); M480: and fixed-point fi values (fixed-lab.ts). */
 export const opHooks: { binop: ((op: string, a: Value, b: Value) => Value | null) | null } = { binop: null };
+/** M523: obj.name(args) on a struct without that field: a method of a test case (verify-lab.ts), when it says so. */
+export const methodHook: { call: ((lab: Lab, obj: Struct, name: string, args: Value[], nout: number) => Value[] | null) | null } = { call: null };
 export const parHook: { parfor: ((lab: Lab, st: Extract<Stmt, { s: 'for' }>, vars: Map<string, Value>) => boolean) | null } = { parfor: null };
 interface Frame { vars: Map<string, Value>; nargin: number; nargout: number; depth: number }
 type Idx = 'all' | number[]; // 0-based positions
@@ -73,7 +75,7 @@ export class Lab {
       this.host.trace?.(st.at, f.vars, f.depth);
       try { this.stmt(st, f); } catch (e) {
         if (e instanceof Flow) throw e;
-        if (e instanceof LabError && e.at < 0) throw new LabError(e.message, st.at);
+        if (e instanceof LabError && e.at < 0) throw new (e.constructor as typeof LabError)(e.message, st.at); // its kind kept (M523: a skipped test)
         if (e instanceof RangeError) throw new LabError('Too many nested calls (a function calling itself without stopping?).', st.at);
         throw e;
       }
@@ -273,7 +275,16 @@ export class Lab {
           const args = e.args.flatMap((a) => (a.k === 'colon' ? [str(':')] : this.spread(a, f)));
           return this.call(e.of.name, args, nout, f);
         }
-        const b = this.ev(e.of, f);
+        let b: Value;
+        if (e.of.k === 'field' && typeof e.of.name === 'string' && methodHook.call) {
+          const obj = this.ev(e.of.of, f), n = e.of.name;
+          if (obj.k === 'struct' && obj.f.has(n)) b = obj.f.get(n)!;
+          else {
+            const r = obj.k === 'struct' ? methodHook.call(this, obj, n, e.args.flatMap((a) => this.spread(a, f)), nout) : null;
+            if (r) return r;
+            b = this.ev(e.of, f);
+          }
+        } else b = this.ev(e.of, f);
         if (b.k === 'fn') return this.callFn(b, e.args.flatMap((a) => this.spread(a, f)), nout);
         const idx = e.args.map((a, i) => this.index(a, b, i, e.args.length, f));
         return e.brace ? getCell(b, idx) : [getIndex(b, idx)];

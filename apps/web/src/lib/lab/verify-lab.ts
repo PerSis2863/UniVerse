@@ -1,9 +1,10 @@
-import { LabError, parse } from './parse';
+import { LabError, parse, type FnDef } from './parse';
 import { BUILTINS, type Builtin } from './builtins';
-import { Lab, textOf } from './interp';
+import { Lab, methodHook, textOf } from './interp';
 import { FileStore } from './files';
 import { bool, kind, mat, sizeOf, str, toMat, truthy, type Cell, type Struct, type Value } from './values';
 import { differs, sections, type Tol } from './verify';
+import { readTestClass } from './testclass';
 
 // Hyperion's unit tests for scripts (M476). Two ways to write them, as MATLAB has:
 //  • a test script: set-up code, then one %% section per test (each runs in its own fresh workspace after the
@@ -11,8 +12,13 @@ import { differs, sections, type Tol } from './verify';
 //  • test functions: local functions named test… taking the test case (function testAdd(tc)); runtests with no
 //    file runs every one the code defined, with setupOnce / teardownOnce / setup / teardown when present.
 // Checks: assert… stops the test at the first failure, verify… records it and goes on (both take the test case
-// first or not: verifyEqual(tc, a, b) and assertEqual(a, b) both work). MATLAB's matlab.unittest classes aren't here;
-// the results are a table (Name, Passed, Failed, Duration, Details) and the window shows them as a panel.
+// first or not: verifyEqual(tc, a, b) and assertEqual(a, b) both work). The results are a table (Name, Passed,
+// Failed, Duration, Details) and the window shows them as a panel.
+// M523: and MATLAB's class-based tests: a file `classdef Name < matlab.unittest.TestCase` (read by testclass.ts) with
+// properties (plain, and TestParameter: each test run once per value, every combination), Test methods,
+// TestMethodSetup / Teardown, TestClassSetup / Teardown and helpers; tc.verifyEqual(…), tc.addTeardown(…) and
+// tc.helper(…) call with the test case first. The test case behaves as MATLAB's handle object within a test: what a
+// set-up method stores on it (tc.Data = …) is there for the test. fatalAssert… stops like assert…; assume… skips the test.
 
 export interface TestResult { name: string; passed: boolean; ms: number; details: string[]; line?: number }
 export interface TestReport { name: string; tests: TestResult[]; ms: number }
@@ -20,16 +26,19 @@ export interface TestReport { name: string; tests: TestResult[]; ms: number }
 /** The failures verify… recorded in the test now running (null when no test is running: they then stop the code). */
 let collecting: string[] | null = null;
 class AssertionFailed extends LabError {}
+/** M523: an assume… that didn't hold: the test is skipped (MATLAB's Incomplete), not failed. */
+class Skipped extends LabError {}
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const isCase = (v: Value | undefined) => v?.k === 'struct' && v.f.has('TestName') && v.f.has('IsTestCase');
-const fail = (soft: boolean, msg: string) => {
+const fail = (soft: boolean | 'skip', msg: string) => {
+  if (soft === 'skip') throw new Skipped(msg);
   if (soft && collecting) { collecting.push(msg); return; }
   throw new AssertionFailed(msg);
 };
 /** Defines assertX and verifyX: `check` gets the arguments after the optional test case and says what failed. */
 function qualify(name: string, check: (a: Value[], lab: Lab) => string | null) {
-  for (const [prefix, soft] of [['assert', false], ['verify', true]] as const) {
+  for (const [prefix, soft] of [['assert', false], ['verify', true], ['fatalAssert', false], ['assume', 'skip']] as const) {
     def(`${prefix}${name}`, (a, _n, lab) => {
       const args = isCase(a[0]) ? a.slice(1) : a;
       const why = check(args, lab);
@@ -77,7 +86,8 @@ qualify('Error', (a, lab) => {
   }
   return 'it ran without an error';
 });
-def('assertFail verifyFail', (a) => { fail(false, `failed${a[a.length - 1]?.k === 'str' ? `: ${textOf(a[a.length - 1])}` : ''}`); return []; });
+def('assertFail verifyFail fatalAssertFail', (a) => { fail(false, `failed${a[a.length - 1]?.k === 'str' ? `: ${textOf(a[a.length - 1])}` : ''}`); return []; });
+def('assumeFail', (a) => { fail('skip', `assumeFail${a[a.length - 1]?.k === 'str' ? `: ${textOf(a[a.length - 1])}` : ''}`); return []; });
 
 // ——— Running tests ———
 const files = (lab: Lab) => { const s = (lab.host as { files?: unknown }).files; return s instanceof FileStore ? s : null; };
@@ -88,14 +98,17 @@ function one(lab: Lab, name: string, body: (child: Lab) => void, line?: number):
   const was = collecting, details: string[] = [];
   collecting = details;
   const t0 = performance.now();
+  let skipped = false;
   try { body(child); } catch (e) {
     if (!(e instanceof LabError)) throw e;
-    details.push(e instanceof AssertionFailed ? e.message : `stopped with an error: ${e.message}`);
+    if (e instanceof Skipped) { skipped = true; details.length = 0; details.push(`skipped: ${e.message}`); }
+    else details.push(e instanceof AssertionFailed ? e.message : `stopped with an error: ${e.message}`);
   } finally { collecting = was; }
-  return { name, passed: !details.length, ms: performance.now() - t0, details, ...(line ? { line } : {}) };
+  return { name: skipped ? `${name} (skipped)` : name, passed: skipped || !details.length, ms: performance.now() - t0, details, ...(line ? { line } : {}) };
 }
 /** A test script's %% sections, each after the shared set-up. */
 export function runScriptTests(lab: Lab, code: string, name = 'tests'): TestReport {
+  if (readTestClass(code)) return runClassTests(lab, code);
   const t0 = performance.now(), { setup, tests } = sections(code);
   const prog = parse(code);
   for (const [k, f] of prog.fns) lab.fns.set(k, f);
@@ -123,6 +136,99 @@ export function runFunctionTests(lab: Lab, names = [...lab.fns.keys()]): TestRep
   }
   return { name: 'tests', tests: out, ms: performance.now() - t0 };
 }
+// ——— M523: class-based tests ———
+const KINDS = ['Test', 'TestMethodSetup', 'TestMethodTeardown', 'TestClassSetup', 'TestClassTeardown'] as const;
+type Kind = (typeof KINDS)[number] | 'helper';
+interface Method { name: string; kind: Kind; def: FnDef }
+/** The teardowns tc.addTeardown added in the test now running (run last first). */
+let teardowns: { fn: Value; args: Value[] }[] | null = null;
+def('addTeardown', (a) => {
+  const args = isCase(a[0]) ? a.slice(1) : a;
+  if (args[0]?.k !== 'fn') throw new LabError('addTeardown(tc, @() …) needs a function to call after the test.');
+  if (!teardowns) throw new LabError('addTeardown works inside a test.');
+  teardowns.push({ fn: args[0], args: args.slice(1) });
+  return [];
+});
+const label = (v: Value) => (v.k === 'str' && v.v.length <= 24 ? v.v : v.k === 'mat' && v.d.length === 1 && !v.im ? String(v.d[0]) : null);
+/** A test class's tests, each in its own workspace with its own copy of the test case. */
+export function runClassTests(lab: Lab, code: string): TestReport {
+  const t0 = performance.now(), cls = readTestClass(code)!;
+  const base = new Lab(lab.host);
+  for (const [k, f] of lab.fns) base.fns.set(k, f);
+  const methods: Method[] = [], fields = new Map<string, Value>(), params = new Map<string, { label: string; value: Value }[]>();
+  for (const b of cls.blocks) {
+    if (b.kind === 'methods') {
+      const prog = parse(b.code);
+      if (prog.body.length) throw new LabError(`${cls.name}: a methods block holds only functions (line ${b.line}).`);
+      const kind: Kind = KINDS.find((k) => b.attrs.some((a) => a.toLowerCase() === k.toLowerCase())) ?? 'helper';
+      for (const [name, f] of prog.fns) {
+        // Handle-like: a method without outputs gives its test case back, so what it stores on it stays.
+        base.fns.set(name, !f.outs.length && f.params.length && !f.varargout ? { ...f, outs: [f.params[0]] } : f);
+        methods.push({ name, kind, def: f });
+      }
+      continue;
+    }
+    // A properties block: `Name = value` and bare `Name` (empty) lines, run in a quiet engine.
+    const quiet = new Lab({ out: () => {} });
+    for (const [k, f] of lab.fns) quiet.fns.set(k, f);
+    quiet.run(b.code.split('\n').map((l) => l.replace(/^(\s*)([A-Za-z]\w*)\s*;?\s*(%.*)?$/, '$1$2 = [];')).join('\n'));
+    const test = b.attrs.some((a) => /^TestParameter$/i.test(a));
+    for (const [k, v] of quiet.vars) {
+      if (!test) { fields.set(k, v); continue; }
+      const values = v.k === 'cell' ? v.d.map((x, i) => ({ label: label(x) ?? `value${i + 1}`, value: x })) : v.k === 'struct' && !v.table ? [...v.f].map(([n, x]) => ({ label: n, value: x })) : [{ label: label(v) ?? 'value1', value: v }];
+      params.set(k, values);
+    }
+  }
+  const tcOf = (name: string, from?: Struct): Struct => ({ k: 'struct', f: new Map<string, Value>([...(from?.f ?? fields), ['TestName', str(name)], ['IsTestCase', bool(true)], ['TestClass', str(cls.name)]]) });
+  const invoke = (L: Lab, m: Method, tc: Struct, extra: Value[] = []): Struct => {
+    const own = !m.def.outs.length && m.def.params.length && !m.def.varargout;
+    const r = L.call(m.name, m.def.params.length ? [tc, ...extra] : extra, own ? 1 : 0);
+    return own && r[0]?.k === 'struct' ? r[0] : tc;
+  };
+  const of = (k: Kind) => methods.filter((m) => m.kind === k);
+  let shared = tcOf(cls.name);
+  const out: TestResult[] = [];
+  try { for (const m of of('TestClassSetup')) shared = invoke(base, m, shared); } catch (e) {
+    if (!(e instanceof LabError)) throw e;
+    return { name: cls.name, tests: of('Test').map((m) => ({ name: `${cls.name}/${m.name}`, passed: false, ms: 0, details: [`TestClassSetup stopped: ${e.message}`] })), ms: performance.now() - t0 };
+  }
+  for (const m of of('Test')) {
+    // Every combination of the parameters it takes.
+    let combos: { label: string; value: Value }[][] = [[]];
+    for (const p of m.def.params.slice(1)) {
+      const vs = params.get(p);
+      if (!vs) throw new LabError(`${cls.name}/${m.name} takes ${p}: add it to a properties (TestParameter) block.`);
+      combos = combos.flatMap((c) => vs.map((v) => [...c, v]));
+    }
+    for (const c of combos) {
+      const name = `${cls.name}/${m.name}${c.length ? `(${m.def.params.slice(1).map((p, i) => `${p}=${c[i].label}`).join(',')})` : ''}`;
+      out.push(one(base, name, (L) => {
+        let tc = tcOf(name, shared);
+        const was = teardowns;
+        teardowns = [];
+        try {
+          for (const s of of('TestMethodSetup')) tc = invoke(L, s, tc);
+          invoke(L, m, tc, c.map((x) => x.value));
+        } finally {
+          const mine = teardowns;
+          teardowns = was;
+          for (const t of mine.reverse()) L.callFn(t.fn, t.args, 0);
+          for (const t of of('TestMethodTeardown')) tc = invoke(L, t, tc);
+        }
+      }));
+    }
+  }
+  try { for (const m of of('TestClassTeardown')) shared = invoke(base, m, shared); } catch { /* the tests' own results stand */ }
+  return { name: cls.name, tests: out, ms: performance.now() - t0 };
+}
+// tc.verifyEqual(…), tc.addTeardown(…), tc.helper(…): called with the test case first.
+methodHook.call = (lab, obj, name, args, nout) => {
+  if (!isCase(obj)) return null;
+  if (lab.fns.has(name)) return lab.call(name, [obj, ...args], nout);
+  const fn = BUILTINS[name];
+  return fn ? fn([obj, ...args], nout, lab) : null;
+};
+
 /** The report as MATLAB-like text for the command window. */
 export function reportText(r: TestReport): string {
   const failed = r.tests.filter((t) => !t.passed), lines = [`Running ${r.name}: ${r.tests.length} test${r.tests.length === 1 ? '' : 's'}`];
