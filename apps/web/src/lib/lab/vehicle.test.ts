@@ -136,4 +136,15 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('a', 'RoofCrush')).toBeCloseTo(c(1.5), 9); expect(Math.abs(f('b', 'Spin'))).toBeGreaterThan(5);
   });
+  it('the crushed roof drawn, windows breaking and the people inside (M486f)', { timeout: 60_000 }, () => {
+    const saloon = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT };
+    const calm = vd.kerbTrip(saloon, 6), hard = vd.kerbTrip(saloon, 18);
+    // Rocking back: no glass broken, full headroom; a hard trip breaks both sides' windows and the roof reaches them.
+    expect(calm.windows.every(Number.isNaN)).toBe(true); expect(calm.headroom).toBe(vd.HEADROOM); expect(calm.peakG).toBeGreaterThan(1);
+    expect(hard.windows.every((x) => x > 0)).toBe(true); expect(hard.headroom).toBeCloseTo(vd.HEADROOM - hard.crush, 12); expect(hard.peakG).toBeGreaterThan(calm.peakG);
+    // The crush over time only grows, one entry per sample, ending at the most.
+    expect(hard.crushes.length).toBe(hard.t.length);
+    expect(hard.crushes.every((c, i) => i === 0 || (c[0] >= hard.crushes[i - 1][0] && c[1] >= hard.crushes[i - 1][1]))).toBe(true);
+    expect(Math.max(...hard.crushes.at(-1)!)).toBeCloseTo(hard.crush, 12);
+  });
 });

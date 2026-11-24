@@ -13198,6 +13198,18 @@ Checked: roll-rate rms >10% higher with them on, bank rms higher, the same seed 
 'TurbulenceRotation'; window Rough → "Gusts that turn the air too". Not built: the gust's change along the span
 (a gust front hitting one wing first).
 
+## M486f (24 Nov): Hyperion vehicles, the crushed roof drawn, windows breaking, the people inside
+
+`vehicle.ts` (`tumble`, `kerbTrip`): `crushes[]` (each roof edge's crush per sample, outer then inner), `windows`
+(when each side's glass broke: its roof edge taking over `GLASS_N` 15 kN or folding over `GLASS_CRUSH` 4 cm; a wheel
+corner's contact counts for its side), `peakG` (the ground's push on the body ÷ m·g, without gravity's own 1 g; at a
+kerb the blow is the centre's speed change over ~50 ms), `headroom` (`HEADROOM` 10 cm less the most crush; below 0 the
+roof reached the people). Rough figures, said so in help. Checked: rocking back breaks nothing and keeps the headroom;
+a hard 18 m/s trip breaks both sides and the roof reaches them; crush only grows and ends at the most. Language: info
+WindowsBroken, PeakG, Headroom. Window: Kerb draws the roof sinking in and the side windows (blue, yellow dashed once
+broken); facts "Roof in · windows broken" and "People inside: most g · headroom". Not built: belts and airbags,
+people thrown out, the windscreen.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -109,7 +109,7 @@ const outline = (x: number, y: number, psi: number, v: vd.Vehicle) => {
   return [[b, -w], [f, -w], [f, w], [b, w], [b, -w]].map(([u, q]) => [x + u * c - q * s, y + u * s + q * c]);
 };
 // After a rollover (M486d): how many quarter turns, what it rests on, how far it slid sideways, how long.
-const tumbleFields = (tb: vd.Tumble): [string, Value][] => [['Rolls', num(tb.quarters)], ['RestsOn', str(tb.rests)], ['TumbleDistance', num(tb.slid)], ['TumbleTime', num(tb.time)], ['RoofCrush', num(tb.crush)], ['Spin', num((tb.spin * 180) / Math.PI)]];
+const tumbleFields = (tb: vd.Tumble): [string, Value][] => [['Rolls', num(tb.quarters)], ['RestsOn', str(tb.rests)], ['TumbleDistance', num(tb.slid)], ['TumbleTime', num(tb.time)], ['RoofCrush', num(tb.crush)], ['Spin', num((tb.spin * 180) / Math.PI)], ['WindowsBroken', num(tb.windows.filter((x) => !Number.isNaN(x)).length)], ['PeakG', num(tb.peakG)], ['Headroom', num(tb.headroom)]];
 /** The car's cross-section (wheels and roof) at a tumble's moment, for drawing from behind. */
 const section = (v: vd.Vehicle, y: number, z: number, th: number) => {
   const sh = vd.shape(v), rot = (a: number, b: number) => [y + a * Math.cos(th) + b * Math.sin(th), z - a * Math.sin(th) + b * Math.cos(th)];
@@ -155,7 +155,7 @@ def('vehicleSim', (a, nout, lab) => {
   const v0 = o.get('initialspeed') ? toMat(o.get('initialspeed')!).d[0] : speed ? speed(0) : 0;
   const r = vd.vehicleSim(v, steerOf(lab, a[1], amp), T, { speed, force, grade, v0 });
   if (nout > 0) {
-    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))], ['PeakRoll', num(Math.max(...r.roll.map(Math.abs)))], ['WheelLift', num(r.lift ? 1 : 0)], ['RolledOver', num(Number.isFinite(r.rolled) ? 1 : 0)], ['RolledAt', num(r.rolled)], ['PeakTip', num(Math.max(0, ...r.tip.map(Math.abs)))], ...(r.tumble ? tumbleFields(r.tumble) : [['Rolls', num(0)], ['RestsOn', str('wheels')], ['TumbleDistance', num(0)], ['TumbleTime', num(0)], ['RoofCrush', num(0)], ['Spin', num(0)]] as [string, Value][])]) };
+    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))], ['PeakRoll', num(Math.max(...r.roll.map(Math.abs)))], ['WheelLift', num(r.lift ? 1 : 0)], ['RolledOver', num(Number.isFinite(r.rolled) ? 1 : 0)], ['RolledAt', num(r.rolled)], ['PeakTip', num(Math.max(0, ...r.tip.map(Math.abs)))], ...(r.tumble ? tumbleFields(r.tumble) : [['Rolls', num(0)], ['RestsOn', str('wheels')], ['TumbleDistance', num(0)], ['TumbleTime', num(0)], ['RoofCrush', num(0)], ['Spin', num(0)], ['WindowsBroken', num(0)], ['PeakG', num(0)], ['Headroom', num(vd.HEADROOM)]] as [string, Value][])]) };
     return [table([['Time', col(r.t)], ['X', col(r.x)], ['Y', col(r.y)], ['Yaw', col(r.psi)], ['Vx', col(r.vx)], ['Vy', col(r.vy)], ['YawRate', col(r.r)], ['Ay', col(r.ay)], ['Ax', col(r.ax)], ['SideSlip', col(r.beta)], ['Steer', col(r.steer)], ['SlipFront', col(r.af)], ['SlipRear', col(r.ar)], ['Roll', col(r.roll)], ['Tip', col(r.tip)]]), info];
   }
   call(lab, 'subplot', num(2), num(2), num(1)); call(lab, 'plot', row(r.x), row(r.y), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));

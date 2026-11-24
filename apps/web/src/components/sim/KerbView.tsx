@@ -64,18 +64,25 @@ export function KerbView({ car }: { car: Vehicle }) {
     g.fillRect(0, Y(0), W, 24);
     if (hk > 0) g.fillRect(X(0), Y(hk), W - X(0), Y(0) - Y(hk));
     // The car from behind: wheels below, roof above, at the moment shown; faint copies where it has been.
+    // The roof's edges sink in by its crush at that moment (M486f).
     const at = (i: number) => {
-      const th = tb.th[i], y = tb.y[i], z = tb.z[i], rot = (a: number, b2: number): [number, number] => [X(y + a * Math.cos(th) + b2 * Math.sin(th)), Y(z - a * Math.sin(th) + b2 * Math.cos(th))];
-      return [rot(sh.t / 2, -v.h), rot(sh.roofW / 2, sh.roof - v.h), rot(-sh.roofW / 2, sh.roof - v.h), rot(-sh.t / 2, -v.h)];
+      const th = tb.th[i], y = tb.y[i], z = tb.z[i], c = tb.crushes[i] ?? [0, 0], rot = (a: number, b2: number): [number, number] => [X(y + a * Math.cos(th) + b2 * Math.sin(th)), Y(z - a * Math.sin(th) + b2 * Math.cos(th))];
+      return [rot(sh.t / 2, -v.h), rot(sh.roofW / 2, sh.roof - v.h - c[0]), rot(-sh.roofW / 2, sh.roof - v.h - c[1]), rot(-sh.t / 2, -v.h), rot(sh.t / 2 * 0.95, sh.roof * 0.5 - v.h), rot(-sh.t / 2 * 0.95, sh.roof * 0.5 - v.h)];
     };
     // In kerbTrip's first part y is the centre's place from the wheel's start, z its height: the same frame.
     for (let i = 0; i <= k; i += Math.max(1, Math.floor(n / 14))) {
       g.strokeStyle = dark ? 'rgba(161,161,170,0.35)' : 'rgba(113,113,122,0.3)'; g.lineWidth = 1; g.beginPath();
-      at(i).forEach(([px, py], j) => { if (j) g.lineTo(px, py); else g.moveTo(px, py); }); g.closePath(); g.stroke();
+      at(i).slice(0, 4).forEach(([px, py], j) => { if (j) g.lineTo(px, py); else g.moveTo(px, py); }); g.closePath(); g.stroke();
     }
     const p = at(k);
     g.fillStyle = tb.tripped && k > 0 ? '#dc2626' : '#16a34a'; g.beginPath();
-    p.forEach(([px, py], j) => { if (j) g.lineTo(px, py); else g.moveTo(px, py); }); g.closePath(); g.fill();
+    p.slice(0, 4).forEach(([px, py], j) => { if (j) g.lineTo(px, py); else g.moveTo(px, py); }); g.closePath(); g.fill();
+    // The side windows: blue whole, yellow and dashed once broken.
+    for (const [side, lo, hi] of [[0, p[4], p[1]], [1, p[5], p[2]]] as const) {
+      const broken = tb.windows[side] <= tb.t[k];
+      g.strokeStyle = broken ? '#fde047' : '#7dd3fc'; g.lineWidth = 3; g.setLineDash(broken ? [3, 3] : []);
+      g.beginPath(); g.moveTo(lo[0], lo[1]); g.lineTo(hi[0], hi[1]); g.stroke(); g.setLineDash([]);
+    }
     g.fillStyle = dark ? '#e4e4e7' : '#27272a';
     for (const [px, py] of [p[0], p[3]]) { g.beginPath(); g.arc(px, py, 4, 0, 2 * Math.PI); g.fill(); }
     g.font = '11px Inter, system-ui, sans-serif'; g.fillText('1 m squares, seen from behind', 8, 14);
@@ -88,8 +95,8 @@ export function KerbView({ car }: { car: Vehicle }) {
   const facts: [string, string][] = [
     ['Result', tb.tripped ? `Tripped: ${tb.quarters} quarter turn${tb.quarters === 1 ? '' : 's'}, on its ${tb.rests}` : 'Fell back onto its wheels'],
     ['Trips over this kerb from', Number.isFinite(v0) ? `${v0.toFixed(0)} km/h sideways` : 'no kerb'],
-    ['Slid across · took', `${tb.slid.toFixed(1)} m · ${tb.time.toFixed(1)} s`],
-    ['Fastest roll · roof crushed', `${((tb.peakRate * 180) / Math.PI).toFixed(0)}°/s · ${(tb.crush * 100).toFixed(0)} cm`],
+    ['Roof in · windows broken', `${(tb.crush * 100).toFixed(0)} cm · ${tb.windows.filter((x) => !Number.isNaN(x)).length} side${tb.windows.filter((x) => !Number.isNaN(x)).length === 1 ? '' : 's'}`],
+    ['People inside: most g · headroom', `${tb.peakG.toFixed(0)} g · ${tb.headroom >= 0 ? `${(tb.headroom * 100).toFixed(0)} cm left` : 'the roof reached them'}`],
   ];
   return (
     <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The car sliding into a kerb, from behind">
