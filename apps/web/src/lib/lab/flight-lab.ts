@@ -87,3 +87,37 @@ def('levelTurn', (a) => {
   const t = fl.turn(V, (bank * Math.PI) / 180);
   return [num(t.n), num(t.radius), num(t.time)];
 });
+
+// Rolling and yawing (M489b): the sideways modes and a run with ailerons, rudder or the autopilot. The aeroplane's
+// sideways numbers are the textbook-typical defaults unless 'Lateral' gives a struct of them (fields as LAT_DEFAULT).
+const LAT_NAMES: [string, keyof fl.Lateral][] = [['Ixx', 'ixx'], ['Izz', 'izz'], ['Ixz', 'ixz'], ['CYbeta', 'cyb'], ['Clbeta', 'clb'], ['Cnbeta', 'cnb'], ['Clp', 'clp'], ['Cnp', 'cnp'], ['Clr', 'clr'], ['Cnr', 'cnr'], ['Clda', 'clda'], ['Cnda', 'cnda'], ['CYdr', 'cydr'], ['Cldr', 'cldr'], ['Cndr', 'cndr'], ['AileronMax', 'daMax'], ['RudderMax', 'drMax']];
+function latOf(x: Value | undefined): fl.Lateral {
+  const out = { ...fl.LAT_DEFAULT };
+  if (!x) return out;
+  if (x.k !== 'struct') throw new LabError(`'Lateral' is a struct with any of ${LAT_NAMES.map(([k]) => k).join(', ')}.`);
+  for (const [k, f] of LAT_NAMES) { const v = x.f.get(k); if (v) out[f] = toMat(v).d[0]; }
+  if (!(out.ixx > 0 && out.izz > 0)) throw new LabError('Ixx and Izz must be above 0.');
+  return out;
+}
+def('aircraftLateralModes', (a) => {
+  const ac = acOf(a[0]), [V, h] = speedHeight(a, 1), o = pairs(a, 3), m = fl.lateralModes(ac, V, h, latOf(o.get('lateral')));
+  return [table([['Mode', { k: 'cell', r: m.length, c: 1, d: m.map((x) => str(x.name)) }], ['Real', col(m.map((x) => x.re))], ['Imag', col(m.map((x) => x.im))], ['Period', col(m.map((x) => x.period))], ['Damping', col(m.map((x) => x.damping))], ['HalfTime', col(m.map((x) => x.halfTime))]])];
+});
+def('aircraftLateralSim', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError("aircraftLateralSim needs the aeroplane and the time: aircraftLateralSim(aircraft(), 60, 'HoldHeading', 90).");
+  const ac = acOf(a[0]), T = toMat(a[1]).d[0], o = pairs(a, 2), rad = (x: number) => (x * Math.PI) / 180;
+  if (!(T > 0 && T <= 1800)) throw new LabError('aircraftLateralSim runs up to 1,800 s (steps of 10 ms).');
+  const V = o.get('speed') ? toMat(o.get('speed')!).d[0] : 50, h = o.get('height') ? toMat(o.get('height')!).d[0] : 1000;
+  if (!(V > 5 && V < 300)) throw new LabError('The speed is in m/s, 5 to 300.');
+  // Bank and heading in degrees (as pilots say them), the controls in radians (as the other runs).
+  const deg = (x: Value | undefined, what: string) => { if (!x) return undefined; const f = fnOf(lab, x, what); return (t: number) => rad(f(t)); };
+  const r = fl.lateralSim(ac, T, {
+    V, h, lat: latOf(o.get('lateral')), aileron: o.get('aileron') ? fnOf(lab, o.get('aileron')!, 'The aileron') : undefined, rudder: o.get('rudder') ? fnOf(lab, o.get('rudder')!, 'The rudder') : undefined,
+    holdBank: deg(o.get('holdbank'), 'The bank to hold'), holdHeading: deg(o.get('holdheading'), 'The heading to hold'), maxBank: o.get('maxbank') ? rad(toMat(o.get('maxbank')!).d[0]) : undefined, yawDamper: o.get('yawdamper') ? !!toMat(o.get('yawdamper')!).d[0] : false,
+  });
+  const d = (v: number[]) => v.map((x) => (x * 180) / Math.PI);
+  if (nout > 0) return [table([['Time', col(r.t)], ['North', col(r.x)], ['East', col(r.y)], ['Sideslip', col(d(r.beta))], ['RollRate', col(d(r.p))], ['YawRate', col(d(r.r))], ['Bank', col(d(r.phi))], ['Heading', col(d(r.psi))], ['Aileron', col(r.da)], ['Rudder', col(r.dr)]])];
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', row(r.y), row(r.x), str('LineWidth'), num(2)); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('east (m)')); call(lab, 'ylabel', str('north (m)')); call(lab, 'title', str('From above'));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', row(r.t), row(d(r.phi)), row(r.t), row(d(r.beta))); call(lab, 'legend', str('bank (°)'), str('sideslip (°)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
+  return [];
+});

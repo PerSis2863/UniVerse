@@ -194,6 +194,10 @@ figure; aircraftSim(ac, 120, 'Elevator', @(t) -0.03*(t > 1 & t < 2))
 figure; aircraftSim(ac, 90, 'HoldHeight', @(t) 1000 + 150*(t > 5), 'HoldSpeed', 50)
 figure; aircraftPerformance(ac)
 [n, R, t] = levelTurn(50, 45)                 % a 45-degree banked turn
+% Rolling and yawing: the Dutch roll, the roll and the spiral
+aircraftLateralModes(ac, 50, 1000)
+figure; aircraftLateralSim(ac, 40, 'HoldHeading', 90, 'MaxBank', 30)            % the autopilot turns right
+figure; aircraftLateralSim(ac, 15, 'Rudder', @(t) 0.15*(t > 0.5 & t < 1), 'YawDamper', 1)  % a rudder kick, damped
 ` },
   { name: 'orbits.m', code: `% Space flight: orbits, ground tracks, transfers and rockets (metres, m/s, degrees)
 Re = 6378137;

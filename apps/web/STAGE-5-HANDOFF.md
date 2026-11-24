@@ -12825,6 +12825,29 @@ mass lifts a wheel on a 25 m/s step. Language: `vehicle('Roll', true, 'Track', �
 (Off / Saloon / Tall van) and the front's share of roll stiffness. Example vehicles.m. Not built: suspension travel and
 geometry (camber, bump steer), pitch on braking, rollover itself.
 
+
+## M489b (24 Nov): Hyperion aeroplanes, rolling and yawing
+
+`flight.ts`: `Lateral` (Ixx, Izz, Ixz; CYβ, Clβ, Cnβ, Clp, Cnp, Clr, Cnr, Clδa, Cnδa, CYδr, Clδr, Cnδr; aileron and
+rudder travel; `LAT_DEFAULT` textbook-typical for a light high-wing aeroplane, said so in help and the window), the
+small-disturbance sideways equations in stability axes (β, p, r, φ) with gravity's `g/V·sin φ` kept whole so steep
+banks work, the moments through `[Ixx −Ixz; −Ixz Izz]`. `lateralModes` (finite-difference A, `eigvals`: the complex pair
+is the Dutch roll, the fastest real root the roll, the slowest the spiral; at 50 m/s: 2.4 s ζ 0.21, roll 100 ms, spiral
+half in 49 s). `lateralSim` (RK4 at 10 ms): ailerons and rudder (+ aileron rolls right, + rudder yaws left), or an
+autopilot (bank error and roll rate on the ailerons; heading → bank, capped at `maxBank`; −1.5·β on the rudder keeps the
+turn coordinated), and a yaw damper on the yaw rate **washed out over 2 s** (without it the damper fights every turn);
+heading by `r / cos φ` (a level turn's r = ψ̇ cos φ), ground track along heading minus sideslip. Checked: a held 30° bank
+turns at g·tan φ / V to 2 figures, a 90° heading change ends within 0.01 rad, the aileron's roll rate reaches 0.6–1 of
+−(2V/b)·Clδa·δa/Clp (dihedral and the bank take the rest), the damper cuts the rudder kick's leftover sideslip by more
+than half. **Not coupled to the up-and-down motion:** height and speed stay at the trim's (the extra lift and drag of a
+turn aren't modelled). Language (`flight-lab.ts`): `aircraftLateralModes(ac, V, h, 'Lateral', struct(...))`,
+`aircraftLateralSim` (bank and heading in degrees as pilots say them, the controls in radians as `aircraftSim`; a table
+or drawn from above with bank and sideslip). Window: Aeroplane → a Motion switch (Up and down / Turning) at the top of
+the settings: `FlightBench` now wraps `PitchBench` (the old view) and `TurnBench.tsx` (Turn, Rudder kick, Aileron only;
+yaw damper; speed and most bank; from above, the wings drawn shorter as it banks; bank and sideslip below; replayed 2×).
+`hyperion-machines-ui.mjs` takes a third entry per tab, a choice pressed first (`roll`: Tall van, `turning`).
+Example flight.m. Not built: the full six-degree-of-freedom aeroplane, wind and gusts, engine-out yaw.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

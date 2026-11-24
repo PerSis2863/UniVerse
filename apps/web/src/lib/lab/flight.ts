@@ -148,3 +148,77 @@ export function performance(ac: Aircraft, h = 0) {
 }
 /** A level turn at bank φ and speed V: load factor, radius and time round. */
 export const turn = (V: number, bank: number) => ({ n: 1 / Math.cos(bank), radius: (V * V) / (G0 * Math.tan(bank)), time: (2 * Math.PI * V) / (G0 * Math.tan(bank)) });
+
+// ——— Rolling and yawing (M489b) ———
+// The sideways motion about level trimmed flight, by the small-disturbance equations in stability axes (sideslip, roll
+// rate, yaw rate, bank) with the bank's pull of gravity kept whole (sin φ) so steep turns work; heading and the ground
+// track follow from them. The height and speed stay at the trim's: the extra lift a turn needs is not modelled.
+
+/** Roll and yaw inertias and their product (kg·m²), the side-force, rolling- and yawing-moment derivatives (per
+ * radian of sideslip, per non-dimensional roll and yaw rate pb/2V and rb/2V, per radian of aileron and rudder) and
+ * the controls' travel (rad). */
+export interface Lateral {
+  ixx: number; izz: number; ixz: number;
+  cyb: number; clb: number; cnb: number; clp: number; cnp: number; clr: number; cnr: number;
+  clda: number; cnda: number; cydr: number; cldr: number; cndr: number; daMax: number; drMax: number;
+}
+/** Textbook-typical numbers for a light high-wing aeroplane (not any one maker's data). */
+export const LAT_DEFAULT: Lateral = { ixx: 1285, izz: 2667, ixz: 0, cyb: -0.31, clb: -0.089, cnb: 0.065, clp: -0.47, cnp: -0.03, clr: 0.096, cnr: -0.099, clda: 0.178, cnda: -0.053, cydr: 0.187, cldr: 0.0147, cndr: -0.0657, daMax: (20 * Math.PI) / 180, drMax: (25 * Math.PI) / 180 };
+
+export interface LState { beta: number; p: number; r: number; phi: number }
+function latDeriv(ac: Aircraft, lat: Lateral, V: number, rho: number, s: LState, da: number, dr: number): LState {
+  const qS = 0.5 * rho * V * V * ac.S, ph = (s.p * ac.b) / (2 * V), rh = (s.r * ac.b) / (2 * V);
+  const Y = qS * (lat.cyb * s.beta + lat.cydr * dr);
+  const Lm = qS * ac.b * (lat.clb * s.beta + lat.clp * ph + lat.clr * rh + lat.clda * da + lat.cldr * dr);
+  const Nm = qS * ac.b * (lat.cnb * s.beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * da + lat.cndr * dr);
+  // [Ixx −Ixz; −Ixz Izz]·[ṗ; ṙ] = [L; N].
+  const det = lat.ixx * lat.izz - lat.ixz * lat.ixz;
+  return { beta: Y / (ac.m * V) + (G0 / V) * Math.sin(s.phi) - s.r, p: (lat.izz * Lm + lat.ixz * Nm) / det, r: (lat.ixz * Lm + lat.ixx * Nm) / det, phi: s.p };
+}
+const latAdd = (a: LState, b: LState, k: number): LState => ({ beta: a.beta + k * b.beta, p: a.p + k * b.p, r: a.r + k * b.r, phi: a.phi + k * b.phi });
+
+/** The sideways modes at speed V and height h: the Dutch roll (an oscillating pair), the roll (fast, real) and the
+ * spiral (slow, real; unstable when its root is above 0: the aeroplane slowly tightens into a dive if left alone). */
+export function lateralModes(ac: Aircraft, V: number, h: number, lat: Lateral = LAT_DEFAULT): Mode[] {
+  const rho = isa(h).rho, keys: (keyof LState)[] = ['beta', 'p', 'r', 'phi'], A = new Float64Array(16), z: LState = { beta: 0, p: 0, r: 0, phi: 0 };
+  keys.forEach((kj, j) => {
+    const fp = latDeriv(ac, lat, V, rho, { ...z, [kj]: 1e-6 }, 0, 0), fm = latDeriv(ac, lat, V, rho, { ...z, [kj]: -1e-6 }, 0, 0);
+    keys.forEach((ki, i) => { A[i + j * 4] = (fp[ki] - fm[ki]) / 2e-6; });
+  });
+  const { re, im } = eigvals(mat(4, 4, A));
+  const all = re.map((r, i) => ({ re: r, im: Math.abs(im[i]) }));
+  const osc = all.filter((p) => p.im > 1e-9).slice(0, 1), real = all.filter((p) => p.im <= 1e-9).sort((a, b) => Math.abs(b.re) - Math.abs(a.re));
+  const mode = (name: string, p: { re: number; im: number }): Mode => {
+    const wn = Math.hypot(p.re, p.im);
+    return { name, re: p.re, im: p.im, period: p.im > 1e-9 ? (2 * Math.PI) / p.im : Infinity, damping: wn ? -p.re / wn : 0, halfTime: p.re < 0 ? Math.LN2 / -p.re : Infinity };
+  };
+  return [...osc.map((p) => mode('Dutch roll', p)), ...real.map((p, i) => mode(i === 0 ? 'roll' : i === real.length - 1 ? 'spiral' : 'real', p))];
+}
+
+export interface LateralRun { t: number[]; x: number[]; y: number[]; beta: number[]; p: number[]; r: number[]; phi: number[]; psi: number[]; da: number[]; dr: number[] }
+/** Flies sideways from level trim at V and h for T seconds (10 ms steps): aileron and rudder (rad, functions of time;
+ * + aileron rolls right, + rudder yaws left), or an autopilot holding a bank (rad) or a heading (rad, banking up to
+ * `maxBank`), with a turn coordinator on the rudder; a yaw damper (washed out over 2 s so it doesn't fight turns). */
+export function lateralSim(ac: Aircraft, T: number, o: { V?: number; h?: number; lat?: Lateral; aileron?: (t: number) => number; rudder?: (t: number) => number; holdBank?: (t: number) => number; holdHeading?: (t: number) => number; maxBank?: number; yawDamper?: boolean; beta0?: number; points?: number } = {}): LateralRun {
+  const V = o.V ?? 50, rho = isa(o.h ?? 1000).rho, lat = o.lat ?? LAT_DEFAULT, dt = 0.01, n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1500)));
+  const maxBank = o.maxBank ?? (30 * Math.PI) / 180, clamp = (x: number, m: number) => Math.max(-m, Math.min(m, x));
+  let s: LState = { beta: o.beta0 ?? 0, p: 0, r: 0, phi: 0 }, psi = 0, x = 0, y = 0, rLow = 0;
+  const out: LateralRun = { t: [], x: [], y: [], beta: [], p: [], r: [], phi: [], psi: [], da: [], dr: [] };
+  for (let k = 0; k <= n; k++) {
+    const t = k * dt;
+    let da = o.aileron ? o.aileron(t) : 0, dr = o.rudder ? o.rudder(t) : 0;
+    const want = o.holdHeading ? clamp(1.2 * Math.atan2(Math.sin(o.holdHeading(t) - psi), Math.cos(o.holdHeading(t) - psi)), maxBank) : o.holdBank ? o.holdBank(t) : undefined;
+    if (want !== undefined) { da += 1.5 * (want - s.phi) - 0.35 * s.p; dr += -1.5 * s.beta; }
+    if (o.yawDamper) dr += 1.2 * (s.r - rLow);
+    da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax);
+    if (k % every === 0 || k === n) { out.t.push(t); out.x.push(x); out.y.push(y); out.beta.push(s.beta); out.p.push(s.p); out.r.push(s.r); out.phi.push(s.phi); out.psi.push(psi); out.da.push(da); out.dr.push(dr); }
+    if (k === n) break;
+    const f = (q: LState) => latDeriv(ac, lat, V, rho, q, da, dr);
+    const k1 = f(s), k2 = f(latAdd(s, k1, dt / 2)), k3 = f(latAdd(s, k2, dt / 2)), k4 = f(latAdd(s, k3, dt));
+    // The heading turns at r / cos φ (in a level turn r = ψ̇ cos φ); the ground track follows the heading plus slip.
+    psi += (s.r / Math.max(0.2, Math.cos(s.phi))) * dt; x += V * Math.cos(psi - s.beta) * dt; y += V * Math.sin(psi - s.beta) * dt;
+    rLow += ((s.r - rLow) * dt) / 2;
+    s = { beta: s.beta + (dt / 6) * (k1.beta + 2 * k2.beta + 2 * k3.beta + k4.beta), p: s.p + (dt / 6) * (k1.p + 2 * k2.p + 2 * k3.p + k4.p), r: s.r + (dt / 6) * (k1.r + 2 * k2.r + 2 * k3.r + k4.r), phi: s.phi + (dt / 6) * (k1.phi + 2 * k2.phi + 2 * k3.phi + k4.phi) };
+  }
+  return out;
+}

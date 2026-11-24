@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { PLANE_DEFAULT, flightSim, modes, performance, trim } from '@/lib/lab/flight';
 import { ui } from './bench-ui';
+import { TurnBench } from './TurnBench';
 
 // Hyperion Simulate → Machines → Aeroplane (M489): a light aeroplane seen from the side, flying from level flight
 // through one of four manoeuvres (a nudge of the elevator that sets off the phugoid, more power, a 150 m climb by the
@@ -17,7 +18,15 @@ type Move = 'nudge' | 'power' | 'climb' | 'stall';
 const deg = (r: number) => (r * 180) / Math.PI;
 const SPEEDUP = 4;
 
+// Up and down (M489) or turning (M489b, TurnBench): one switch at the top of either settings panel.
+type Motion = 'pitch' | 'turn';
 export function FlightBench() {
+  const [motion, setMotion] = useState<Motion>('pitch');
+  const switcher = <Segmented<Motion> label="Motion" value={motion} onChange={setMotion} segments={[{ value: 'pitch', label: 'Up and down' }, { value: 'turn', label: 'Turning' }]} />;
+  return motion === 'pitch' ? <PitchBench switcher={switcher} /> : <TurnBench switcher={switcher} />;
+}
+
+function PitchBench({ switcher }: { switcher: ReactNode }) {
   const dark = useDarkMode(), still = useMedia('(prefers-reduced-motion: reduce)');
   const [move, setMove] = useState<Move>('nudge');
   const [V, setV] = useState(50);
@@ -129,6 +138,7 @@ export function FlightBench() {
   return (
     <div className="flex h-[calc(100dvh-12rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Aeroplane settings" data-no-motion>
+        {switcher}
         <div className="space-y-2">
           <span className={label}>Manoeuvre</span>
           <Segmented<Move> label="Manoeuvre" value={move} onChange={setMove} segments={[{ value: 'nudge', label: 'Nudge' }, { value: 'power', label: 'Power' }, { value: 'climb', label: 'Climb' }, { value: 'stall', label: 'Stall' }]} />

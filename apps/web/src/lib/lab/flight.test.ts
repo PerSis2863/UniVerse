@@ -43,11 +43,31 @@ describe('Hyperion flight dynamics (M489)', () => {
     const t = fl.turn(50, Math.PI / 3);
     expect(t.n).toBeCloseTo(2, 9); expect(t.radius).toBeCloseTo(2500 / (fl.G0 * Math.sqrt(3)), 6);
   });
+  it('rolling and yawing (M489b): the three sideways modes, the roll answering the aileron, a turn by the numbers, the yaw damper', () => {
+    const ac = fl.PLANE_DEFAULT, m = fl.lateralModes(ac, 50, 1000), by = (n: string) => m.find((x) => x.name === n)!;
+    expect(m.map((x) => x.name)).toEqual(['Dutch roll', 'roll', 'spiral']);
+    expect(by('Dutch roll').period).toBeGreaterThan(1.5); expect(by('Dutch roll').period).toBeLessThan(4);
+    expect(by('Dutch roll').damping).toBeGreaterThan(0.05); expect(by('roll').re).toBeLessThan(-3);
+    expect(Math.abs(by('spiral').re)).toBeLessThan(0.1);
+    // A held aileron: the roll rate reaches about the one where damping meets the aileron, −(2V/b)·Clδa·δa / Clp.
+    const ail = fl.lateralSim(ac, 2, { aileron: (t) => (t > 0.2 ? 0.05 : 0) }), want = (-(2 * 50) / ac.b) * fl.LAT_DEFAULT.clda * 0.05 / fl.LAT_DEFAULT.clp;
+    expect(Math.max(...ail.p) / want).toBeGreaterThan(0.6); expect(Math.max(...ail.p) / want).toBeLessThan(1.05);
+    // A held 30° bank: the heading turns at g·tan φ / V, as in levelTurn.
+    const b = fl.lateralSim(ac, 60, { holdBank: () => Math.PI / 6 }), n = b.t.length, rate = (b.psi[n - 1] - b.psi[n - 101]) / (b.t[n - 1] - b.t[n - 101]);
+    expect(rate / ((fl.G0 * Math.tan(Math.PI / 6)) / 50)).toBeCloseTo(1, 1);
+    expect(fl.lateralSim(ac, 60, { holdHeading: () => Math.PI / 2 }).psi.at(-1)!).toBeCloseTo(Math.PI / 2, 2);
+    // The rudder kick's Dutch roll dies away faster with the yaw damper.
+    const kick = (yawDamper: boolean) => { const r = fl.lateralSim(ac, 12, { rudder: (t) => (t > 0.5 && t < 1 ? 0.1 : t >= 1 && t < 1.5 ? -0.1 : 0), yawDamper }); return Math.max(...r.beta.slice(Math.floor(r.beta.length * 0.6)).map(Math.abs)); };
+    expect(kick(true)).toBeLessThan(0.5 * kick(false));
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
-    lab.run("[T, a, P, rho] = atmosisa([0 11000]); ac = aircraft(); tr = aircraftTrim(ac, 50, 1000); m = aircraftModes(ac, 50, 1000); per = m.Period(1); [r, info] = aircraftSim(ac, 30, 'HoldHeight', 1100, 'HoldSpeed', 50); p = aircraftPerformance(ac); [n, R, tt] = levelTurn(50, 60); figure; aircraftSim(ac, 60, 'Elevator', @(t) -0.03*(t > 1 & t < 2)); figure; aircraftPerformance(ac);");
+    lab.run("[T, a, P, rho] = atmosisa([0 11000]); ac = aircraft(); tr = aircraftTrim(ac, 50, 1000); m = aircraftModes(ac, 50, 1000); per = m.Period(1); [r, info] = aircraftSim(ac, 30, 'HoldHeight', 1100, 'HoldSpeed', 50); p = aircraftPerformance(ac); [n, R, tt] = levelTurn(50, 60); figure; aircraftSim(ac, 60, 'Elevator', @(t) -0.03*(t > 1 & t < 2)); figure; aircraftPerformance(ac); lm = aircraftLateralModes(ac, 50, 1000); dp = lm.Period(1); lr = aircraftLateralSim(ac, 60, 'HoldHeading', 90, 'MaxBank', 25); hd = lr.Heading(end); mb = max(lr.Bank); figure; aircraftLateralSim(ac, 15, 'Rudder', @(t) 0.1*(t > 0.5 & t < 1), 'YawDamper', 1); lm2 = aircraftLateralModes(ac, 50, 1000, 'Lateral', struct('Cnbeta', 0.12)); dp2 = lm2.Period(1);");
     const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
     expect(d('rho')[0]).toBeCloseTo(1.225, 3); expect(d('T')[1]).toBeCloseTo(216.65, 2);
     expect(d('per')[0]).toBeLessThan(3); expect(d('n')[0]).toBeCloseTo(2, 9);
+    expect(d('dp')[0]).toBeGreaterThan(1.5); expect(d('hd')[0]).toBeCloseTo(90, 0); expect(d('mb')[0]).toBeLessThan(26);
+    // A bigger fin (more weathercock stability) swings faster.
+    expect(d('dp2')[0]).toBeLessThan(d('dp')[0]);
   });
 });
