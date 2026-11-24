@@ -66,14 +66,14 @@ function Links({ items, here, close, t, plain }: { items: NavItem[]; here: strin
     <div role="menu" onKeyDown={menuKeys} className="p-1 max-w-80">
       {items.map((item) => item.subItems ? (
         <div key={item.label} role="group" aria-label={t(item.label)}>
-          <p className="px-3 pt-2 pb-1 text-[12px] font-semibold text-zinc-500 dark:text-zinc-400">{t(item.label)}</p>
+          <p className="hand px-3 pt-2 pb-1 text-[13px] font-semibold text-zinc-500 dark:text-zinc-400">{t(item.label)}</p>
           {item.subItems.map((s) => (
-            <Link key={s.href} role="menuitem" href={s.href} onClick={close} aria-current={isOn(here, s.href, s.also) ? 'page' : undefined} className={cn(ROW, 'ps-5', isOn(here, s.href, s.also) && 'font-semibold text-tint-text')}>{t(s.label)}</Link>
+            <Link key={s.href} role="menuitem" href={s.href} onClick={close} aria-current={isOn(here, s.href, s.also) ? 'page' : undefined} className={cn(ROW, 'hand ps-5', isOn(here, s.href, s.also) && 'font-semibold text-tint-text')}>{t(s.label)}</Link>
           ))}
         </div>
       ) : (
         <Link key={item.href} role="menuitem" href={item.href!} onClick={close} aria-current={isOn(here, item.href, item.also, item.on) ? 'page' : undefined} className={cn(ROW, 'flex items-center gap-2.5', isOn(here, item.href, item.also, item.on) && 'font-semibold text-tint-text')}>
-          {!plain && <item.icon className="w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />}<span translate={item.icon === Link2 ? 'no' : undefined}>{t(item.label)}</span>
+          {!plain && <item.icon className="w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />}<span className="hand" translate={item.icon === Link2 ? 'no' : undefined}>{t(item.label)}</span>
         </Link>
       ))}
     </div>
@@ -187,7 +187,7 @@ export function TopNav() {
   const chip = (item: NavItem) => (
     <>
       <item.icon className="w-4 h-4 shrink-0" strokeWidth={2} aria-hidden />
-      <span className="truncate" translate={item.icon === Link2 ? 'no' : undefined}>{t(item.label)}</span>
+      <span className="hand truncate" translate={item.icon === Link2 ? 'no' : undefined}>{t(item.label)}</span>
       {item.subItems && <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" strokeWidth={2.5} aria-hidden />}
     </>
   );

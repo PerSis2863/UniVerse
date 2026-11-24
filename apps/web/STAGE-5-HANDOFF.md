@@ -12731,6 +12731,25 @@ testing my ai also it was so much slow and not providing answer properly". The l
   wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
 
 
+## M476: the light/dark switch slower and smoother (23 Nov)
+
+The owner, 23 Nov: switching between light and dark "is fast so make it slow and it should be ultra smooth".
+`applyTheme` (`src/lib/theme.ts`): the circle reveal from the tapped switch now lasts 1100 ms with
+`cubic-bezier(0.65, 0, 0.25, 1)` (starts gently, settles softly). The crossfade without a tap point (the command
+palette) is 800 ms, scoped to `html.theme-fading` in `globals.css` so ordinary page morphs keep 320 ms. Only the
+snapshot's `clip-path` / `opacity` animate (the page itself is frozen behind the View Transition, `.theme-fading *`
+has no transitions). Measured in a browser without a graphics chip, the circle and a plain fade drop the same frames,
+so the cost is that browser's software drawing, not the effect; the one long frame at the start is the page restyling
+to the new theme, before the animation begins.
+
+## M477: the handwritten face in more places (24 Nov)
+
+The owner, 24 Nov, with a picture of the search window: "the text does not match… the main headers… add it in more
+places". `globals.css` (after `.display-face`): `:is(.hand, .side-label, .ios-segment, [role="tab"], h4, h5, h6)` take
+`--font-display` (Shantell Sans); people's own documents keep Inter for h4–h6 too; the dyslexic font still overrides.
+`.hand` is put on the search window's field, chips, section names and result titles (`CommandPalette.tsx`) and on the
+top bar's entries, its menus' rows and group names (`TopNav.tsx`). Hints, body text, fields people fill, tables and
+numbers stay Inter (readability). For a new label that should look like a heading, add `hand`.
 ## M481 (23 Nov): Hyperion, embedded AI (models made small and written out as C)
 
 `src/lib/lab/embedded.ts` and `embedded-lab.ts`, for the toolbox's neural networks (ClassificationNeuralNetwork,
