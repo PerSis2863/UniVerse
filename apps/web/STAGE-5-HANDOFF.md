@@ -13013,6 +13013,21 @@ height change and extra g below. Vehicle's Test row now wraps (`className="flex-
 Browser check tabs `hook`, `drag`, `single`, `six` (and `Several` for the renamed switch). Example flight.m. Not built:
 engine-out yaw, the propeller's torque and slipstream, wind shear with height, landing gear on the ground.
 
+## M490d (24 Nov): Hyperion orbits, the Sun's cycle in the air's thickness
+
+The owner pasted M489c's left-outs (24 Nov), read as "build these". `space.ts`: the air's density now takes the Sun's
+10.7 cm radio flux, `airDensity(h, F)` (150 = the old table exactly). Jacchia's exospheric temperature
+T∞ ≈ 1.15·(379 + 3.24·F); above 150 km each layer's scale height is stretched by √(T∞(F)/T∞(150)) (a fit to MSIS's swing,
+not NRLMSISE-00: at 400 km 0.29× at F 70, 2.2× at F 230; the swing grows with height); below 150 km nothing changes.
+**Trap:** the table's layer bases aren't exactly continuous, so the stretched bases are the table's own moved by what the
+stretched layers below change (`baseDensities`, cached per flux), never chained from the bottom (that moved 100 km's
+density). `solarFlux(year)`: an 11-year sin² cycle from 70 to 180 anchored on Dec 2019. `decayTime(h, bc, flux)`: a fixed
+flux, or a year above 1900 to follow the cycle as it falls (the station at 400 km: ~1,130 days at a quiet Sun, ~390
+average, ~200 active; launched 2025 ~300, 2030 ~1,010). `propagate`'s `flux`. Language: `airDensity(h, F107)`,
+`orbitDecay(h, bc, F107 or year)`, `solarFlux(year)`, `orbitPropagate(..., 'SolarFlux', F)`. Window: Orbit → Air drag →
+The Sun (Quiet / Average / Active) with a line each. Browser check tab `sunact`. Example orbits.m. Not built: the
+day–night bulge, magnetic storms (Ap), a satellite's attitude changing its area, solar radiation pressure.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -244,6 +244,10 @@ end
 [lr, lv] = keplerian2ijk(6378137 + 175e3, 0.001, 51.6, 0, 0, 0);
 [tr, fell] = orbitPropagate(lr, lv, 2*86400, 'Drag', 0.01);
 fprintf('Fell: %d after %.1f hours\\n', fell, tr.Time(end)/3600)
+% The Sun's 11-year cycle: an active Sun swells the air and brings satellites down sooner
+fprintf('400 km at a quiet Sun: %.0f days, average: %.0f, active: %.0f\\n', orbitDecay(400e3, 0.008, 70), orbitDecay(400e3, 0.008, 150), orbitDecay(400e3, 0.008, 230))
+fprintf('Launched in 2030 (near a minimum): %.0f days; in 2025 (near a maximum): %.0f\\n', orbitDecay(400e3, 0.008, 2030), orbitDecay(400e3, 0.008, 2025))
+figure; plot(2019:0.1:2042, solarFlux(2019:0.1:2042)); xlabel('year'); ylabel('F10.7'); title('The Sun''s cycle')
 ` },
   { name: 'railways.m', code: `% Railways: running a train along a line, driving to save energy, and how close trains can follow
 t = trainModel('metro');

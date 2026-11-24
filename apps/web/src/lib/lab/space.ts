@@ -106,24 +106,55 @@ export function thirdBody(r: V3, s: V3, mu: number): V3 {
 // Vallado's exponential atmosphere (Fundamentals of Astrodynamics, table 8-4): base height (km), density there (kg/m³)
 // and scale height (km), for average solar activity. Real density swings several times with the Sun's 11-year cycle.
 const ATM: [number, number, number][] = [[0, 1.225, 7.249], [25, 3.899e-2, 6.349], [30, 1.774e-2, 6.682], [40, 3.972e-3, 7.554], [50, 1.057e-3, 8.382], [60, 3.206e-4, 7.714], [70, 8.77e-5, 6.549], [80, 1.905e-5, 5.799], [90, 3.396e-6, 5.382], [100, 5.297e-7, 5.877], [110, 9.661e-8, 7.263], [120, 2.438e-8, 9.473], [130, 8.484e-9, 12.636], [140, 3.845e-9, 16.149], [150, 2.07e-9, 22.523], [180, 5.464e-10, 29.74], [200, 2.789e-10, 37.105], [250, 7.248e-11, 45.546], [300, 2.418e-11, 53.628], [350, 9.518e-12, 53.298], [400, 3.725e-12, 58.515], [450, 1.585e-12, 60.828], [500, 6.967e-13, 63.822], [600, 1.454e-13, 71.835], [700, 3.614e-14, 88.667], [800, 1.17e-14, 124.64], [900, 5.245e-15, 181.05], [1000, 3.019e-15, 268]];
-/** The air's density (kg/m³) at a height (km). */
-export function airDensity(h: number) {
+// The Sun's cycle (M490d): the thermosphere heats and swells with the Sun's ultraviolet, measured by the 10.7 cm radio
+// flux F10.7 (solar flux units; about 70 at a quiet minimum, 150 on average, 200–250 at an active maximum). Jacchia's
+// exospheric temperature T∞ ≈ 1.15·(379 + 3.24·F) (the 1.15 averages day and night); above 150 km each layer's scale
+// height is stretched by √(T∞(F)/T∞(150)), a fit that gives MSIS's swing at 400 km (about 3× thinner at minimum, 2.5×
+// thicker at maximum). Below 150 km the table holds whatever the flux.
+export const F107_AVG = 150;
+const tInf = (F: number) => 1.15 * (379 + 3.24 * F);
+const bases = new Map<number, number[]>();
+function baseDensities(F: number) {
+  let b = bases.get(F);
+  if (b) return b;
+  const k = Math.sqrt(tInf(F) / tInf(F107_AVG));
+  // The table's own bases, each moved by what the stretched layers below it change: exactly the table at k = 1.
+  b = [ATM[0][1]];
+  let shift = 0;
+  for (let i = 1; i < ATM.length; i++) {
+    const [h0, , H] = ATM[i - 1];
+    if (h0 >= 150) shift += ((ATM[i][0] - h0) / H) * (1 - 1 / k);
+    b.push(ATM[i][1] * Math.exp(shift));
+  }
+  if (bases.size > 64) bases.clear();
+  bases.set(F, b);
+  return b;
+}
+/** The air's density (kg/m³) at a height (km), for a solar flux F10.7 (150, average, by default). */
+export function airDensity(h: number, F = F107_AVG) {
   if (!(h >= 0)) return ATM[0][1];
-  const b = ATM.findLast((x) => x[0] <= h)!;
-  return b[1] * Math.exp(-(h - b[0]) / b[2]);
+  const i = ATM.findLastIndex((x) => x[0] <= h), [h0, , H] = ATM[i];
+  return baseDensities(F)[i] * Math.exp(-(h - h0) / (h0 >= 150 ? H * Math.sqrt(tInf(F) / tInf(F107_AVG)) : H));
+}
+/** The smoothed solar flux F10.7 about a date (a year with its fraction): an 11-year cycle from a minimum of 70 to a
+ * maximum of 180, anchored on cycle 25's minimum (December 2019). Real cycles differ in height and length. */
+export function solarFlux(year: number) {
+  return 70 + 110 * Math.sin((Math.PI * (year - 2019.95)) / 11) ** 2;
 }
 /** Drag's pull (km/s²) on a satellite at r (km) moving at v (km/s) with ballistic coefficient `bc` = Cd·A/m (m²/kg),
  * through air turning with the Earth. ½ρ·bc·|w|·w with w in m/s, given back in km/s². */
-export function dragAccel(r: V3, v: V3, bc: number): V3 {
-  const w: V3 = [v[0] + WE * r[1], v[1] - WE * r[0], v[2]], rho = airDensity(norm(r) - RE), k = -0.5 * rho * bc * 1000 * norm(w);
+export function dragAccel(r: V3, v: V3, bc: number, F = F107_AVG): V3 {
+  const w: V3 = [v[0] + WE * r[1], v[1] - WE * r[0], v[2]], rho = airDensity(norm(r) - RE, F), k = -0.5 * rho * bc * 1000 * norm(w);
   return sc(w, k);
 }
 /** About how long (days) a circular orbit h km up lasts before it reaches 120 km (it then falls within a day): the
- * semi-major axis shrinks by ρ·bc·√(μa) each second. Infinity past 100 years. */
-export function decayTime(h: number, bc: number) {
+ * semi-major axis shrinks by ρ·bc·√(μa) each second. Infinity past 100 years. `flux` is a fixed F10.7, or a start
+ * year (a number above 1900) to follow the Sun's cycle from then on. */
+export function decayTime(h: number, bc: number, flux: number = F107_AVG) {
   let a = RE + h, t = 0;
+  const F = () => (flux > 1900 ? solarFlux(flux + t / 86400 / 365.25) : flux);
   while (a - RE > 120) {
-    const rate = airDensity(a - RE) * bc * Math.sqrt(MU * a) * 1000, step = Math.min(86400 * 5, Math.max(60, 0.5 / Math.max(rate, 1e-12)));
+    const rate = airDensity(a - RE, F()) * bc * Math.sqrt(MU * a) * 1000, step = Math.min(86400 * 5, Math.max(60, 0.5 / Math.max(rate, 1e-12)));
     a -= rate * step; t += step;
     if (t > 100 * 365.25 * 86400) return Infinity;
   }
@@ -134,7 +165,7 @@ export interface OrbitRun { t: number[]; r: V3[]; v: V3[]; lat: number[]; lon: n
 /** Propagates position and velocity for T seconds (RK4, step dt), with the ground track (the Earth turning under it).
  * With a start date `jd0` (Julian) the Earth's rotation angle comes from it (unless `gst0` is given), and `sun` and
  * `moon` add their pull, found where they are at each moment. */
-export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: number; points?: number; gst0?: number; jd0?: number; sun?: boolean; moon?: boolean; drag?: number } = {}): OrbitRun {
+export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: number; points?: number; gst0?: number; jd0?: number; sun?: boolean; moon?: boolean; drag?: number; flux?: number } = {}): OrbitRun {
   // The step shrunk a little so the last one lands exactly at T.
   const n = Math.max(1, Math.ceil(T / (o.dt ?? 10))), dt = T / n, every = Math.max(1, Math.floor(n / (o.points ?? 2000))), j2 = o.j2 ?? true;
   let r = r0, v = v0, crashed = false;
@@ -143,7 +174,7 @@ export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: num
   // The Sun and Moon move little in a step: found once at its start, middle and end.
   let bodies: [V3, number][][] = [];
   const at = (t: number): [V3, number][] => [...(o.sun ? [[sunPosition(jd0 + t / 86400), MU_SUN] as [V3, number]] : []), ...(o.moon ? [[moonPosition(jd0 + t / 86400), MU_MOON] as [V3, number]] : [])];
-  const f = (x: V3, y: V3, which: number): [V3, V3] => { let g = gravity(x, j2); if (o.drag) g = add(g, dragAccel(x, y, o.drag)); for (const [s, mu] of bodies[which] ?? []) g = add(g, thirdBody(x, s, mu)); return [y, g]; };
+  const f = (x: V3, y: V3, which: number): [V3, V3] => { let g = gravity(x, j2); if (o.drag) g = add(g, dragAccel(x, y, o.drag, o.flux)); for (const [s, mu] of bodies[which] ?? []) g = add(g, thirdBody(x, s, mu)); return [y, g]; };
   for (let k = 0; k <= n; k++) {
     const t = k * dt;
     if (k % every === 0 || k === n) {

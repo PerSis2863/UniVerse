@@ -47,6 +47,26 @@ describe('Hyperion space flight (M490)', () => {
     expect(d('ss')[0]).toBeCloseTo(98.19, 1); expect(d('fell')).toEqual([0]);
     expect(d('jd2')[0]).toBe(2451545); expect(d('jd')[0]).toBeGreaterThan(2461119); expect(Math.hypot(...d('mp')) / 1000).toBeCloseTo(368410, -3);
   });
+  it("the Sun's cycle (M490d): thicker air aloft at an active Sun, the same below 150 km, satellites falling sooner", () => {
+    expect(sp.airDensity(400, 150)).toBe(sp.airDensity(400));
+    expect(sp.airDensity(100, 70)).toBeCloseTo(sp.airDensity(100), 15);
+    const quiet = sp.airDensity(400, 70) / sp.airDensity(400), active = sp.airDensity(400, 230) / sp.airDensity(400);
+    expect(quiet).toBeGreaterThan(0.2); expect(quiet).toBeLessThan(0.45);
+    expect(active).toBeGreaterThan(1.7); expect(active).toBeLessThan(3);
+    // The swing grows with height, and is continuous across the table's layers.
+    expect(sp.airDensity(800, 230) / sp.airDensity(800)).toBeGreaterThan(active);
+    expect(sp.airDensity(399.999, 230) / sp.airDensity(400, 230)).toBeCloseTo(1, 4);
+    expect(sp.solarFlux(2019.95)).toBeCloseTo(70, 6); expect(sp.solarFlux(2025.45)).toBeCloseTo(180, 6); expect(sp.solarFlux(2030.95)).toBeCloseTo(70, 6);
+    const q = sp.decayTime(400, 0.008, 70), a = sp.decayTime(400, 0.008), hot = sp.decayTime(400, 0.008, 230);
+    expect(q).toBeGreaterThan(2 * a); expect(hot).toBeLessThan(0.7 * a);
+    // Launched near a maximum it comes down sooner than near a minimum.
+    expect(sp.decayTime(400, 0.008, 2025)).toBeLessThan(sp.decayTime(400, 0.008, 2030));
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("a = airDensity(400e3, 230) / airDensity(400e3); d = orbitDecay(400e3, 0.008, 2030); F = solarFlux([2019.95 2025.45]); [r, v] = keplerian2ijk(6378137+300e3, 0, 51.6, 0, 0, 0); tr = orbitPropagate(r, v, 600, 'Drag', 0.01, 'SolarFlux', 70);");
+    expect((lab.vars.get('a') as { d: Float64Array }).d[0]).toBeCloseTo(active, 9);
+    expect((lab.vars.get('F') as { d: Float64Array }).d[1]).toBeCloseTo(180, 6);
+    expect(() => lab.run("airDensity(4e5, 900)")).toThrow(/50 to 300/);
+  });
   it('air drag (M490c): density table, the orbit shrinking at the rate the formula gives, a low orbit falling', { timeout: 30_000 }, () => {
     expect(sp.airDensity(0)).toBeCloseTo(1.225, 6);
     expect(sp.airDensity(400)).toBeCloseTo(3.725e-12, 15);

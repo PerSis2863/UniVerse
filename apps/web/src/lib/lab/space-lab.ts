@@ -53,7 +53,10 @@ def('orbitPropagate', (a, nout, lab) => {
   // Air drag (M490c): 'Drag', Cd·A/m in m²/kg (about 0.005–0.05 for satellites).
   const drag = o.get('drag') ? n1(o.get('drag'), 'Drag (Cd·A/m)') : 0;
   if (!(drag >= 0 && drag <= 1)) throw new LabError("'Drag' is the ballistic coefficient Cd·A/m in m²/kg, 0 to 1 (a satellite is about 0.01).");
-  const run = sp.propagate(r, v, T, { j2: o.get('j2') ? !!toMat(o.get('j2')!).d[0] : true, dt, sun: flag('sun'), moon: flag('moon'), jd0, drag });
+  // The Sun's cycle (M490d): 'SolarFlux', F10.7 (70 quiet to 250 very active; 150 by default).
+  const flux = o.get('solarflux') ? n1(o.get('solarflux'), 'The solar flux (F10.7)') : sp.F107_AVG;
+  if (!(flux >= 50 && flux <= 300)) throw new LabError("'SolarFlux' is F10.7, 50 to 300 (about 70 at a quiet Sun, 150 average, 230 active).");
+  const run = sp.propagate(r, v, T, { j2: o.get('j2') ? !!toMat(o.get('j2')!).d[0] : true, dt, sun: flag('sun'), moon: flag('moon'), jd0, drag, flux });
   const c = (k: 0 | 1 | 2, of: sp.V3[]) => col(of.map((p) => p[k] * 1000));
   if (nout > 0) return [table([['Time', col(run.t)], ['X', c(0, run.r)], ['Y', c(1, run.r)], ['Z', c(2, run.r)], ['Vx', c(0, run.v)], ['Vy', c(1, run.v)], ['Vz', c(2, run.v)], ['Lat', col(run.lat.map((x) => x / D))], ['Lon', col(run.lon.map((x) => x / D))], ['Alt', col(run.alt.map((x) => x * 1000))]]), num(run.crashed ? 1 : 0)];
   call(lab, 'subplot', num(1), num(2), num(1));
@@ -73,12 +76,21 @@ def('orbitPropagate', (a, nout, lab) => {
 const TAU = 2 * Math.PI;
 // The air's density (kg/m³) at heights in metres (Vallado's exponential atmosphere, average solar activity), and about
 // how many days a circular orbit lasts.
-def('airDensity', (a) => { const m = toMat(a[0] ?? num(NaN), 'The height'); return [mat(m.r, m.c, Float64Array.from(m.d, (h) => sp.airDensity(h / 1000)))]; });
+// The Sun's cycle (M490d): a flux F10.7 as the second input, or for orbitDecay a start year to follow the cycle.
+const fluxArg = (x: Value | undefined, years: boolean) => {
+  if (!x) return sp.F107_AVG;
+  const f = n1(x, years ? 'The solar flux or start year' : 'The solar flux (F10.7)');
+  if (years && f >= 1950 && f <= 2200) return f;
+  if (!(f >= 50 && f <= 300)) throw new LabError(years ? 'The third input is F10.7 (50 to 300) or a start year (1950 to 2200) to follow the Sun\'s cycle.' : 'The solar flux F10.7 is 50 to 300 (about 70 at a quiet Sun, 150 average, 230 active).');
+  return f;
+};
+def('airDensity', (a) => { const m = toMat(a[0] ?? num(NaN), 'The height'), F = fluxArg(a[1], false); return [mat(m.r, m.c, Float64Array.from(m.d, (h) => sp.airDensity(h / 1000, F)))]; });
 def('orbitDecay', (a) => {
   const h = n1(a[0], 'The height') / 1000, bc = n1(a[1], 'The ballistic coefficient (Cd·A/m)');
   if (!(h > 120 && h < 2000) || !(bc > 0 && bc <= 1)) throw new LabError('orbitDecay(height in m, Cd·A/m in m²/kg): heights 120 to 2,000 km, Cd·A/m above 0 up to 1.');
-  return [num(sp.decayTime(h, bc))];
+  return [num(sp.decayTime(h, bc, fluxArg(a[2], true)))];
 });
+def('solarFlux', (a) => { const m = toMat(a[0] ?? num(NaN), 'The year'); return [mat(m.r, m.c, Float64Array.from(m.d, (y) => sp.solarFlux(y)))]; });
 def('hohmannTransfer', (a) => {
   const r1 = n1(a[0], 'The first radius') / 1000, r2 = n1(a[1], 'The second radius') / 1000;
   if (!(r1 > 0 && r2 > 0)) throw new LabError('The radii are from the Earth\'s centre, in metres, above 0.');

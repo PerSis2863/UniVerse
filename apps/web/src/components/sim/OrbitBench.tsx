@@ -14,6 +14,13 @@ import { ui } from './bench-ui';
 // get there from a 300 km parking orbit. Worked out at once (RK4), then replayed (at its end with Reduce Motion).
 
 type Preset = 'iss' | 'sso' | 'molniya' | 'geo' | 'low';
+// The Sun's cycle (M490d): its 10.7 cm radio flux swells the upper air.
+type SunAct = 'quiet' | 'avg' | 'active';
+const FLUX: Record<SunAct, { label: string; f: number; text: string }> = {
+  quiet: { label: 'Quiet', f: 70, text: 'A quiet Sun (F10.7 70, as near 2020 or 2031): the upper air cools and shrinks, so satellites stay up much longer.' },
+  avg: { label: 'Average', f: 150, text: 'An average Sun (F10.7 150).' },
+  active: { label: 'Active', f: 230, text: 'An active Sun (F10.7 230, as near a maximum like 2025): the upper air heats and swells, and satellites come down sooner.' },
+};
 // Air drag (M490c): a small satellite's Cd·A/m (m²/kg).
 const BC = 0.01;
 const D = Math.PI / 180;
@@ -34,6 +41,7 @@ export function OrbitBench() {
   const [j2, setJ2] = useState(true);
   const [third, setThird] = useState(false);
   const [drag, setDrag] = useState(false);
+  const [sunAct, setSunAct] = useState<SunAct>('avg');
   const [k, setK] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [earth, setEarth] = useState<HTMLImageElement | null>(null);
@@ -43,8 +51,8 @@ export function OrbitBench() {
   const p = PRESETS[preset];
   const run = useMemo(() => {
     const s = toState(p.el), T = Math.min(5 * 86400, turns * period(p.el.a));
-    return propagate(s.r, s.v, T, { j2, dt: p.el.a > 20000 ? 60 : 10, points: 1500, jd0: JD0, sun: third, moon: third, drag: drag ? BC : 0 });
-  }, [p, turns, j2, third, drag]);
+    return propagate(s.r, s.v, T, { j2, dt: p.el.a > 20000 ? 60 : 10, points: 1500, jd0: JD0, sun: third, moon: third, drag: drag ? BC : 0, flux: FLUX[sunAct].f });
+  }, [p, turns, j2, third, drag, sunAct]);
   // How fast the Sun and Moon tip the orbit: 30 days with and without them, the difference in tilt scaled to a year.
   const tilt = useMemo(() => {
     if (!third) return null;
@@ -124,7 +132,7 @@ export function OrbitBench() {
   const lasts = (d: number) => (!Number.isFinite(d) ? 'over 100 years' : d > 730 ? `${(d / 365.25).toFixed(0)} years` : d >= 2 ? `${d.toFixed(0)} days` : hours(d * 86400));
   const facts: [string, string][] = [
     ['Height now', run.crashed && k === n - 1 ? 'burnt up' : `${run.alt[k].toFixed(0)} km`],
-    drag ? ['Air drag brings it down in', lasts(decayTime(p.el.a * (1 - p.el.e) - RE, BC))] : ['Round in', hours(period(p.el.a))],
+    drag ? ['Air drag brings it down in', lasts(decayTime(p.el.a * (1 - p.el.e) - RE, BC, FLUX[sunAct].f))] : ['Round in', hours(period(p.el.a))],
     ['From a 300 km orbit (Hohmann)', `${(cost.h.total * 1000).toFixed(0)} m/s, ${hours(cost.h.time)}`],
     tilt === null ? ['Its plane turns', `${cost.drift.toFixed(2)}° a day`] : ['The Sun and Moon tip it', `${tilt >= 0 ? '+' : ''}${tilt.toFixed(2)}° a year`],
   ];
@@ -141,12 +149,19 @@ export function OrbitBench() {
         </label>
         <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={j2} onChange={(e) => setJ2(e.target.checked)} className="h-4 w-4 accent-violet-600" />The Earth’s bulge (J2)</label>
         <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={third} onChange={(e) => setThird(e.target.checked)} className="h-4 w-4 accent-violet-600" />The Sun’s and Moon’s pull (from 1 Jan 2026)</label>
-        <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={drag} onChange={(e) => setDrag(e.target.checked)} className="h-4 w-4 accent-violet-600" />Air drag (a small satellite, average Sun)</label>
+        <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={drag} onChange={(e) => setDrag(e.target.checked)} className="h-4 w-4 accent-violet-600" />Air drag (a small satellite)</label>
+        {drag && (
+          <div className="space-y-2">
+            <span className={label}>The Sun</span>
+            <Segmented<SunAct> label="The Sun" value={sunAct} onChange={setSunAct} segments={(Object.keys(FLUX) as SunAct[]).map((v) => ({ value: v, label: FLUX[v].label }))} />
+            <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{FLUX[sunAct].text}</p>
+          </div>
+        )}
         <button type="button" className={small} onClick={() => { if (k >= n - 1) setK(0); setPlaying((q) => !q); }}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Pause' : 'Replay'}</button>
         <label className={label}>Time <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{hours(run.t[k])}</span>
           <input type="range" min={0} max={n - 1} step={1} value={k} onChange={(e) => { setPlaying(false); setK(Number(e.target.value)); }} className="mt-1 w-full accent-violet-600" />
         </label>
-        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code (metres, m/s, degrees): <span className="font-mono">keplerian2ijk</span>, <span className="font-mono">ijk2keplerian</span>, <span className="font-mono">orbitPropagate</span>, <span className="font-mono">orbitDecay</span>, <span className="font-mono">hohmannTransfer</span>, <span className="font-mono">lambertSolve</span>, <span className="font-mono">rocketDeltaV</span> (example: orbits.m).</p>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code (metres, m/s, degrees): <span className="font-mono">keplerian2ijk</span>, <span className="font-mono">ijk2keplerian</span>, <span className="font-mono">orbitPropagate</span>, <span className="font-mono">orbitDecay</span>, <span className="font-mono">solarFlux</span>, <span className="font-mono">hohmannTransfer</span>, <span className="font-mono">lambertSolve</span>, <span className="font-mono">rocketDeltaV</span> (example: orbits.m).</p>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The orbit">
         <div ref={box} className="flex min-h-0 flex-1 items-center gap-3 p-3">
