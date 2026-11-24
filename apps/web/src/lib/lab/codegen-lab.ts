@@ -5,6 +5,7 @@ import { FileStore } from './files';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import { CodegenError, generate, quotientType, type Cls, type Ty } from './codegen';
 import * as X from './fixed';
+import { svd } from './dsp';
 
 // Hyperion's embedded code in the language (M480): codegen turns a function of the script into C (name.c and name.h
 // in Hyperion's files), from example inputs that fix the sizes and types; fi, a fixed-point number for embedded and
@@ -209,7 +210,7 @@ export function solveAny(A: bigint[], B: bigint[], R: number, N: number, m: numb
  * G = AᵀA and C = AᵀB (normal); the columns P of G with a pivot span A's row space; the answer is G_P z with
  * (G_Pᵀ G_P) z = C_P, solved fraction-free, so x = G_P·(det·z) / det: one division per answer, rounded once. The C
  * (codegen's fx_minnorm) does exactly these steps. Returns the numerators (N×m) and det. */
-export function minNormStored(A: bigint[], B: bigint[], R: number, N: number, m: number): { X: bigint[]; det: bigint } {
+export function minNormStored(A: bigint[], B: bigint[], R: number, N: number, m: number): { X: bigint[]; det: bigint; rank: number } {
   const zero = BigInt(0), w = N + m, aug = [...A, ...B], G: bigint[] = Array.from({ length: N * w }, () => zero);
   for (let j = 0; j < w; j++) for (let i = 0; i < N; i++) { let s = zero; for (let r = 0; r < R; r++) s += aug[r + i * R] * aug[r + j * R]; G[i + j * N] = s; }
   const P = elimStored([...G], N, N, w).piv.flatMap((p, k) => (p < 0 ? [] : [k])), r = P.length;
@@ -220,22 +221,37 @@ export function minNormStored(A: bigint[], B: bigint[], R: number, N: number, m:
   }
   const e = elimStored(H, r, r, r + m), X: bigint[] = Array.from({ length: N * m }, () => zero);
   for (let j = 0; j < m; j++) for (let i = 0; i < N; i++) { let s = zero; for (let q = 0; q < r; q++) s += G[i + P[q] * N] * H[e.piv[q] + (r + j) * r]; X[i + j * N] = s; }
-  return { X, det: e.det };
+  return { X, det: e.det, rank: r };
 }
-function fiMinNorm(a: Mat, na: X.Nt, b: Mat, nb: X.Nt, t: X.Nt): Struct {
+function fiMinNorm(a: Mat, na: X.Nt, b: Mat, nb: X.Nt, t: X.Nt, warn: (rank: number) => void): Struct {
   if (b.r !== a.r) throw new LabError(`lsqminnorm(A, B): B needs ${a.r} rows (here ${b.r}).`);
   const N = a.c, m = b.c, S = minNormStored(Array.from({ length: a.r * N }, (_, i) => BigInt(X.stored(a.d[i], na))), Array.from({ length: a.r * m }, (_, i) => BigInt(X.stored(b.d[i], nb))), a.r, N, m);
   const s = t.fl - nb.fl + na.fl;
+  warn(S.rank);
   return make(mat(N, m, S.X.map((x) => Number(divBig(x, S.det, s, t)) / 2 ** t.fl)), t);
 }
 // M535: lsqminnorm(A, B[, T]): the smallest answer; plain numbers are pinv(A) * B (pinv through the SVD, dsp-lab).
-BUILTINS.lsqminnorm = (a, _n, lab) => {
-    if (!isFi(a[0]) && !isFi(a[1])) return [lab.binop('*', BUILTINS.pinv([a[0]], 1, lab)[0], a[1])];
+// M538: lsqminnorm(A, B, tol) for plain numbers (singular values at or below tol count as zero, pinv(A, tol) * B), and
+// 'warn' / 'nowarn' last (a warning when A's rank is below its smaller size; for fi the rank is exact).
+BUILTINS.lsqminnorm = (a0, _n, lab) => {
+    const last = a0.length > 2 && a0[a0.length - 1].k === 'str' ? textOf(a0[a0.length - 1]).toLowerCase() : null;
+    if (last !== null && last !== 'warn' && last !== 'nowarn') throw new LabError("lsqminnorm's last input is 'warn' or 'nowarn'.");
+    const a = last === null ? a0 : a0.slice(0, -1);
+    const A = isFi(a[0]) ? valuesOf(a[0]) : toMat(a[0]), small = Math.min(A.r, A.c);
+    const warn = (rank: number, tol?: number) => { if (last === 'warn' && rank < small) lab.host.out(`Warning: A's rank is ${rank}${tol === undefined ? '' : ` (tolerance ${tol.toPrecision(4)})`}, below ${small}: the smallest of many answers is given.\n`); };
+    if (!isFi(a[0]) && !isFi(a[1])) {
+      if (a[2] && !(a[2].k === 'mat' && a[2].d.length === 1 && a[2].d[0] >= 0)) throw new LabError('lsqminnorm(A, B, tol): tol is one number, 0 or more.');
+      if (last === 'warn') {
+        const r = svd(Array.from({ length: A.r }, (_, i) => Array.from({ length: A.c }, (_, j) => A.d[i + j * A.r]))), tol = a[2] ? toMat(a[2]).d[0] : Math.max(A.r, A.c) * 2 ** (Math.floor(Math.log2(r.S[0] || 1)) - 52);
+        warn(r.S.filter((s) => s > tol).length, tol);
+      }
+      return [lab.binop('*', BUILTINS.pinv(a[2] ? [a[0], a[2]] : [a[0]], 1, lab)[0], a[1])];
+    }
     if (!isFi(a[0]) || !isFi(a[1])) throw new LabError('lsqminnorm(A, B) of fixed-point values needs both fi (fi(…)).');
-    if (a[2] && !isFi(a[2])) throw new LabError("lsqminnorm(A, B, T): T is the answer's type, numerictype(s, w, f) or a fi value.");
+    if (a[2] && !isFi(a[2])) throw new LabError("lsqminnorm(A, B, T) of fi values: T is the answer's type, numerictype(s, w, f) or a fi value (their rank is found exactly, so no tolerance).");
     const na = typeOf(a[0]), nb = typeOf(a[1]);
     const qa = valuesOf(a[0]), qb = valuesOf(a[1]);
-    return [fiMinNorm(qa, na, qb, nb, isFi(a[2]) ? { ...X.fmOf(na, nb), ...typeOf(a[2]) } : quotientType(nb, na))];
+    return [fiMinNorm(qa, na, qb, nb, isFi(a[2]) ? { ...X.fmOf(na, nb), ...typeOf(a[2]) } : quotientType(nb, na), (r) => warn(r))];
 };
 def('divide', (a) => {
   if (!isFi(a[0])) throw new LabError('divide(T, a, b): T is the answer’s type, numerictype(s, w, f) or a fi value.');

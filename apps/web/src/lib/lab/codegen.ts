@@ -255,7 +255,7 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
     }
     const isSolve = (e: Expr): boolean => {
       if (e.k === 'bin' && (e.op === '\\' || e.op === '/')) return (isFx(typeOf(e.a)) || isFx(typeOf(e.b))) && !scalar(typeOf(e.op === '\\' ? e.a : e.b));
-      if (e.k === 'index' && e.of.k === 'id' && e.of.name === 'lsqminnorm' && !vars.has(e.of.name) && !fns.has(e.of.name)) return isFx(typeOf(e));
+      if (e.k === 'index' && e.of.k === 'id' && e.of.name === 'lsqminnorm' && !vars.has(e.of.name) && !fns.has(e.of.name)) return true;
       return e.k === 'index' && e.of.k === 'id' && (e.of.name === 'mldivide' || e.of.name === 'mrdivide') && !vars.has(e.of.name) && !fns.has(e.of.name) && e.args.length >= 2 && !scalar(typeOf(e.args[e.of.name === 'mldivide' ? 0 : 1])) && isFx(typeOf(e));
     };
     /** [A, B, left, smallest] of A \ B, B / A, mldivide(A, B, T), mrdivide(B, A, T) or lsqminnorm(A, B, T) (M535). */
@@ -331,6 +331,36 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         return { t: fxTy(nt, a.r, b.c), code: () => fail('a matrix product where one number is needed.') };
       }
       return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * ./ \\ / and comparisons).`);
+    }
+    /** M538: lsqminnorm's inputs: A, B and the third (a tolerance for plain numbers, a type for fi); 'warn' / 'nowarn'
+     * last is accepted and has no effect in C (nothing is printed). */
+    function minNormArgs(a: Expr[]): { A: Expr; B: Expr; tol: Expr | undefined } {
+      const last = a[a.length - 1], flag = a.length > 2 && last.k === 'str';
+      if (flag && !['warn', 'nowarn'].includes((last as { v: string }).v.toLowerCase())) fail("lsqminnorm's last input is 'warn' or 'nowarn'.");
+      const b = flag ? a.slice(0, -1) : a;
+      if (b.length < 2 || b.length > 3) fail('lsqminnorm(A, B) or lsqminnorm(A, B, tol) here (for fi: lsqminnorm(A, B, T)).');
+      return { A: b[0], B: b[1], tol: b[2] };
+    }
+    /** M538: lsqminnorm of plain numbers: x is N×m for A R×N and B R×m, double (single when either is). */
+    function minNormType(Ae: Expr, Be: Expr, tol?: Expr): Ty {
+      const a = typeOf(Ae), b = typeOf(Be);
+      if ([a, b].some((x) => isInt(x.cls))) fail('lsqminnorm of whole-number types can’t become C here: make them double or single, or fi for fixed point.');
+      if (b.r !== a.r) fail(`the sizes don’t agree: lsqminnorm(${sizeText(a)}, ${sizeText(b)}) needs B with ${a.r} rows.`);
+      if (tol) { const tt = typeOf(tol); if (!scalar(tt) || isFx(tt)) fail('lsqminnorm(A, B, tol): tol is one plain number.'); }
+      helpers.add(a.cls === 'single' || b.cls === 'single' ? 'minnorm_f' : 'minnorm_d');
+      return { cls: a.cls === 'single' || b.cls === 'single' ? 'single' : 'double', r: a.c, c: b.c };
+    }
+    /** M538: target = lsqminnorm(A, B[, tol]) of plain numbers, through the SVD (lsq_minnorm_d / _f: one-sided Jacobi, as
+     * Hyperion's pinv), into fixed-size working arrays. */
+    function minNormInto(target: string, e: Extract<Expr, { k: 'index' }>, t: Ty) {
+      const { A: Ae, B: Be, tol } = minNormArgs(e.args), at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be);
+      const R = at.r, N = at.c, m = bt.c, big = Math.max(R, N), sm = Math.min(R, N), f = t.cls === 'single' ? 'f' : 'd', T = CTYPE[t.cls];
+      const conv = (src: string, ty: Ty, len: number, name: string) => { if (ty.cls === t.cls) return src; out(`  ${T} ${name}[${len}];`); out(`  for (int k = 0; k < ${len}; k++) ${name}[k] = (${T})${src}[k];`); return name; };
+      out(`{ /* lsqminnorm(A, B${tol ? ', tol' : ''}): the smallest least-squares answer, through the SVD */`);
+      const a = conv(A, at, R * N, 'mn_a'), b = conv(B, bt, R * m, 'mn_b');
+      out(`  ${T} mn_w[${big * sm}], mn_v[${sm * sm}];`);
+      out(`  lsq_minnorm_${f}(${a}, ${R}, ${N}, ${b}, ${m}, ${tol ? `(${T})(${scal(tol).code})` : '-1'}, mn_w, mn_v, ${target});`);
+      out('}');
     }
     /** M530–M531: A \ B (left) or B / A: the answer's type and size; T chooses the type (mldivide / mrdivide's third input). */
     function solveType(Ae: Expr, Be: Expr, left: boolean, T?: Nt, mn = false): Ty {
@@ -521,8 +551,10 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         return fxTy(T ? { ...fmOf(bt.fx!, at.fx!), ...T } : quotientType(bt.fx!, at.fx!), bt.r, bt.c);
       }
       if (fname === 'lsqminnorm' && !fns.has(fname)) {
-        if (a.length < 2 || a.length > 3 || (a[2] && !(isFx(t[2]) && scalar(t[2])))) fail('lsqminnorm(A, B, T) of fixed-point values: T the answer\'s type (numerictype(s, w, f) or a fi value); plain numbers can\'t become C here.');
-        return solveType(a[0], a[1], true, a[2] ? t[2].fx! : undefined, true);
+        const { A, B, tol } = minNormArgs(a);
+        if (t[0].cls !== 'fixed' && t[1].cls !== 'fixed') return minNormType(A, B, tol);
+        if (tol && !(isFx(typeOf(tol)) && scalar(typeOf(tol)))) fail('lsqminnorm(A, B, T) of fixed-point values: T the answer\'s type (numerictype(s, w, f) or a fi value; their rank is exact, so no tolerance).');
+        return solveType(A, B, true, tol ? typeOf(tol).fx! : undefined, true);
       }
       if (fname === 'numerictype' && !fns.has(fname)) {
         if (a.length !== 3) fail('numerictype(signed, wordLength, fractionLength) here: all three, so the type is known.');
@@ -708,6 +740,14 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         if (into !== target) out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${into}[k];`);
         return;
       }
+      if (isSolve(e) && !isFx(typeOf(e))) {
+        // M538: lsqminnorm of plain numbers (a temporary when the target is also an input, or of another type).
+        const st = typeOf(e), x = e as Extract<Expr, { k: 'index' }>, uses = x.args.some((v) => v.k === 'id' && v.name === target);
+        const into = st.cls === t.cls && !uses ? target : fresh(st);
+        minNormInto(into, x, st);
+        if (into !== target) out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${cast(t, { code: `${into}[k]`, t: { ...st, r: 1, c: 1 } })};`);
+        return;
+      }
       if (isSolve(e)) {
         // M530: into a temporary first when the answer's type differs from the target's (it is then converted).
         const st = typeOf(e), into = sameFx(st, t) ? target : fresh(st), [Ae, Be, left, mn] = solveArgs(e);
@@ -867,6 +907,7 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
     if (helpers.has('elim_w')) help.push(elimC('fxw'));
     if (helpers.has('elim_b')) help.push(fxbC(fxbK, wide), elimC('fxb'));
   }
+  for (const f of ['d', 'f'] as const) if (helpers.has(`minnorm_${f}`)) help.push(minNormC(f));
   if (helpers.has('mod')) help.push('/* mod: the remainder with the sign of the divisor */\nstatic double mod_d(double a, double b) {\n  if (b == 0.0) return a;\n  double r = fmod(a, b);\n  return (r != 0.0 && ((r < 0) != (b < 0))) ? r + b : r;\n}');
   if (helpers.has('rem')) help.push('/* rem: the remainder with the sign of the dividend */\nstatic double rem_d(double a, double b) { return b == 0.0 ? a : fmod(a, b); }');
   const others = order.filter((f) => f !== main);
@@ -1180,4 +1221,49 @@ static inline fxw_t fxb_tow(fxb_t a) {
   return fxw_add(fxw_shl(fxw_of(hi <= (uint64_t)INT64_MAX ? (int64_t)hi : -(int64_t)(~hi) - 1), 64), fxw_ofu(lo));
 }` : `static inline fxb_t fxb_ofw(fxw_t v) { return fxb_of(v); }
 static inline fxw_t fxb_tow(fxb_t a) { uint64_t u = (uint64_t)a.d[0] | ((uint64_t)a.d[1] << 32); return u <= (uint64_t)INT64_MAX ? (int64_t)u : -(int64_t)(~u) - 1; }`}`;
+}
+
+/** M538: lsqminnorm for plain numbers in C: the SVD by one-sided Jacobi on the tall form (the same rotations and stops as
+ * Hyperion's svd, dsp.ts), then x = pinv(A) · B without forming pinv: singular values at or below tol count as zero (a
+ * negative tol: max(size) · eps(largest), as pinv's default). w holds max(R, N) × min(R, N) numbers, v min² of them. */
+function minNormC(f: 'd' | 'f'): string {
+  const T = f === 'd' ? 'double' : 'float', F = (x: string) => (f === 'd' ? x : `${x}f`), stop = f === 'd' ? '1e-15' : '1e-7f', bits = f === 'd' ? 52 : 23;
+  return `/* lsqminnorm: the smallest least-squares answer of A x = B (A R×N, B R×m, x N×m), through the SVD; singular values
+ * at or below tol count as zero (tol < 0: max(R, N) · eps of the largest, as pinv). w: max(R, N)·min(R, N), v: min(R, N)². */
+static void lsq_minnorm_${f}(const ${T} *A, int R, int N, const ${T} *B, int m, ${T} tol, ${T} *w, ${T} *v, ${T} *x) {
+  int tall = R >= N, r = tall ? R : N, c = tall ? N : R, e;
+  ${T} smax = 0;
+  for (int j = 0; j < c; j++) for (int i = 0; i < r; i++) w[i + j * r] = tall ? A[i + j * R] : A[j + i * R];
+  for (int j = 0; j < c; j++) for (int i = 0; i < c; i++) v[i + j * c] = (${T})(i == j);
+  for (int sweep = 0; sweep < 60; sweep++) {
+    ${T} off = 0;
+    for (int p = 0; p < c - 1; p++) for (int q = p + 1; q < c; q++) {
+      ${T} a = 0, b = 0, g = 0, zeta, t, cs, sn;
+      for (int i = 0; i < r; i++) { a += w[i + p * r] * w[i + p * r]; b += w[i + q * r] * w[i + q * r]; g += w[i + p * r] * w[i + q * r]; }
+      if (${F('fabs')}(g) <= ${stop} * ${F('sqrt')}(a * b)) continue;
+      if (${F('fabs')}(g) / ${F('sqrt')}(a * b) > off) off = ${F('fabs')}(g) / ${F('sqrt')}(a * b);
+      zeta = (b - a) / (2 * g);
+      t = (zeta >= 0 ? 1 : -1) / (${F('fabs')}(zeta) + ${F('sqrt')}(1 + zeta * zeta));
+      cs = 1 / ${F('sqrt')}(1 + t * t); sn = cs * t;
+      for (int i = 0; i < r; i++) { ${T} y = w[i + p * r], z = w[i + q * r]; w[i + p * r] = cs * y - sn * z; w[i + q * r] = sn * y + cs * z; }
+      for (int i = 0; i < c; i++) { ${T} y = v[i + p * c], z = v[i + q * c]; v[i + p * c] = cs * y - sn * z; v[i + q * c] = sn * y + cs * z; }
+    }
+    if (off < ${stop}) break;
+  }
+  for (int k = 0; k < c; k++) { ${T} s = 0; for (int i = 0; i < r; i++) s += w[i + k * r] * w[i + k * r]; s = ${F('sqrt')}(s); if (s > smax) smax = s; }
+  if (tol < 0) { ${F('frexp')}(smax > 0 ? smax : 1, &e); tol = (R > N ? R : N) * ${F('ldexp')}(1, e - 1 - ${bits}); }
+  for (int k = 0; k < N * m; k++) x[k] = 0;
+  /* tall: A = W Vᵀ, so x = Σ v_k (w_kᵀ B) / s_k²; wide (Aᵀ = W Vᵀ): x = Σ w_k (v_kᵀ B) / s_k² */
+  for (int k = 0; k < c; k++) {
+    ${T} s2 = 0;
+    for (int i = 0; i < r; i++) s2 += w[i + k * r] * w[i + k * r];
+    if (!(${F('sqrt')}(s2) > tol)) continue;
+    for (int j = 0; j < m; j++) {
+      ${T} d = 0;
+      for (int i = 0; i < R; i++) d += (tall ? w[i + k * r] : v[i + k * c]) * B[i + j * R];
+      d /= s2;
+      for (int i = 0; i < N; i++) x[i + j * N] += (tall ? v[i + k * c] : w[i + k * r]) * d;
+    }
+  }
+}`;
 }

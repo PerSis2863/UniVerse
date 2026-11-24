@@ -625,4 +625,55 @@ int main(void) {
     expect(() => l.run("codegen('huge', {fi(zeros(60), 1, 126, 0), fi(zeros(60, 1), 1, 126, 0)});")).toThrow(/MB of working \(at most 16 MB here\)/);
     expect(() => l.run("codegen('huge', {fi(zeros(300), 1, 126, 0), fi(zeros(300, 1), 1, 126, 0)});")).toThrow(/at most 65536 here/);
   }, 60000);
+  it('M538: lsqminnorm of plain numbers takes a tolerance and warns when asked', () => {
+    const out: string[] = [], l = new Lab({ out: (t: string) => out.push(t), files: new FileStore() });
+    // singular values 10 and 1e-3: a tolerance of 0.01 drops the small one
+    l.run('A = [10 0; 0 1e-3; 0 0]; b = [1; 1; 1]; x = lsqminnorm(A, b); xt = lsqminnorm(A, b, 0.01); xw = lsqminnorm(A, b, 0.01, \'warn\');');
+    expect([...toMat(l.vars.get('x')!).d]).toEqual([0.1, 1000]);
+    expect([...toMat(l.vars.get('xt')!).d]).toEqual([0.1, 0]);
+    expect(out.join('')).toMatch(/rank is 1 \(tolerance 0\.01000\), below 2/);
+    expect(() => l.run("lsqminnorm(A, b, 'loud')")).toThrow(/'warn' or 'nowarn'/);
+    expect(() => l.run('lsqminnorm(fi(A, 1, 16, 8), fi(b, 1, 16, 8), 0.01)')).toThrow(/no tolerance/);
+  });
+  it.skipIf(!hasCc)('M538: lsqminnorm of plain numbers in C gives Hyperion’s answers (wide, singular, tall, zero, a tolerance, single)', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    l.run("function x = mnd(A, b)\n  x = lsqminnorm(A, b, 'nowarn');\nend\nfunction x = mnt(A, b, tol)\n  x = lsqminnorm(A, b, tol);\nend");
+    const m = (rows: number[][]) => `[${rows.map((r) => r.join(' ')).join('; ')}]`;
+    const cases: [number[][], number[][]][] = [
+      [[[1, 1, -0.5], [2, 0.25, 1]], [[1, 2], [-0.5, 3]]],
+      [[[1, 2, 3], [2, 4, 6], [0.5, -1, 2]], [[1], [3], [-2]]],
+      [[[1, 0], [1, 1], [1, 2], [1, 3.5]], [[1], [2.5], [3.5], [5]]],
+      [[[0, 0], [0, 0]], [[1], [2]]],
+    ];
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-mn538-'));
+    const mains: string[] = [], want: number[] = [], units: string[] = [];
+    const add = (fn: string, name: string, ex: string, args: string, cargs: string[], decl: string, len: number) => {
+      l.run(`codegen('${fn}', {${ex}});`);
+      const rx = new RegExp(`\\b${fn}\\(`, 'g');
+      writeFileSync(join(dir, `${name}.c`), files.text(`${fn}.c`).replace(rx, `${name}(`).replace(`"${fn}.h"`, `"${name}.h"`));
+      writeFileSync(join(dir, `${name}.h`), files.text(`${fn}.h`).replace(rx, `${name}(`).replace(new RegExp(`${fn.toUpperCase()}_H`, 'g'), `${name.toUpperCase()}_H`));
+      l.run(`ans = ${fn}(${args});`);
+      want.push(...toMat(l.vars.get('ans')!).d);
+      mains.push(`  { ${decl} ${name}(${cargs.join(', ')}); for (int i = 0; i < ${len}; i++) printf("%.17g ", (double)x[i]); }`);
+      units.push(name);
+    };
+    const flat = (rows: number[][]) => rows[0].flatMap((_, j) => rows.map((r) => r[j]));
+    cases.forEach(([A, B], c) => {
+      const len = A[0].length * B[0].length;
+      add('mnd', `mnd${c}`, `zeros(${A.length}, ${A[0].length}), zeros(${B.length}, ${B[0].length})`, `${m(A)}, ${m(B)}`, ['a', 'b', 'x'], `double a[] = {${flat(A).join(', ')}}, b[] = {${flat(B).join(', ')}}, x[${len}];`, len);
+    });
+    // a tolerance given at run time, and the same in single
+    const [A, B] = [[[10, 0], [0, 1e-3], [0, 0]], [[1], [1], [1]]];
+    add('mnt', 'mnt0', 'zeros(3, 2), zeros(3, 1), 0', `${m(A)}, ${m(B)}, 0.01`, ['a', 'b', '0.01', 'x'], `double a[] = {${flat(A).join(', ')}}, b[] = {1, 1, 1}, x[2];`, 2);
+    add('mnd', 'mnf0', `single(zeros(${cases[2][0].length}, 2)), single(zeros(${cases[2][1].length}, 1))`, `single(${m(cases[2][0])}), single(${m(cases[2][1])})`, ['a', 'b', 'x'], `float a[] = {${flat(cases[2][0]).join(', ')}}, b[] = {${flat(cases[2][1]).join(', ')}}, x[2];`, 2);
+    expect(files.text('mnd.c')).toContain('static void lsq_minnorm_f(const float *A');
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>\n${units.map((u) => `#include "${u}.h"`).join('\n')}\nint main(void) {\n${mains.join('\n')}\n  return 0;\n}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), ...units.map((u) => join(dir, `${u}.c`)), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split(/\s+/).map(Number);
+    expect(got.length).toBe(want.length);
+    got.forEach((v, i) => expect(Math.abs(v - want[i])).toBeLessThan(i >= got.length - 2 ? 1e-5 : 1e-10 * (1 + Math.abs(want[i]))));
+    expect(want.slice(-6, -4)).toEqual([0, 0]); // all-zero A gives 0
+    expect(want.slice(-4, -2)).toEqual([0.1, 0]); // the tolerance dropped the small singular value
+    expect(() => l.run("codegen('mnd', {int16(zeros(2)), zeros(2, 1)})")).toThrow(/whole-number types/);
+  }, 60000);
 });

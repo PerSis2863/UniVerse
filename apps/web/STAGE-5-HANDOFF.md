@@ -13148,3 +13148,20 @@ The last part of M533's "left out" list (the owner: "build all of them").
   twin on every row and the float answer F · S; an order-8 ECOC equal to its twin, within 4 points of 'int8'; 300 inputs
   planned, 70,000 refused.
 - **Left out:** trees and ensembles in whole numbers (they compare, they don't add), GLM links (as the single/double C).
+
+## M538 (24 Nov): Hyperion lsqminnorm of plain numbers in C, its tolerance and 'warn'
+
+The owner pasted M534–M537's "left out" list (as before: build all of them); this is the first of the three.
+
+- **Hyperion** (`codegen-lab.ts`): `lsqminnorm(A, B, tol)` for plain numbers is `pinv(A, tol) * B` (singular values at or
+  below tol count as zero); `'warn'` / `'nowarn'` last: `'warn'` prints a warning when A's rank is below its smaller size
+  (for fi the exact rank, `minNormStored` now returns it). A tolerance with fi values is refused (their rank is exact).
+- **C** (`codegen.ts` `minNormType`, `minNormInto`, `minNormC`): `lsqminnorm(A, B[, tol])` of double or single values
+  becomes `lsq_minnorm_d` / `_f`: the SVD by one-sided Jacobi on the tall form, the same rotations and stops as
+  Hyperion's `svd` (`dsp.ts`), then x = Σ v_k (w_kᵀ B) / s_k² without forming pinv; a negative tol (none given) is
+  max(R, N) · eps(largest), as pinv's default. Fixed-size working arrays in a block (`mn_w`, `mn_v`); an input that is
+  also the target goes through a temporary. `isSolve` now counts every lsqminnorm; whole-number types are refused.
+  `'warn'` in C prints nothing.
+- **Checked:** `codegen.test.ts` M538: the tolerance and the warning in Hyperion; in C a wide, a singular, a tall and an
+  all-zero system, a run-time tolerance and single, with `-Wall -Werror`, equal to Hyperion (1e-10; single 1e-5).
+
