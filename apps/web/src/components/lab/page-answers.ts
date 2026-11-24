@@ -47,3 +47,22 @@ answers('iot', async (body) => {
   const r = (await api.get<{ entries: { at: string; values: (number | null)[] }[] }>(`/iot/channels/${c.id}/entries?limit=${n}`)).data;
   return { fields: c.fields, entries: r.entries };
 });
+
+// M526: Bluetooth and USB devices (wireless-link.ts).
+answers('wireless', async (body, ms) => {
+  const b = body as { op: string; service?: string; char?: string; fresh?: boolean; bytes?: number[]; n?: number };
+  const { wirelessLink, fullUuid } = await import('./wireless-link');
+  const st = wirelessLink.state;
+  if (b.op === 'view') return { ble: { open: st.ble.open, name: st.ble.name, chars: st.ble.chars.map(({ service, uuid, name, props }) => ({ service, uuid, name, props })) }, usb: st.usb };
+  if (b.op === 'find') {
+    if (!st.ble.open) throw new Error('The Bluetooth device isn’t connected any more.');
+    const c = st.ble.chars.find((x) => x.service === fullUuid(b.service!) && x.uuid === fullUuid(b.char!));
+    if (!c) throw new Error(`No characteristic ${b.char} in service ${b.service}: see ble(…).Characteristics.`);
+    return { service: c.service, uuid: c.uuid, name: c.name, props: c.props };
+  }
+  if (b.op === 'read') return wirelessLink.readBle(b.service!, b.char!, !!b.fresh, Math.max(100, ms - 500));
+  if (b.op === 'write') { await wirelessLink.writeBle(b.service!, b.char!, b.bytes ?? []); return true; }
+  if (b.op === 'usbwrite') { await wirelessLink.writeUsb(b.bytes ?? []); return true; }
+  if (b.op === 'usbread') return wirelessLink.readUsb(b.n ?? 64, Math.max(100, ms - 500));
+  throw new Error('Unknown device question.');
+});

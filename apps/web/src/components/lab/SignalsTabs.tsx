@@ -5,13 +5,14 @@ import { Segmented } from '@/components/ui/Segmented';
 import dynamic from 'next/dynamic';
 import { FilterDesigner } from './FilterDesigner';
 
-// Hyperion Signals' windows (M472–): the Filter designer, Audio (M473), Devices (M474), IoT (M475). The one in use is remembered for the visit; ?tab=iot opens one (M522: an IoT alert's link).
-type Tab = 'filters' | 'audio' | 'devices' | 'iot';
+// Hyperion Signals' windows (M472–): the Filter designer, Audio (M473), Devices (M474), IoT (M475), Bluetooth & USB (M526). The one in use is remembered for the visit; ?tab=iot opens one (M522: an IoT alert's link).
+type Tab = 'filters' | 'audio' | 'devices' | 'wireless' | 'iot';
 const KEEP = 'uv-signals-tab';
-const TABS: { value: Tab; label: string }[] = [{ value: 'filters', label: 'Filter designer' }, { value: 'audio', label: 'Audio' }, { value: 'devices', label: 'Devices' }, { value: 'iot', label: 'IoT' }];
+const TABS: { value: Tab; label: string }[] = [{ value: 'filters', label: 'Filter designer' }, { value: 'audio', label: 'Audio' }, { value: 'devices', label: 'Devices' }, { value: 'wireless', label: 'Bluetooth & USB' }, { value: 'iot', label: 'IoT' }];
 const skeleton = <div className="h-[calc(100dvh-12rem)] min-h-[32rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" />;
 const SerialBench = dynamic(() => import('./SerialBench').then((m) => m.SerialBench), { ssr: false, loading: () => skeleton });
 const IotBench = dynamic(() => import('./IotBench').then((m) => m.IotBench), { ssr: false, loading: () => skeleton });
+const WirelessBench = dynamic(() => import('./WirelessBench').then((m) => m.WirelessBench), { ssr: false, loading: () => skeleton });
 const AudioBench = dynamic(() => import('./AudioBench').then((m) => m.AudioBench), { ssr: false, loading: () => skeleton });
 
 export function SignalsTabs() {
@@ -23,6 +24,7 @@ export function SignalsTabs() {
       {tab === 'filters' && <FilterDesigner />}
       {tab === 'audio' && <AudioBench />}
       {tab === 'devices' && <SerialBench />}
+      {tab === 'wireless' && <WirelessBench />}
       {tab === 'iot' && <IotBench />}
     </div>
   );

@@ -24,6 +24,7 @@ import { parallel, runResumable, type Pool, type Task, type TaskResult } from '@
 import '@/lib/lab/gpu-lab';
 import '@/lib/lab/des-lab';
 import '@/lib/lab/iot-lab';
+import '@/lib/lab/wireless-lab';
 import '@/lib/lab/codegen-lab';
 import '@/lib/lab/embedded-lab';
 import { initGpu } from '@/lib/lab/gpu';

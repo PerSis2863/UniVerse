@@ -16,6 +16,7 @@ import '@/lib/lab/codegen-lab';
 import '@/lib/lab/embedded-lab';
 import '@/lib/lab/des-lab';
 import '@/lib/lab/iot-lab';
+import '@/lib/lab/wireless-lab';
 import { runTask, type Task } from '@/lib/lab/parallel-lab';
 import { answer } from '@/lib/lab/wait';
 

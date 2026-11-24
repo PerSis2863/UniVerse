@@ -12878,3 +12878,25 @@ generated code has at most 62 bits (`MAX_FX`), so the 64-bit work below never ov
   all-8-bit network.
 - **Left out:** SVMs with more than two classes (`fitcecoc`) and naive Bayes / discriminant models in C, int8 SVMs and
   k-NN, per-channel scales, CMSIS-NN / TensorFlow Lite files.
+
+## M526 (24 Nov): Hyperion Bluetooth and USB devices
+
+- **The page side:** `components/lab/wireless-link.ts` (`wirelessLink`, one for the visit like `serialLink`): Web
+  Bluetooth asks for any device with the common GATT services named (`SERVICES`: heart rate, battery, device
+  information, environmental sensing, thermometer, cycling and running, Nordic UART, HM-10; Web Bluetooth only opens
+  services named when asking) plus any the person types; it lists every characteristic, starts notifications and keeps
+  each latest value. WebUSB opens the device, takes the first interface with endpoints both ways and claims it (a device
+  the computer's own driver holds is refused with a message: USB serial devices belong in Devices). Simulations: a
+  heart-rate sensor (a pulse notification every 0.5 s, a readable battery) and a USB echo device.
+- **Scripts** (`src/lib/lab/wireless-lab.ts`): every call asks the page (`answers('wireless')` in `page-answers.ts`)
+  and waits (M521), so these need Chrome or Edge (the browsers with Web Bluetooth and WebUSB, both isolated there) or the
+  computer app. `read(c)` waits for the next notification (`read(c, 'latest')` doesn't) or reads; `read(u, n)` waits
+  up to 4.5 s for bytes. `write` keeps the serial port's meaning (M474) and also takes a characteristic or a USB device;
+  `wireless-lab.ts` imports `serial-lab.ts` first so its `write` is wrapped, not lost.
+- **Headers:** `isolationHeaders` (Hyperion's pages only) adds `usb=(self), serial=(self), bluetooth=(self)` to the
+  Permissions-Policy; the rest of the site keeps `usb=()` (`wireless-lab.test.ts` checks both). The person always picks
+  the device in the browser's own chooser.
+- **Checked:** `wireless-lab.test.ts`; in Chromium `scripts/checks/hyperion-wireless-ui.mjs` (pulse and battery shown,
+  the echo device answers "hello", a script reads three pulses in a loop and the USB echo; axe clean light and dark).
+- **Left out:** Bluetooth Classic (browsers don't offer it), HID devices (WebHID), isochronous USB transfers and choosing
+  among several interfaces; subscribing a script to notifications as callbacks (MATLAB's DataAvailableFcn).

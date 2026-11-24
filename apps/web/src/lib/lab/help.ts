@@ -313,7 +313,7 @@ serialportlist | serialportlist | The device connected in Signals → Devices (a
 serialport | s = serialport(port, baudrate, 'Timeout', 10) | The serial device connected in Signals → Devices (connect it there first: browsers let only the page open ports). Timeout: how many seconds readline waits for a line.
 readline | line = readline(s) | The device's next line: waits for it (up to the port's Timeout) in Chrome, Edge, Firefox and the computer app, inside loops and functions too; empty if none came. In Safari, only lines that arrived before the run.
 writeline | writeline(s, 'LED ON') | Sends text and a new line to the device.
-write | write(s, data, 'uint8') | Sends bytes (or 'string' text) to the device.
+write | write(s, data, 'uint8') | Sends bytes (or 'string' text) to the serial device; write(c, bytes) to a Bluetooth characteristic, write(u, bytes) to a USB device.
 flush | flush(s) | Forgets the lines not read yet.
 arduino | a = arduino() | The Arduino connected in Signals → Devices in Firmata mode (StandardFirmata uploaded), with its pins.
 configurePin | configurePin(a, 'D13', 'DigitalOutput') | Sets a pin's mode: 'DigitalOutput', 'DigitalInput', 'AnalogInput', 'PWM', 'Pullup' or 'Servo'; without a mode, says it.
@@ -322,6 +322,12 @@ readDigitalPin | v = readDigitalPin(a, 'D2') | A digital pin's level, 0 or 1 (it
 readVoltage | v = readVoltage(a, 'A0') | An analog pin's voltage, 0 to 5 V (10 bits).
 writePWMDutyCycle | writePWMDutyCycle(a, 'D9', 0.5) | PWM on a pin: the share of time it is on, 0 to 1.
 writePWMVoltage | writePWMVoltage(a, 'D9', 2.5) | PWM on a pin as an average voltage, 0 to 5 V.
+blelist | names = blelist | The Bluetooth device connected in Signals → Bluetooth & USB (an empty list when none).
+ble | b = ble | The connected Bluetooth Low Energy device: b.Characteristics lists every service and characteristic with what it can do (read, write, notify). Chrome, Edge or the computer app.
+characteristic | c = characteristic(b, "180D", "2A37") | One of the device's characteristics, by its service and characteristic UUID (full, 16-bit, or a name such as "heart_rate").
+read | data = read(c) | A characteristic's value as bytes: the next notification (read(c, 'latest') for the last one) or a fresh read; from a USB device, read(u, n) takes up to n bytes. The script waits for it.
+usbdevlist | names = usbdevlist | The USB device connected in Signals → Bluetooth & USB.
+usbdev | u = usbdev | The connected USB device (its name, VendorID, ProductID): write(u, bytes) and read(u, n) move data through its endpoints.
 iotread | [data, t, names] = iotread('Greenhouse', 'NumPoints', 100, 'Fields', [1 2]) | A Signals → IoT channel's newest readings, read while the script runs (by its name or id): one row per reading, NaN where a field was missing; t in seconds since 1970. Needs Chrome, Edge, Firefox or the computer app.
 iotwrite | r = iotwrite(key, [21.5 40]) | Sends a reading to a channel with its write key, as a device would (one a second at most); r.ok says whether it was taken. Its alerts are checked.
 

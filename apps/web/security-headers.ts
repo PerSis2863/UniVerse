@@ -99,5 +99,7 @@ export const sandboxHeaders = [
 // rest of the site and the page reloads when left (src/components/lab/Isolated.tsx).
 export const isolationHeaders = [
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  // M526: Hyperion's pages may also ask for a USB device (WebUSB; the person picks it), Bluetooth and serial ports.
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(self), serial=(self), bluetooth=(self), interest-cohort=()' },
   { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
 ];
