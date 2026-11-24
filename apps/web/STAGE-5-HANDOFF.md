@@ -12501,3 +12501,12 @@ testing my ai also it was so much slow and not providing answer properly". The l
   base scores (90–92%, social 67%) stand. The agents' add-on (AGENTS_LORA) was trained on the old research and social
   wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
 
+
+## M454: Google sign-in always asks which account (24 Nov)
+
+The owner signed out of a student account in the Hyperion computer app and chose Google again: it signed straight back
+into the same account with no chooser. Google remembers the last account in its own cookies (kept by the app's sign-in
+window, and by a browser), and Firebase's popup skips the chooser unless asked. Fix: `provider.setCustomParameters({
+prompt: 'select_account' })` on the Google provider in `login/page.tsx` and `register/page.tsx` (Microsoft already had
+it). Not set inside `popupSignIn`: `setCustomParameters` replaces the whole object and would drop Microsoft's `tenant`.
+Web only: the computer app loads the live site, so it needs no new build, only the merge.

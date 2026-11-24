@@ -177,6 +177,8 @@ export default function LoginPage() {
     setError('');
     try {
       const provider = new GoogleAuthProvider();
+      // Ask which account (M454), or Google signs straight back into the last one (the Hyperion computer app above all).
+      provider.setCustomParameters({ prompt: 'select_account' });
       const userCredential = await popupSignIn(provider);
       const token = await userCredential.user.getIdToken();
       await handleLoginSuccess(token, 'google');

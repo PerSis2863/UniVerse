@@ -1909,6 +1909,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M451 | The brain asks Ghidra's add-on for the skills it does better (23 Nov) | **Done** (branch) | `ghidra/addon.ts` + `addon-skills.ts` (17 skills), behind "Ghidra's own add-on" (off) and `GHIDRA_LORA`; Gemini for everything else and on any failure. |
 | M452 | The owner's handwritten style for headings (23 Nov) | **Done** (branch) | Shantell Sans (OFL, self-hosted, 116 KB) for h1–h3, card titles, the homes' greeting and the key word; Inter for everything read or pressed; documents keep Inter. |
 | M453 | Ghidra quicker and with whole answers; the weak skills' instructions (23 Nov) | **Done** (branch) | Gemini's thinking kept low and every answer given 1,024+ tokens (`quickThinking`, `geminiFetch`; retried without on a 400); research cites in the summary, social's X 250 and [add …], sponsor reports never name people, class recaps fit the class (the exam's rule too: 0% → 96% re-marked). |
+| M454 | Google sign-in always asks which account (24 Nov) | **Done** (branch) | The owner couldn't switch Google accounts in the Hyperion computer app after signing out: Google went straight back into the last one. `prompt: 'select_account'` on the Google provider in login and register (Microsoft already had it). |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 
