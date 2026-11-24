@@ -3,6 +3,7 @@ import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { FileStore } from './files';
 import { mat, num, str, toMat, type Cell, type Mat, type Struct, type Value } from './values';
+import { inverse } from './ml';
 import { bytes, fullIntC, modelC, planFullInt, quantizeInput, roundTrip, runFullInt, type NetSpec, type Prec, type Spec } from './embedded';
 
 // Hyperion's embedded AI in the language (M481): quantizemodel, modelsize, embedreport and exportmodel, for the neural
@@ -10,16 +11,17 @@ import { bytes, fullIntC, modelC, planFullInt, quantizeInput, roundTrip, runFull
 // with quantize / dlquantizer for deep networks and Coder for learners; these are our own names for plain models.
 // M525: also SVMs (fitcsvm), k-nearest neighbours (fitcknn), tree ensembles (fitcensemble, fitrensemble, TreeBagger)
 // and linear models (fitlm), in single or double; and networks wholly in 8 bits ('int8full', embedded.ts).
+// M529: and SVMs for many classes (fitcecoc), naive Bayes (fitcnb) and linear discriminants (fitcdiscr).
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 1, lab);
 const fld = (m: Struct, k: string) => { const v = m.f.get(k); if (!v) throw new LabError(`This model has no ${k}.`); return v; };
 const NETS = new Set(['ClassificationNeuralNetwork', 'RegressionNeuralNetwork']), TREES = new Set(['ClassificationTree', 'RegressionTree']);
-const OTHERS = new Set(['ClassificationSVM', 'ClassificationKNN', 'ClassificationEnsemble', 'RegressionEnsemble', 'TreeBagger', 'LinearModel', 'GeneralizedLinearModel']);
+const OTHERS = new Set(['ClassificationSVM', 'ClassificationECOC', 'ClassificationNaiveBayes', 'ClassificationDiscriminant', 'ClassificationKNN', 'ClassificationEnsemble', 'RegressionEnsemble', 'TreeBagger', 'LinearModel', 'GeneralizedLinearModel']);
 function modelOf(v: Value | undefined): Struct {
-  if (v?.k !== 'struct' || v.f.get('Type')?.k !== 'str') throw new LabError('Give a trained model (from fitcnet, fitrnet, fitctree, fitrtree, fitcsvm, fitcknn, fitcensemble, fitrensemble, TreeBagger or fitlm).');
+  if (v?.k !== 'struct' || v.f.get('Type')?.k !== 'str') throw new LabError('Give a trained model (from fitcnet, fitrnet, fitctree, fitrtree, fitcsvm, fitcecoc, fitcnb, fitcdiscr, fitcknn, fitcensemble, fitrensemble, TreeBagger or fitlm).');
   const t = textOf(v.f.get('Type')!);
-  if (!NETS.has(t) && !TREES.has(t) && !OTHERS.has(t)) throw new LabError(`${t} isn’t made embedded here: neural networks, decision trees, SVMs, k-nearest neighbours, tree ensembles and linear models are.`);
+  if (!NETS.has(t) && !TREES.has(t) && !OTHERS.has(t)) throw new LabError(`${t} isn’t made embedded here: neural networks, decision trees, SVMs (two classes or many), naive Bayes, discriminants, k-nearest neighbours, tree ensembles and linear models are.`);
   if (t === 'GeneralizedLinearModel' && v.f.has('ClassNames')) throw new LabError('A logistic model isn’t made embedded here (a linear one is).');
   return v;
 }
@@ -36,6 +38,21 @@ function specOf(m: Struct): Spec {
   if (t === 'ClassificationSVM') {
     const { mu, sigma } = stdOf(m), a = toMat(fld(m, 'Alpha')).d, y = toMat(fld(m, 'SupportVectorLabels')).d;
     return { kind: 'svm', sv: rowsOf(toMat(fld(m, 'SupportVectors'))), coef: [...a].map((v, i) => v * y[i]), bias: toMat(fld(m, 'Bias')).d[0], kernel: textOf(fld(m, 'KernelFunction')) as 'rbf', scale: toMat(fld(m, 'KernelScale')).d[0], order: toMat(fld(m, 'PolynomialOrder')).d[0], mu, sigma, classes: classes! };
+  }
+  // M529: one SVM per pair of classes, each with its own standardising; the kernel is shared.
+  if (t === 'ClassificationECOC') {
+    const code = toMat(fld(m, 'CodingMatrix')), learners = (fld(m, 'BinaryLearners') as Cell).d.map((v) => {
+      const l = v as Struct, { mu, sigma } = stdOf(l), a = toMat(fld(l, 'Alpha')).d, y = toMat(fld(l, 'SupportVectorLabels')).d;
+      return { sv: rowsOf(toMat(fld(l, 'SupportVectors'))), coef: [...a].map((x, i) => x * y[i]), bias: toMat(fld(l, 'Bias')).d[0], mu, sigma };
+    });
+    return { kind: 'ecoc', learners, code: rowsOf(code), kernel: textOf(fld(m, 'KernelFunction')) as 'rbf', scale: toMat(fld(m, 'KernelScale')).d[0], order: toMat(fld(m, 'PolynomialOrder')).d[0], inputs, classes: classes! };
+  }
+  if (t === 'ClassificationNaiveBayes') return { kind: 'bayes', mu: rowsOf(toMat(fld(m, 'Mu'))), sd: rowsOf(toMat(fld(m, 'Sigma'))), prior: [...toMat(fld(m, 'Prior')).d], classes: classes! };
+  if (t === 'ClassificationDiscriminant') {
+    // As predict: w_k = Σ⁻¹ μ_k and c_k = −½ w_k · μ_k + log prior_k (Σ itself when it can't be inverted, as predict does).
+    const mu = rowsOf(toMat(fld(m, 'Mu'))), S = rowsOf(toMat(fld(m, 'Sigma'))), inv = inverse(S) ?? S, prior = toMat(fld(m, 'Prior')).d;
+    const w = mu.map((mk) => inv.map((r) => r.reduce((a, x, j) => a + x * mk[j], 0)));
+    return { kind: 'discr', w, c: w.map((wk, k) => wk.reduce((a, x, j) => a + x * mu[k][j], 0) * -0.5 + Math.log(prior[k])), classes: classes! };
   }
   if (t === 'ClassificationKNN') {
     const { mu, sigma } = stdOf(m), X = rowsOf(toMat(fld(m, 'X'))), names = classes!, y = fld(m, 'Y');
@@ -69,6 +86,11 @@ function quantized(m: Struct, p: Prec): Struct {
     if (p === 'int8') throw new LabError(`A ${t} keeps its numbers as 'single' or 'double'.`);
     const round = (k: string) => { const x = m.f.get(k); if (x?.k === 'mat') out.f.set(k, { ...x, d: roundTrip(x.d, p) }); };
     for (const k of ['SupportVectors', 'Alpha', 'Bias', 'KernelScale', 'Mu', 'Sigma', 'Beta', 'X']) round(k);
+    // M529: a many-class SVM's learners each round their own numbers.
+    if (t === 'ClassificationECOC') {
+      const cell = fld(m, 'BinaryLearners') as Cell;
+      out.f.set('BinaryLearners', { ...cell, d: cell.d.map((v) => { const l = v as Struct, f = new Map(l.f); for (const k of ['SupportVectors', 'Alpha', 'Bias', 'KernelScale', 'Mu', 'Sigma']) { const x = l.f.get(k); if (x?.k === 'mat') f.set(k, { ...x, d: roundTrip(x.d, p) }); } return { ...l, f } as Struct; }) });
+    }
     if (t !== 'LinearModel' && t !== 'GeneralizedLinearModel' && m.f.has('Trained')) {
       const cell = fld(m, 'Trained') as Cell;
       out.f.set('Trained', { ...cell, d: cell.d.map((v) => { const s = v as Struct, c = toMat(fld(s, 'CutPoint')); return { ...s, f: new Map([...s.f, ['CutPoint', mat(c.r, c.c, roundTrip(c.d, p))]]) } as Struct; }) });
@@ -93,7 +115,7 @@ def('modelsize', (a) => [num(bytes(specOf(modelOf(a[0])), precOf(a[1] ?? str('do
 def('embedreport', (a, nout, lab) => {
   const m = modelOf(a[0]);
   if (!a[1] || !a[2]) throw new LabError('embedreport(model, X, Y): rows to test on and their answers.');
-  const spec = specOf(m), precs: Prec[] = spec.kind === 'net' ? ['double', 'single', 'int8'] : ['double', 'single'], classes = spec.kind === 'svm' || spec.kind === 'knn' || ((spec.kind === 'net' || spec.kind === 'tree' || spec.kind === 'ensemble') && !!spec.classes);
+  const spec = specOf(m), precs: Prec[] = spec.kind === 'net' ? ['double', 'single', 'int8'] : ['double', 'single'], classes = spec.kind === 'svm' || spec.kind === 'knn' || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' || ((spec.kind === 'net' || spec.kind === 'tree' || spec.kind === 'ensemble') && !!spec.classes);
   const rows = precs.map((p) => ({ p: p as string, size: bytes(spec, p), err: toMat(call(lab, 'loss', quantized(m, p), a[1], a[2])[0]).d[0] }));
   // M525: the network wholly in 8 bits, run exactly as its C would.
   if (spec.kind === 'net') rows.push({ p: 'int8full', size: bytes(spec, 'int8full'), err: fullLoss(spec, toMat(fld(m, 'X')), toMat(a[1]), a[2]) });
@@ -121,7 +143,7 @@ function fullLoss(spec: NetSpec, train: Mat, X: Mat, Y: Value): number {
 def('exportmodel', (a, nout, lab) => {
   const m = modelOf(a[0]), name = a[1] ? textOf(a[1]).replace(/[^A-Za-z0-9_]/g, '_') : 'model';
   let p: Prec = NETS.has(textOf(fld(m, 'Type'))) ? 'int8' : 'single';
-  // (M525: SVMs, k-NN, ensembles and linear models default to single.)
+  // (M525: SVMs, k-NN, ensembles and linear models default to single; M529: many-class SVMs, naive Bayes, discriminants too.)
   for (let i = 2; i + 1 < a.length; i += 2) { if (textOf(a[i]).toLowerCase() !== 'precision') throw new LabError("exportmodel takes 'Precision' ('double', 'single' or 'int8')."); p = precOf(a[i + 1]); }
   const spec = specOf(m);
   if (spec.kind !== 'net') { if (p === 'int8' || p === 'int8full') { if (a.length > 2) throw new LabError(`This model is written with 'single' or 'double' numbers.`); p = 'single'; } }
@@ -130,6 +152,6 @@ def('exportmodel', (a, nout, lab) => {
   const fs = (lab.host as { files?: unknown }).files;
   if (fs instanceof FileStore) { fs.putText(`${name}.c`, out.c); fs.putText(`${name}.h`, out.h); }
   if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['C', str(out.c)], ['H', str(out.h)], ['Bytes', num(bytes(spec, p))]]) } satisfies Struct];
-  lab.host.out(`Wrote ${name}.c and ${name}.h (${bytes(spec, p).toLocaleString()} bytes of ${p} numbers): call ${name}_predict(x${(spec.kind === 'net' && spec.classes && p !== 'int8full') || (spec.kind === 'ensemble' && spec.classes) ? ', scores' : spec.kind === 'svm' ? ', &score' : ''}).\n`);
+  lab.host.out(`Wrote ${name}.c and ${name}.h (${bytes(spec, p).toLocaleString()} bytes of ${p} numbers): call ${name}_predict(x${(spec.kind === 'net' && spec.classes && p !== 'int8full') || (spec.kind === 'ensemble' && spec.classes) || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' ? ', scores' : spec.kind === 'svm' ? ', &score' : ''}).\n`);
   return [];
 });

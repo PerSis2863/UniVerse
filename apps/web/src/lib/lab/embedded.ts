@@ -17,7 +17,13 @@ export interface SvmSpec { kind: 'svm'; sv: number[][]; coef: number[]; bias: nu
 export interface KnnSpec { kind: 'knn'; train: number[][]; label: number[]; k: number; K: number; mu: number[] | null; sigma: number[] | null; classes: string[] }
 export interface EnsSpec { kind: 'ensemble'; trees: { pred: number[]; cut: number[]; left: number[]; right: number[]; value: number[]; probs: number[][] }[]; alpha: number[]; method: 'bag' | 'adaboostm1' | 'adaboostm2' | 'lsboost'; K: number; init: number; classes: string[] | null; inputs: number }
 export interface LinSpec { kind: 'linear'; beta: number[]; intercept: boolean; inputs: number }
-export type Spec = NetSpec | TreeSpec | SvmSpec | KnnSpec | EnsSpec | LinSpec;
+/** M529: fitcecoc's SVMs, one per pair of classes (each its own support vectors and standardising), CODE[class][learner] = −1, 0 or 1. */
+export interface EcocSpec { kind: 'ecoc'; learners: { sv: number[][]; coef: number[]; bias: number; mu: number[] | null; sigma: number[] | null }[]; code: number[][]; kernel: 'linear' | 'rbf' | 'polynomial'; scale: number; order: number; inputs: number; classes: string[] }
+/** M529: naive Bayes (a bell curve per class and input): its means, spreads and priors. */
+export interface BayesSpec { kind: 'bayes'; mu: number[][]; sd: number[][]; prior: number[]; classes: string[] }
+/** M529: a linear discriminant: a score per class w_k · x + c_k, worked out in Hyperion from the means, the shared spread's inverse and the priors. */
+export interface DiscrSpec { kind: 'discr'; w: number[][]; c: number[]; classes: string[] }
+export type Spec = NetSpec | TreeSpec | SvmSpec | KnnSpec | EnsSpec | LinSpec | EcocSpec | BayesSpec | DiscrSpec;
 
 /** One layer's weights as 8-bit whole numbers and their scale. */
 export function quantizeLayer(w: ArrayLike<number>): { q: Int8Array; scale: number } {
@@ -44,6 +50,9 @@ export function bytes(s: Spec, p: Prec): number {
   if (s.kind === 'svm') return (s.sv.length * (s.sv[0]?.length ?? 0) + s.coef.length + 1 + (s.mu ? 2 * s.mu.length : 0)) * f;
   if (s.kind === 'knn') return s.train.length * (s.train[0]?.length ?? 0) * f + s.train.length + (s.mu ? 2 * s.mu.length * f : 0);
   if (s.kind === 'linear') return s.beta.length * f;
+  if (s.kind === 'ecoc') return s.learners.reduce((a, l) => a + l.sv.length * s.inputs + l.coef.length + 1 + (l.mu ? 2 * s.inputs : 0), 0) * f + s.code.length * s.learners.length;
+  if (s.kind === 'bayes') return (2 * s.mu.length * (s.mu[0]?.length ?? 0) + s.prior.length) * f;
+  if (s.kind === 'discr') return (s.w.length * (s.w[0]?.length ?? 0) + s.c.length) * f;
   if (s.kind === 'ensemble') {
     const nodes = s.trees.reduce((a, t) => a + t.pred.length, 0), idx = nodes > 32767 ? 4 : 2;
     const leafBytes = s.K && s.method === 'bag' ? s.K * f : s.K ? 1 : f;
@@ -125,9 +134,14 @@ const classNote = (classes: string[] | null) => (classes ? `/* Classes, by the n
 const std = (T: string, mu: number[] | null, sigma: number[] | null, p: Prec, inputs: number) => (mu && sigma
   ? { arrays: [`static const ${T} MU[${inputs}] = { ${mu.map((x) => num(x, p)).join(', ')} };`, `static const ${T} SIGMA[${inputs}] = { ${sigma.map((x) => num(x, p)).join(', ')} };`], line: `  for (int i = 0; i < ${inputs}; i++) z[i] = (x[i] - MU[i]) / SIGMA[i];` }
   : { arrays: [], line: `  for (int i = 0; i < ${inputs}; i++) z[i] = x[i];` });
-function otherC(s: SvmSpec | KnnSpec | EnsSpec | LinSpec, name: string, p: Prec): { c: string; h: string } {
-  if (p === 'int8' || p === 'int8full') throw new Error(`${s.kind === 'svm' ? 'An SVM' : s.kind === 'knn' ? 'A k-nearest-neighbour model' : s.kind === 'linear' ? 'A linear model' : 'An ensemble'} is written with 'single' or 'double' numbers.`);
+const KIND_NAME: Record<string, string> = { svm: 'An SVM', knn: 'A k-nearest-neighbour model', linear: 'A linear model', ensemble: 'An ensemble', ecoc: 'A many-class SVM', bayes: 'A naive Bayes model', discr: 'A discriminant model' };
+/** The first largest of K scores (an earlier class wins a tie, as Hyperion's predict). */
+const pickTop = (K: number, arr: string) => ['  int top = 0;', `  for (int k = 1; k < ${K}; k++) if (${arr}[k] > ${arr}[top]) top = k;`];
+function otherC(s: SvmSpec | KnnSpec | EnsSpec | LinSpec | EcocSpec | BayesSpec | DiscrSpec, name: string, p: Prec): { c: string; h: string } {
+  if (p === 'int8' || p === 'int8full') throw new Error(`${KIND_NAME[s.kind]} is written with 'single' or 'double' numbers.`);
   const T = p === 'double' ? 'double' : 'float', fn = (f: string) => (p === 'double' ? f : `${f}f`), v = (x: number) => num(x, p);
+  if (s.kind === 'ecoc') return ecocC(s, name, p, T, fn, v);
+  if (s.kind === 'bayes' || s.kind === 'discr') return scoreC(s, name, p, T, fn, v);
   if (s.kind === 'linear') {
     const lines = [`${T} ${name}_predict(const ${T} x[${s.inputs}]) {`, `  ${T} s = 0;`, `  for (int j = 0; j < ${s.inputs}; j++) s += x[j] * B[j + ${s.intercept ? 1 : 0}];`, `  return ${s.intercept ? 'B[0] + s' : 's'};`, '}'];
     return { c: [...head(name, `a linear model, ${p}`), `static const ${T} B[${s.beta.length}] = { ${s.beta.map(v).join(', ')} };`, '', ...lines, ''].join('\n'), h: header(name, `${T} ${name}_predict(const ${T} x[${s.inputs}]);`, '') };
@@ -179,6 +193,57 @@ function otherC(s: SvmSpec | KnnSpec | EnsSpec | LinSpec, name: string, p: Prec)
       s.method === 'lsboost' ? '    s += ALPHA[t] * LEAF[base + n];' : '    s += LEAF[base + n];', '  }', `  return ${s.method === 'lsboost' ? 's' : `s / ${s.trees.length}`};`, '}'];
   const proto = cls ? `int ${name}_predict(const ${T} x[${s.inputs}], ${T} scores[${s.K}]);` : `${T} ${name}_predict(const ${T} x[${s.inputs}]);`;
   return { c: [...head(name, `an ensemble of ${s.trees.length} trees (${s.method}), ${p}`), classNote(s.classes) + arrays.join('\n'), '', ...lines, ''].join('\n'), h: header(name, proto, classNote(s.classes)) };
+}
+
+// ——— M529: SVMs for many classes (fitcecoc), naive Bayes, discriminants ———
+function ecocC(s: EcocSpec, name: string, p: Prec, T: string, fn: (f: string) => string, v: (x: number) => string): { c: string; h: string } {
+  const P = s.inputs, L = s.learners.length, K = s.code.length, svs = s.learners.map((l) => l.sv.length);
+  const starts: number[] = [];
+  let at = 0;
+  for (const n of svs) { starts.push(at); at += n; }
+  const anyStd = s.learners.some((l) => l.mu && l.sigma);
+  const ker = s.kernel === 'rbf' ? `${fn('exp')}(-d / (SCALE * SCALE))` : s.kernel === 'polynomial' ? `${fn('pow')}(1 + d / (SCALE * SCALE), ${s.order})` : 'd / (SCALE * SCALE)';
+  const arrays = [
+    `static const ${T} SV[${at * P}] = {\n${list(s.learners.flatMap((l) => l.sv.flat()), v)}\n};`,
+    `static const ${T} COEF[${at}] = {\n${list(s.learners.flatMap((l) => l.coef), v)}\n};`,
+    `static const int32_t START[${L + 1}] = { ${[...starts, at].join(', ')} };`,
+    `static const ${T} BIAS[${L}] = { ${s.learners.map((l) => v(l.bias)).join(', ')} };`,
+    `static const ${T} SCALE = ${v(s.scale)};`,
+    `static const int8_t CODE[${K * L}] = {\n${list(s.code.flat(), String, 16)}\n};`,
+    ...(anyStd ? [`static const ${T} MU[${L * P}] = {\n${list(s.learners.flatMap((l) => l.mu ?? Array(P).fill(0)), v)}\n};`, `static const ${T} SIGMA[${L * P}] = {\n${list(s.learners.flatMap((l) => l.sigma ?? Array(P).fill(1)), v)}\n};`] : []),
+  ];
+  const lines = [
+    `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]) {`, `  ${T} f[${L}], z[${P}], loss[${K}];`,
+    `  for (int l = 0; l < ${L}; l++) {`,
+    anyStd ? `    for (int j = 0; j < ${P}; j++) z[j] = (x[j] - MU[l * ${P} + j]) / SIGMA[l * ${P} + j];` : `    for (int j = 0; j < ${P}; j++) z[j] = x[j];`,
+    '    f[l] = BIAS[l];', '    for (int q = START[l]; q < START[l + 1]; q++) {', `      ${T} d = 0;`,
+    s.kernel === 'rbf' ? `      for (int j = 0; j < ${P}; j++) { ${T} e = SV[q * ${P} + j] - z[j]; d += e * e; }` : `      for (int j = 0; j < ${P}; j++) d += SV[q * ${P} + j] * z[j];`,
+    `      f[l] += COEF[q] * ${ker};`, '    }', '  }',
+    '  /* hinge-loss decoding: each class\'s average loss over the learners that know it; the smallest wins */',
+    `  for (int k = 0; k < ${K}; k++) {`, `    ${T} sum = 0;`, '    int n = 0;',
+    `    for (int l = 0; l < ${L}; l++) { int c = CODE[k * ${L} + l]; if (c) { ${T} h = 1 - c * f[l]; sum += (h > 0 ? h : 0) / 2; n++; } }`,
+    '    loss[k] = -sum / (n ? n : 1);', '    if (scores) scores[k] = loss[k];', '  }',
+    ...pickTop(K, 'loss'), '  return top;', '}',
+  ];
+  return { c: [...head(name, `${L} support vector machines for ${K} classes, one per pair (${s.kernel} kernel), ${p}`), classNote(s.classes) + arrays.join('\n'), '', ...lines, ''].join('\n'), h: header(name, `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]);`, classNote(s.classes)) };
+}
+function scoreC(s: BayesSpec | DiscrSpec, name: string, p: Prec, T: string, fn: (f: string) => string, v: (x: number) => string): { c: string; h: string } {
+  const K = s.classes.length, bayes = s.kind === 'bayes', P = bayes ? s.mu[0].length : s.w[0].length;
+  // Naive Bayes: log prior − Σ log spread (a constant per class), then − ½ ((x − mean) / spread)² per input.
+  const arrays = bayes
+    ? [`static const ${T} MU[${K * P}] = {\n${list(s.mu.flat(), v)}\n};`, `static const ${T} SD[${K * P}] = {\n${list(s.sd.flat(), v)}\n};`, `static const ${T} BASE[${K}] = { ${s.prior.map((pk, k) => v(Math.log(pk) - s.sd[k].reduce((a, d) => a + Math.log(d), 0))).join(', ')} };`]
+    : [`static const ${T} W[${K * P}] = {\n${list(s.w.flat(), v)}\n};`, `static const ${T} C[${K}] = { ${s.c.map(v).join(', ')} };`];
+  const lines = [
+    `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]) {`, `  ${T} g[${K}], top_g, sum = 0;`,
+    `  for (int k = 0; k < ${K}; k++) {`,
+    bayes ? `    ${T} t = BASE[k];` : `    ${T} t = C[k];`,
+    bayes ? `    for (int j = 0; j < ${P}; j++) { ${T} e = (x[j] - MU[k * ${P} + j]) / SD[k * ${P} + j]; t -= ${p === 'double' ? '0.5' : '0.5f'} * e * e; }` : `    for (int j = 0; j < ${P}; j++) t += W[k * ${P} + j] * x[j];`,
+    '    g[k] = t;', '  }', ...pickTop(K, 'g'),
+    '  /* the chances of each class (softmax), if asked */', '  if (scores) {', '    top_g = g[top];',
+    `    for (int k = 0; k < ${K}; k++) { scores[k] = ${fn('exp')}(g[k] - top_g); sum += scores[k]; }`,
+    `    for (int k = 0; k < ${K}; k++) scores[k] /= sum;`, '  }', '  return top;', '}',
+  ];
+  return { c: [...head(name, `${bayes ? 'naive Bayes, a bell curve per class and input' : 'a linear discriminant'}, ${p}`), classNote(s.classes) + arrays.join('\n'), '', ...lines, ''].join('\n'), h: header(name, `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]);`, classNote(s.classes)) };
 }
 
 // ——— M525: a wholly 8-bit network ———

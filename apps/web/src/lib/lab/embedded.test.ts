@@ -129,4 +129,39 @@ int main(void) { for (int i = 0; i < ${X.r}; i++) printf("%d %d %.6g\\n", n_relu
     const err = got.reduce((s, g, i) => s + Math.abs(g[2] - pg[i]), 0) / X.r;
     expect(err).toBeLessThan(0.15);
   });
+  it.skipIf(!hasCc)('M529: SVMs for many classes, naive Bayes and discriminants in C give Hyperion’s answers on every row', () => {
+    const t = make();
+    t.l.run(`rng(5); load fisheriris;
+      ec = fitcecoc(meas, species, 'Learners', templateSVM('KernelFunction', 'rbf', 'Standardize', true));
+      el = fitcecoc(meas, species);
+      nb = fitcnb(meas, species); da = fitcdiscr(meas, species);
+      exportmodel(ec, 'm_ecoc', 'Precision', 'double'); exportmodel(el, 'm_ecocl', 'Precision', 'double');
+      exportmodel(nb, 'm_nb', 'Precision', 'double'); exportmodel(da, 'm_da', 'Precision', 'single');
+      r = embedreport(nb, meas, species); s1 = modelsize(ec, 'single'); s2 = modelsize(ec, 'double');
+      p1 = predict(ec, meas); p2 = predict(el, meas); p3 = predict(nb, meas); p4 = predict(da, meas); names = ec.ClassNames;`);
+    expect(t.v('s1')[0] * 2).toBeGreaterThan(t.v('s2')[0] - 20);
+    expect(toMat((t.l.vars.get('r') as unknown as { f: Map<string, never> }).f.get('Accuracy')!).d[0]).toBeGreaterThan(90);
+    expect(t.files.text('m_ecoc.c')).toContain('static const int8_t CODE[9]');
+    expect(t.files.text('m_nb.h')).toContain('int m_nb_predict(const double x[4], double scores[3]);');
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-m529-')), all = ['m_ecoc', 'm_ecocl', 'm_nb', 'm_da'];
+    for (const f of all) { writeFileSync(join(dir, `${f}.c`), t.files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), t.files.text(`${f}.h`)); }
+    const X = toMat(t.l.vars.get('meas')!);
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+${all.map((f) => `#include "${f}.h"`).join('\n')}
+static const double X[${X.r}][4] = {${Array.from({ length: X.r }, (_, i) => `{${[0, 1, 2, 3].map((j) => `${X.d[i + j * X.r]}`).join(', ')}}`).join(',\n')}};
+int main(void) {
+  double s[3];
+  for (int i = 0; i < ${X.r}; i++) {
+    float xf[4] = { (float)X[i][0], (float)X[i][1], (float)X[i][2], (float)X[i][3] };
+    printf("%d %d %d %d\\n", m_ecoc_predict(X[i], s), m_ecocl_predict(X[i], 0), m_nb_predict(X[i], s), m_da_predict(xf, 0));
+  }
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), ...all.map((f) => join(dir, `${f}.c`)), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split('\n').map((l) => l.split(' ').map(Number));
+    const txt = (n: string) => (t.l.vars.get(n) as unknown as { d: { v: string }[] }).d.map((x) => x.v), names = txt('names');
+    const want = ['p1', 'p2', 'p3', 'p4'].map((n) => txt(n).map((c) => names.indexOf(c)));
+    for (let k = 0; k < 3; k++) expect(got.map((g) => g[k])).toEqual(want[k]); // double: exactly Hyperion's
+    expect(got.filter((g, i) => g[3] === want[3][i]).length).toBeGreaterThanOrEqual(X.r - 1); // single: at most a near tie apart
+  });
 });

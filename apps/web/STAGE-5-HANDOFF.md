@@ -12919,3 +12919,51 @@ generated code has at most 62 bits (`MAX_FX`), so the 64-bit work below never ov
   the echo device answers "hello", a script reads three pulses in a loop and the USB echo; axe clean light and dark).
 - **Left out:** Bluetooth Classic (browsers don't offer it), HID devices (WebHID), isochronous USB transfers and choosing
   among several interfaces; subscribing a script to notifications as callbacks (MATLAB's DataAvailableFcn).
+
+## M527 (24 Nov): Hyperion IoT alert emails, behind the owner's switch
+
+The owner (24 Nov: "do email alert but give that as a option in owner console so that i can switch email whenever i
+needed"). `feature-switches.ts` gained `iot-email`, "Hyperion IoT alert emails", **opt-in** (off until the owner turns it
+on; stored as `iot-email:on`). `iot.ts` `checkAlerts` reads it once per reading (`featureOff`, cached a minute) and passes
+`email` to `notify`, so a broken rule also emails the channel's owner: only people with email notifications on, inside the
+routine daily email allowance (`claimEmails`), at most once per rule per quiet time (the same claim as the in-app note).
+In-app and push stay as M522 made them. Checked: `iot.test.ts` (off: `email: false`; on: `email: true`),
+`school-switches.test.ts` (the opt-in list).
+
+## M528 (24 Nov): Hyperion fixed-point division and types over 62 bits in C
+
+- **Division** (engine `codegen-lab.ts` `fiDiv`, C `fx_div`): `a ./ b` (and `a / b` by a scalar) keeps the larger word,
+  signed if either, fraction a's minus b's (`quotientType`); `divide(T, a, b)` puts the answer in T, a fi value or
+  `numerictype(s, w, f)` (now also a type maker; `numerictype(a)` still gives the text). The stored quotient is rounded
+  to the nearest step, halves up (floor((2·a·2^s + b) / 2b) after making b positive), held in range; dividing by zero
+  gives the top (or bottom) of the range, 0 / 0 gives 0. The engine works it in BigInt, so it matches the C exactly.
+  A plain number written in the code meets a fi as for the other operators.
+- **Wide types:** up to 62 bits everything is as M524 (int64_t). Past it (to 126 bits, `MAX_FX`) the generator sets
+  `wide`: the working type `fxw_t` (a typedef in the .c) becomes `fx128_t` (`__int128`, typedef'd in the .h with
+  `__extension__` and an `#error` for compilers without it), stored types over 64 bits are `fx128_t` / `ufx128_t`, and
+  ranges and powers of two past 2^52 are written as shifts (`lim`, `p2`) and big literals as m·2^e (`bigX`), never as
+  rounded decimals. A division whose working needs more than 62 bits also turns `wide` on. Every former `(int64_t)` in
+  fixed-point code is `(fxw_t)`.
+- **Checked:** `codegen.test.ts`: the engine's ./ type and values, divide by zero, an 81-bit a·b + c; compiled with
+  `cc -std=c99 -Wall -Werror`, ./ and divide on seven pairs (zeros included) give exactly the engine's stored integers and
+  the 81-bit result is exact in 128 bits.
+- **Left out:** small chips without 128-bit integers (the `#error` says to keep 62 bits), `fimath` rounding and
+  overflow modes, matrix division (`A \ b`, `/` by a fi matrix).
+
+## M529 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants to C
+
+`embedded.ts` gained `EcocSpec`, `BayesSpec`, `DiscrSpec` (`ecocC`, `scoreC`); `embedded-lab.ts` `specOf` reads them from
+`fitcecoc`, `fitcnb` and `fitcdiscr` models, and `quantizemodel` rounds each ECOC learner's own numbers.
+
+- **Same answers as predict:** ECOC runs every pair's SVM with its own standardising (`MU`/`SIGMA` per learner), then
+  hinge-loss decoding (each class's average of max(0, 1 − c·f) / 2 over the learners that know it; the smallest loss
+  wins, an earlier class on a tie). Naive Bayes keeps log prior − Σ log spread per class (`BASE`) and subtracts
+  ½((x − μ)/σ)²; the discriminant's w_k = Σ⁻¹μ_k and c_k = −½ w_k·μ_k + log prior_k are worked out in Hyperion (Σ itself
+  when it can't be inverted, as predict does), so the chip only multiplies and adds. All three return the class and,
+  if asked, scores (ECOC: minus the losses; the others: softmax chances).
+- **Checked:** `embedded.test.ts` compiles four models on iris (ECOC with an RBF kernel standardised, ECOC linear, naive
+  Bayes in double, the discriminant in single): every row in double gives `predict`'s class; single at most one near tie
+  apart.
+- **Left out:** 8-bit versions of these (their numbers are 'single' or 'double'), quadratic discriminants (not in the
+  toolbox), ECOC with learners other than SVMs, one-vs-all coding.
+
