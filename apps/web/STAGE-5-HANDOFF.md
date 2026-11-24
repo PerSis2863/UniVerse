@@ -12990,6 +12990,29 @@ Window: Vehicle → a fifth test **Hook**, Body roll → Suspension (Plain / Str
 1.6 m, the lean (green) on the chart, "Up on two wheels" / "Rolled over at …". Example vehicles.m. Not built: pitch and
 dive, the car tumbling after it rolls, kerb trips (only tyre forces tip it), anti-dive and anti-squat.
 
+## M489c (24 Nov): Hyperion aeroplanes, all six directions at once, and wind
+
+`flight.ts`: `flight6(ac, T, o)`, a rigid body in body axes (u, v, w; p, q, r), the attitude as a **quaternion**
+(renormalised each step; `eulerOf`, `quatOf` ZYX), position north, east, height; RK4 at 5 ms. Euler's equations with
+Ixz (Stevens & Lewis); gravity rotated into the body. Aerodynamics from the velocity **relative to the air**: lift, drag
+and Cm as `flightSim` (same `liftCoef`, `dragCoef`, `thrust`), side force, Cl and Cn from `Lateral` (stability-axis
+derivatives used in body axes: fine at a light aeroplane's small α, said so). It starts in trim relative to the air
+(the ground velocity is the trim's plus the steady wind). `Wind`: steady [N E D] (the air's velocity), a vertical
+'1 − cos' gust (flown through at the trim airspeed, `up` + up so the wind's down part is −up), Dryden-like turbulence
+(each direction a first-order filter, time constant L/V, σ, seeded mulberry32 + Box–Muller: repeatable). Autopilots as
+the two separate runs, the height hold's pitch target raised by the turn's extra lift (α_trim·(1/cos φ − 1)). Checked:
+level trim holds 60 s within 2 m; an elevator doublet matches `flightSim` (h to 1 m, V to 0.1 m/s); an aileron pulse's
+bank within 15% of `lateralSim`; a held 90° turn ends within 3° and 30 m, pulls > 1.1 g; hands off it sinks > 20 m; a
+10 m/s crosswind carries it 600 m east in a minute with the airspeed unchanged; a headwind's ground speed; a 1 − cos
+gust's Δn between 0.1 and the sharp-edged formula; turbulence rms near σ and the same seed gives the same flight.
+Language: `aircraftSim6DOF(ac, T, …)` (headings in degrees, controls in radians; 'Wind', 'Gust', 'Turbulence',
+'TurbulenceScale', 'Seed') → a table and info (Stalled, Crashed, Min/MaxHeight, Max/MinLoadFactor), drawn in 3D.
+Window: Aeroplane → a third Motion **All six, wind** (`SixBench.tsx`): Turn (Autopilot holds / Hands off), Crosswind
+(the nose stays north, the track drifts; wind arrows), Gust, Rough (light, moderate, severe); from above, with bank,
+height change and extra g below. Vehicle's Test row now wraps (`className="flex-wrap"`, five choices didn't fit 22 rem).
+Browser check tabs `hook`, `drag`, `single`, `six` (and `Several` for the renamed switch). Example flight.m. Not built:
+engine-out yaw, the propeller's torque and slipstream, wind shear with height, landing gear on the ground.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

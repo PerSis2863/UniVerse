@@ -140,7 +140,7 @@ export function TurnBench({ switcher }: { switcher: ReactNode }) {
         <label className={label}>Time <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{run.t[k].toFixed(1)} s</span>
           <input type="range" min={0} max={n - 1} step={1} value={k} onChange={(e) => { setPlaying(false); setK(Number(e.target.value)); }} className="mt-1 w-full accent-violet-600" />
         </label>
-        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Height and speed are held at the trim’s (the extra lift a turn needs isn’t modelled). In code: <span className="font-mono">aircraftLateralModes</span>, <span className="font-mono">aircraftLateralSim</span> (example: flight.m).</p>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Height and speed are held at the trim’s here (All six, wind adds the extra lift a turn needs). In code: <span className="font-mono">aircraftLateralModes</span>, <span className="font-mono">aircraftLateralSim</span> (example: flight.m).</p>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The aeroplane from above">
         <div ref={box} className="flex min-h-0 flex-1 flex-col gap-2 p-3">

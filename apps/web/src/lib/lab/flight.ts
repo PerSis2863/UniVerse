@@ -222,3 +222,152 @@ export function lateralSim(ac: Aircraft, T: number, o: { V?: number; h?: number;
   }
   return out;
 }
+
+// ——— The whole aeroplane, six ways at once, and wind (M489c) ———
+// A rigid body free in all six directions: body-axis velocities (u forward, v right, w down), rates (p roll, q pitch,
+// r yaw), its attitude as a quaternion (no lock at a vertical climb), and where it is (north, east, height). The air's
+// forces come from the velocity relative to the air, so wind, gusts and turbulence act through the angle of attack and
+// sideslip they make: lift, drag and the pitching moment as in `flightSim`, the side force, rolling and yawing moments
+// from the `Lateral` derivatives (written for stability axes; at a light aeroplane's small angles the body axes are
+// near enough). Together they give what the separate runs leave out: a banked turn needs more lift, so it slows and
+// sinks unless the pilot pulls and adds power.
+export interface Wind {
+  /** Steady wind, the air's velocity (m/s) north, east and down (a wind from the west blowing east is [0 5 0]). */
+  steady?: [number, number, number];
+  /** A '1 − cos' vertical gust: starting at `at` seconds, `length` metres long (flown through at the airspeed), up to
+   * `up` m/s (+ up). */
+  gust?: { at: number; length: number; up: number };
+  /** Dryden turbulence: its strength (m/s rms in each direction; about 1.5 light, 3 moderate, 6 severe), the length
+   * scale (m, 533 at medium heights) and a seed so a run repeats. */
+  turbulence?: { sigma: number; scale?: number; seed?: number };
+}
+export interface F6State { n: number; e: number; h: number; u: number; v: number; w: number; p: number; q: number; r: number; q0: number; q1: number; q2: number; q3: number }
+type Air = [number, number, number];
+/** The body-to-earth rotation of a quaternion applied to a body vector, and its transpose. */
+const toEarth = (s: F6State, x: Air): Air => {
+  const { q0: a, q1: b, q2: c, q3: d } = s;
+  return [
+    (a * a + b * b - c * c - d * d) * x[0] + 2 * (b * c - a * d) * x[1] + 2 * (b * d + a * c) * x[2],
+    2 * (b * c + a * d) * x[0] + (a * a - b * b + c * c - d * d) * x[1] + 2 * (c * d - a * b) * x[2],
+    2 * (b * d - a * c) * x[0] + 2 * (c * d + a * b) * x[1] + (a * a - b * b - c * c + d * d) * x[2],
+  ];
+};
+const toBody = (s: F6State, x: Air): Air => {
+  const { q0: a, q1: b, q2: c, q3: d } = s;
+  return [
+    (a * a + b * b - c * c - d * d) * x[0] + 2 * (b * c + a * d) * x[1] + 2 * (b * d - a * c) * x[2],
+    2 * (b * c - a * d) * x[0] + (a * a - b * b + c * c - d * d) * x[1] + 2 * (c * d + a * b) * x[2],
+    2 * (b * d + a * c) * x[0] + 2 * (c * d - a * b) * x[1] + (a * a - b * b - c * c + d * d) * x[2],
+  ];
+};
+/** Roll, pitch and yaw (rad) of a quaternion, and a quaternion of them. */
+export const eulerOf = (s: F6State) => ({
+  phi: Math.atan2(2 * (s.q0 * s.q1 + s.q2 * s.q3), 1 - 2 * (s.q1 * s.q1 + s.q2 * s.q2)),
+  theta: Math.asin(Math.max(-1, Math.min(1, 2 * (s.q0 * s.q2 - s.q3 * s.q1)))),
+  psi: Math.atan2(2 * (s.q0 * s.q3 + s.q1 * s.q2), 1 - 2 * (s.q2 * s.q2 + s.q3 * s.q3)),
+});
+export function quatOf(phi: number, theta: number, psi: number) {
+  const [cf, sf, ct, st, cp, sp] = [Math.cos(phi / 2), Math.sin(phi / 2), Math.cos(theta / 2), Math.sin(theta / 2), Math.cos(psi / 2), Math.sin(psi / 2)];
+  return { q0: cf * ct * cp + sf * st * sp, q1: sf * ct * cp - cf * st * sp, q2: cf * st * cp + sf * ct * sp, q3: cf * ct * sp - sf * st * cp };
+}
+interface Ctl { de: number; da: number; dr: number; thr: number }
+function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air) {
+  // The air's velocity in body axes, and the aeroplane's through it.
+  const wb = toBody(s, windE), ur = s.u - wb[0], vr = s.v - wb[1], wr = s.w - wb[2], V = Math.hypot(ur, vr, wr) || 1e-6;
+  const alpha = Math.atan2(wr, ur), beta = Math.asin(Math.max(-1, Math.min(1, vr / V))), rho = isa(s.h).rho, qS = 0.5 * rho * V * V * ac.S;
+  const cl = liftCoef(ac, alpha, c.de, (s.q * ac.c) / (2 * V)), L = qS * cl, D = qS * dragCoef(ac, cl, alpha), T = thrust(ac, V, s.h, c.thr);
+  const ph = (s.p * ac.b) / (2 * V), rh = (s.r * ac.b) / (2 * V);
+  const Y = qS * (lat.cyb * beta + lat.cydr * c.dr);
+  const Lm = qS * ac.b * (lat.clb * beta + lat.clp * ph + lat.clr * rh + lat.clda * c.da + lat.cldr * c.dr);
+  const Mm = qS * ac.c * (ac.cm0 + ac.cma * alpha + ac.cmq * ((s.q * ac.c) / (2 * V)) + ac.cmde * c.de);
+  const Nm = qS * ac.b * (lat.cnb * beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * c.da + lat.cndr * c.dr);
+  const g = toBody(s, [0, 0, G0]);
+  const Fx = T + L * Math.sin(alpha) - D * Math.cos(alpha), Fz = -L * Math.cos(alpha) - D * Math.sin(alpha);
+  const du = Fx / ac.m + g[0] + s.r * s.v - s.q * s.w, dv = Y / ac.m + g[1] + s.p * s.w - s.r * s.u, dw = Fz / ac.m + g[2] + s.q * s.u - s.p * s.v;
+  // Euler's equations with the Ixz product: [Ixx −Ixz; −Ixz Izz]·[ṗ; ṙ] = [L + …; N + …].
+  const { ixx, izz, ixz } = lat, iyy = ac.iyy;
+  const l2 = Lm + ixz * s.p * s.q - (izz - iyy) * s.q * s.r, n2 = Nm - ixz * s.q * s.r - (iyy - ixx) * s.p * s.q, det = ixx * izz - ixz * ixz;
+  const dp = (izz * l2 + ixz * n2) / det, dr = (ixz * l2 + ixx * n2) / det, dq = (Mm - (ixx - izz) * s.p * s.r - ixz * (s.p * s.p - s.r * s.r)) / iyy;
+  const pos = toEarth(s, [s.u, s.v, s.w]);
+  return {
+    d: { n: pos[0], e: pos[1], h: -pos[2], u: du, v: dv, w: dw, p: dp, q: dq, r: dr, q0: -0.5 * (s.q1 * s.p + s.q2 * s.q + s.q3 * s.r), q1: 0.5 * (s.q0 * s.p + s.q2 * s.r - s.q3 * s.q), q2: 0.5 * (s.q0 * s.q + s.q3 * s.p - s.q1 * s.r), q3: 0.5 * (s.q0 * s.r + s.q1 * s.q - s.q2 * s.p) } as F6State,
+    V, alpha, beta, nz: -Fz / (ac.m * G0),
+  };
+}
+const KEYS6: (keyof F6State)[] = ['n', 'e', 'h', 'u', 'v', 'w', 'p', 'q', 'r', 'q0', 'q1', 'q2', 'q3'];
+const add6 = (a: F6State, b: F6State, k: number) => Object.fromEntries(KEYS6.map((x) => [x, a[x] + k * b[x]])) as unknown as F6State;
+
+/** A seeded random number generator (mulberry32) and normal numbers from it. */
+function normals(seed: number) {
+  let a = seed >>> 0 || 1;
+  const u = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  return () => Math.sqrt(-2 * Math.log(u() || 1e-12)) * Math.cos(2 * Math.PI * u());
+}
+
+export interface Flight6Run {
+  t: number[]; n: number[]; e: number[]; h: number[]; V: number[]; ground: number[]; alpha: number[]; beta: number[];
+  phi: number[]; theta: number[]; psi: number[]; p: number[]; q: number[]; r: number[]; nz: number[]; wind: Air[];
+  de: number[]; da: number[]; dr: number[]; thr: number[]; stalled: boolean; crashed: boolean;
+}
+/** Flies the whole aeroplane from level trim at V0 (airspeed) and h0, heading north, for T seconds (5 ms steps).
+ * Controls added to the trim (elevator, aileron, rudder in rad; throttle), or the autopilots: height and speed as in
+ * `flightSim`, a heading (rad, banking up to `maxBank`) with the turn coordinator as in `lateralSim`, a yaw damper. */
+export function flight6(ac: Aircraft, T: number, o: {
+  V0?: number; h0?: number; lat?: Lateral; wind?: Wind;
+  elevator?: (t: number) => number; aileron?: (t: number) => number; rudder?: (t: number) => number; throttle?: (t: number) => number;
+  holdHeight?: (t: number) => number; holdSpeed?: number; holdHeading?: (t: number) => number; maxBank?: number; yawDamper?: boolean; points?: number;
+} = {}): Flight6Run {
+  const lat = o.lat ?? LAT_DEFAULT, tr = trim(ac, o.V0 ?? 50, o.h0 ?? 1000), dt = 0.005, n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1500)));
+  const W = o.wind ?? {}, steady: Air = W.steady ?? [0, 0, 0], clamp = (x: number, m: number) => Math.max(-m, Math.min(m, x)), maxBank = o.maxBank ?? (30 * Math.PI) / 180;
+  // Starting in trim relative to the air: the ground velocity is the trim's plus the steady wind.
+  let s: F6State = { n: 0, e: 0, h: tr.h, u: tr.state.u, v: 0, w: tr.state.w, p: 0, q: 0, r: 0, ...quatOf(0, tr.state.th, 0) };
+  const wb0 = toBody(s, steady);
+  s = { ...s, u: s.u + wb0[0], v: s.v + wb0[1], w: s.w + wb0[2] };
+  // Dryden turbulence, the MIL-F-8785C forms: each direction white noise through a first-order filter with time
+  // constant L/V (the vertical one is near enough the same at this level of detail).
+  const tb = W.turbulence, rnd = normals(tb?.seed ?? 1), Lt = tb?.scale ?? 533, turb: Air = [0, 0, 0];
+  let iv = 0, rLow = 0, stalled = false, crashed = false, gustStart = NaN;
+  const out: Flight6Run = { t: [], n: [], e: [], h: [], V: [], ground: [], alpha: [], beta: [], phi: [], theta: [], psi: [], p: [], q: [], r: [], nz: [], wind: [], de: [], da: [], dr: [], thr: [], stalled: false, crashed: false };
+  for (let k = 0; k <= n; k++) {
+    const t = k * dt;
+    // The wind now: steady, plus the gust (flown through at the airspeed), plus turbulence.
+    let up = 0;
+    if (W.gust && t >= W.gust.at) {
+      if (Number.isNaN(gustStart)) gustStart = t;
+      const into = (t - gustStart) * tr.V;
+      if (into < W.gust.length) up = (W.gust.up / 2) * (1 - Math.cos((2 * Math.PI * into) / W.gust.length));
+    }
+    if (tb && tb.sigma > 0) { const a = Math.exp((-tr.V * dt) / Lt), b = tb.sigma * Math.sqrt(1 - a * a); for (let i = 0; i < 3; i++) turb[i] = a * turb[i] + b * rnd(); }
+    const wind: Air = [steady[0] + turb[0], steady[1] + turb[1], steady[2] + turb[2] - up];
+    const e = eulerOf(s), f = deriv6(ac, lat, s, { de: 0, da: 0, dr: 0, thr: 0 }, wind);
+    let de = tr.de + (o.elevator ? o.elevator(t) : 0), thr = tr.throttle + (o.throttle ? o.throttle(t) : 0), da = o.aileron ? o.aileron(t) : 0, dr = o.rudder ? o.rudder(t) : 0;
+    const hdot = f.d.h;
+    if (o.holdHeight) {
+      // As flightSim's, the pitch wanted raised by the turn's extra lift (1/cos φ − 1 of the trim's angle).
+      const climb = clamp(0.12 * (o.holdHeight(t) - s.h), 5), turnLift = tr.alpha * (1 / Math.max(0.5, Math.cos(e.phi)) - 1);
+      const thWant = tr.alpha + turnLift + clamp(0.03 * (climb - hdot) + climb / Math.max(f.V, 1), 0.25);
+      // Pitch in the body is the pitch rate along the bank: q ≈ θ̇ / cos φ in a turn, so the error is taken in θ.
+      de = tr.de + 2.0 * (e.theta - thWant) + 0.6 * s.q;
+    }
+    if (o.holdSpeed !== undefined) { const err = o.holdSpeed - f.V; iv += err * dt; thr = clamp(tr.throttle + 0.08 * err + 0.02 * iv, 1); }
+    if (o.holdHeading) { const want = clamp(1.2 * Math.atan2(Math.sin(o.holdHeading(t) - e.psi), Math.cos(o.holdHeading(t) - e.psi)), maxBank); da += 1.5 * (want - e.phi) - 0.35 * s.p; dr += -1.5 * f.beta; }
+    if (o.yawDamper) dr += 1.2 * (s.r - rLow);
+    de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
+    const c: Ctl = { de, da, dr, thr }, g = deriv6(ac, lat, s, c, wind);
+    if (g.alpha > ac.alphaStall) stalled = true;
+    if (k % every === 0 || k === n) {
+      const pos = toEarth(s, [s.u, s.v, s.w]);
+      out.t.push(t); out.n.push(s.n); out.e.push(s.e); out.h.push(s.h); out.V.push(g.V); out.ground.push(Math.hypot(pos[0], pos[1])); out.alpha.push(g.alpha); out.beta.push(g.beta);
+      out.phi.push(e.phi); out.theta.push(e.theta); out.psi.push(e.psi); out.p.push(s.p); out.q.push(s.q); out.r.push(s.r); out.nz.push(g.nz); out.wind.push(wind);
+      out.de.push(de); out.da.push(da); out.dr.push(dr); out.thr.push(thr);
+    }
+    if (k === n) break;
+    if (s.h < 0) { crashed = true; break; }
+    const k1 = g.d, k2 = deriv6(ac, lat, add6(s, k1, dt / 2), c, wind).d, k3 = deriv6(ac, lat, add6(s, k2, dt / 2), c, wind).d, k4 = deriv6(ac, lat, add6(s, k3, dt), c, wind).d;
+    s = Object.fromEntries(KEYS6.map((x) => [x, s[x] + (dt / 6) * (k1[x] + 2 * k2[x] + 2 * k3[x] + k4[x])])) as unknown as F6State;
+    // Keep the quaternion a unit one.
+    const qn = Math.hypot(s.q0, s.q1, s.q2, s.q3); s.q0 /= qn; s.q1 /= qn; s.q2 /= qn; s.q3 /= qn;
+    rLow += ((s.r - rLow) * dt) / 2;
+  }
+  return { ...out, stalled, crashed };
+}

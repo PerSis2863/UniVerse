@@ -20,7 +20,7 @@ export function SingleBench({ switcher }: { switcher: ReactNode }) {
   const [routeName, setRouteName] = useState<RouteName>('metro');
   const [each, setEach] = useState(2);
   const [gap, setGap] = useState(10);
-  const [offset, setOffset] = useState(2);
+  const [offset, setOffset] = useState(0);
   const [late, setLate] = useState(0);
   const [tracks, setTracks] = useState(2);
   const [pad, setPad] = useState(5);

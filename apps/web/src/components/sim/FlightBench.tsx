@@ -8,6 +8,7 @@ import { useMedia } from '@/lib/use-media';
 import { PLANE_DEFAULT, flightSim, modes, performance, trim } from '@/lib/lab/flight';
 import { ui } from './bench-ui';
 import { TurnBench } from './TurnBench';
+import { SixBench } from './SixBench';
 
 // Hyperion Simulate → Machines → Aeroplane (M489): a light aeroplane seen from the side, flying from level flight
 // through one of four manoeuvres (a nudge of the elevator that sets off the phugoid, more power, a 150 m climb by the
@@ -18,12 +19,13 @@ type Move = 'nudge' | 'power' | 'climb' | 'stall';
 const deg = (r: number) => (r * 180) / Math.PI;
 const SPEEDUP = 4;
 
-// Up and down (M489) or turning (M489b, TurnBench): one switch at the top of either settings panel.
-type Motion = 'pitch' | 'turn';
+// Up and down (M489), turning (M489b, TurnBench) or all six at once with wind (M489c, SixBench): one switch at the top
+// of each settings panel.
+type Motion = 'pitch' | 'turn' | 'six';
 export function FlightBench() {
   const [motion, setMotion] = useState<Motion>('pitch');
-  const switcher = <Segmented<Motion> label="Motion" value={motion} onChange={setMotion} segments={[{ value: 'pitch', label: 'Up and down' }, { value: 'turn', label: 'Turning' }]} />;
-  return motion === 'pitch' ? <PitchBench switcher={switcher} /> : <TurnBench switcher={switcher} />;
+  const switcher = <Segmented<Motion> label="Motion" value={motion} onChange={setMotion} segments={[{ value: 'pitch', label: 'Up and down' }, { value: 'turn', label: 'Turning' }, { value: 'six', label: 'All six, wind' }]} />;
+  return motion === 'pitch' ? <PitchBench switcher={switcher} /> : motion === 'turn' ? <TurnBench switcher={switcher} /> : <SixBench switcher={switcher} />;
 }
 
 function PitchBench({ switcher }: { switcher: ReactNode }) {

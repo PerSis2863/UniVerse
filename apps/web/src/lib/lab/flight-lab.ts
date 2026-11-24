@@ -121,3 +121,34 @@ def('aircraftLateralSim', (a, nout, lab) => {
   call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', row(r.t), row(d(r.phi)), row(r.t), row(d(r.beta))); call(lab, 'legend', str('bank (°)'), str('sideslip (°)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
   return [];
 });
+// The whole aeroplane, six ways at once, and wind (M489c).
+def('aircraftSim6DOF', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError("aircraftSim6DOF needs the aeroplane and the time: aircraftSim6DOF(aircraft(), 60, 'HoldHeading', 90, 'HoldHeight', 1000, 'Wind', [0 10 0]).");
+  const ac = acOf(a[0]), T = toMat(a[1]).d[0], o = pairs(a, 2), rad = (x: number) => (x * Math.PI) / 180, d = (v: number[]) => v.map((x) => (x * 180) / Math.PI);
+  if (!(T > 0 && T <= 900)) throw new LabError('aircraftSim6DOF runs up to 900 s (steps of 5 ms).');
+  const V0 = o.get('speed') ? toMat(o.get('speed')!).d[0] : 50, h0 = o.get('height') ? toMat(o.get('height')!).d[0] : 1000;
+  const tr = fl.trim(ac, V0, h0);
+  if (!tr.ok) throw new LabError(`It can't fly level at ${V0} m/s and ${h0} m (${tr.alpha >= ac.alphaStall ? 'below the stall speed' : 'not enough power or elevator'}).`);
+  const fn = (k: string, what: string) => (o.get(k) ? fnOf(lab, o.get(k)!, what) : undefined), num1 = (k: string) => (o.get(k) ? toMat(o.get(k)!).d[0] : undefined);
+  // Wind: 'Wind' [north east down] (the air's velocity, m/s), 'Gust' [start (s) length (m) up (m/s)], 'Turbulence' its
+  // strength (m/s rms) with 'TurbulenceScale' (m) and 'Seed'.
+  const wind: fl.Wind = {};
+  if (o.get('wind')) { const w = toMat(o.get('wind')!).d; if (w.length !== 3 || ![...w].every((x) => Math.abs(x) <= 60)) throw new LabError("'Wind' is [north east down] in m/s (the way the air moves), each up to 60."); wind.steady = [w[0], w[1], w[2]]; }
+  if (o.get('gust')) { const g = toMat(o.get('gust')!).d; if (g.length !== 3 || !(g[0] >= 0 && g[1] > 0 && Math.abs(g[2]) <= 30)) throw new LabError("'Gust' is [start (s) length (m) up (m/s)]: a '1 − cos' gust, up to 30 m/s."); wind.gust = { at: g[0], length: g[1], up: g[2] }; }
+  const sig = num1('turbulence');
+  if (sig !== undefined) { if (!(sig >= 0 && sig <= 15)) throw new LabError("'Turbulence' is its strength, 0 to 15 m/s (1.5 light, 3 moderate, 6 severe)."); wind.turbulence = { sigma: sig, scale: num1('turbulencescale'), seed: num1('seed') }; }
+  const head = fn('holdheading', 'The heading to hold');
+  const r = fl.flight6(ac, T, {
+    V0, h0, lat: latOf(o.get('lateral')), wind,
+    elevator: fn('elevator', 'The elevator'), aileron: fn('aileron', 'The aileron'), rudder: fn('rudder', 'The rudder'), throttle: fn('throttle', 'The throttle'),
+    holdHeight: fn('holdheight', 'The height to hold'), holdSpeed: num1('holdspeed'), holdHeading: head && ((t: number) => rad(head(t))),
+    maxBank: o.get('maxbank') ? rad(toMat(o.get('maxbank')!).d[0]) : undefined, yawDamper: o.get('yawdamper') ? !!toMat(o.get('yawdamper')!).d[0] : false,
+  });
+  const info = struct([['Stalled', r.stalled ? 1 : 0], ['Crashed', r.crashed ? 1 : 0], ['MinHeight', Math.min(...r.h)], ['MaxHeight', Math.max(...r.h)], ['MaxLoadFactor', Math.max(...r.nz)], ['MinLoadFactor', Math.min(...r.nz)]]);
+  if (nout > 0) return [table([['Time', col(r.t)], ['North', col(r.n)], ['East', col(r.e)], ['Height', col(r.h)], ['Airspeed', col(r.V)], ['GroundSpeed', col(r.ground)], ['Alpha', col(d(r.alpha))], ['Sideslip', col(d(r.beta))], ['Bank', col(d(r.phi))], ['Pitch', col(d(r.theta))], ['Heading', col(d(r.psi))], ['RollRate', col(d(r.p))], ['PitchRate', col(d(r.q))], ['YawRate', col(d(r.r))], ['LoadFactor', col(r.nz)], ['Elevator', col(r.de)], ['Aileron', col(r.da)], ['Rudder', col(r.dr)], ['Throttle', col(r.thr)]]), info];
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot3', row(r.e), row(r.n), row(r.h), str('LineWidth'), num(2)); call(lab, 'grid', str('on'));
+  call(lab, 'xlabel', str('east (m)')); call(lab, 'ylabel', str('north (m)')); call(lab, 'zlabel', str('height (m)')); call(lab, 'title', str(r.crashed ? 'It reached the ground' : r.stalled ? 'The wing stalled' : 'The flight path'));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', row(r.t), row(d(r.phi)), row(r.t), row(d(r.theta)), row(r.t), row(r.nz.map((x) => 10 * x)));
+  call(lab, 'legend', str('bank (°)'), str('pitch (°)'), str('load factor ×10')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
+  return [];
+});

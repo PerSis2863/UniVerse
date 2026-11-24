@@ -204,6 +204,16 @@ figure; aircraftPerformance(ac)
 aircraftLateralModes(ac, 50, 1000)
 figure; aircraftLateralSim(ac, 40, 'HoldHeading', 90, 'MaxBank', 30)            % the autopilot turns right
 figure; aircraftLateralSim(ac, 15, 'Rudder', @(t) 0.15*(t > 0.5 & t < 1), 'YawDamper', 1)  % a rudder kick, damped
+% The whole aeroplane at once: a half turn holding height and speed, then hands off (it sinks), and wind
+ac = aircraft();
+figure; aircraftSim6DOF(ac, 50, 'HoldHeading', 180, 'MaxBank', 35, 'HoldHeight', 1000, 'HoldSpeed', 50, 'YawDamper', 1)
+[~, held] = aircraftSim6DOF(ac, 50, 'HoldHeading', 180, 'MaxBank', 35, 'HoldHeight', 1000, 'HoldSpeed', 50, 'YawDamper', 1);
+[~, loose] = aircraftSim6DOF(ac, 50, 'HoldHeading', 180, 'MaxBank', 35);
+fprintf('Held: lowest %.0f m, %.2f g; hands off: lowest %.0f m\\n', held.MinHeight, held.MaxLoadFactor, loose.MinHeight)
+cw = aircraftSim6DOF(ac, 60, 'Wind', [0 10 0], 'HoldHeading', 0, 'HoldHeight', 1000, 'HoldSpeed', 50);
+fprintf('A 10 m/s crosswind carried it %.0f m east in a minute\\n', cw.East(end))
+[~, g] = aircraftSim6DOF(ac, 8, 'Gust', [2 60 4]);
+fprintf('A 4 m/s gust: up to %.2f g\\n', g.MaxLoadFactor)
 ` },
   { name: 'orbits.m', code: `% Space flight: orbits, ground tracks, transfers and rockets (metres, m/s, degrees)
 Re = 6378137;

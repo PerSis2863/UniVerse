@@ -148,7 +148,7 @@ export function VehicleBench() {
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Vehicle settings" data-no-motion>
         <div className="space-y-2">
           <span className={label}>Test</span>
-          <Segmented<Test> label="Test" value={test} onChange={setTest} segments={[{ value: 'sinedwell', label: 'Sine' }, { value: 'step', label: 'Step' }, { value: 'ramp', label: 'Ramp' }, { value: 'circle', label: 'Circle' }, { value: 'fishhook', label: 'Hook' }]} />
+          <Segmented<Test> label="Test" className="flex-wrap" value={test} onChange={setTest} segments={[{ value: 'sinedwell', label: 'Sine' }, { value: 'step', label: 'Step' }, { value: 'ramp', label: 'Ramp' }, { value: 'circle', label: 'Circle' }, { value: 'fishhook', label: 'Hook' }]} />
           <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{explain[test]}{rollNote}</p>
         </div>
         <div className="space-y-2">
