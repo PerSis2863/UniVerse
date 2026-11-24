@@ -12926,6 +12926,27 @@ drag (a small satellite, average Sun)", a fifth orbit **Skimming** (175 km, turn
 down in" in place of "Round in", "burnt up" at the end. Example orbits.m. Not built: the Sun's cycle (F10.7) and
 NRLMSISE-00, a satellite's attitude changing its area, solar radiation pressure.
 
+## M491d (24 Nov): Hyperion railways, 25 kV AC lines
+
+`rail.ts`: `Supply.ac` (`xs` the transformer's reactance, `xline` Ω/km, the trains' power factor, the neutral
+section's length); `SUPPLIES.ac25` (rail return, 0.17 + j0.42 Ω/km), `ac25bt` (booster transformers, 0.21 + j0.6),
+`ac25at` (2 × 25 kV autotransformers, about a third: 0.06 + j0.15), all 27.5 kV no-load, 17.5–29 kV (EN 50163), feeder
+stations every 50 km with a 20 MVA, 10% transformer (0.3 + j3.1 Ω), pf 0.95. These impedances are typical round
+figures, said so in help. `solveSupply` sends AC to `solveAc`: **each substation feeds only its own stretch** out to
+the neutral sections midway to its neighbours (different phases, never paralleled), so each stretch is a radial tree:
+backward sweep (a span carries the currents of every train beyond it), forward sweep (V drops by Z·I span by span),
+`I = conj(S/V)` with S = P + jP·tanφ drawing and unity braking, the current capped at |S|/vmin as in DC, 60 damped
+passes. The grid takes all braking back (negative substation power); braking is cut by 0.9 a pass only past vmax.
+`supplyFor`: trains get no power inside a neutral section (`neutralAt`, logged as `neutral` seconds); **a train stopped
+in one would be stuck**, so after 30 s it's let through and counted in `stuck`. Checked: the resistive drop by hand
+(V = 27.5 kV − 1.7·P/V at 10 km), the far substation gives nothing, reactance more than doubles the drop, pf 0.8 lower
+still, AT above plain above BT, three intercity trains coast through the 50 km neutral section with nothing tripped or
+burnt. Language: `'Supply', 'ac25' | 'ac25bt' | 'ac25at'`, or a struct with Xs, Xline, PowerFactor or Neutral (then
+AC); `NeutralSeconds` in the supply struct. Window: Several trains → intercity → the power supply → 3 kV DC / 25 kV AC
+/ 2 × 25 kV, substations every 20–100 km, neutral sections as red bands on the train graph, kV in the facts, "Braking
+to the grid". Example railways.m. Not built: rail-to-earth voltages and interference, the grid's unbalance from
+single-phase loads, harmonics, storage on the line.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

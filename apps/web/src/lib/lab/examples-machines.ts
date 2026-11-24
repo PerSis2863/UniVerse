@@ -258,5 +258,10 @@ mix = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0
 figure; railLine('metro', trainModel('metro'), (0:4)*60, 'Block', 400, 'Supply', 'metro', 'SubstationSpacing', 2600)
 [~, ~, sup] = railLine('metro', trainModel('metro'), (0:4)*60, 'Block', 400, 'Supply', 'metro', 'SubstationSpacing', 5200);
 fprintf('Substations only at the ends: down to %.0f V, trains tripped for %.0f s\\n', sup.MinVoltage, sup.TrippedSeconds)
+% 25 kV AC: rail return against autotransformers, three intercity trains five minutes apart
+for s = {'ac25', 'ac25at'}
+  [~, ~, ac] = railLine('intercity', trainModel('intercity'), [0 300 600], 'Supply', s{1});
+  fprintf('%s: lowest %.1f kV, %.0f kWh from the grid, %.0f s coasting through neutral sections\\n', s{1}, ac.MinVoltage/1000, ac.FromSubstationsKWh, ac.NeutralSeconds)
+end
 ` },
 ];

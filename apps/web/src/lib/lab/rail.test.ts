@@ -69,6 +69,34 @@ describe('Hyperion railways (M491)', () => {
     expect(far.log.tripped).toBeGreaterThan(0);
     expect(Math.max(...far.run.trains.map((x) => x.arrive))).toBeGreaterThan(Math.max(...rl.railLine(r, Array.from({ length: 5 }, (_, k) => ({ train: t, depart: k * 60 })), { block: 400 }).trains.map((x) => x.arrive)));
   });
+  it('25 kV AC (M491d): the phasor drop by hand, reactance and power factor, single-end feeding, neutral sections', () => {
+    const L = 100000, base = rl.SUPPLIES.ac25(L), sup = { ...base, rs: 0, subs: [0, 100000], ac: { ...base.ac!, xs: 0, xline: 0, pf: 1 } };
+    // Resistance only, unity power factor, 10 km out: V = 27500 − 1.7·P/V.
+    const one = rl.solveSupply(sup, [10000], [5e6]), V = one.volts[0];
+    expect(V).toBeCloseTo(27500 - (1.7 * 5e6) / V, 0);
+    // Only the near substation feeds it (the far one is past the neutral section).
+    expect(one.subPower[1]).toBe(0); expect(one.subPower[0]).toBeCloseTo(5e6 + one.loss, -3);
+    // Reactance and a lagging power factor sag it far more than the resistance alone.
+    const real = rl.solveSupply(base, [40000], [8e6]).volts[0], noX = rl.solveSupply({ ...base, ac: { ...base.ac!, xline: 0, xs: 0 } }, [40000], [8e6]).volts[0];
+    expect(27500 - real).toBeGreaterThan(2 * (27500 - noX));
+    expect(rl.solveSupply({ ...base, ac: { ...base.ac!, pf: 0.8 } }, [40000], [8e6]).volts[0]).toBeLessThan(real);
+    // Autotransformers hold it higher than plain rail return, booster transformers lower.
+    expect(rl.solveSupply(rl.SUPPLIES.ac25at(L), [40000], [8e6]).volts[0]).toBeGreaterThan(real);
+    expect(rl.solveSupply(rl.SUPPLIES.ac25bt(L), [40000], [8e6]).volts[0]).toBeLessThan(real);
+    // A braking train feeds the grid back (negative substation power, nothing burnt).
+    const back = rl.solveSupply(base, [20000], [-3e6]);
+    expect(back.subPower[0]).toBeLessThan(0); expect(back.given[0]).toBe(-3e6);
+    // On the intercity line: trains coast through the neutral section at 50 km and all braking is taken.
+    const r = rl.ROUTES.intercity(), t = rl.TRAINS.intercity, feed = rl.supplyFor(rl.SUPPLIES.ac25(rl.routeLength(r)), 0.5);
+    const run = rl.railLine(r, [0, 300, 600].map((d) => ({ train: t, depart: d })), { supply: feed.step });
+    expect(feed.log.neutral).toBeGreaterThan(3); expect(feed.log.stuck).toBe(0); expect(feed.log.tripped).toBe(0);
+    expect(feed.log.regenWastedKwh).toBeLessThan(0.01 * feed.log.regenUsedKwh);
+    expect(Math.min(...feed.log.minVolt)).toBeGreaterThan(19000);
+    expect(run.trains.every((x) => Number.isFinite(x.arrive))).toBe(true);    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, ~, a] = railLine('intercity', trainModel('intercity'), [0 300], 'Supply', 'ac25at'); [~, ~, b] = railLine('intercity', trainModel('intercity'), [0 300], 'Supply', struct('Xline', 0.42, 'PowerFactor', 0.8, 'Substations', [0 100000])); figure; railLine('intercity', trainModel('intercity'), [0 300], 'Supply', 'ac25');");
+    const f = (n: string, k: string) => { const v = lab.vars.get(n); return v?.k === 'struct' ? toMat(v.f.get(k)!).d[0] : NaN; };
+    expect(f('a', 'MinVoltage')).toBeGreaterThan(f('b', 'MinVoltage')); expect(f('a', 'NeutralSeconds')).toBeGreaterThan(0); expect(f('b', 'NeutralSeconds')).toBeGreaterThan(0);
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     lab.run("t = trainModel('metro'); r = railRoute('metro'); [x, info] = trainRun(t, r, 'Coast', 0.1); m = info.Minutes; mine = railRoute([1000 0 0 80; 500 10 400 60], [0 1500]); [y, yi] = trainRun(t, mine); [h, n] = railHeadway(trainModel('intercity'), 200, 'Moving', 1); figure; trainRun(trainModel('intercity'), 'intercity'); vmax = t.MaxSpeed; [lt, lruns] = railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'fixed', 'Block', 400); dl = lt.Delay; nr = numel(lruns); figure; railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'moving'); lm = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0 300]); hm = lm.Held; [st, sr, sinfo] = railLine('metro', trainModel('metro'), [0 60 120], 'Supply', 'metro', 'SubstationSpacing', 2600); mv = sinfo.MinVoltage; figure; railLine('metro', trainModel('metro'), [0 60], 'Supply', struct('Vnom', 750, 'V0', 825, 'Vmin', 500, 'Vmax', 950, 'Rs', 0.02, 'Rline', 0.03, 'Substations', [0 5200]));");

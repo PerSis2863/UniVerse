@@ -201,17 +201,29 @@ export function railLine(r: Route, trains: LineTrain[], o: { signals?: 'fixed' |
 // iterated to agree. A train's current is limited at what its power needs at the line's lowest voltage; below its
 // nominal voltage it gets that share of its power, under the lowest it trips; braking that would push the line past its
 // highest is burnt in the train's resistors.
-export interface Supply { vnom: number; v0: number; vmin: number; vmax: number; rs: number; rline: number; subs: number[] }
+export interface Supply {
+  vnom: number; v0: number; vmin: number; vmax: number; rs: number; rline: number; subs: number[];
+  /** A 25 kV AC line (M491d): each substation's transformer reactance (Ω), the line's reactance (Ω/km), the trains'
+   * power factor drawing power, and the neutral section's length (m) midway between substations. */
+  ac?: { xs: number; xline: number; pf: number; neutral: number };
+}
 /** Typical DC lines: 750 V (metro, third rail) and 3 kV (main line), substations every 2 km and 15 km. */
 export const SUPPLIES: Record<string, (L: number) => Supply> = {
   metro: (L) => ({ vnom: 750, v0: 825, vmin: 500, vmax: 950, rs: 0.02, rline: 0.03, subs: spaced(L, 2000) }),
   intercity: (L) => ({ vnom: 3000, v0: 3400, vmin: 2000, vmax: 3900, rs: 0.08, rline: 0.04, subs: spaced(L, 15000) }),
+  // 25 kV 50 Hz (EN 50163: 27.5 kV no-load and highest held, 17.5 kV lowest), feeder stations every 50 km, each a
+  // 20 MVA transformer (10%: about 3.1 Ω, mostly reactance). Rail return (booster transformers add a little more):
+  // ~0.17 + j0.42 Ω/km; autotransformers (2 × 25 kV) feed at 50 kV, so a train sees about a third of that.
+  ac25: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.17, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.42, pf: 0.95, neutral: 200 } }),
+  ac25bt: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.21, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.6, pf: 0.95, neutral: 200 } }),
+  ac25at: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.06, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.15, pf: 0.95, neutral: 200 } }),
 };
 /** Substations every `every` metres from the start, the last at the end. */
 export function spaced(L: number, every: number) { const n = Math.max(1, Math.round(L / every)); return Array.from({ length: n + 1 }, (_, i) => (L * i) / n); }
-export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number }
+export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number; neutral: number; stuck: number }
 /** One moment: the voltage at each train and what each substation gives, for trains at `s` drawing `p` (W). */
 export function solveSupply(sup: Supply, s: number[], p: number[]) {
+  if (sup.ac) return solveAc(sup, s, p);
   type Node = { x: number; sub: boolean; k: number };
   const nodes: Node[] = [...sup.subs.map((x, k) => ({ x, sub: true, k })), ...s.map((x, k) => ({ x, sub: false, k }))].sort((a, b) => a.x - b.x || (a.sub ? -1 : 1));
   const n = nodes.length, V = new Array<number>(n).fill(sup.v0), on = sup.subs.map(() => true), chop = s.map(() => false), GC = 1e3;
@@ -255,8 +267,9 @@ export function solveSupply(sup: Supply, s: number[], p: number[]) {
 }
 /** A supply for `railLine`: returns the step function it calls and the log it fills. */
 export function supplyFor(sup: Supply, dt: number) {
-  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0 };
+  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0, neutral: 0, stuck: 0 };
   let time = 0;
+  const gap: number[] = [];
   const step = (s: number[], p: number[]) => {
     const r = solveSupply(sup, s, p), j = 3.6e6;
     const back = p.reduce((q, x) => q + Math.max(0, -x), 0), givenBack = r.given.reduce((q, x) => q + Math.max(0, -x), 0);
@@ -266,7 +279,69 @@ export function supplyFor(sup: Supply, dt: number) {
     log.fromSubsKwh += (r.subPower.reduce((q, x) => q + x, 0) * dt) / j; log.lossKwh += (r.loss * dt) / j;
     log.regenUsedKwh += (givenBack * dt) / j; log.regenWastedKwh += ((back - givenBack) * dt) / j;
     time += dt;
-    return r.volts.map((v, k) => { if (v < sup.vmin && p[k] > 0) { log.tripped += dt; return 0; } return Math.min(1, v / sup.vnom); });
+    return r.volts.map((v, k) => {
+      if (v < sup.vmin && p[k] > 0) { log.tripped += dt; return 0; }
+      // An AC train coasts through each neutral section (the two sides are different phases): power off there.
+      // One stopped in it would be stuck (a real one needs rescuing): after 30 s it's let through and counted.
+      if (sup.ac && neutralAt(sup, s[k])) { gap[k] = (gap[k] ?? 0) + dt; if (gap[k] <= 30) { log.neutral += dt; return 0; } if (gap[k] - dt <= 30) log.stuck++; } else gap[k] = 0;
+      return Math.min(1, v / sup.vnom);
+    });
   };
   return { step, log };
+}
+
+// ——— 25 kV AC (M491d) ———
+// Each substation feeds its own stretch, out to the neutral sections midway to its neighbours (they are on different
+// phases of the grid, so never joined): every stretch is a tree from its substation, solved by sweeping back (each
+// span carries the currents of the trains beyond it) and forward (each train's voltage is the last one's less the
+// span's impedance times its current), the trains' currents conj(S / V) iterated to agree. Voltages are phasors: the
+// line's reactance and the trains' power factor matter more than its resistance. The grid takes braking back, so it is
+// burnt only if it would lift a train past the highest voltage.
+type Cx = [number, number];
+const cmul = (a: Cx, b: Cx): Cx => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+const cabs = (a: Cx) => Math.hypot(a[0], a[1]);
+/** Midpoints between substations: where the neutral sections are. */
+const neutrals = (sup: Supply) => sup.subs.slice(1).map((x, k) => (x + sup.subs[k]) / 2);
+export const neutralAt = (sup: Supply, s: number) => !!sup.ac && neutrals(sup).some((m) => Math.abs(s - m) < sup.ac!.neutral / 2);
+function solveAc(sup: Supply, s: number[], p: number[]) {
+  const ac = sup.ac!, mids = neutrals(sup), n = s.length, tanPhi = Math.tan(Math.acos(Math.max(0.3, Math.min(1, ac.pf))));
+  const feeder = s.map((x) => mids.filter((m) => m <= x).length), zl: Cx = [sup.rline / 1000, ac.xline / 1000], zt: Cx = [sup.rs, ac.xs];
+  let V: Cx[] = s.map(() => [sup.v0, 0]);
+  const given = p.slice(), I: Cx[] = s.map(() => [0, 0]), subI: Cx[] = sup.subs.map(() => [0, 0]);
+  let loss = 0;
+  for (let it = 0; it < 60; it++) {
+    // Each train's current: S = P + jQ (lagging when drawing, unity when braking), I = conj(S / V), limited at what its
+    // power needs at the lowest voltage.
+    for (let i = 0; i < n; i++) {
+      const P = given[i], Q = P > 0 ? P * tanPhi : 0, v = V[i], m2 = v[0] * v[0] + v[1] * v[1] || 1;
+      let c: Cx = [(P * v[0] + Q * v[1]) / m2, (P * v[1] - Q * v[0]) / m2];
+      const cap = Math.hypot(P, Q) / sup.vmin, k = cabs(c);
+      if (k > cap) c = [(c[0] * cap) / k, (c[1] * cap) / k];
+      I[i] = c;
+    }
+    const nv: Cx[] = V.map((x) => [x[0], x[1]]);
+    loss = 0;
+    sup.subs.forEach((x0, k) => {
+      const mine = s.map((_, i) => i).filter((i) => feeder[i] === k), tot: Cx = mine.reduce<Cx>((q, i) => [q[0] + I[i][0], q[1] + I[i][1]], [0, 0]);
+      subI[k] = tot;
+      const zd = cmul(zt, tot), bus: Cx = [sup.v0 - zd[0], -zd[1]];
+      loss += sup.rs * (tot[0] ** 2 + tot[1] ** 2);
+      for (const side of [-1, 1]) {
+        const out = mine.filter((i) => (s[i] - x0) * side > 0 || (side === 1 && s[i] === x0)).sort((a, b) => Math.abs(s[a] - x0) - Math.abs(s[b] - x0));
+        let carry: Cx = out.reduce<Cx>((q, i) => [q[0] + I[i][0], q[1] + I[i][1]], [0, 0]), v: Cx = bus, at = x0;
+        for (const i of out) {
+          const d = cmul(zl, carry), len = Math.abs(s[i] - at);
+          v = [v[0] - d[0] * len, v[1] - d[1] * len]; loss += (sup.rline / 1000) * len * (carry[0] ** 2 + carry[1] ** 2);
+          nv[i] = v; carry = [carry[0] - I[i][0], carry[1] - I[i][1]]; at = s[i];
+        }
+      }
+    });
+    let change = 0;
+    V = V.map((x, i) => { change = Math.max(change, cabs([nv[i][0] - x[0], nv[i][1] - x[1]])); return [0.5 * x[0] + 0.5 * nv[i][0], 0.5 * x[1] + 0.5 * nv[i][1]]; });
+    // Braking that would lift a train past the highest voltage is cut back (the rest burnt on board).
+    s.forEach((_, i) => { if (given[i] < 0 && cabs(V[i]) > sup.vmax) given[i] *= 0.9; });
+    if (change < 1e-2 && it > 3) break;
+  }
+  // A substation's power from the grid: Re(E·conj(I)); negative while braking trains feed back more than others draw.
+  return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given };
 }
