@@ -12947,3 +12947,28 @@ acetic acid's titration (pKa half way, 8.72 at equivalence); the adiabatic rise 
 unstable middle, hot) each checked against c = cin/(1 + kτ) and the energy balance. Not built: reactors with pressure
 drop or changing volume, Langmuir–Hinshelwood and other non-mass-action rate laws, activity models past Davies
 (Pitzer), temperature-dependent Ka, a tank that oscillates (the slope test can't see it).
+
+## M514 (24 Nov): Hyperion neuroscience, the left-outs
+
+From M496's "Not built". `neuro-plus.ts` (pure) and its language part at the end of `neuro-lab.ts`. **Cable**
+(`cable`): n compartments, sealed ends, axial coupling 1000·d/(4·Ri·dx²) mS/cm² (d, dx in cm), the injected nA spread
+over the compartment's side area; each step the HH gates by exponential Euler, then the voltages by backward Euler
+along the cable (Thomas' algorithm), as NEURON does. Passive: leak 1/Rm to the rest; active: HH's own leak and
+channels (Rm is ignored), rates × 3^((°C − 6.3)/10). Recorded at most 4000 times and 2 million values; first arrival
+at 0 mV per compartment, the speed from a line through the middle half. `cableNeuron`'s defaults switch with
+'Active': the squid giant axon (476 µm, 35.4 Ω·cm, 5 cm, 500 compartments, 18.5 °C, 2000 nA for 0.5 ms) against a
+thin passive 1 mm dendrite. **Synapses** (`kernel`, `conductance`): exponential, alpha, or two exponentials normalised
+to peak 1 (the peak at τrτd/(τd − τr) ln(τd/τr)). **STDP** (`stdpChange`, `songNeuron`): Song, Miller and Abbott's
+2000 neuron, conductances relative to the leak; Poisson inputs drawn per step as a Poisson count spread over random
+inputs (the same process as independent trains); each input's potentiation trace decays lazily (stored with its last
+time), so a post spike costs one pass over the weights. **Spike sorting** (`detect`, `sortSpikes`): σ = median|x| /
+0.6745, threshold crossings aligned on the peak within 1 ms, dead time, windows of 'Pre' / 'Post' ms; `pca` and
+`kmeans` from ml.ts; the automatic k (1–6) by the mean silhouette on ≤ 600 spikes, a k counted only if every cluster
+holds 5% (a cluster of noise crossings had won otherwise); units numbered by mean peak size. Language: `cableNeuron`,
+`synapseConductance`, `stdpWindow`, `stdpNeuron`, `detectSpikes`, `spikeSort`. Example `brain.m`. Tests: the passive
+cable's V(L)/V(0) = 1/cosh(L/λ) and its λ, τ; the axon at 18.5 °C between 17.5 and 20 m/s (HH's computed 18.8; 18.6
+here) and slower when cold; the kernels' peaks; the pair rule; Song's neuron fast at first, settling under 40 Hz with
+over 60% of weights near 0 or the maximum after 1000 s (1.4 s to run); two simulated units in noise found (> 90%) and
+told apart (> 95%). Not built: branched morphologies (SWC files), channels other than HH's, synapses on the cable,
+plasticity rules other than pair-based additive STDP, filtering raw recordings before sorting (pass a band-passed
+signal), reading electrophysiology files (ABF, NWB).

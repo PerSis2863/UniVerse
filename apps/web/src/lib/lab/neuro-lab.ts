@@ -3,10 +3,12 @@ import { random } from './builtins';
 import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Value } from './values';
 import * as nr from './neuro';
-import { call, col, def, need, nums, options, optNum, record, row, rows } from './sci-kit';
+import * as np from './neuro-plus';
+import { call, col, def, lines, need, nums, one, options, optNum, optText, record, row, rows } from './sci-kit';
 
 // Hyperion's neuroscience in the language (M496): hodgkinHuxley, lifNeuron, lifRate, izhikevich, izhNetwork,
-// lifNetwork, poissonSpikes, spikeTimes, isiStats, fanoFactor, psth, rasterPlot, spikeXcorr. Our own names (MATLAB has
+// lifNetwork, poissonSpikes, spikeTimes, isiStats, fanoFactor, psth, rasterPlot, spikeXcorr; M514: cableNeuron,
+// synapseConductance, stdpWindow, stdpNeuron, detectSpikes, spikeSort. Our own names (MATLAB has
 // no neuron models; its spike-train tools are third-party).
 
 /** The current: a number (a step from 'Start' to 'Stop' ms), or one value per time step. */
@@ -131,5 +133,93 @@ def('spikeXcorr', (a, nout, lab) => {
   const r = nr.crossCorrelogram([...x].sort((p, q) => p - q), [...y].sort((p, q) => p - q), maxLag, bin);
   if (nout > 0) return [row(r.counts), row(r.lags)];
   call(lab, 'bar', row(r.lags), row(r.counts), num(1)); call(lab, 'xlabel', str('Lag (ms): the second train after the first')); call(lab, 'ylabel', str('Count')); call(lab, 'title', str('Cross-correlogram')); call(lab, 'grid', str('on'));
+  return [];
+});
+
+// ——— M514 ———
+def('cableNeuron', (a, nout, lab) => {
+  const o = options(a, 0, ['Length', 'Diameter', 'Compartments', 'Ri', 'Rm', 'Cm', 'Active', 'Current', 'At', 'Start', 'Stop', 'Time', 'Step', 'Celsius', 'Rest'], 'cableNeuron');
+  const d = np.CABLE, active = one(o.get('Active'), 0) !== 0;
+  const c: np.CableOpts = {
+    length: optNum(o, 'Length', active ? 50000 : d.length), diam: optNum(o, 'Diameter', active ? 476 : d.diam), n: Math.round(optNum(o, 'Compartments', active ? 500 : d.n)),
+    Ri: optNum(o, 'Ri', active ? 35.4 : d.Ri), Rm: optNum(o, 'Rm', d.Rm), Cm: optNum(o, 'Cm', d.Cm), active, I: optNum(o, 'Current', active ? 2000 : d.I),
+    at: Math.round(optNum(o, 'At', 1)) - 1, start: optNum(o, 'Start', 0), stop: optNum(o, 'Stop', active ? 0.5 : Infinity), T: optNum(o, 'Time', active ? 8 : d.T),
+    dt: optNum(o, 'Step', d.dt), rest: optNum(o, 'Rest', d.rest), celsius: optNum(o, 'Celsius', active ? 18.5 : d.celsius),
+  };
+  if (!(c.length > 0 && c.diam > 0 && c.Ri > 0 && c.Rm > 0 && c.Cm > 0 && c.T > 0 && c.dt > 0 && c.dt <= 0.05)) throw new LabError("cableNeuron: 'Length', 'Diameter' (µm), 'Ri' (Ω·cm), 'Rm' (Ω·cm²), 'Cm' (µF/cm²) and 'Time' are positive; 'Step' at most 0.05 ms.");
+  if (!(c.n >= 2 && c.n <= 2000 && c.at >= 0 && c.at < c.n)) throw new LabError("'Compartments' is 2 to 2000 and 'At' one of them (1 is the left end).");
+  if ((c.T / c.dt) * c.n > 4e7) throw new LabError('That cable is too long for its time: fewer compartments, a shorter time or a larger step.');
+  const r = np.cable(c);
+  if (nout > 0) return [col(r.t), row(r.x), rows(r.V), num(r.speed), row(r.arrival)];
+  call(lab, 'subplot', num(2), num(1), num(1));
+  call(lab, 'imagesc', row(r.x), row(r.t), rows(r.V)); call(lab, 'colorbar');
+  call(lab, 'xlabel', str('Position along the cable (µm)')); call(lab, 'ylabel', str('Time (ms)'));
+  call(lab, 'title', str(Number.isFinite(r.speed) ? `A spike travels at ${r.speed.toFixed(1)} m/s` : `Length constant λ = ${r.lambda.toFixed(0)} µm, time constant τ = ${r.tau.toFixed(2)} ms`));
+  call(lab, 'subplot', num(2), num(1), num(2));
+  const pick = [0, Math.floor(c.n / 4), Math.floor(c.n / 2), Math.floor((3 * c.n) / 4), c.n - 1];
+  lines(lab, r.t, pick.map((i) => r.V.map((v) => v[i])), pick.map((i) => `${r.x[i].toFixed(0)} µm`), 'Time (ms)', 'mV', active ? 'Voltage at five places' : 'The voltage spreads and fades');
+  return [];
+});
+def('synapseConductance', (a, nout, lab) => {
+  const sp = nums(a[0], 'The spike times (ms)'), t = nums(a[1], 'The times (ms)'), o = options(a, 2, ['Rise', 'Decay', 'Gmax'], 'synapseConductance');
+  const rise = optNum(o, 'Rise', 0), decay = optNum(o, 'Decay', 5), g = optNum(o, 'Gmax', 1);
+  if (!(decay > 0 && rise >= 0 && t.length <= 1e6 && sp.length <= 1e5)) throw new LabError("'Decay' (ms) is positive and 'Rise' ≥ 0 (0 a sudden rise, equal to 'Decay' an alpha function).");
+  const v = np.conductance(sp, t, rise, decay, g);
+  if (nout > 0) return [row(v)];
+  lines(lab, t, [v], [], 'Time (ms)', 'Conductance', 'Synaptic conductance');
+  return [];
+});
+const stdpKeys = ['Aplus', 'Ratio', 'TauPlus', 'TauMinus'];
+def('stdpWindow', (a, nout, lab) => {
+  const o = options(a, 0, stdpKeys, 'stdpWindow'), Ap = optNum(o, 'Aplus', 0.005), Am = Ap * optNum(o, 'Ratio', 1.05), tp = optNum(o, 'TauPlus', 20), tm = optNum(o, 'TauMinus', 20);
+  const d = Array.from({ length: 201 }, (_, i) => -100 + i), w = d.map((x) => np.stdpChange(x, Ap, Am, tp, tm));
+  if (nout > 0) return [row(d), row(w)];
+  lines(lab, d, [w], [], 'Post − pre spike time (ms)', 'Weight change (share of the maximum)', 'Spike-timing-dependent plasticity'); call(lab, 'xline', num(0), str('--'));
+  return [];
+});
+def('stdpNeuron', (a, nout, lab) => {
+  const o = options(a, 0, ['Seconds', 'Inputs', 'Rate', 'Inhibitory', 'Gmax', 'Ginh', ...stdpKeys], 'stdpNeuron'), d = np.SONG;
+  const p: np.Song = { ...d, seconds: optNum(o, 'Seconds', d.seconds), nEx: Math.round(optNum(o, 'Inputs', d.nEx)), rateEx: optNum(o, 'Rate', d.rateEx), nIn: Math.round(optNum(o, 'Inhibitory', d.nIn)), gmax: optNum(o, 'Gmax', d.gmax), gIn: optNum(o, 'Ginh', d.gIn), Ap: optNum(o, 'Aplus', d.Ap), ratio: optNum(o, 'Ratio', d.ratio), tauP: optNum(o, 'TauPlus', d.tauP), tauM: optNum(o, 'TauMinus', d.tauM) };
+  if (!(p.seconds > 0 && p.seconds <= 3600 && p.nEx >= 1 && p.nEx <= 5000 && p.nIn >= 0 && p.rateEx >= 0 && p.gmax > 0 && p.Ap >= 0 && p.ratio >= 0 && p.tauP > 0 && p.tauM > 0)) throw new LabError("stdpNeuron: up to 3600 'Seconds' and 5000 'Inputs'; rates, 'Gmax' and time constants positive.");
+  const r = np.songNeuron(p, random);
+  if (nout > 0) return [row(r.w), row(r.rate), rows(r.snaps.length ? r.snaps : [[]])];
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'histogram', row(r.w), num(25));
+  call(lab, 'xlabel', str('Weight ÷ the maximum')); call(lab, 'ylabel', str('Inputs')); call(lab, 'title', str(`After ${p.seconds} s: ${r.w.filter((x) => x > 0.8).length} strong, ${r.w.filter((x) => x < 0.2).length} weak`));
+  call(lab, 'subplot', num(2), num(1), num(2));
+  lines(lab, r.rate.map((_, i) => i + 1), [r.rate], [], 'Time (s)', 'Output (Hz)', 'The neuron settles as its inputs compete');
+  return [];
+});
+const sortKeys = ['Threshold', 'Polarity', 'Pre', 'Post', 'DeadTime', 'Clusters'];
+function sortOpts(a: Value[], name: string): np.SortOpts {
+  const o = options(a, 2, sortKeys, name), d = np.SORT, pol = optText(o, 'Polarity', d.polarity).toLowerCase();
+  if (pol !== 'neg' && pol !== 'pos' && pol !== 'both') throw new LabError("'Polarity' is 'neg', 'pos' or 'both'.");
+  const s: np.SortOpts = { threshold: optNum(o, 'Threshold', d.threshold), polarity: pol, pre: optNum(o, 'Pre', d.pre), post: optNum(o, 'Post', d.post), dead: optNum(o, 'DeadTime', d.dead), clusters: Math.round(optNum(o, 'Clusters', 0)) };
+  if (!(s.threshold > 0 && s.pre >= 0 && s.post > 0 && s.dead >= 0 && s.clusters >= 0 && s.clusters <= 20)) throw new LabError("'Threshold' (× the noise) is positive, 'Pre' and 'Post' in ms, 'Clusters' 0 (automatic) to 20.");
+  return s;
+}
+const recording = (a: Value[]) => {
+  const x = nums(a[0], 'The recording'), fs = need(a[1], 'The sampling rate (Hz)');
+  if (x.length < 10 || x.length > 2e7 || !(fs >= 1000)) throw new LabError('A recording (a filtered voltage, one value per sample) and its sampling rate in Hz (1000 or more).');
+  return { x, fs };
+};
+def('detectSpikes', (a) => {
+  const { x, fs } = recording(a), r = np.detect(x, fs, sortOpts(a, 'detectSpikes'));
+  return [col(r.peaks.map((p) => p / fs)), rows(r.waves.length ? r.waves : [[]]), num(r.threshold)];
+});
+def('spikeSort', (a, nout, lab) => {
+  const { x, fs } = recording(a), o = sortOpts(a, 'spikeSort'), r = np.sortSpikes(x, fs, o, random);
+  if (r.peaks.length > 20000) throw new LabError(`${r.peaks.length} crossings: raise 'Threshold' or sort a shorter piece.`);
+  if (nout > 0) return [col(r.peaks.map((p) => p / fs)), col(r.cluster), rows(r.waves.length ? r.waves : [[]]), rows(r.score.length ? r.score : [[]])];
+  const tw = r.waves[0]?.map((_, j) => ((j - r.pre) * 1000) / fs) ?? [];
+  call(lab, 'subplot', num(1), num(2), num(1));
+  const means = Array.from({ length: r.k }, (_, c) => { const w = r.waves.filter((_, i) => r.cluster[i] === c + 1); return tw.map((_, j) => w.reduce((s, v) => s + v[j], 0) / Math.max(1, w.length)); });
+  lines(lab, tw, means, means.map((_, c) => `Unit ${c + 1}: ${r.cluster.filter((x) => x === c + 1).length} spikes`), 'Time from the peak (ms)', 'Mean waveform', `${r.peaks.length} spikes, ${r.k} unit${r.k === 1 ? '' : 's'}`);
+  call(lab, 'subplot', num(1), num(2), num(2));
+  if (r.score.length) {
+    call(lab, 'hold', str('on'));
+    for (let c = 1; c <= r.k; c++) { const s = r.score.filter((_, i) => r.cluster[i] === c); if (s.length) call(lab, 'plot', row(s.map((v) => v[0])), row(s.map((v) => v[1] ?? 0)), str('.')); }
+    call(lab, 'hold', str('off'));
+  }
+  call(lab, 'xlabel', str('PC 1')); call(lab, 'ylabel', str('PC 2')); call(lab, 'title', str('Waveforms by their principal components')); call(lab, 'grid', str('on'));
   return [];
 });

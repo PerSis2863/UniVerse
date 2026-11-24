@@ -1890,6 +1890,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M511 | Hyperion pharmacokinetics, the left-outs | **Done** (on `claude/hyperion-sciences-industries`) | a lag time ('Lag'), three compartments ('Q3', 'V3'), `pkEffect` (Emax / Hill, an effect site with ke0), `pkFit` (a model fitted to measured levels after known doses, with 95% intervals) |
 | M512 | Hyperion DNA tools, the left-outs | **Done** (on `claude/hyperion-sciences-industries`) | `fastaread` / `fastawrite`, `genbankread`, NCBI's 27 genetic codes (`geneticcode`, nt2aa's 'GeneticCode'), PAM250 ('ScoringMatrix'), `multialign` (progressive, ClustalW-style) and `seqconsensus` |
 | M513 | Hyperion chemistry, the left-outs | **Done** (on `claude/hyperion-sciences-industries`) | the periodic table and `molarMass`, `balanceEquation`, acids with several protons, buffers and titrations (`polyproticPH`, `bufferPH`, `acidSpecies`, `titrationCurve`, Davies' activities), reactors that heat up (`heatedBatch`, `cstrSteadyStates`) |
+| M514 | Hyperion neuroscience, the left-outs | **Done** (on `claude/hyperion-sciences-industries`) | a cable neuron (passive, or the squid axon conducting at 18.6 m/s), synaptic conductances with their own time course, STDP (`stdpWindow`, Song, Miller and Abbott's `stdpNeuron`), spike sorting (`detectSpikes`, `spikeSort`) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

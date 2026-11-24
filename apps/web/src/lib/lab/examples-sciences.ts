@@ -155,6 +155,26 @@ figure; psth(s, 1000, 5)
 st = isiStats(poissonSpikes(20, 60000));
 fprintf('Poisson train: %.1f Hz, CV %.2f\\n', st.Rate, st.CV)
 ` },
+  { name: 'brain.m', code: `% Neuroscience: spikes that travel, synapses that learn, and sorting spikes from a recording
+% 1. A spike runs down the squid's giant axon. Colder nerves conduct slower.
+celsius = 18.5;   % slider 5 25
+cableNeuron('Active', true, 'Celsius', celsius)
+% 2. A thin passive dendrite: the voltage fades over its length constant
+figure; cableNeuron('Length', 1500, 'Diameter', 1)
+% 3. A synapse's conductance: fast rise, slower decay
+figure; synapseConductance([5 12 14 40], 0:0.1:80, 'Rise', 0.5, 'Decay', 5)
+% 4. Learning from timing: inputs that fire just before the neuron grow, the rest shrink
+figure; stdpWindow()
+figure; stdpNeuron('Seconds', 60)
+% 5. Two neurons on one electrode, then sorted apart
+rng(4); fs = 24000; x = 8*randn(1, 10*fs); t = (0:47)/fs*1000 - 0.5;
+a = -100*exp(-(t/0.15).^2) + 20*exp(-((t-0.5)/0.3).^2);
+b = -60*exp(-(t/0.35).^2) + 30*exp(-((t-0.5)/0.7).^2);
+for s = 1:60:numel(x)-5000
+  if rand < 0.2, x(s:s+47) = x(s:s+47) + a; elseif rand < 0.2, x(s:s+47) = x(s:s+47) + b; end
+end
+figure; spikeSort(x, fs)
+` },
   { name: 'physics.m', code: `% Physics: throws, swings, orbits, waves and fields
 % Drag the time slider, or press Sweep on it to film the motion as a GIF.
 t = 0.8;   % slider 0 4
