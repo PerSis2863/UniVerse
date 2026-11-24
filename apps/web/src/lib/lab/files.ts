@@ -127,7 +127,7 @@ function xlsxRows(bytes: Uint8Array, sheet?: Value): string[][] {
   }
   return Array.from(rows, (row) => Array.from(row ?? [], (x) => x ?? ''));
 }
-function rowsOf(lab: Lab, name: string, a: Value[] = []): string[][] {
+export function rowsOf(lab: Lab, name: string, a: Value[] = []): string[][] {
   const fs = store(lab), f = fs.get(name);
   if (ext(name) === 'xlsx' || (f.bytes[0] === 0x50 && f.bytes[1] === 0x4b)) return xlsxRows(f.bytes, opt(a, 'Sheet'));
   if (ext(name) === 'xls' || (f.bytes[0] === 0xd0 && f.bytes[1] === 0xcf)) {

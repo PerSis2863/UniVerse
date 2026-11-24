@@ -1,6 +1,7 @@
 import { LabError } from './parse';
 import { random } from './builtins';
-import { textOf } from './interp';
+import { textOf, type Lab } from './interp';
+import { rowsOf } from './files';
 import { mat, num, str, toMat, type Mat, type Value } from './values';
 import * as rk from './risk';
 import { call, col, def, need, nums, options, optNum, optText, record, row, rows } from './sci-kit';
@@ -105,4 +106,40 @@ def('carbonStress', (a) => {
   if (!(pass >= 0 && pass <= 1 && rate > 0)) throw new LabError("'PassThrough' is 0 to 1 (the share passed on to customers), 'Rate' positive.");
   const r = rk.carbonStress(v, e, price, pass, rate);
   return [row(r.loss), row(r.share), num(r.portfolio)];
+});
+
+// ——— Climate scenarios (M509): NGFS files the person downloads, a price path's stress, and NGFS's cited range ———
+const iamcFiltered = (lab: Lab, a: Value[]) => {
+  const name = textOf(a[0] ?? str('')), o = options(a, 1, ['Variable', 'Region', 'Scenario', 'Model', 'Sheet'], 'ngfsRead');
+  let all: rk.IamcSeries[];
+  try { all = rk.readIamc(rowsOf(lab, name, a)); } catch (e) { if (e instanceof LabError) throw e; throw new LabError(`${name}: ${(e as Error).message}`); }
+  const want = (k: string) => (o.has(k) ? optText(o, k, '').toLowerCase() : null);
+  const pick = all.filter((s) => (['Variable', 'Region', 'Scenario', 'Model'] as const).every((k) => { const w = want(k); return w === null || (s[k.toLowerCase() as 'model'] ?? '').toLowerCase() === w; }));
+  if (!pick.length) throw new LabError(`No series in ${name} match (it has ${all.length}; variables such as ${[...new Set(all.map((s) => s.variable))].slice(0, 4).join(', ')}).`);
+  return pick;
+};
+def('ngfsRead', (a, _n, lab) => {
+  const s = iamcFiltered(lab, a), cell = (xs: string[]) => ({ k: 'cell' as const, r: xs.length, c: 1, d: xs.map((x) => str(x)) });
+  return [record([['Model', cell(s.map((x) => x.model))], ['Scenario', cell(s.map((x) => x.scenario))], ['Region', cell(s.map((x) => x.region))], ['Variable', cell(s.map((x) => x.variable))], ['Unit', cell(s.map((x) => x.unit))], ['Years', row(s[0].years)], ['Values', rows(s.map((x) => x.values))]])];
+});
+def('ngfsHeadline', () => {
+  const h = rk.NGFS_NZ2050;
+  return [record([['Scenario', h.scenario], ['Years', row(h.years)], ['Low', row(h.low)], ['High', row(h.high)], ['Unit', h.unit], ['Source', h.source]])];
+});
+def('carbonStressPath', (a, nout, lab) => {
+  const v = nums(a[0], 'The holdings’ values'), e = nums(a[1], 'Their emissions (t CO₂ a year)'), years = nums(a[2], 'The years'), P = toMat(a[3] ?? num(NaN), 'The prices');
+  const o = options(a, 4, ['PassThrough', 'Rate', 'Decline', 'Start', 'Names'], 'carbonStressPath');
+  if (v.length !== e.length || v.some((x) => !(x > 0)) || e.some((x) => !(x >= 0))) throw new LabError('carbonStressPath needs a positive value and emissions ≥ 0 for each holding.');
+  const paths = P.r === 1 || P.c === 1 ? [[...P.d]] : Array.from({ length: P.r }, (_, i) => Array.from({ length: P.c }, (_, j) => P.d[i + j * P.r]));
+  if (paths.some((p) => p.length !== years.length)) throw new LabError('One price for each year (a row a scenario).');
+  const pass = optNum(o, 'PassThrough', 0), rate = optNum(o, 'Rate', 0.08), decline = optNum(o, 'Decline', 0), start = optNum(o, 'Start', Math.min(...years));
+  if (!(pass >= 0 && pass <= 1 && rate > 0 && decline >= 0 && decline < 1)) throw new LabError("'PassThrough' 0 to 1, 'Rate' positive, 'Decline' (a year) 0 to below 1.");
+  const res = paths.map((p) => rk.carbonStressPath(v, e, years, p, { passThrough: pass, rate, decline, start }));
+  if (nout > 0) return [rows(res.map((r) => r.loss)), rows(res.map((r) => r.share)), col(res.map((r) => r.portfolio))];
+  const names = o.has('Names') && o.get('Names')!.k === 'cell' ? (o.get('Names') as { d: Value[] }).d.map((x) => textOf(x)) : paths.map((_, k) => `Path ${k + 1}`);
+  call(lab, 'bar', rows(res.map((r) => r.share.map((x) => 100 * x))));
+  call(lab, 'ylabel', str('Value lost (%)')); call(lab, 'xlabel', str('Scenario')); call(lab, 'grid', str('on'));
+  call(lab, 'legend', ...v.map((_, i) => str(`Holding ${i + 1}`)));
+  call(lab, 'title', str(`Carbon-price paths: ${names.map((n, k) => `${k + 1} ${n}`).join(', ')}`));
+  return [];
 });

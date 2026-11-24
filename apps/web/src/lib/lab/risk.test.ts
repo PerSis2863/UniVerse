@@ -4,6 +4,7 @@ import { Graphics } from './plot';
 import { toMat } from './values';
 import './sciences';
 import * as rk from './risk';
+import { FileStore } from './files';
 
 const run = (code: string) => { let out = ''; const graphics = new Graphics(); const lab = new Lab({ out: (t) => { out += t; }, graphics }); lab.run(code); return { out, graphics, lab, d: (n: string) => [...toMat(lab.vars.get(n)!).d] }; };
 let seed = 99;
@@ -71,5 +72,40 @@ describe('Hyperion portfolios and risk (M502)', () => {
     expect(r.d('v')[0]).toBeCloseTo((2.3263479 * 0.02 - 0.001) * 1e6, 0);
     expect(r.d('w').reduce((s, v) => s + v, 0)).toBeCloseTo(1, 9);
     expect(r.graphics.figures.length).toBe(1);
+  });
+});
+
+describe('Hyperion climate scenarios (M509)', () => {
+  // A made-up file in the IAMC layout NGFS's explorer downloads (numbers invented for the test).
+  const CSV = 'Model,Scenario,Region,Variable,Unit,2025,2030,2040,2050\nM1,Net Zero 2050,World,Price|Carbon,US$2010/t CO2,10,150,300,600\nM1,Current Policies,World,Price|Carbon,US$2010/t CO2,5,8,10,12\nM1,Net Zero 2050,World,Emissions|CO2,Mt CO2/yr,38000,25000,9000,\n';
+  it('reads and filters an IAMC file', () => {
+    const rows = CSV.trim().split('\n').map((l) => l.split(','));
+    const all = rk.readIamc(rows);
+    expect(all.length).toBe(3);
+    expect(all[2].values[3]).toBeNaN();
+    const fs = new FileStore(); fs.putText('ngfs.csv', CSV);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: fs });
+    lab.run("s = ngfsRead('ngfs.csv', 'Variable', 'price|carbon'); n = numel(s.Scenario); y = s.Years; v = s.Values(2, :);");
+    expect(toMat(lab.vars.get('n')!).d[0]).toBe(2);
+    expect([...toMat(lab.vars.get('v')!).d]).toEqual([5, 8, 10, 12]);
+    expect(() => lab.run("ngfsRead('ngfs.csv', 'Region', 'Mars')")).toThrow(/No series/);
+  });
+  it('a flat price path gives carbonStress’s answer; prices rise in straight lines', () => {
+    const flat = rk.carbonStressPath([1e6], [100], [2026, 2050], [50, 50], { rate: 0.08 });
+    expect(flat.loss[0]).toBeCloseTo(rk.carbonStress([1e6], [100], 50, 0, 0.08).loss[0], 6);
+    const p = rk.yearly([2030, 2050], [100, 500], 2026);
+    expect([p.year[0], p.price[0], p.price[4], p.price[14]]).toEqual([2026, 0, 100, 300]);
+    // Falling emissions cut the loss; a higher path costs more.
+    const lo = rk.carbonStressPath([1e7], [1000], [2030, 2050], [100, 500], { start: 2026 }), hi = rk.carbonStressPath([1e7], [1000], [2030, 2050], [260, 1250], { start: 2026 });
+    const cut = rk.carbonStressPath([1e7], [1000], [2030, 2050], [100, 500], { start: 2026, decline: 0.05 });
+    expect(hi.loss[0]).toBeGreaterThan(lo.loss[0]);
+    expect(cut.loss[0]).toBeLessThan(lo.loss[0]);
+  });
+  it('carries NGFS’s stated Net Zero 2050 range with its source', () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run('h = ngfsHeadline; lo = h.Low; hi = h.High;');
+    expect([...toMat(lab.vars.get('lo')!).d]).toEqual([100, 500]);
+    expect([...toMat(lab.vars.get('hi')!).d]).toEqual([260, 1250]);
+    expect(rk.NGFS_NZ2050.source).toMatch(/licen/i);
   });
 });

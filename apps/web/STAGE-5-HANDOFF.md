@@ -12841,3 +12841,24 @@ sideways scroll, no page errors; animate.m (M506) showed 20 different frames whi
 toolbox already open wiped its results (`pick` now ignores it); the pendulum in animate.m was drawn in black, invisible
 in dark mode (an orange line now). Open in Code lands on Code's "Someone shared … Open it" banner, as Machine health's
 does.
+
+## M509 (24 Nov): Hyperion, real climate scenarios in the carbon stress test
+
+The owner chose both ways, "focus more on the first": (1) people download NGFS's (or IPCC's) scenario file themselves
+and Hyperion reads it; (2) a few headline numbers ship with credit. NGFS's licence (data.ene.iiasa.ac.at/ngfs/#/license,
+read 23 Nov) is CC BY 4.0 adapted: parts may be shared with attribution, "a substantial portion" may not; so only the
+range NGFS states in its own report ships: Net Zero 2050's global shadow carbon price, 100–260 US$2010/t CO₂ in 2030
+and 500–1,250 in 2050 across its models ("NGFS long-term scenarios, narratives and key findings", Phase V, 2025),
+`NGFS_NZ2050` in risk.ts with its source line. IIASA's explorer and API are blocked from this machine (proxy), so no
+dataset was downloaded; other scenarios come from the person's file.
+
+`readIamc` (risk.ts) reads the IAMC layout (Model, Scenario, Region, Variable, Unit, then a column per year; any order
+and case; empty cells NaN). `ngfsRead(file, 'Variable', …, 'Region', …, 'Scenario', …, 'Model', …)` (risk-lab.ts) goes
+through `rowsOf` (files.ts, now exported) so CSV, .xlsx and .xls all work, and returns a struct (cells of names, Years,
+Values a row per series). `yearly` turns a path into whole years (straight lines; before its first year a line up from
+0 at 'Start'). `carbonStressPath` pays emissions × price × (1 − pass-through) at each year's end, emissions falling by
+'Decline' a year, discounted at 'Rate' to 'Start', the last year's cost carried on as a shrinking perpetuity, capped at
+the value: a flat path gives exactly `carbonStress`'s answer (tested). Several rows of prices are several scenarios;
+without outputs it draws bars. The Portfolios window's carbon view has "Carbon prices": one price, NGFS Net Zero 2050
+low end or high end (with "Emissions cut each year"), and prints the source. Not built: downloading from NGFS inside
+Hyperion (people fetch the file; the explorer needs its own sign-in), GDP or physical-risk variables in the stress.

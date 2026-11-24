@@ -373,10 +373,12 @@ fprintf('= American put (tree) | %.3f\\n', tree(1, 1))
       num('fast', 'Short average', 2, 100, 1, 20, 'days', is('show', 'strategy')),
       num('slow', 'Long average', 10, 400, 5, 120, 'days', is('show', 'strategy')),
       num('cost', 'Cost a trade', 0, 1, 0.01, 0.1, '%', is('show', 'strategy')),
-      num('price', 'Carbon price', 0, 400, 5, 100, 'a tonne', is('show', 'carbon')),
+      menu('path', 'Carbon prices', [['fixed', 'One price from now on'], ['nzlow', 'NGFS Net Zero 2050, low end'], ['nzhigh', 'NGFS Net Zero 2050, high end']], 'fixed', is('show', 'carbon')),
+      num('price', 'Carbon price', 0, 400, 5, 100, 'a tonne', (v) => v.show === 'carbon' && v.path === 'fixed'),
+      num('decline', 'Emissions cut each year', 0, 15, 0.5, 0, '%', (v) => v.show === 'carbon' && v.path !== 'fixed'),
       num('pass', 'Passed on to customers', 0, 100, 5, 30, '%', is('show', 'carbon')),
     ],
-    script: (v) => v.show === 'carbon' ? `% A carbon price on three holdings (values, tonnes of CO2 a year)
+    script: (v) => v.show === 'carbon' ? (v.path === 'fixed' ? `% A carbon price on three holdings (values, tonnes of CO2 a year)
 vals = [4e6 3e6 3e6]; tonnes = [2000 800 100];
 [loss, share, total] = carbonStress(vals, tonnes, ${n(v.price)}, 'PassThrough', ${Number(v.pass) / 100});
 bar(100*share); set(gca, 'XLim', [0.5 3.5]); ylabel('Value lost (%)'); title('Carbon at ${n(v.price)} a tonne'); grid on
@@ -384,7 +386,18 @@ fprintf('= Steel maker | %.1f%% of its value\\n', 100*share(1))
 fprintf('= Airline | %.1f%%\\n', 100*share(2))
 fprintf('= Software firm | %.1f%%\\n', 100*share(3))
 fprintf('= The whole portfolio | %.1f%%\\n', 100*total)
-` : `% Three made-up assets: bonds, shares, emerging markets (five years of days)
+` : `% NGFS's Net Zero 2050 carbon price (${v.path === 'nzlow' ? 'the low' : 'the high'} end across its models), from 2026
+h = ngfsHeadline;
+vals = [4e6 3e6 3e6]; tonnes = [2000 800 100];
+[loss, share, total] = carbonStressPath(vals, tonnes, h.Years, h.${v.path === 'nzlow' ? 'Low' : 'High'}, 'Start', 2026, 'PassThrough', ${Number(v.pass) / 100}, 'Decline', ${Number(v.decline) / 100});
+subplot(1, 2, 1); plot([2026 h.Years], [0 h.${v.path === 'nzlow' ? 'Low' : 'High'}], '-o', 'LineWidth', 2); grid on; xlabel('Year'); ylabel('US$2010 a tonne'); title('The carbon price')
+subplot(1, 2, 2); bar(100*share); set(gca, 'XLim', [0.5 3.5]); ylabel('Value lost (%)'); title('Lost by each holding'); grid on
+fprintf('= Steel maker | %.1f%% of its value\\n', 100*share(1))
+fprintf('= Airline | %.1f%%\\n', 100*share(2))
+fprintf('= Software firm | %.1f%%\\n', 100*share(3))
+fprintf('= The whole portfolio | %.1f%%\\n', 100*total)
+fprintf('= Source | NGFS Phase V, Net Zero 2050: 100 to 260 US$2010/t in 2030, 500 to 1,250 in 2050 (licence: data.ene.iiasa.ac.at/ngfs)\\n')
+`) : `% Three made-up assets: bonds, shares, emerging markets (five years of days)
 rng(11)
 n = 5*252; market = randn(n, 1);
 R = [0.04/252 + 0.05/sqrt(252)*(0.1*market + randn(n, 1)), ...

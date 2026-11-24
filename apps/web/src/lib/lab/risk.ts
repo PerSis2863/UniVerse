@@ -162,3 +162,71 @@ export function carbonStress(values: number[], emissions: number[], price: numbe
   const total = values.reduce((s, v) => s + v, 0);
   return { loss, share: loss.map((l, i) => l / values[i]), portfolio: loss.reduce((s, v) => s + v, 0) / total };
 }
+
+// ——— Climate scenarios (M509) ———
+
+/** One time series of an IAMC-format scenario file (the format of NGFS's and IPCC's scenario explorers). */
+export interface IamcSeries { model: string; scenario: string; region: string; variable: string; unit: string; years: number[]; values: number[] }
+/** Reads IAMC rows: a header with Model, Scenario, Region, Variable, Unit and a column per year (in any order and
+ * case); rows missing a name are skipped, empty cells become NaN. */
+export function readIamc(rows: string[][]): IamcSeries[] {
+  const h = rows.findIndex((r) => r.some((c) => /^model$/i.test(c.trim())) && r.some((c) => /^variable$/i.test(c.trim())));
+  if (h < 0) throw new Error('No header with Model, Scenario, Region, Variable and Unit: this isn’t an IAMC scenario file.');
+  const head = rows[h].map((c) => c.trim()), at = (n: string) => head.findIndex((c) => c.toLowerCase() === n);
+  const cols = { model: at('model'), scenario: at('scenario'), region: at('region'), variable: at('variable'), unit: at('unit') };
+  if (Object.values(cols).some((i) => i < 0)) throw new Error('The header needs Model, Scenario, Region, Variable and Unit columns.');
+  const yearCols = head.map((c, i) => [Number(c), i] as const).filter(([y]) => Number.isInteger(y) && y > 1800 && y < 2500);
+  if (!yearCols.length) throw new Error('The header has no year columns (2020, 2025, …).');
+  const out: IamcSeries[] = [];
+  for (const r of rows.slice(h + 1)) {
+    if (!r[cols.variable]?.trim() || !r[cols.scenario]?.trim()) continue;
+    out.push({
+      model: r[cols.model]?.trim() ?? '', scenario: r[cols.scenario].trim(), region: r[cols.region]?.trim() ?? '', variable: r[cols.variable].trim(), unit: r[cols.unit]?.trim() ?? '',
+      years: yearCols.map(([y]) => y), values: yearCols.map(([, i]) => { const t = (r[i] ?? '').trim(); return t === '' ? NaN : Number(t); }),
+    });
+  }
+  return out;
+}
+
+/** NGFS Phase V's stated range of the global (shadow) carbon price in Net Zero 2050, across its models, in US$2010 a
+ * tonne of CO₂: "100-260 US$2010/t CO2 in 2030, and 500-1,250 US$2010/t CO2 in 2050" (NGFS long-term scenarios,
+ * narratives and key findings, 2025). Shared under the NGFS Scenarios' licence (adapted CC BY 4.0) as a small part,
+ * with credit; other scenarios and years come from the person's own download. */
+export const NGFS_NZ2050 = {
+  scenario: 'Net Zero 2050', years: [2030, 2050], low: [100, 500], high: [260, 1250], unit: 'US$2010/t CO2',
+  source: 'NGFS long-term scenarios, narratives and key findings (NGFS, Phase V, 2025): global shadow carbon price in Net Zero 2050 across models. Licence: data.ene.iiasa.ac.at/ngfs/#/license (adapted CC BY 4.0).',
+};
+
+/** A price path given at some years, read at each whole year from `start` to the last given year: straight lines
+ * between given years; before the first, a straight line from `before` at `start` (0: no price yet). */
+export function yearly(years: number[], prices: number[], start: number, before = 0): { year: number[]; price: number[] } {
+  const pts = years.map((y, i) => [y, prices[i]] as const).filter(([y, p]) => Number.isFinite(y) && Number.isFinite(p)).sort((a, b) => a[0] - b[0]);
+  if (!pts.length) throw new Error('The price path has no numbers.');
+  const end = pts[pts.length - 1][0], year: number[] = [], price: number[] = [];
+  for (let t = Math.min(start, end); t <= end; t++) {
+    const k = pts.findIndex(([y]) => y >= t);
+    let p: number;
+    if (k === 0 && pts[0][0] > t) { const [y0, p0] = pts[0]; p = start >= y0 ? p0 : before + ((p0 - before) * (t - start)) / (y0 - start); }
+    else if (pts[k][0] === t) p = pts[k][1];
+    else { const [y0, p0] = pts[k - 1], [y1, p1] = pts[k]; p = p0 + ((p1 - p0) * (t - y0)) / (y1 - y0); }
+    year.push(t); price.push(p);
+  }
+  return { year, price };
+}
+
+/** A carbon-price path's stress: each holding pays emissions × price × (1 − pass-through) every year, its emissions
+ * falling by `decline` a year, discounted at `rate` to `start`; after the path's last year the last cost goes on for
+ * ever (a growing-or-falling perpetuity). The loss is capped at the holding's value. */
+export function carbonStressPath(values: number[], emissions: number[], years: number[], prices: number[], o: { passThrough?: number; rate?: number; decline?: number; start?: number } = {}) {
+  const pass = o.passThrough ?? 0, rate = o.rate ?? 0.08, d = o.decline ?? 0, start = o.start ?? Math.min(...years);
+  const path = yearly(years, prices, start);
+  const loss = values.map((v, i) => {
+    let pv = 0, last = 0;
+    path.year.forEach((t, k) => { const n = t - start; last = emissions[i] * (1 - d) ** n * path.price[k] * (1 - pass); pv += last / (1 + rate) ** (n + 1); }); // paid at each year's end, as carbonStress's perpetuity
+    const n = path.year[path.year.length - 1] - start;
+    pv += (last * (1 - d)) / (rate + d) / (1 + rate) ** (n + 1); // the years after, as a perpetuity shrinking with the emissions
+    return Math.min(v, pv);
+  });
+  const total = values.reduce((s, v) => s + v, 0);
+  return { loss, share: loss.map((l, i) => l / values[i]), portfolio: loss.reduce((s, v) => s + v, 0) / total, path };
+}

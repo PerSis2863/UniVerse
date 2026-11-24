@@ -29,6 +29,14 @@ describe('the science windows (M508)', () => {
       });
     }
   }
+  it('Portfolios → carbon runs on NGFS’s Net Zero 2050 path', () => {
+    const app = SCI_APPS.find((a) => a.id === 'portfolio')!;
+    for (const path of ['nzlow', 'nzhigh']) {
+      const { out, figs } = run(scriptFor(app, { ...defaults(app), show: 'carbon', path, decline: 3 }));
+      expect(resultsOf(out).map((r) => r.label)).toContain('Source');
+      expect(figs).toBeGreaterThan(0);
+    }
+  });
   it('cleans what could break a script', () => {
     const dna = SCI_APPS.find((a) => a.id === 'dna')!;
     const v = clean(dna, { gene: "ATG'); delete('x", pos: 1e9, base: 'Z', show: 'tree' });
