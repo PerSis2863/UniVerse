@@ -54,6 +54,16 @@ sat = pkModel('V', 50, 'Vmax', 25, 'Km', 4);
 [t1, c1] = pkSimulate(sat, 200, 'Every', 12, 'Doses', 14, 'Route', 'oral');
 [t2, c2] = pkSimulate(sat, 260, 'Every', 12, 'Doses', 14, 'Route', 'oral');
 figure; plot(t1, c1, t2, c2); legend('200 mg', '260 mg'); xlabel('Hours'); ylabel('mg/L'); title('Saturating elimination'); grid on
+% Fit a model to a patient's measured levels (a tablet taken twice a day, levels taken on day 2)
+rng(4)
+truth = pkModel('CL', 3, 'V', 35, 'ka', 0.8, 'F', 0.9, 'Lag', 0.5);
+th = [24.5 25 26 28 30 33 36];
+[tt, ct] = pkSimulate(truth, 400, 'Route', 'oral', 'Every', 12, 'Doses', 3, 'Hours', 36, 'Step', 0.5);
+lv = interp1(tt, ct, th) .* (1 + 0.05*randn(size(th)));
+figure; pkFit(th, lv, 400, 'Route', 'oral', 'Every', 12, 'Doses', 3, 'F', 0.9, 'Lag', 0.5)
+% The effect lags the level: a pain score falls behind the blood level (an effect site, ke0 = 0.3 /h)
+[t3, c3] = pkSimulate(m, 500, 'Route', 'oral', 'Hours', 24, 'Step', 0.1);
+figure; pkEffect(t3, c3, 'Emax', -80, 'EC50', 4, 'Hill', 2, 'E0', 90, 'ke0', 0.3)
 ` },
   { name: 'dna.m', code: `% DNA and proteins: read a gene, translate it, compare it, and draw a family tree
 gene = ['ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTGGTGGTGAGGCCCTGGGCAGGCTGCTGGTGGTCTACCCTTGGACCCAGAGGTTCTTTGAGTCCTTTGGGGATCTGTCCACTCCTGATGCTGTTATGGGCAACCCTAAGGTGAAGGCTCATGGCAAGAAAGTGCTCGGTGCCTTTAGTGATGGCCTGGCTCACCTGGACAACCTCAAGGGCACCTTTGCCACACTGAGTGAGCTGCACTGTGACAAGCTGCACGTGGATCCTGAGAACTTCAGGCTCCTGGGCAACGTGCTGGTCTGTGTGCTGGCCCATCACTTTGGCAAAGAATTCACCCCACCAGTGCAGGCTGCCTATCAGAAAGTGGTGGCTGGTGTGGCTAATGCCCTGGCCCACAAGTATCACTAA'];

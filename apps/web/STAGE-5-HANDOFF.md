@@ -12880,3 +12880,22 @@ is singular. Tests: half of single-case outbreaks at R0 2 die out, the big ones 
 SEIHRD without hospital equals SEIR, deaths = fatality × admissions, too few beds means 1.5× the deaths; the intervals
 hold the truth on noisy data. Not built: spatial spread (a metapopulation between cities is the natural next step).
 
+## M511 (24 Nov): Hyperion pharmacokinetics, the left-outs
+
+From M493's "Not built". `pk.ts` / `pk-lab.ts`: `pkModel` takes 'Lag' (hours before a dose by mouth starts; `single`
+shifts oral doses, the saturating solver gets oral doses moved by the lag) and 'Q3', 'V3' (a third compartment, needs
+the second). Three compartments go through `mammillary(V, k10, [[k1j, kj1]…])`, general for any number of peripherals:
+the rates solve k10 + Σk1j − λ = Σ k1j kj1/(kj1 − λ), one root between each pair of poles (bracketed, the top end
+doubled until the sign turns), each mode's weight the residue 1/(V(1 + Σ k1j kj1/(kj1 − λ)²)); equal kj1 are merged.
+Two compartments keep the closed form (the test checks the general route gives the same). Older pkModel structs
+without Q3, V3 or Lag still work (read as 0). `pkEffect(t, C, 'Emax', 'EC50', 'Hill', 'E0', 'ke0')`: Hill's sigmoid
+Emax; with ke0 an effect site Ce' = ke0(C − Ce) solved exactly with C straight between samples (`effectSite`); drawn
+as effect over time and the hysteresis loop. `pkFit(t, C, dose, 'Route', 'Every', 'Doses', 'Times', 'Compartments' 1
+or 2, 'F', 'Lag')`: Levenberg–Marquardt on log parameters against log levels (zero levels left out), starts from NCA
+(CL = dose/AUC, V = CL/λz, ka from Tmax; two compartments try six splits), 95% intervals by the curvature (Student's t
+from `studentT975` in epi.ts, M510); returns a pkModel struct plus RMSE, Fitted and CLCI, VCI, kaCI, QCI, V2CI. Tests:
+three compartments against the equations stepped by RK4, the lag exact, Emax at EC50, the effect site for a steady
+and a ramping level, fits recovering one and two compartments (the interval holds CL). Not built: population PK
+(mixed effects: a model of how parameters vary between people), fitting the effect model's parameters (use lsqcurvefit
+on `pkEffect`).
+
