@@ -475,7 +475,8 @@ export function reversed(r: Route): Route {
   const L = routeLength(r);
   return { ...r, sections: [...r.sections].reverse().map((x) => ({ ...x, grade: -x.grade })), stations: r.stations.map((s) => L - s).sort((a, b) => a - b) };
 }
-interface SingleOpts { tracks?: number; pad?: number; dt?: number; loops?: number[]; dispatch?: Dispatch }
+/** `loopLength` (m, M491j): how long a train each passing loop holds; a longer one can't wait there (stations hold any). */
+interface SingleOpts { tracks?: number; pad?: number; dt?: number; loops?: number[]; dispatch?: Dispatch; loopLength?: number }
 /** The weighted delay a dispatcher minimises: Σ priority × minutes late (early counts 0); a lock-up costs far more. */
 const weighed = (run: { trains: SingleTrace[]; deadlock: number }) => (Number.isFinite(run.deadlock) ? 1e9 : run.trains.reduce((s, x) => s + x.priority * Math.max(0, Number.isFinite(x.delay) ? x.delay : 1e6), 0));
 /** Runs the trains; `o.dispatch`: first come first served (the earliest timetable asks first, nobody is held back),
@@ -578,13 +579,26 @@ function singleRun(r: Route, trains: SingleTrain[], o: SingleOpts, rank: number[
     return false;
   };
   // Tries to take the next section after the place at path index e (where its holding ends); true when taken.
-  const take = (k: number, e: number, time: number) => {
-    const { seq } = paths[k], sec = secOf(k, e), nxt = seq[e + 1], x = st[k];
-    const other = owner[sec], room = terminal(nxt) || e + 1 === seq.length - 1 || holding[nxt] < tracks;
+  // A train too long for a loop can't stop in it (M491j): it takes the section beyond at the same time or not at all.
+  const fits = (k: number, j: number) => isStation[j] || trains[k].train.length <= (o.loopLength ?? Infinity);
+  const free = (k: number, e: number, time: number) => {
+    const { seq } = paths[k], sec = secOf(k, e), nxt = seq[e + 1], x = st[k], through = !fits(k, nxt) && !paths[k].stop[e + 1];
+    const other = owner[sec], room = terminal(nxt) || e + 1 === seq.length - 1 || through || holding[nxt] < tracks;
     if (other >= 0 || !room) { x.why = other >= 0 ? (trains[other].dir === trains[k].dir ? 'follow' : 'meet') : 'meet'; return false; }
     if (yields(k, sec, time, time + plan[k][e + 1] - plan[k][e])) { x.why = 'dispatch'; return false; }
-    owner[sec] = k; holding[seq[e]]--; holding[nxt]++;
     return true;
+  };
+  /** Takes the next section after the place at path index e (two when it can't wait in the next): how many it took. */
+  const take = (k: number, e: number, time: number) => {
+    const { seq, stop } = paths[k], nxt = seq[e + 1];
+    if (!free(k, e, time)) return 0;
+    if (!fits(k, nxt) && !stop[e + 1]) {
+      if (e + 2 >= seq.length || !free(k, e + 1, time)) return 0;
+      owner[secOf(k, e)] = k; owner[secOf(k, e + 1)] = k; holding[seq[e]]--; holding[seq[e + 2]]++;
+      return 2;
+    }
+    owner[secOf(k, e)] = k; holding[seq[e]]--; holding[nxt]++;
+    return 1;
   };
   const order = trains.map((_, k) => k).sort((a, b) => (rank ? rank[a] - rank[b] : plan[a][0] - plan[b][0]));
   const tails: [number, number][][] = trains.map(() => []);
@@ -601,8 +615,9 @@ function singleRun(r: Route, trains: SingleTrain[], o: SingleOpts, rank: number[
         // Standing: leaves no earlier than its timetable.
         const want = Math.max(x.ready, plan[k][x.i] + (x.i > 0 && stop[x.i] ? r.dwell : 0));
         if (time < want) continue;
-        if (take(k, x.i, time)) {
-          x.res = 1; moved = true;
+        const got = take(k, x.i, time);
+        if (got) {
+          x.res = got; moved = true;
           if (x.waited > dt) out[k].waits.push({ at: nodes[seq[x.i]], seconds: x.waited, for: x.why });
           x.waited = 0;
           if (x.i === 0) out[k].actual.push(time);
@@ -610,7 +625,7 @@ function singleRun(r: Route, trains: SingleTrain[], o: SingleOpts, rank: number[
       } else {
         // Running towards a place it needn't stop at: asks for the section beyond once within braking distance (+200 m).
         const e = x.i + x.res, tr = trains[k].train;
-        if (e < seq.length - 1 && !stop[e] && at[e] - x.s <= (x.v * x.v) / (2 * tr.brake) + 200) { if (take(k, e, time)) x.res++; }
+        if (e < seq.length - 1 && !stop[e] && at[e] - x.s <= (x.v * x.v) / (2 * tr.brake) + 200) { x.res += take(k, e, time); }
       }
     }
     for (let k = 0; k < trains.length; k++) {

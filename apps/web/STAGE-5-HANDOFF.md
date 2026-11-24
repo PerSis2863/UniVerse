@@ -13166,6 +13166,16 @@ doesn't; the fishhook van turns and its roof edge gives. Language: vehicleTrip '
 'ForwardSpeed'; info RoofCrush, Spin (also in vehicleSim's). Window: Kerb shows "roof crushed"; Hook's result says how
 far. Not built: drawing the crushed roof, the windows breaking, people inside.
 
+## M491j (24 Nov): Hyperion railways, loops too short for a long train
+
+The owner, 24 Nov: "please work on it" (M486e's left-outs). `railSingle(…, { loopLength })`: a train longer than that
+can't stop in a passing loop (stations hold any train). `take` now returns how many sections it took: for a loop the
+train doesn't fit (and doesn't stop at) it must take the section beyond in the same moment (`free` checks each:
+empty, room, the dispatcher), holding the far place's track, or wait where it is. Checked: a 600 m freight meeting an
+intercity with 400 m loops never waits in one and the meet moves to the 42 km station; 1,000 m loops change nothing.
+Language 'LoopLength'; window Single track → "Loops only 400 m long". Shortcut: the dispatcher is asked only about the
+first of the two sections.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

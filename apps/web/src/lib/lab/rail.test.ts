@@ -235,4 +235,15 @@ describe('Hyperion railways (M491)', () => {
     expect(Math.min(...held.minVolt)).toBeGreaterThan(Math.min(...weak.minVolt) + 1000); expect(held.tripped).toBeLessThan(weak.tripped);
     expect(held.storedKwh).toBeGreaterThan(0); expect(held.returnedKwh).toBeGreaterThan(0);
   });
+  it('loops too short for a long train (M491j)', { timeout: 60_000 }, () => {
+    const r = rl.ROUTES.intercity(), loops = [21000, 71000];
+    const two = [{ train: rl.TRAINS.freight, dir: 1 as const, depart: 0 }, { train: rl.TRAINS.intercity, dir: -1 as const, depart: 1200 }];
+    const long = rl.railSingle(r, two, { loops }), short = rl.railSingle(r, two, { loops, loopLength: 400 });
+    // The 600 m freight train can't wait in a 400 m loop: it never stops in one, and the meet moves to the station.
+    expect(short.trains[0].waits.every((x) => !loops.includes(x.at))).toBe(true);
+    expect(short.trains.some((t) => t.waits.some((x) => x.at === 42000))).toBe(true);
+    expect(long.trains[1].waits.some((x) => x.at === 71000)).toBe(true);
+    // Loops long enough change nothing.
+    expect(rl.railSingle(r, two, { loops, loopLength: 1000 }).trains.map((t) => t.arrive)).toEqual(long.trains.map((t) => t.arrive));
+  });
 });
