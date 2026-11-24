@@ -101,7 +101,7 @@ function fiOp(op: string, a: Value, b: Value, T?: X.Nt): Value {
   else if (op === '.*' || (op === '*' && (qa.d.length === 1 || qb.d.length === 1))) t = X.productType(na, nb);
   else if (op === '*') { const k = qa.c; t = X.productType(na, nb); t = { ...t, wl: Math.min(128, t.wl + Math.ceil(Math.log2(Math.max(2, k)))) }; }
   else if (op === './' || (op === '/' && qb.d.length === 1)) return fiDiv(qa, na, qb, nb, typed(quotientType(na, nb)));
-  // M530: A \ B and B / A by a square fi matrix: solved exactly, each answer rounded once (fiSolve).
+  // M530–M531: A \\ B and B / A by a fi matrix: solved exactly, each answer rounded once (fiSolve).
   else if (op === '\\' && qa.d.length > 1) return fiSolve(qa, na, qb, nb, typed(quotientType(nb, na)));
   else if (op === '\\') return fiDiv(qb, nb, qa, na, typed(quotientType(nb, na)));
   else if (op === '/') return transposeFi(fiSolve(transpose(qb), nb, transpose(qa), na, typed(quotientType(na, nb))));
@@ -129,36 +129,52 @@ function divBig(p: bigint, q: bigint, s: number, t: X.Nt): bigint {
 }
 const transpose = (m: Mat): Mat => { const o = mat(m.c, m.r); for (let i = 0; i < m.r; i++) for (let j = 0; j < m.c; j++) o.d[j + i * m.c] = m.d[i + j * m.r]; return o; };
 const transposeFi = (v: Struct): Struct => make(transpose(valuesOf(v)), typeOf(v));
-/** M530: A \ B for a square fi A: fraction-free Gauss–Jordan elimination on the stored integers (every number on the way
- * a whole one, so nothing is rounded), which leaves det·x on the right; each answer is then one division, rounded once
- * into t as ./ does. A singular A gives zeros. The C (codegen) does exactly these steps. */
+/** M531: A \ B for any fi A (R×N): a square A is solved exactly by fraction-free Gauss–Jordan elimination on the stored
+ * integers (every number on the way a whole one), which leaves det·x on the right; each answer is then one division,
+ * rounded once into t as ./ does. A non-square or singular A is solved the same way through the normal equations
+ * AᵀA x = AᵀB (the least-squares answer); an unknown whose column has no pivot is 0 (MATLAB's basic solution). The C
+ * (codegen) does exactly these steps. */
 function fiSolve(a: Mat, na: X.Nt, b: Mat, nb: X.Nt, t: X.Nt): Struct {
-  if (a.r !== a.c) throw new LabError(`A \\ B takes a square A here (A is ${a.r}×${a.c}).`);
   if (b.r !== a.r) throw new LabError(`A \\ B: B needs ${a.r} rows (here ${b.r}).`);
-  const n = a.r, m = b.c, M = solveStored(Array.from({ length: n * n }, (_, i) => BigInt(X.stored(a.d[i], na))), Array.from({ length: n * m }, (_, i) => BigInt(X.stored(b.d[i], nb))), n, m);
-  const s = t.fl - nb.fl + na.fl, out = mat(n, m);
-  for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) out.d[i + j * n] = M.det === BigInt(0) ? 0 : Number(divBig(M.rhs[i + j * n], M.det, s, t)) / 2 ** t.fl;
+  const N = a.c, m = b.c, S = solveAny(Array.from({ length: a.r * N }, (_, i) => BigInt(X.stored(a.d[i], na))), Array.from({ length: a.r * m }, (_, i) => BigInt(X.stored(b.d[i], nb))), a.r, N, m);
+  const s = t.fl - nb.fl + na.fl, out = mat(N, m);
+  for (let j = 0; j < m; j++) for (let c = 0; c < N; c++) { const p = S.piv[c]; out.d[c + j * N] = p < 0 ? 0 : Number(divBig(S.M[p + (N + j) * N], S.det, s, t)) / 2 ** t.fl; }
   return make(out, t);
 }
-/** The elimination itself (column by column storage); exported for the tests. */
-export function solveStored(A: bigint[], B: bigint[], n: number, m: number): { det: bigint; rhs: bigint[] } {
-  const w = n + m, M = [...A, ...B], at = (i: number, j: number) => i + j * n, zero = BigInt(0);
-  let prev = BigInt(1);
-  for (let k = 0; k < n; k++) {
-    let p = k;
+/** M531: fraction-free Gauss–Jordan on M (n rows, w columns, stored column by column) over its first nu columns: a
+ * column with no non-zero entry left is skipped (piv −1). All pivots end equal to det. Exported for the tests. */
+export function elimStored(M: bigint[], n: number, nu: number, w: number): { det: bigint; piv: number[]; rank: number } {
+  const at = (i: number, j: number) => i + j * n, zero = BigInt(0), piv: number[] = [];
+  let prev = BigInt(1), row = 0;
+  for (let k = 0; k < nu; k++) {
+    piv[k] = -1;
+    if (row === n) continue;
+    let p = row;
     while (p < n && M[at(p, k)] === zero) p++;
-    if (p === n) return { det: zero, rhs: B.map(() => zero) };
-    if (p !== k) for (let j = 0; j < w; j++) { const x = M[at(k, j)]; M[at(k, j)] = M[at(p, j)]; M[at(p, j)] = x; }
-    const pk = M[at(k, k)];
+    if (p === n) continue;
+    if (p !== row) for (let j = 0; j < w; j++) { const x = M[at(row, j)]; M[at(row, j)] = M[at(p, j)]; M[at(p, j)] = x; }
+    const pk = M[at(row, k)];
     for (let i = 0; i < n; i++) {
-      if (i === k) continue;
+      if (i === row) continue;
       const f = M[at(i, k)];
-      for (let j = 0; j < w; j++) if (j !== k) M[at(i, j)] = (pk * M[at(i, j)] - f * M[at(k, j)]) / prev;
+      for (let j = 0; j < w; j++) if (j !== k) M[at(i, j)] = (pk * M[at(i, j)] - f * M[at(row, j)]) / prev;
       M[at(i, k)] = zero;
     }
     prev = pk;
+    piv[k] = row++;
   }
-  return { det: prev, rhs: M.slice(n * n) };
+  return { det: prev, piv, rank: row };
+}
+/** M531: the whole solve on stored integers: A (R×N) and B (R×m) column by column. M holds N×(N+m) with det·x in the
+ * pivot rows of its right part. */
+export function solveAny(A: bigint[], B: bigint[], R: number, N: number, m: number): { M: bigint[]; det: bigint; piv: number[] } {
+  if (R === N) {
+    const M = [...A, ...B], e = elimStored(M, N, N, N + m);
+    if (e.rank === N) return { M, ...e };
+  }
+  const zero = BigInt(0), aug = [...A, ...B], M: bigint[] = Array.from({ length: N * (N + m) }, () => zero);
+  for (let j = 0; j < N + m; j++) for (let i = 0; i < N; i++) { let s = zero; for (let r = 0; r < R; r++) s += aug[r + i * R] * aug[r + j * R]; M[i + j * N] = s; }
+  return { M, ...elimStored(M, N, N, N + m) };
 }
 def('divide', (a) => {
   if (!isFi(a[0])) throw new LabError('divide(T, a, b): T is the answer’s type, numerictype(s, w, f) or a fi value.');

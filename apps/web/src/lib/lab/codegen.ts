@@ -50,6 +50,20 @@ function lim(t: Nt): [string, string] {
 }
 /** M527: the quotient's fraction and the bits its working needs (numerator scaled up, or denominator). */
 const divPlan = (a: Nt, b: Nt, to: Nt) => { const s = to.fl - a.fl + b.fl; return { s, need: Math.max(a.wl + Math.max(s, 0), b.wl + Math.max(-s, 0)) + 2 }; };
+/** M531: past 128 bits a matrix division is worked in fxb_t (32-bit pieces); this many bits at most. */
+const FXB_MAX = 4096;
+/** M531: the bits an exact matrix division's working needs. Every number the elimination keeps is a minor of [A | B]
+ * (of AᵀA and AᵀB for least squares), at most Hadamard's bound D(k) for order k; a step's difference before its exact
+ * division is the old pivot times the new number (D(k)·D(k+1)), and the products inside it may wrap (the working wraps
+ * round, so only the difference must fit). Then det·x scaled by the answer's extra fraction bits. */
+export function solveBits(a: Nt, b: Nt, R: number, N: number, s: number, ls: boolean): number {
+  const mag = (t: Nt) => (t.signed ? t.wl - 1 : t.wl), lr = Math.log2(Math.max(1, R));
+  const la = ls ? lr + 2 * mag(a) : mag(a), lb = ls ? lr + mag(a) + mag(b) : mag(b);
+  const D = (k: number) => (k === 0 ? 0 : (k / 2) * Math.log2(k) + (k - 1) * la + Math.max(la, lb));
+  let need = Math.max(D(N) + Math.max(s, 0), D(N) + Math.max(-s, 0), ls ? lr + 2 * Math.max(mag(a), mag(b)) : 0);
+  for (let k = 0; k < N; k++) need = Math.max(need, D(k) + D(k + 1));
+  return Math.ceil(need) + 2;
+}
 /** M527: a ./ b's own type: the larger word, the fraction a's minus b's (divide(T, a, b) chooses another). */
 export const quotientType = (a: Nt, b: Nt): Nt => ({ signed: a.signed || b.signed, wl: Math.max(a.wl, b.wl), fl: a.fl - b.fl, ...fmOf(a, b) });
 const scalar = (t: Ty) => t.r === 1 && t.c === 1;
@@ -115,6 +129,7 @@ function fxEmit(W: boolean) {
 function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): { c: string; h: string; wide: boolean } {
   const helpers = new Set<string>(), made = new Map<string, Fn>(), order: Fn[] = [];
   let wide = W; // M527: some fixed-point work needs 128-bit integers
+  let fxbK = 0; // M531: the 32-bit pieces of fxb_t, when a matrix division needs more than 128 bits
   let tmp = 0;
   const E = fxEmit(W);
 
@@ -232,54 +247,72 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       }
       return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * ./ \\ / and comparisons).`);
     }
-    /** M530: A \ B (left) or B / A: the answer's type and size; T chooses the type (mldivide / mrdivide's third input). */
+    /** M530–M531: A \ B (left) or B / A: the answer's type and size; T chooses the type (mldivide / mrdivide's third input). */
     function solveType(Ae: Expr, Be: Expr, left: boolean, T?: Nt): Ty {
       const a = typeOf(Ae), b = typeOf(Be);
       if (!isFx(a) || !isFx(b)) fail('a matrix division of fixed-point values needs both fixed point (fi(…)).');
-      if (a.r !== a.c) fail(`a matrix division needs a square matrix to divide by (here ${sizeText(a)}).`);
-      if (left ? b.r !== a.r : b.c !== a.r) fail(`the sizes don’t agree: ${left ? `${sizeText(a)} \\ ${sizeText(b)}` : `${sizeText(b)} / ${sizeText(a)}`}.`);
+      // A \ B: A is R×N, B R×m, x N×m. B / A: A is r×c, B p×c, x p×r.
+      if (left ? b.r !== a.r : b.c !== a.c) fail(`the sizes don’t agree: ${left ? `${sizeText(a)} \\ ${sizeText(b)}` : `${sizeText(b)} / ${sizeText(a)}`}.`);
       const nt = T ? { ...fmOf(b.fx!, a.fx!), ...T } : quotientType(b.fx!, a.fx!);
-      solvePlan(a.fx!, b.fx!, a.r, nt);
-      return fxTy(nt, b.r, b.c);
+      const t = left ? fxTy(nt, a.c, b.c) : fxTy(nt, b.r, a.r);
+      solvePlan(a, b, left, nt);
+      return t;
     }
-    /** M530: the bits the exact elimination needs (Hadamard's bound on its minors: a product of two, then a scaling). */
-    function solvePlan(a: Nt, b: Nt, n: number, to: Nt) {
-      const s = to.fl - b.fl + a.fl, mx = n * Math.max(a.wl, b.wl) + Math.ceil((n / 2) * Math.log2(Math.max(1, n)));
-      const need = Math.max(2 * mx + 2, mx + Math.max(s, 0) + 2, mx + Math.max(-s, 0) + 2);
-      if (need > MAX_FX + 2) fail(`a ${n}×${n} fixed-point matrix division of ${Math.max(a.wl, b.wl)}-bit values needs ${need} bits of working (at most ${MAX_FX + 2} here): use shorter words.`);
-      if (need > NARROW_FX + 2) wide = true;
-      return s;
+    /** M531: how each way of solving is worked: 'w' in fxw_t (64 bits, or 128 when the file is wide) or 'b' in fxb_t
+     * (whole numbers of 32-bit pieces, past 128 bits), and the fraction bits the answers add. */
+    function solvePlan(a: Ty, b: Ty, left: boolean, to: Nt) {
+      const R = left ? a.r : a.c, N = left ? a.c : a.r, s = to.fl - b.fx!.fl + a.fx!.fl;
+      const pick = (need: number, mayWiden: boolean): 'w' | 'b' => {
+        if (need > FXB_MAX) fail(`a ${R}×${N} fixed-point matrix division of ${Math.max(a.fx!.wl, b.fx!.wl)}-bit values needs ${need} bits of working (at most ${FXB_MAX} here): use shorter words.`);
+        if (need <= 64) return 'w';
+        if (need <= 128 && (W || mayWiden)) { if (mayWiden) wide = true; return 'w'; }
+        fxbK = Math.max(fxbK, Math.ceil(need / 32));
+        return 'b';
+      };
+      const direct = R === N ? pick(solveBits(a.fx!, b.fx!, R, N, s, false), true) : null;
+      return { s, R, N, direct, ls: pick(solveBits(a.fx!, b.fx!, R, N, s, true), false) };
     }
-    /** M530: the C for target = A \ B (or B / A): fraction-free Gauss–Jordan elimination on the stored integers, exact, then
-     * each answer one division rounded into its type (the engine's fiSolve does the same steps). */
+    /** M531: the C for target = A \ B (or B / A): a square A by exact fraction-free elimination on whole numbers, a
+     * non-square or singular one through the normal equations (least squares); then each answer one division rounded
+     * into its type. The engine's fiSolve does the same steps. */
     function solveInto(target: string, Ae: Expr, Be: Expr, left: boolean, t: Ty) {
-      const at = typeOf(Ae), bt = typeOf(Be), n = at.r, m = left ? bt.c : bt.r, A = arrayRef(Ae), B = arrayRef(Be), s = solvePlan(at.fx!, bt.fx!, n, t.fx!);
+      const at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be), { s, R, N, direct, ls } = solvePlan(at, bt, left, t.fx!), m = left ? bt.c : bt.r, w = N + m;
       // B / A is (A.' \ B.').': read A and B across, write the answer across.
-      const aAt = (i: string, j: string) => (left ? `${A}[${i} + ${j} * ${n}]` : `${A}[${j} + ${i} * ${n}]`);
-      const bAt = (i: string, j: string) => (left ? `${B}[${i} + ${j} * ${n}]` : `${B}[${j} + ${i} * ${m}]`);
-      const xAt = (i: string, j: string) => (left ? `${target}[${i} + ${j} * ${n}]` : `${target}[${j} + ${i} * ${m}]`);
-      const M = (i: string, j: string) => `sv_m[${i} + (${j}) * ${n}]`, isZero = (x: string) => (W ? `fxw_cmp(${x}, fxw_of(0)) == 0` : `${x} == 0`);
+      const aAt = (i: string, j: string) => (left ? `${A}[${i} + ${j} * ${R}]` : `${A}[${j} + ${i} * ${N}]`);
+      const bAt = (i: string, j: string) => (left ? `${B}[${i} + ${j} * ${R}]` : `${B}[${j} + ${i} * ${m}]`);
+      const xAt = (i: string, j: string) => (left ? `${target}[${i} + ${j} * ${N}]` : `${target}[${j} + ${i} * ${m}]`);
       const [lo, hi] = E.lim(t.fx!);
       helpers.add('fx_div');
+      const ofW = (S: 'w' | 'b', x: string) => (S === 'w' ? x : `fxb_ofw(${x})`);
+      const load = (S: 'w' | 'b', into: string) => {
+        out(`  for (int sj = 0; sj < ${N}; sj++) for (int si = 0; si < ${R}; si++) ${into}[si + sj * ${R}] = ${ofW(S, E.w(aAt('si', 'sj'), at.fx!))};`);
+        out(`  for (int sj = 0; sj < ${m}; sj++) for (int si = 0; si < ${R}; si++) ${into}[si + (${N} + sj) * ${R}] = ${ofW(S, E.w(bAt('si', 'sj'), bt.fx!))};`);
+      };
+      const answers = (S: 'w' | 'b', M: string, pad: string) => {
+        const q = S === 'w' ? `fx_div(${M}[sv_piv[sc] + (${N} + sj) * ${N}], sv_det, ${s}, ${lo}, ${hi}, ${fmC(t.fx!)})` : `fxb_tow(fxb_divfit(${M}[sv_piv[sc] + (${N} + sj) * ${N}], sv_det, ${s}, fxb_ofw(${lo}), fxb_ofw(${hi}), ${fmC(t.fx!)}))`;
+        out(`${pad}for (int sj = 0; sj < ${m}; sj++) for (int sc = 0; sc < ${N}; sc++) ${xAt('sc', 'sj')} = ${E.to(`sv_piv[sc] < 0 ? ${E.zero} : ${q}`, t.fx!)};`);
+      };
+      helpers.add(`elim_${ls}`);
       out(`{ /* ${left ? 'A \\ B' : 'B / A'}: exact elimination on whole numbers, then each answer rounded once */`);
-      out(`  fxw_t sv_m[${n * (n + m)}], sv_prev = ${W ? 'fxw_of(1)' : '1'}, sv_p, sv_f, sv_x;`);
-      out('  int sv_r, sv_sing = 0;');
-      out(`  for (int sj = 0; sj < ${n}; sj++) for (int si = 0; si < ${n}; si++) ${M('si', 'sj')} = ${E.w(aAt('si', 'sj'), at.fx!)};`);
-      out(`  for (int sj = 0; sj < ${m}; sj++) for (int si = 0; si < ${n}; si++) ${M('si', `${n} + sj`)} = ${E.w(bAt('si', 'sj'), bt.fx!)};`);
-      out(`  for (int sk = 0; sk < ${n} && !sv_sing; sk++) {`);
-      out(`    for (sv_r = sk; sv_r < ${n} && ${isZero(M('sv_r', 'sk'))}; sv_r++) {}`);
-      out(`    if (sv_r == ${n}) { sv_sing = 1; break; }`);
-      out(`    if (sv_r != sk) for (int sj = 0; sj < ${n + m}; sj++) { sv_x = ${M('sk', 'sj')}; ${M('sk', 'sj')} = ${M('sv_r', 'sj')}; ${M('sv_r', 'sj')} = sv_x; }`);
-      out(`    sv_p = ${M('sk', 'sk')};`);
-      out(`    for (int si = 0; si < ${n}; si++) {`);
-      out('      if (si == sk) continue;');
-      out(`      sv_f = ${M('si', 'sk')};`);
-      out(`      for (int sj = 0; sj < ${n + m}; sj++) if (sj != sk) ${M('si', 'sj')} = ${E.div(`(${E.sub(E.mul('sv_p', M('si', 'sj')), E.mul('sv_f', M('sk', 'sj')))})`, 'sv_prev')};`);
-      out(`      ${M('si', 'sk')} = ${E.zero};`);
-      out('    }');
-      out('    sv_prev = sv_p;');
+      out(`  int sv_piv[${N}], sv_done = 0;`);
+      if (direct) {
+        helpers.add(`elim_${direct}`);
+        out(`  { /* square: solved directly */`);
+        out(`    fx${direct}_t sv_m[${N * w}], sv_det;`);
+        load(direct, 'sv_m');
+        out(`    if (fx${direct}_elim(sv_m, ${N}, ${N}, ${w}, sv_piv, &sv_det) == ${N}) {`);
+        answers(direct, 'sv_m', '      ');
+        out('      sv_done = 1;');
+        out('    }');
+        out('  }');
+      }
+      out(`  if (!sv_done) { /* ${direct ? 'singular' : 'not square'}: the least-squares answer, through AᵀA x = AᵀB */`);
+      out(`    fx${ls}_t sv_a[${R * w}], sv_m[${N * w}], sv_det;`);
+      load(ls, 'sv_a');
+      out(`    fx${ls}_normal(sv_a, ${R}, ${N}, ${w}, sv_m);`);
+      out(`    (void)fx${ls}_elim(sv_m, ${N}, ${N}, ${w}, sv_piv, &sv_det);`);
+      answers(ls, 'sv_m', '    ');
       out('  }');
-      out(`  for (int sj = 0; sj < ${m}; sj++) for (int si = 0; si < ${n}; si++) ${xAt('si', 'sj')} = sv_sing ? ${E.to(E.zero, t.fx!)} : ${E.to(`fx_div(${M('si', `${n} + sj`)}, sv_prev, ${s}, ${lo}, ${hi}, ${fmC(t.fx!)})`, t.fx!)};`);
       out('}');
     }
     /** M527: a quotient rounded to the nearest step of its type (halves up) and held in its range; dividing by zero gives the top or bottom (0 / 0 is 0). */
@@ -711,6 +744,8 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
  * here has at most ${wide ? MAX_FX : NARROW_FX} bits. */`, 'enum { FX_NEAREST, FX_FLOOR, FX_CEILING, FX_ZERO, FX_ROUND, FX_CONVERGENT };\nenum { FX_SATURATE, FX_WRAP };');
     help.push(wide ? `typedef fx128_t fxw_t;\n#ifdef HYPERION_FX128_NATIVE\n${FXW_OPS('fxw_t', true)}\n#else\n${FXW_PORTABLE}\n#endif` : `typedef int64_t fxw_t;\n${FXW_OPS('fxw_t', false)}`);
     for (const h of ['fx_rdiv', 'fx_fit', 'fx_shift', 'fx_div', 'fx_from']) if (helpers.has(h)) help.push(FX_HELP[h]);
+    if (helpers.has('elim_w')) help.push(elimC('fxw'));
+    if (helpers.has('elim_b')) help.push(fxbC(fxbK, wide), elimC('fxb'));
   }
   if (helpers.has('mod')) help.push('/* mod: the remainder with the sign of the divisor */\nstatic double mod_d(double a, double b) {\n  if (b == 0.0) return a;\n  double r = fmod(a, b);\n  return (r != 0.0 && ((r < 0) != (b < 0))) ? r + b : r;\n}');
   if (helpers.has('rem')) help.push('/* rem: the remainder with the sign of the dividend */\nstatic double rem_d(double a, double b) { return b == 0.0 ? a : fmod(a, b); }');
@@ -739,6 +774,10 @@ const FXW_OPS = (T: string, wide: boolean) => `static inline ${T} fxw_of(int64_t
 static inline ${T} fxw_add(${T} a, ${T} b) { return a + b; }
 static inline ${T} fxw_sub(${T} a, ${T} b) { return a - b; }
 static inline ${T} fxw_mul(${T} a, ${T} b) { return a * b; }
+${wide ? '__extension__ typedef unsigned __int128 fxw_u;' : 'typedef uint64_t fxw_u;'}
+static inline ${T} fxw_addw(${T} a, ${T} b) { return (${T})((fxw_u)a + (fxw_u)b); }
+static inline ${T} fxw_subw(${T} a, ${T} b) { return (${T})((fxw_u)a - (fxw_u)b); }
+static inline ${T} fxw_mulw(${T} a, ${T} b) { return (${T})((fxw_u)a * (fxw_u)b); }
 static inline ${T} fxw_div(${T} a, ${T} b) { return a / b; }
 static inline ${T} fxw_neg(${T} a) { return -a; }
 static inline int fxw_cmp(${T} a, ${T} b) { return (a > b) - (a < b); }
@@ -760,6 +799,9 @@ static inline int fxw_isneg(fxw_t a) { return (int)(a.hi >> 63); }
 static inline fxw_t fxw_add(fxw_t a, fxw_t b) { uint64_t lo = a.lo + b.lo; return fxw_mk(a.hi + b.hi + (lo < a.lo), lo); }
 static inline fxw_t fxw_neg(fxw_t a) { uint64_t lo = ~a.lo + 1; return fxw_mk(~a.hi + (lo == 0), lo); }
 static inline fxw_t fxw_sub(fxw_t a, fxw_t b) { return fxw_add(a, fxw_neg(b)); }
+#define fxw_addw fxw_add
+#define fxw_subw fxw_sub
+#define fxw_mulw fxw_mul
 static inline int fxw_cmp(fxw_t a, fxw_t b) {
   uint64_t x = a.hi ^ ((uint64_t)1 << 63), y = b.hi ^ ((uint64_t)1 << 63);
   if (x != y) return x < y ? -1 : 1;
@@ -814,7 +856,7 @@ static inline fxw_t fxw_from_dbl(double x) {
 }`;
 const FX_HELP: Record<string, string> = {
   fx_rdiv: `/* t / m (m > 0) rounded to a whole number by the method */
-static fxw_t fx_rdiv(fxw_t t, fxw_t m, int rm) {
+static inline fxw_t fx_rdiv(fxw_t t, fxw_t m, int rm) {
   fxw_t one = fxw_of(1), zero = fxw_of(0), q = fxw_div(t, m), r = fxw_sub(t, fxw_mul(q, m));
   int c;
   if (fxw_cmp(r, zero) < 0) { q = fxw_sub(q, one); r = fxw_add(r, m); }
@@ -830,7 +872,7 @@ static fxw_t fx_rdiv(fxw_t t, fxw_t m, int rm) {
   }
 }`,
   fx_fit: `/* v held in [lo, hi] (FX_SATURATE) or wrapped round it (FX_WRAP: two's complement) */
-static fxw_t fx_fit(fxw_t v, fxw_t lo, fxw_t hi, int om) {
+static inline fxw_t fx_fit(fxw_t v, fxw_t lo, fxw_t hi, int om) {
   fxw_t span, k;
   if (fxw_cmp(v, lo) >= 0 && fxw_cmp(v, hi) <= 0) return v;
   if (om == FX_SATURATE) return fxw_cmp(v, lo) < 0 ? lo : hi;
@@ -839,7 +881,7 @@ static fxw_t fx_fit(fxw_t v, fxw_t lo, fxw_t hi, int om) {
   return fxw_sub(v, fxw_mul(k, span));
 }`,
   fx_shift: `/* v moved d fraction bits finer (d < 0: coarser, rounded) */
-static fxw_t fx_shift(fxw_t v, int d, fxw_t lo, fxw_t hi, int rm, int om) {
+static inline fxw_t fx_shift(fxw_t v, int d, fxw_t lo, fxw_t hi, int rm, int om) {
   fxw_t m, part;
   if (d < 0) return fx_fit(fx_rdiv(v, fxw_p2(-d), rm), lo, hi, om);
   m = fxw_p2(d);
@@ -853,7 +895,7 @@ static fxw_t fx_shift(fxw_t v, int d, fxw_t lo, fxw_t hi, int rm, int om) {
   return fx_fit(fxw_mul(fxw_sub(v, fxw_mul(fx_rdiv(v, part, FX_FLOOR), part)), m), lo, hi, om);
 }`,
   fx_div: `/* a / b as the stored number of a type s fraction bits finer than a's less b's; by zero: the top or bottom (0 / 0 is 0) */
-static fxw_t fx_div(fxw_t a, fxw_t b, int s, fxw_t lo, fxw_t hi, int rm, int om) {
+static inline fxw_t fx_div(fxw_t a, fxw_t b, int s, fxw_t lo, fxw_t hi, int rm, int om) {
   fxw_t zero = fxw_of(0);
   if (fxw_cmp(b, zero) == 0) return fxw_cmp(a, zero) > 0 ? hi : fxw_cmp(a, zero) < 0 ? lo : zero;
   if (fxw_cmp(b, zero) < 0) { a = fxw_neg(a); b = fxw_neg(b); }
@@ -861,7 +903,7 @@ static fxw_t fx_div(fxw_t a, fxw_t b, int s, fxw_t lo, fxw_t hi, int rm, int om)
   return fx_fit(fx_rdiv(a, b, rm), lo, hi, om);
 }`,
   fx_from: `/* a double to a stored number: rounded by the method, held or wrapped (the same arithmetic as Hyperion) */
-static fxw_t fx_from_double(double x, int fl, fxw_t lo, fxw_t hi, int rm, int om) {
+static inline fxw_t fx_from_double(double x, int fl, fxw_t lo, fxw_t hi, int rm, int om) {
   double y, r, d, l = fxw_dbl(lo), h = fxw_dbl(hi), span;
   if (isnan(x)) return fxw_of(0);
   y = ldexp(x, fl);
@@ -884,3 +926,84 @@ static fxw_t fx_from_double(double x, int fl, fxw_t lo, fxw_t hi, int rm, int om
   return fxw_from_dbl(r);
 }`,
 };
+/** M531: fraction-free Gauss–Jordan elimination and the normal equations, in fxw_t or fxb_t (the engine's elimStored
+ * and solveAny). The products may wrap round: only each step's difference must fit, and it divides exactly. */
+const elimC = (S: 'fxw' | 'fxb') => `/* fraction-free Gauss–Jordan on M (n rows, w columns, column by column) over its first nu columns; a column with no
+ * pivot left is skipped (piv -1, its unknown 0). Every division is exact; the pivots end equal to *det. */
+static inline int ${S}_elim(${S}_t *M, int n, int nu, int w, int *piv, ${S}_t *det) {
+  ${S}_t prev = ${S}_of(1), zero = ${S}_of(0), pk, f, t;
+  int row = 0, p;
+  for (int k = 0; k < nu; k++) {
+    piv[k] = -1;
+    if (row == n) continue;
+    for (p = row; p < n && ${S}_cmp(M[p + k * n], zero) == 0; p++) {}
+    if (p == n) continue;
+    if (p != row) for (int j = 0; j < w; j++) { t = M[row + j * n]; M[row + j * n] = M[p + j * n]; M[p + j * n] = t; }
+    pk = M[row + k * n];
+    for (int i = 0; i < n; i++) {
+      if (i == row) continue;
+      f = M[i + k * n];
+      for (int j = 0; j < w; j++) if (j != k) M[i + j * n] = ${S}_div(${S}_subw(${S}_mulw(pk, M[i + j * n]), ${S}_mulw(f, M[row + j * n])), prev);
+      M[i + k * n] = zero;
+    }
+    prev = pk;
+    piv[k] = row++;
+  }
+  *det = prev;
+  return row;
+}
+/* the normal equations: M (N rows, w columns) = a's first N columns' transpose times all w of them (a has R rows) */
+static inline void ${S}_normal(const ${S}_t *a, int R, int N, int w, ${S}_t *M) {
+  for (int j = 0; j < w; j++) for (int i = 0; i < N; i++) {
+    ${S}_t s = ${S}_of(0);
+    for (int r = 0; r < R; r++) s = ${S}_addw(s, ${S}_mulw(a[r + i * R], a[r + j * R]));
+    M[i + j * N] = s;
+  }
+}`;
+/** M531: whole numbers of k 32-bit pieces (two's complement, lowest first) for matrix divisions past 128 bits: the
+ * operations, the rounding division and the fit written as fx_rdiv, fx_fit and fx_div are, and the way to and from fxw_t. */
+function fxbC(k: number, wide: boolean): string {
+  const same = ['fx_rdiv', 'fx_fit', 'fx_div'].map((h) => FX_HELP[h].replace(/fxw_/g, 'fxb_').replace(/\bfx_rdiv\b/g, 'fxb_rdiv').replace(/\bfx_fit\b/g, 'fxb_fit').replace(/\bfx_div\b/g, 'fxb_divfit'));
+  return `/* Whole numbers of ${32 * k} bits in ${k} 32-bit pieces (two's complement, lowest first): a matrix division's exact working */
+typedef struct { uint32_t d[${k}]; } fxb_t;
+static inline fxb_t fxb_ofu(uint64_t u) { fxb_t r; for (int i = 0; i < ${k}; i++) r.d[i] = i < 2 ? (uint32_t)(u >> (32 * i)) : 0; return r; }
+static inline fxb_t fxb_of(int64_t v) { fxb_t r = fxb_ofu((uint64_t)v); if (v < 0) for (int i = 2; i < ${k}; i++) r.d[i] = 0xffffffffu; return r; }
+static inline int fxb_isneg(fxb_t a) { return (int)(a.d[${k - 1}] >> 31); }
+static inline fxb_t fxb_add(fxb_t a, fxb_t b) { uint64_t c = 0; for (int i = 0; i < ${k}; i++) { c += (uint64_t)a.d[i] + b.d[i]; a.d[i] = (uint32_t)c; c >>= 32; } return a; }
+static inline fxb_t fxb_neg(fxb_t a) { uint64_t c = 1; for (int i = 0; i < ${k}; i++) { c += (uint32_t)~a.d[i]; a.d[i] = (uint32_t)c; c >>= 32; } return a; }
+static inline fxb_t fxb_sub(fxb_t a, fxb_t b) { return fxb_add(a, fxb_neg(b)); }
+static inline fxb_t fxb_mul(fxb_t a, fxb_t b) {
+  fxb_t r = fxb_ofu(0);
+  for (int i = 0; i < ${k}; i++) {
+    uint64_t c = 0, t;
+    for (int j = 0; i + j < ${k}; j++) { t = (uint64_t)a.d[i] * b.d[j] + r.d[i + j] + c; r.d[i + j] = (uint32_t)t; c = t >> 32; }
+  }
+  return r;
+}
+#define fxb_addw fxb_add
+#define fxb_subw fxb_sub
+#define fxb_mulw fxb_mul
+static inline int fxb_ucmp(fxb_t a, fxb_t b) { for (int i = ${k - 1}; i >= 0; i--) if (a.d[i] != b.d[i]) return a.d[i] < b.d[i] ? -1 : 1; return 0; }
+static inline int fxb_cmp(fxb_t a, fxb_t b) { int na = fxb_isneg(a), nb = fxb_isneg(b); return na != nb ? (na ? -1 : 1) : fxb_ucmp(a, b); }
+static inline fxb_t fxb_p2(int d) { fxb_t r = fxb_ofu(0); r.d[d / 32] = (uint32_t)1 << (d % 32); return r; }
+static inline fxb_t fxb_shl(fxb_t a, int d) { return fxb_mul(a, fxb_p2(d)); }
+static inline int fxb_odd(fxb_t a) { return (int)(a.d[0] & 1); }
+/* a / b towards zero: shift and subtract on the sizes, then the sign */
+static inline fxb_t fxb_div(fxb_t a, fxb_t b) {
+  int na = fxb_isneg(a), nb = fxb_isneg(b);
+  fxb_t n = na ? fxb_neg(a) : a, d = nb ? fxb_neg(b) : b, q = fxb_ofu(0), r = fxb_ofu(0);
+  for (int i = ${32 * k - 1}; i >= 0; i--) {
+    r = fxb_add(r, r);
+    r.d[0] |= (n.d[i / 32] >> (i % 32)) & 1;
+    if (fxb_ucmp(r, d) >= 0) { r = fxb_sub(r, d); q.d[i / 32] |= (uint32_t)1 << (i % 32); }
+  }
+  return na != nb ? fxb_neg(q) : q;
+}
+${same.join('\n')}
+${wide ? `static inline fxb_t fxb_ofw(fxw_t v) { return fxb_add(fxb_shl(fxb_of(fxw_lo64(fx_rdiv(v, fxw_p2(64), FX_FLOOR))), 64), fxb_ofu(fxw_lou(v))); }
+static inline fxw_t fxb_tow(fxb_t a) {
+  uint64_t lo = (uint64_t)a.d[0] | ((uint64_t)a.d[1] << 32), hi = (uint64_t)a.d[2] | ((uint64_t)a.d[3] << 32);
+  return fxw_add(fxw_shl(fxw_of(hi <= (uint64_t)INT64_MAX ? (int64_t)hi : -(int64_t)(~hi) - 1), 64), fxw_ofu(lo));
+}` : `static inline fxb_t fxb_ofw(fxw_t v) { return fxb_of(v); }
+static inline fxw_t fxb_tow(fxb_t a) { uint64_t u = (uint64_t)a.d[0] | ((uint64_t)a.d[1] << 32); return u <= (uint64_t)INT64_MAX ? (int64_t)u : -(int64_t)(~u) - 1; }`}`;
+}

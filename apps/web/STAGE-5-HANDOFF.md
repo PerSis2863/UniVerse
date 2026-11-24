@@ -13009,3 +13009,30 @@ The owner pasted M528–M529's "left out" list after them; this builds all three
   `embedded_ai.m` show both.
 - **Left out:** fimath's ProductMode / SumMode other than full precision (MATLAB's KeepLSB etc.), least-squares `A \ b`
   for a non-square A, per-class or per-channel 8-bit scales, 8-bit arithmetic inside these models (only their numbers).
+
+## M531 (24 Nov): Hyperion fixed-point matrix division by any matrix, past 128 bits
+
+The owner pasted M530's "left out" list and chose "build all of them"; this is the matrix-division part.
+
+- **Any A** (`codegen-lab.ts` `fiSolve`, `solveAny`, `elimStored`): a square A is solved as before (fraction-free
+  Gauss–Jordan on the stored integers); if a column has no pivot (singular), or A isn't square, the same elimination runs on
+  the normal equations AᵀA x = AᵀB, exact, so the answer is the least-squares one; an unknown whose column has no pivot is
+  0 (MATLAB's basic solution: a wide system gives a sparse answer, not the minimum-norm one). An all-zero A gives zeros.
+  `B / A` is `(A.' \ B.').'` for any shape (B needs A's columns). The elimination skips pivot-less columns; every division
+  stays exact (checked on 300 random square, tall, wide and rank-deficient systems: the normal equations hold exactly).
+- **The working's size** (`codegen.ts` `solveBits`): Hadamard's bound per order k, D(k); a step's difference is the old
+  pivot times the new number (D(k)·D(k+1)), and the products inside it may wrap (`fxw_mulw`, `fxw_subw`, `fxw_addw` wrap
+  through unsigned, defined behaviour), so a 2×2 of 16 bits is now worked in int64 (it needed 128 before). Least squares
+  uses AᵀA's bounds (about twice the bits).
+- **Past 128 bits** (`fxbC`): `fxb_t`, k 32-bit pieces (two's complement), with add, multiply, shift-and-subtract division,
+  and `fxb_rdiv` / `fxb_fit` / `fxb_divfit` made from the fx_ helpers' text by renaming; `fxb_ofw` / `fxb_tow` to and from
+  fxw_t (64 or 128). `solvePlan` picks per path: fxw_t when it fits (the square path may turn the file wide; the
+  least-squares fallback never does, it takes fxb_t instead), else fxb_t, to `FXB_MAX` 4096 bits (refused past it, naming
+  shorter words). The C per solve: a direct block for a square A, then `if (!sv_done)` the least-squares block;
+  `fxw_elim` / `fxb_elim` and `_normal` are `static inline` helpers (all fixed-point helpers are `static inline` now, so an
+  unused one doesn't fail `-Wall -Werror`).
+- **Checked:** `codegen.test.ts` M531: square 16-bit (int64), tall 4×2 least squares, a singular 3×3, a right division by a
+  wide A, a 3×3 of 40 bits (fxb_t in a 64-bit file) and of 70 bits (fxb_t in a 128-bit file), compiled native and
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers.
+- **Left out:** the minimum-norm answer for wide or rank-deficient systems (MATLAB's `\` doesn't give it either; `pinv`
+  does), refusing past 4096 bits.

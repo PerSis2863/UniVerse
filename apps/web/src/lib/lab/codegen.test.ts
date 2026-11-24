@@ -266,26 +266,44 @@ end`;
     expect(st(l, 'x')).toEqual([0, 1]); // 0.1 and 0.6 in whole numbers (fraction 8 − 8)
     expect(st(l, 'xt')).toEqual([Math.floor(0.1 * 2 ** 16 + 0.5), Math.floor(0.6 * 2 ** 16 + 0.5)]);
     expect(st(l, 'mrdivide(y\', A, numerictype(1, 24, 16))')).toEqual([Math.floor(-0.1 * 2 ** 16 + 0.5), Math.floor(0.7 * 2 ** 16 + 0.5)]);
-    expect(st(l, 'fi([1 2; 2 4], 1, 16, 8) \\ y')).toEqual([0, 0]); // singular: zeros
+    // M531: a singular A gives the least-squares answer (here exact: y is A's first column), a free unknown 0
+    expect(st(l, 'fi([1 2; 2 4], 1, 16, 8) \\ y')).toEqual([1, 0]);
+    // M531: more equations than unknowns: the least-squares line through (0, 1), (1, 2.5), (2, 3.5) is 1.083 + 1.25 x
+    l.run("P = fi([1 0; 1 1; 1 2], 1, 16, 8); q = fi([1; 2.5; 3.5], 1, 16, 8); c = mldivide(P, q, numerictype(1, 32, 16)); r = mrdivide(q', P', numerictype(1, 32, 16));");
+    expect(st(l, 'c')).toEqual([Math.round((13 / 12) * 2 ** 16), Math.round(1.25 * 2 ** 16)]);
+    expect(st(l, 'r')).toEqual(st(l, 'c'));
+    // fewer equations than unknowns: a basic answer (the later unknown 0)
+    expect(st(l, "mldivide(fi([2 4], 1, 16, 8), fi(3, 1, 16, 8), numerictype(1, 32, 16))")).toEqual([1.5 * 2 ** 16, 0]);
+    expect(st(l, "fi(zeros(2), 1, 16, 8) \\ y")).toEqual([0, 0]);
   });
-  it('the exact elimination leaves det · x on the right for any whole-number system', async () => {
-    const { solveStored } = await import('./codegen-lab');
+  it('the exact elimination solves any whole-number system: square, singular, tall and wide', async () => {
+    const { solveAny } = await import('./codegen-lab');
     let seed = 7;
     const rnd = () => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return BigInt((seed % 2001) - 1000); };
-    for (let t = 0; t < 200; t++) {
-      const n = 1 + (t % 5), A = Array.from({ length: n * n }, rnd), B = Array.from({ length: n * 2 }, rnd), r = solveStored(A, B, n, 2);
-      if (r.det === BigInt(0)) continue;
-      for (let j = 0; j < 2; j++) for (let i = 0; i < n; i++) {
-        let s = BigInt(0);
-        for (let p = 0; p < n; p++) s += A[i + p * n] * r.rhs[p + j * n];
-        expect(s).toBe(B[i + j * n] * r.det);
+    const zero = BigInt(0);
+    for (let t = 0; t < 300; t++) {
+      const R = 1 + (t % 5), N = 1 + ((t >> 2) % 5), m = 2, A = Array.from({ length: R * N }, rnd), B = Array.from({ length: R * m }, rnd);
+      if (t % 3 === 0 && N > 1) for (let i = 0; i < R; i++) A[i + (N - 1) * R] = A[i] * BigInt(2); // a repeated column
+      const { M, det, piv } = solveAny(A, B, R, N, m), X = (c: number, j: number) => (piv[c] < 0 ? zero : M[piv[c] + (N + j) * N]);
+      expect(det === zero).toBe(A.every((x) => x === zero));
+      // AᵀA (det·x) = det · AᵀB: the least-squares equations hold exactly (a square solvable A: A (det·x) = det·B)
+      for (let j = 0; j < m; j++) for (let i = 0; i < N; i++) {
+        let lhs = zero, rhs = zero;
+        for (let r = 0; r < R; r++) { let ax = zero; for (let c = 0; c < N; c++) ax += A[r + c * R] * X(c, j); lhs += A[r + i * R] * ax; rhs += A[r + i * R] * B[r + j * R]; }
+        expect(lhs).toBe(det * rhs);
       }
     }
   });
   it('refuses a matrix division too big to work exactly, naming the fix', () => {
-    const l = new Lab({ out: () => {}, files: new FileStore() });
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
     l.run(SOLVE);
-    expect(() => l.run("codegen('solve2', {fi(zeros(5), 1, 32, 16), fi(zeros(5, 1), 1, 32, 16)})")).toThrow(/needs \d+ bits of working .*shorter words/);
+    expect(() => l.run("codegen('solve2', {fi(zeros(30), 1, 100, 50), fi(zeros(30, 1), 1, 100, 50)})")).toThrow(/needs \d+ bits of working .*shorter words/);
+    // M531: a 2×2 of 16 bits fits 64-bit working; a 5×5 of 32 bits is worked in 32-bit pieces
+    l.run("codegen('solve2', {fi(zeros(2), 1, 16, 8), fi(zeros(2, 1), 1, 16, 8)})");
+    expect(files.text('solve2.c')).toContain('typedef int64_t fxw_t;');
+    expect(files.text('solve2.c')).not.toContain('fx128_t'); // (a singular one falls back to least squares in 32-bit pieces)
+    l.run("codegen('solve2', {fi(zeros(5), 1, 32, 16), fi(zeros(5, 1), 1, 32, 16)})");
+    expect(files.text('solve2.c')).toMatch(/typedef struct \{ uint32_t d\[\d+\]; \} fxb_t;/);
   });
   it.skipIf(!hasCc)('the C gives exactly Hyperion’s stored integers: every method, wrap, matrix division; 64-bit, 128-bit and two-half working', () => {
     const files = new FileStore(), l = new Lab({ out: () => {}, files });
@@ -366,6 +384,60 @@ ${modes.map(([rm, om]) => `    m_${rm}_${om}(xs[i], as[i], bs[i], &p, &q, &r, &s
       expect(got.slice(nFx, nFx + nSolve).map(Number)).toEqual(solved);
       const wide = got.slice(nFx + nSolve);
       expect(pairs.map((_, i) => (BigInt(wide[2 * i]) << BigInt(64)) + BigInt(wide[2 * i + 1]))).toEqual(wideWant);
+    }
+  });
+  it.skipIf(!hasCc)('M531: least squares, singular systems and working past 128 bits give Hyperion’s stored integers in C', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    const T = (w: number, f: number) => `numerictype(1, ${w}, ${f})`;
+    const fns: [string, string][] = [['sq16', T(32, 16)], ['tall16', T(32, 16)], ['sing3', T(32, 16)], ['big40', T(40, 20)], ['big70', T(70, 30)], ['right16', T(32, 16)]];
+    l.run(fns.map(([f, t]) => (f === 'right16' ? `function x = ${f}(b, A)\n  x = mrdivide(b, A, ${t});\nend` : `function x = ${f}(A, b)\n  x = mldivide(A, b, ${t});\nend`)).join('\n'));
+    const m = (rows: number[][]) => `[${rows.map((r) => r.join(' ')).join('; ')}]`;
+    const cases: Record<string, [number[][], number[][], number, number]> = {
+      sq16: [[[3.5, -1.25], [1, 2.25]], [[1], [-0.5]], 16, 8],
+      tall16: [[[1, 0], [1, 1], [1, 2], [1, 3.5]], [[1, 2], [2.5, -1], [3.5, 0.25], [5, 7]], 16, 8],
+      sing3: [[[1, 2, 3], [2, 4, 6], [0.5, -1, 2]], [[1], [3], [-2]], 16, 8],
+      big40: [[[3.5, -1.25, 0.75], [1, 2.25, -0.5], [-0.75, 0.5, 4]], [[1, -2], [0.5, 3.25], [-1.5, 0.25]], 40, 20],
+      big70: [[[3.5, -1.25, 0.75], [1, 2.25, -0.5], [-0.75, 0.5, 4]], [[1], [0.5], [-1.5]], 70, 30],
+      right16: [[[1, 0, 2], [1, 1, -1]], [[1, 0, 1], [1, 1, 0]], 16, 8],
+    };
+    const want: Record<string, number[]> = {}, ins: Record<string, [number[], number[]]> = {};
+    for (const [f] of fns) {
+      const [A, B, w, fl] = cases[f], a = `fi(${m(A)}, 1, ${w}, ${fl})`, b = `fi(${m(B)}, 1, ${w}, ${fl})`;
+      ins[f] = [st(l, a), st(l, b)];
+      l.run(`codegen('${f}', {${a}, ${b}});`);
+      want[f] = st(l, `${f}(${a}, ${b})`);
+    }
+    expect(files.text('sq16.c')).toContain('typedef int64_t fxw_t;');
+    expect(files.text('big40.c')).toContain('typedef int64_t fxw_t;');
+    expect(files.text('big40.c')).toMatch(/fxb_t/);
+    expect(files.text('big70.c')).toContain('typedef fx128_t fxw_t;');
+    expect(files.text('big70.c')).toMatch(/fxb_t/);
+    // the least-squares line through four points, and the singular system's basic answer, against double arithmetic
+    expect(Math.abs(want.tall16[0] / 2 ** 16 - 31.5 / 26.75)).toBeLessThan(0.001);
+    [0.351030, -0.002433, -0.308883].forEach((x, i) => expect(Math.abs(want.big70[i] / 2 ** 30 - x)).toBeLessThan(1e-5));
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-fx531-'));
+    for (const [f] of fns) { writeFileSync(join(dir, `${f}.c`), files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), files.text(`${f}.h`)); }
+    const arr = (ty: string, name: string, v: number[]) => `${ty} ${name}[] = {${v.map((x) => (ty === 'fx128_t' ? `MK(${x})` : `${x}`)).join(', ')}};`;
+    const ty = (f: string) => (cases[f][2] > 64 ? 'fx128_t' : cases[f][2] > 16 ? 'int64_t' : 'int16_t'), outTy = (f: string) => (f === 'big70' ? 'fx128_t' : f === 'big40' ? 'int64_t' : 'int32_t');
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+${fns.map(([f]) => `#include "${f}.h"`).join('\n')}
+#ifdef HYPERION_FX128_NATIVE
+#define MK(v) ((fx128_t)(v))
+#define LO(z) (long long)(z)
+#else
+#define MK(v) ((fx128_t){ (uint64_t)(int64_t)(v), (v) < 0 ? ~(uint64_t)0 : 0 })
+#define LO(z) (long long)z.lo
+#endif
+int main(void) {
+${fns.map(([f]) => `  { ${arr(ty(f), 'a', ins[f][0])} ${arr(ty(f), 'b', ins[f][1])} ${outTy(f)} x[${want[f].length}];
+    ${f}(a, b, x); for (int i = 0; i < ${want[f].length}; i++) printf("%lld ", ${outTy(f) === 'fx128_t' ? 'LO(x[i])' : '(long long)x[i]'}); }`).join('\n')}
+  return 0;
+}`);
+    const all = fns.flatMap(([f]) => want[f]);
+    for (const portable of [false, true]) {
+      const exe = join(dir, portable ? 'run-p' : 'run-n');
+      execFileSync('cc', ['-std=c99', '-Wall', '-Werror', ...(portable ? ['-DHYPERION_FX_PORTABLE'] : []), '-o', exe, join(dir, 'main.c'), ...fns.map(([f]) => join(dir, `${f}.c`)), '-lm'], { cwd: dir });
+      expect(execFileSync(exe).toString().trim().split(/\s+/).map(Number)).toEqual(all);
     }
   });
 });
