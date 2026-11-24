@@ -144,6 +144,12 @@ dSnow = brakingDistance(vehicle('Mu', 0.3), 27.78)
 % The tyre's curve
 a = linspace(-0.3, 0.3, 200);
 figure; plot(a*180/pi, magicFormula(a, 10, 1.3, 1, -0.6)); grid on; xlabel('slip angle (deg)'); ylabel('side force / load')
+% Body roll: the load moves to the outer tyres; the stiffer end loses grip first
+stiffRear = vehicle('Roll', true, 'RollStiffFront', 20000, 'RollStiffRear', 80000);
+[r, info] = vehicleSim(stiffRear, 'sinedwell', 4, 'Amplitude', 0.06, 'InitialSpeed', 27.8, 'Force', 0);
+fprintf('Stiff rear roll bar: spun = %d, leaning up to %.1f degrees\\n', info.Spun, info.PeakRoll*180/pi)
+van = vehicle('Roll', true, 'CgHeight', 1.1, 'Mass', 2200);
+figure; vehicleSim(van, 'step', 3, 'Amplitude', 0.12, 'Speed', 25)   % a tall van lifts a wheel
 ` },
   { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead
 c = vehicle();

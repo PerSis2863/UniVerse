@@ -51,12 +51,27 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     // Front-wheel drive on a slippery road is held back by grip.
     expect(vd.accelRun({ ...car, mu: 0.3, drive: 'front' }).time).toBeGreaterThan(vd.accelRun({ ...car, mu: 0.3, drive: 'all' }).time);
   });
+  it('body roll (M486b): the steady lean by hand, the roll stiffness setting the balance, a tall body lifting a wheel', () => {
+    const rc = { ...car, roll: vd.ROLL_DEFAULT }, R = 60, u = 14;
+    const c = vd.vehicleSim(rc, () => vd.steerForCircle(rc, R, u), 12, { speed: u });
+    expect(c.roll.at(-1)! / (vd.rollGradient(rc).gradient * c.ay.at(-1)!)).toBeCloseTo(1, 3);
+    // Load moved across an axle costs it grip: less side force at the limit than one tyre per axle.
+    const peak = (v: vd.Vehicle) => Math.max(...vd.vehicleSim(v, vd.rampSteer(0.02), 8, { speed: 25 }).ay);
+    expect(peak(rc)).toBeLessThan(peak(car));
+    // A stiff front anti-roll bar understeers; the same stiffness at the rear spins in the stability test.
+    const sine = (kf: number, kr: number) => vd.vehicleSim({ ...car, roll: { ...vd.ROLL_DEFAULT, kf, kr } }, vd.sineWithDwell(0.06), 4, { v0: 100 / 3.6, force: () => 0 }).spun;
+    expect(sine(80000, 20000)).toBe(false); expect(sine(20000, 80000)).toBe(true);
+    // A van's high centre of mass: past t/2h the inner wheels lift; the saloon's don't.
+    expect(vd.vehicleSim({ ...rc, h: 1.1 }, vd.stepSteer(0.12), 3, { speed: 25 }).lift).toBe(true);
+    expect(vd.vehicleSim(rc, vd.stepSteer(0.12), 3, { speed: 25 }).lift).toBe(false);
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
-    lab.run("c = vehicle('Cr', 50000); k = c.UndersteerGradient; [r, info] = vehicleSim(c, 'sinedwell', 4, 'Amplitude', 0.1, 'Speed', 28); s = info.Spun; [a, ai] = accelRun(vehicle()); t = ai.Time; d = brakingDistance(vehicle(), 27.78); f = magicFormula([0 0.1], 10, 1.3, 1, -0.6); h = vehicleHandling(vehicle()); figure; vehicleSim(vehicle(), 'step', 3, 'Speed', 20); figure; vehicleHandling(c);");
+    lab.run("c = vehicle('Cr', 50000); k = c.UndersteerGradient; [r, info] = vehicleSim(c, 'sinedwell', 4, 'Amplitude', 0.1, 'Speed', 28); s = info.Spun; [a, ai] = accelRun(vehicle()); t = ai.Time; d = brakingDistance(vehicle(), 27.78); f = magicFormula([0 0.1], 10, 1.3, 1, -0.6); h = vehicleHandling(vehicle()); figure; vehicleSim(vehicle(), 'step', 3, 'Speed', 20); figure; vehicleHandling(c); v = vehicle('Roll', true, 'CgHeight', 1.1); g = v.RollGradient; [rr, ri] = vehicleSim(v, 'step', 3, 'Amplitude', 0.12, 'Speed', 25); lift = ri.WheelLift; figure; vehicleSim(v, 'step', 3, 'Amplitude', 0.12, 'Speed', 25); v2 = vehicle('RollStiffFront', 80000); g2 = v2.RollGradient;");
     const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
     expect(d('k')[0]).toBeLessThan(0); expect(d('s')).toEqual([1]);
     expect(d('t')[0]).toBeGreaterThan(5); expect(d('d')[0]).toBeGreaterThan(35);
     expect(d('f')[0]).toBe(0); expect(d('f')[1]).toBeGreaterThan(0.5);
+    expect(d('g')[0]).toBeGreaterThan(0.01); expect(d('lift')).toEqual([1]); expect(d('g2')[0]).toBeGreaterThan(0);
   });
 });

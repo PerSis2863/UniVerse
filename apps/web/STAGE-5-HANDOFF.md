@@ -12805,6 +12805,26 @@ on one line, timetables and their conflicts, the power supply (substations, volt
 Group 6 is done: M482–M491 and their left-outs (b, c, d). The Machines window has ten tabs (Robot arm, Path planner,
 Sensing, Vehicle, Driving, Electric car, Aeroplane, Orbit, Railway); `hyperion-machines-ui.mjs` checks every one.
 
+
+## M486b (24 Nov): Hyperion vehicles, body roll and load transfer
+
+The owner pasted M491's left-outs (24 Nov), read as "build these". `vehicle.ts`: an optional `roll` (`Roll`: track,
+roll stiffness front and rear, damping, roll inertia, roll-axis height, tyre load sensitivity; `ROLL_DEFAULT`, about
+2.4°/g on the saloon). With it each axle is two tyres (`sideForce(…, share 0.5)`), loads `Fz/2 ± ΔF`, ΔF through the
+springs and damper as the body leans (`kf·φ + c·p` split by stiffness) plus straight through the roll centres
+(`m·lr/L·ay·hr`), divided by the track; φ and p are two more states (`VState.phi`, `p`, optional so `driving.ts` is
+untouched) with `Ix·p' = m·ay·(h − hr) + m·g·(h − hr)·sin φ − (kf + kr)·φ − c·p`. **Load sensitivity is what makes it
+matter:** with grip and stiffness linear in load the two tyres add up to one and roll changes nothing; `sens` makes grip
+and stiffness per newton fall as load rises (clamped at 0.3 of nominal). Without `roll`, `sens` is 0 and every old
+result is unchanged. `vehicleSim` gives `roll[]` and `lift` (an inner tyre's load reached 0; it's held at 0, the car
+doesn't roll over). `rollGradient` (steady lean per m/s², the run matches it to 3 figures) and the rigid lift limit
+t/2h. Checked: stiff front 0.85 g and stays straight in the sine with dwell; stiff rear spins; a 1.1 m-high centre of
+mass lifts a wheel on a 25 m/s step. Language: `vehicle('Roll', true, 'Track', …, 'RollStiffFront', 'RollStiffRear',
+'RollDamping', 'RollInertia', 'RollCentre', 'LoadSensitivity')` (NaN in the struct when off; `RollGradient`),
+`vehicleSim`'s Roll column, `info.PeakRoll`, `info.WheelLift`, roll drawn with the side g. Window: Vehicle → Body roll
+(Off / Saloon / Tall van) and the front's share of roll stiffness. Example vehicles.m. Not built: suspension travel and
+geometry (camber, bump steer), pitch on braking, rollover itself.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

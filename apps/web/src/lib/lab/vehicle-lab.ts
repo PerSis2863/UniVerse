@@ -17,15 +17,18 @@ const pairs = (a: Value[], from: number) => { const o = new Map<string, Value>()
 const sfield = (s: Struct, k: string) => toMat(s.f.get(k) ?? num(NaN)).d[0];
 
 const NUMS: [string, keyof vd.Vehicle][] = [['Mass', 'm'], ['Inertia', 'iz'], ['Lf', 'lf'], ['Lr', 'lr'], ['CgHeight', 'h'], ['Cf', 'cf'], ['Cr', 'cr'], ['Mu', 'mu'], ['Cd', 'cd'], ['Area', 'area'], ['Crr', 'crr'], ['Power', 'power'], ['MaxSteer', 'maxSteer']];
+// Body roll (M486b): any of these turns it on ('Roll', true for the defaults); NaN in the struct when it's off.
+const ROLLS: [string, keyof vd.Roll][] = [['Track', 'track'], ['RollStiffFront', 'kf'], ['RollStiffRear', 'kr'], ['RollDamping', 'c'], ['RollInertia', 'ix'], ['RollCentre', 'hr'], ['LoadSensitivity', 'sens']];
 export function vehicleStruct(v: vd.Vehicle): Struct {
-  const h = vd.handling(v);
-  return { k: 'struct', f: new Map<string, Value>([['Type', str('vehicle')], ...NUMS.map(([k, f]) => [k, num(v[f] as number)] as [string, Value]), ['Drive', str(v.drive)], ['Tyre', str(v.tyre)], ['Wheelbase', num(h.wheelbase)], ['UndersteerGradient', num(h.K)], ['CharacteristicSpeed', num(h.characteristic)], ['CriticalSpeed', num(h.critical)]]) };
+  const h = vd.handling(v), rg = vd.rollGradient(v);
+  return { k: 'struct', f: new Map<string, Value>([['Type', str('vehicle')], ...NUMS.map(([k, f]) => [k, num(v[f] as number)] as [string, Value]), ['Drive', str(v.drive)], ['Tyre', str(v.tyre)], ...ROLLS.map(([k, f]) => [k, num(v.roll ? v.roll[f] : NaN)] as [string, Value]), ['Wheelbase', num(h.wheelbase)], ['UndersteerGradient', num(h.K)], ['CharacteristicSpeed', num(h.characteristic)], ['CriticalSpeed', num(h.critical)], ['RollGradient', num(rg.gradient)]]) };
 }
 export function vehicleOf(x: Value | undefined): vd.Vehicle {
   if (!x || x.k !== 'struct' || x.f.get('Type')?.k !== 'str' || textOf(x.f.get('Type')!) !== 'vehicle') throw new LabError("A vehicle was expected: vehicle('Mass', 1500).");
   const out = { ...vd.CAR_DEFAULT };
   for (const [k, f] of NUMS) (out as Record<string, unknown>)[f] = sfield(x, k);
   out.drive = textOf(x.f.get('Drive')!) as vd.Vehicle['drive']; out.tyre = textOf(x.f.get('Tyre')!) as vd.Vehicle['tyre'];
+  if (sfield(x, 'Track') > 0) out.roll = Object.fromEntries(ROLLS.map(([k, f]) => [f, sfield(x, k)])) as unknown as vd.Roll;
   return out;
 }
 def('vehicle', (a) => {
@@ -38,8 +41,17 @@ def('vehicle', (a) => {
       else { if (!['linear', 'magic'].includes(t)) throw new LabError("'Tyre' is 'linear' or 'magic' (Pacejka's Magic Formula)."); v.tyre = t as vd.Vehicle['tyre']; }
       continue;
     }
+    if (key === 'roll') { v.roll = toMat(a[i + 1] ?? num(0)).d[0] ? { ...vd.ROLL_DEFAULT } : undefined; continue; }
+    const rh = ROLLS.find(([k]) => k.toLowerCase() === key);
+    if (rh) {
+      const x = toMat(a[i + 1] ?? num(NaN)).d[0];
+      if (!(x >= 0) || (rh[1] !== 'sens' && rh[1] !== 'hr' && !(x > 0))) throw new LabError(`'${rh[0]}' must be above 0.`);
+      if (rh[1] === 'sens' && x > 0.4) throw new LabError("'LoadSensitivity' is 0 to 0.4 (0.15 is typical).");
+      v.roll = { ...(v.roll ?? vd.ROLL_DEFAULT), [rh[1]]: x };
+      continue;
+    }
     const hit = NUMS.find(([k]) => k.toLowerCase() === key);
-    if (!hit) throw new LabError(`vehicle takes ${NUMS.map(([k]) => `'${k}'`).join(', ')}, 'Drive' and 'Tyre' (name, value pairs).`);
+    if (!hit) throw new LabError(`vehicle takes ${NUMS.map(([k]) => `'${k}'`).join(', ')}, 'Drive', 'Tyre', and for body roll 'Roll' or ${ROLLS.map(([k]) => `'${k}'`).join(', ')} (name, value pairs).`);
     const x = toMat(a[i + 1] ?? num(NaN)).d[0];
     if (!(x > 0)) throw new LabError(`'${hit[0]}' must be above 0.`);
     (v as Record<string, unknown>)[hit[1]] = x;
@@ -83,8 +95,8 @@ def('vehicleSim', (a, nout, lab) => {
   const v0 = o.get('initialspeed') ? toMat(o.get('initialspeed')!).d[0] : speed ? speed(0) : 0;
   const r = vd.vehicleSim(v, steerOf(lab, a[1], amp), T, { speed, force, grade, v0 });
   if (nout > 0) {
-    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))]]) };
-    return [table([['Time', col(r.t)], ['X', col(r.x)], ['Y', col(r.y)], ['Yaw', col(r.psi)], ['Vx', col(r.vx)], ['Vy', col(r.vy)], ['YawRate', col(r.r)], ['Ay', col(r.ay)], ['Ax', col(r.ax)], ['SideSlip', col(r.beta)], ['Steer', col(r.steer)], ['SlipFront', col(r.af)], ['SlipRear', col(r.ar)]]), info];
+    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))], ['PeakRoll', num(Math.max(...r.roll.map(Math.abs)))], ['WheelLift', num(r.lift ? 1 : 0)]]) };
+    return [table([['Time', col(r.t)], ['X', col(r.x)], ['Y', col(r.y)], ['Yaw', col(r.psi)], ['Vx', col(r.vx)], ['Vy', col(r.vy)], ['YawRate', col(r.r)], ['Ay', col(r.ay)], ['Ax', col(r.ax)], ['SideSlip', col(r.beta)], ['Steer', col(r.steer)], ['SlipFront', col(r.af)], ['SlipRear', col(r.ar)], ['Roll', col(r.roll)]]), info];
   }
   call(lab, 'subplot', num(2), num(2), num(1)); call(lab, 'plot', row(r.x), row(r.y), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
   let since = Infinity;
@@ -96,10 +108,12 @@ def('vehicleSim', (a, nout, lab) => {
     call(lab, 'plot', row(ol.map((p) => p[0])), row(ol.map((p) => p[1])), str('Color'), row([0.45, 0.45, 0.5]));
   });
   call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('x (m)')); call(lab, 'ylabel', str('y (m)'));
-  call(lab, 'title', str(r.spun ? 'The car spun (body slip past 15°)' : 'Where the car went'));
+  call(lab, 'title', str(r.spun ? 'The car spun (body slip past 15°)' : r.lift ? 'A wheel lifted off the road' : 'Where the car went'));
   call(lab, 'subplot', num(2), num(2), num(2)); call(lab, 'plot', row(r.t), row(r.steer.map((d) => (d * 180) / Math.PI)), row(r.t), row(r.r.map((w) => (w * 180) / Math.PI)));
   call(lab, 'legend', str('steering (°)'), str('yaw rate (°/s)')); call(lab, 'grid', str('on'));
-  call(lab, 'subplot', num(2), num(2), num(3)); call(lab, 'plot', row(r.t), row(r.ay.map((x) => x / vd.G))); call(lab, 'ylabel', str('side acceleration (g)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
+  call(lab, 'subplot', num(2), num(2), num(3)); call(lab, 'plot', row(r.t), row(r.ay.map((x) => x / vd.G)));
+  if (v.roll) { call(lab, 'hold', str('on')); call(lab, 'plot', row(r.t), row(r.roll.map((x) => (x * 180) / Math.PI / 10))); call(lab, 'hold', str('off')); call(lab, 'legend', str('side g'), str('roll (°/10)')); }
+  call(lab, 'ylabel', str('side acceleration (g)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
   call(lab, 'subplot', num(2), num(2), num(4)); call(lab, 'plot', row(r.t), row(r.beta.map((x) => (x * 180) / Math.PI)), row(r.t), row(r.af.map((x) => (x * 180) / Math.PI)), row(r.t), row(r.ar.map((x) => (x * 180) / Math.PI)));
   call(lab, 'legend', str('body slip'), str('front tyres'), str('rear tyres')); call(lab, 'ylabel', str('angle (°)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
   return [];
