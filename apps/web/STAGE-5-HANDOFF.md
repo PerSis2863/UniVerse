@@ -12592,3 +12592,20 @@ ours rows [i j dx dy dθ (wx wy wθ)]). Window: Sensing → "Drive round a loop 
 on past the start; closures as green dashes; "Loops closed: n of m"). Tests in `pose-graph.test.ts`. Not built: robust
 kernels or switchable constraints for wrong closures, place recognition by scan descriptors (it searches near the
 estimate only), 3D pose graphs.
+
+## M485b (24 Nov): Hyperion motors, field weakening, MTPA and stepper motors
+
+M485's left-outs. `motor.ts`: `mtpaId` (the d current for the most torque per amp, (ψ − √(ψ² + 8ΔL²I²)) / 4ΔL, 0 when
+Ld = Lq), `fieldWeakeningId` (the i_d that keeps the steady voltage inside the limit at this speed:
+((√((V/ω)² − (Lq i_q)²) − ψ) / Ld), `focSimulate(..., g, { fieldWeakening, mtpa })` (both on by default: i_d* the lower
+of MTPA and field weakening with 8 % voltage margin, held above −0.95 Imax; i_q's limit shrinks to √(Imax² − i_d²); the
+default servo goes from 138 rad/s (base speed) to 160 rad/s with i_d ≈ −19 A); stepper motors: `STEPPER_DEFAULT` (a
+two-phase hybrid, 50 teeth = 200 full steps, 1.5 Ω, 3 mH, 0.3 N·m/A, a little detent torque, 1.5 A from 24 V),
+`stepperSimulate` (10 µs steps; microstepping by the electrical angle in whole microsteps; each phase's current set by an
+ideal chopper (gain held to ± the supply) against its back-EMF; torque −Km iA sin(Nθ) + Km iB cos(Nθ) − detent; a load
+that only resists motion; `lost` = the gap between commanded and real angle in steps), `pullOut` (the biggest load kept
+without losing steps at each rate after a 0.2 s ramp, by halving). The pull-out curve isn't perfectly smooth (mid-band
+resonance shows as a dip, as in real steppers). Language in `motor-lab.ts`: `focSim(..., 'FieldWeakening', 0/1,
+'MTPA', 0/1)`, `stepper`, `stepperSim` (a table and the steps lost), `stepperPullout`. Tests in `motor.test.ts`.
+Example motors.m. Not built: six-step (trapezoidal) BLDC commutation with Hall sensors, space-vector PWM inside the
+motor model, motor heating, closed-loop steppers.

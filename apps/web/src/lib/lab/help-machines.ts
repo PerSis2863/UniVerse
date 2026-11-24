@@ -60,11 +60,14 @@ dcmotorTF | G = dcmotorTF(m, 'speed') | The motor as a transfer function from vo
 dcmotorSim | [t, w, i, theta] = dcmotorSim(m, V, T, 'Load', TL, 'LoadAt', t0) | The motor driven by V volts (a number or @(t) …) for T seconds, a load torque from t0. Drawn without outputs.
 pmsm | p = pmsm('PolePairs', 4, 'FluxLinkage', 0.05, 'Rs', 0.2, 'Ld', 5e-4, 'Lq', 5e-4, 'Vdc', 48, 'Imax', 20) | A permanent-magnet synchronous motor (also a BLDC driven with sine waves) as a struct, with its torque constant, most torque and base speed.
 focTune | g = focTune(p, 'CurrentBandwidth', 500, 'SpeedBandwidth', 20) | Gains for field-oriented control: current PIs that cancel the winding's pole, a speed PI (bandwidths in Hz).
-focSim | s = focSim(p, wRef, T, 'Load', TL, 'LoadAt', t0, 'Gains', g) | The PMSM under field-oriented control (i_d held at 0) following a speed (rad/s, a number or @(t) …): a table of speed, i_d, i_q, voltages, torque and phase currents. Drawn without outputs.
+focSim | s = focSim(p, wRef, T, 'Load', TL, 'LoadAt', t0, 'Gains', g, 'FieldWeakening', true, 'MTPA', true) | The PMSM under field-oriented control following a speed (rad/s, a number or @(t) …): i_d set for the most torque per amp, and pushed negative above the base speed so the motor can go faster than the supply's voltage would otherwise allow (turn either off with 0). A table of speed, i_d, i_q, voltages, torque and phase currents. Drawn without outputs.
 clarke | ab = clarke(abc) | Three phases (rows [a b c]) to the two-axis α–β frame (amplitude kept).
 invclarke | abc = invclarke(ab) | α–β back to three phases.
 park | dq = park(ab, theta) | α–β into the rotor's d–q frame at angle theta (radians, one or one a row).
 invpark | ab = invpark(dq, theta) | d–q back to α–β.
 gearReflect | [J, b, T] = gearReflect(J, b, T, N, efficiency) | A load behind a gearbox of ratio N as the motor sees it: inertia and damping over N², torque over N·efficiency.
 encoderSim | [counts, angle, speed] = encoderSim(t, theta, lines, window) | A quadrature encoder (4 counts a line): its counts, the angle they say, and the speed from counts over a window of samples.
+stepper | s = stepper('Current', 1.5, 'Supply', 24, 'Teeth', 50, 'Km', 0.3) | A two-phase hybrid stepper motor (200 full steps a turn by default) and its current-controlled driver, as a struct with its holding torque.
+stepperSim | [r, lost] = stepperSim(s, rate, T, 'Microsteps', 8, 'Load', TL) | The stepper driven at a step rate (full steps a second, a number or @(t) …): the commanded and real angles, speed and phase currents, and how many steps it lost (a load too heavy or a start too fast). Drawn without outputs.
+stepperPullout | T = stepperPullout(s, rates, microsteps) | The pull-out torque curve: at each step rate, the most load the motor carries without losing steps (found by simulation). Drawn without outputs.
 `;

@@ -96,5 +96,12 @@ fprintf('Torque current at the end: %.2f A (2 N·m / %.2f N·m/A)\\n', s.Iq(end)
 % A 10:1 gearbox at 90 percent efficiency, and a 500-line encoder on a shaft turning at 5 rad/s
 [Jm, bm, Tm] = gearReflect(0.05, 0.01, 8, 10, 0.9)
 t = (0:0.001:0.1)'; [counts, ang, w] = encoderSim(t, 5*t, 500, 10); w(end)
+% Faster than its base speed: field weakening (a negative d current) lets it reach 160 rad/s
+figure; focSim(p, 160, 0.5)
+% A stepper motor: ramped up it keeps every step; started at full speed it stalls and loses them
+s = stepper();
+figure; stepperSim(s, @(t) min(400, 2000*t), 0.4, 'Microsteps', 8)
+figure; stepperSim(s, 3000, 0.2, 'Microsteps', 8)
+figure; stepperPullout(s, [100 300 600 1000 1500 2000])
 ` },
 ];

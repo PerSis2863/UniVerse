@@ -52,3 +52,38 @@ describe('Hyperion mechatronics (M485)', () => {
     expect(d('Jr')).toEqual([0.005]);
   });
 });
+
+describe('Hyperion motors: field weakening, MTPA and steppers (M485b)', () => {
+  it('field weakening takes a PMSM past its base speed; without it the voltage runs out', () => {
+    const p = mo.PMSM_DEFAULT, base = p.vdc / Math.sqrt(3) / (p.p * p.psi);
+    const a = mo.focSimulate(p, () => 160, 0.6, () => 0, mo.focTune(p), { fieldWeakening: false });
+    const b = mo.focSimulate(p, () => 160, 0.6);
+    expect(a.w.at(-1)!).toBeLessThan(base);
+    expect(b.w.at(-1)!).toBeCloseTo(160, 0);
+    expect(b.id.at(-1)!).toBeLessThan(-5); // the flux is weakened by a negative d current
+    expect(Math.hypot(b.id.at(-1)!, b.iq.at(-1)!)).toBeLessThanOrEqual(p.imax + 0.5);
+  });
+  it('MTPA: a surface-magnet motor keeps i_d at 0, an interior one carries the same torque on less current', () => {
+    expect(mo.mtpaId(mo.PMSM_DEFAULT, 10)).toBe(0);
+    const ipm = { ...mo.PMSM_DEFAULT, ld: 0.3e-3, lq: 0.9e-3 }, id = mo.mtpaId(ipm, 10), iq = Math.sqrt(100 - id * id);
+    expect(id).toBeLessThan(0);
+    // At 10 A, the MTPA split gives more torque than all of it on q.
+    expect(mo.torqueOf(ipm, id, iq)).toBeGreaterThan(mo.torqueOf(ipm, 0, 10));
+  });
+  it('a stepper keeps every step when ramped, loses them when started too fast', () => {
+    const m = mo.STEPPER_DEFAULT;
+    const ok = mo.stepperSimulate(m, (t) => Math.min(400, 2000 * t), 0.5, { micro: 8 });
+    expect(ok.lost).toBe(0);
+    expect(ok.cmd.at(-1)! / ok.stepAngle).toBeGreaterThan(150);
+    expect(Math.abs(mo.stepperSimulate(m, () => 3000, 0.2, { micro: 8 }).lost)).toBeGreaterThan(100);
+    const po = mo.pullOut(m, [200, 4000]);
+    expect(po[0]).toBeGreaterThan(0.1); expect(po[1]).toBeLessThan(po[0]);
+  });
+  it('in the language', { timeout: 30_000 }, () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("s = stepper(); [r, lost] = stepperSim(s, @(t) min(400, 2000*t), 0.3, 'Microsteps', 8); h = s.HoldingTorque; p = pmsm(); f = focSim(p, 160, 0.5); w = f.Speed(end); g = focSim(p, 160, 0.5, 'FieldWeakening', 0); w0 = g.Speed(end);");
+    const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
+    expect(d('lost')).toEqual([0]); expect(d('h')[0]).toBeCloseTo(0.3 * 1.5 * Math.SQRT2, 9);
+    expect(d('w')[0]).toBeCloseTo(160, 0); expect(d('w0')[0]).toBeLessThan(140);
+  });
+});

@@ -94,7 +94,8 @@ def('focSim', (a, nout, lab) => {
   const m = pmOf(a[0]), T = toMat(a[2]).d[0], o = pairs(a, 3);
   if (!(T > 0 && T <= 5)) throw new LabError('focSim runs up to 5 s (steps of 20 µs).');
   const gs = o.get('gains'), g = gs && kindOf(gs) === 'focGains' ? { kpd: f(gs as Struct, 'KpD'), kid: f(gs as Struct, 'KiD'), kpq: f(gs as Struct, 'KpQ'), kiq: f(gs as Struct, 'KiQ'), kps: f(gs as Struct, 'KpSpeed'), kis: f(gs as Struct, 'KiSpeed') } : mo.focTune(m);
-  const r = mo.focSimulate(m, ofTime(lab, a[1], 0, 'The speed wanted'), T, loadOf(lab, o), g);
+  const flag = (k: string) => (o.get(k) ? !!toMat(o.get(k)!).d[0] : true);
+  const r = mo.focSimulate(m, ofTime(lab, a[1], 0, 'The speed wanted'), T, loadOf(lab, o), g, { fieldWeakening: flag('fieldweakening'), mtpa: flag('mtpa') });
   if (nout > 0) return [table([['Time', col(r.t)], ['Speed', col(r.w)], ['SpeedRef', col(r.wRef)], ['Id', col(r.id)], ['Iq', col(r.iq)], ['Vd', col(r.vd)], ['Vq', col(r.vq)], ['Torque', col(r.torque)], ['Ia', col(r.ia)], ['Ib', col(r.ib)], ['Ic', col(r.ic)], ['Power', col(r.power)]])];
   call(lab, 'subplot', num(3), num(1), num(1)); call(lab, 'plot', row(r.t), row(r.wRef), str('--'), row(r.t), row(r.w)); call(lab, 'ylabel', str('speed (rad/s)')); call(lab, 'legend', str('wanted'), str('motor')); call(lab, 'grid', str('on')); call(lab, 'title', str('PMSM under field-oriented control'));
   call(lab, 'subplot', num(3), num(1), num(2)); call(lab, 'plot', row(r.t), row(r.id), row(r.t), row(r.iq)); call(lab, 'ylabel', str('current (A)')); call(lab, 'legend', str('i_d'), str('i_q')); call(lab, 'grid', str('on'));
@@ -124,4 +125,38 @@ def('encoderSim', (a) => {
   if (t.length !== th.length || !(cpr >= 1) || !(w >= 1)) throw new LabError('One angle a time; at least 1 line; a window of 1 sample or more.');
   const r = mo.encoder(t, th, cpr, w);
   return [col(r.counts), col(r.angle), col(r.speed)];
+});
+
+// ——— Stepper motors (M485b) ———
+const ST_NAMES = { teeth: 'teeth', r: 'r', l: 'l', km: 'km', detent: 'detent', j: 'j', b: 'b', current: 'current', supply: 'supply' } as const;
+const stOf = (v: Value | undefined): mo.Stepper => {
+  if (kindOf(v) !== 'stepper') throw new LabError("A stepper was expected: stepper('Current', 1.5).");
+  const s = v as Struct;
+  return { teeth: f(s, 'Teeth'), r: f(s, 'R'), l: f(s, 'L'), km: f(s, 'Km'), detent: f(s, 'Detent'), j: f(s, 'J'), b: f(s, 'B'), current: f(s, 'Current'), supply: f(s, 'Supply') };
+};
+def('stepper', (a) => {
+  const m = settings(a, 0, mo.STEPPER_DEFAULT, ST_NAMES, 'stepper');
+  if (!(m.teeth >= 1 && m.r > 0 && m.l > 0 && m.km > 0 && m.j > 0 && m.current > 0 && m.supply > 0)) throw new LabError('Teeth, R, L, Km, J, Current and Supply must be above 0.');
+  return [struct('stepper', [['Teeth', m.teeth], ['R', m.r], ['L', m.l], ['Km', m.km], ['Detent', m.detent], ['J', m.j], ['B', m.b], ['Current', m.current], ['Supply', m.supply], ['StepsPerTurn', 4 * m.teeth], ['HoldingTorque', m.km * m.current * Math.SQRT2]])];
+});
+def('stepperSim', (a, nout, lab) => {
+  if (a.length < 3) throw new LabError("stepperSim needs the stepper, the step rate (full steps a second: a number or @(t) …) and the time: stepperSim(s, @(t) min(800, 4000*t), 0.5, 'Microsteps', 8).");
+  const m = stOf(a[0]), T = toMat(a[2]).d[0], o = pairs(a, 3), micro = o.get('microsteps') ? Math.round(toMat(o.get('microsteps')!).d[0]) : 1;
+  if (!(T > 0 && T <= 3)) throw new LabError('stepperSim runs up to 3 s (steps of 10 µs).');
+  if (!(micro >= 1 && micro <= 256)) throw new LabError("'Microsteps' is 1 to 256.");
+  const r = mo.stepperSimulate(m, ofTime(lab, a[1], 0, 'The step rate'), T, { micro, load: loadOf(lab, o) });
+  if (nout > 0) return [table([['Time', col(r.t)], ['Commanded', col(r.cmd)], ['Angle', col(r.angle)], ['Speed', col(r.w)], ['Ia', col(r.ia)], ['Ib', col(r.ib)]]), num(r.lost)];
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', row(r.t), row(r.cmd), str('--'), row(r.t), row(r.angle)); call(lab, 'ylabel', str('angle (rad)')); call(lab, 'legend', str('commanded'), str('rotor')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(r.lost ? `Stepper: ${Math.abs(r.lost)} steps lost` : 'Stepper: every step kept'));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', row(r.t), row(r.ia), row(r.t), row(r.ib)); call(lab, 'ylabel', str('phase current (A)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'legend', str('A'), str('B')); call(lab, 'grid', str('on'));
+  return [];
+});
+def('stepperPullout', (a, nout, lab) => {
+  const m = stOf(a[0]), rates = a[1] ? [...toMat(a[1]).d] : [100, 200, 400, 600, 800, 1200, 1600, 2400], micro = a[2] ? Math.round(toMat(a[2]).d[0]) : 8;
+  if (!rates.length || rates.length > 40 || rates.some((v) => !(v > 0))) throw new LabError('Give 1 to 40 step rates above 0 (full steps a second).');
+  const T = mo.pullOut(m, rates, micro);
+  if (nout > 0) return [row(T)];
+  call(lab, 'plot', row(rates), row(T), str('-o')); call(lab, 'xlabel', str('step rate (full steps/s)')); call(lab, 'ylabel', str('pull-out torque (N·m)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str('Stepper pull-out torque: the most load it carries without losing steps'));
+  return [];
 });
