@@ -21,8 +21,8 @@ export function firstForm(syntax: string): string {
   return syntax.trim();
 }
 
-export function FunctionBrowser({ onClose, onPick }: { onClose: () => void; onPick: (syntax: string) => void }) {
-  const [q, setQ] = useState('');
+export function FunctionBrowser({ onClose, onPick, initial = '' }: { onClose: () => void; onPick: (syntax: string) => void; /** M472: the toolstrip's help search. */ initial?: string }) {
+  const [q, setQ] = useState(initial);
   const [section, setSection] = useState<string | null>(null);
   const all = useMemo(() => [...HELP.values()], []);
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);

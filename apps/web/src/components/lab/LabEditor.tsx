@@ -101,7 +101,7 @@ function explainNow(v: EditorView, on: boolean, isFn: (n: string) => boolean) {
 }
 
 const look = (dark: boolean) => EditorView.theme({
-  '&': { height: '100%', fontSize: '13px', backgroundColor: 'transparent', color: dark ? '#e4e4e7' : '#18181b' },
+  '&': { height: '100%', fontSize: 'var(--lab-code, 13px)', backgroundColor: 'transparent', color: dark ? '#e4e4e7' : '#18181b' },
   '.cm-scroller': { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', lineHeight: '1.65' },
   '.cm-content': { padding: '10px 0', caretColor: dark ? '#e4e4e7' : '#18181b' },
   '.cm-gutters': { backgroundColor: 'transparent', border: 'none', color: dark ? '#8b8b94' : '#71717a' },

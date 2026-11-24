@@ -49,7 +49,9 @@ export function applyTheme(theme: Theme, { animate = true, from }: { animate?: b
         const r = Math.hypot(Math.max(from.x, innerWidth - from.x), Math.max(from.y, innerHeight - from.y));
         html.animate(
           { clipPath: [`circle(0px at ${from.x}px ${from.y}px)`, `circle(${r}px at ${from.x}px ${from.y}px)`] },
-          { duration: 520, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', pseudoElement: '::view-transition-new(root)' },
+          // M476 (the owner, 23 Nov: "it is fast so make it slow and it should be ultra smooth"): over 1.1 s, easing in
+          // and out so the circle starts gently and settles; clip-path on the snapshot runs on the graphics chip.
+          { duration: 1100, easing: 'cubic-bezier(0.65, 0, 0.25, 1)', pseudoElement: '::view-transition-new(root)' },
         );
       });
     }

@@ -12477,6 +12477,67 @@ everywhere" and **Shantell Sans** (of Itim, Mali, Shantell Sans, Comic Neue show
   next step), behind the switch `ghidra-addon` (off), `GHIDRA_LORA`, and the paid-AI limit (`spendCloudAi(null)`, the
   site's count). JSON answers must have every required field or Gemini answers. Tests: `addon.test.ts`.
 
+## M472 (23 Nov): Hyperion's toolstrip
+
+The owner, 23 Nov, with a screenshot of a desktop maths program's tabbed ribbon: "my other agent didnt add all these
+tools in the hyperion website and downloaded app". `LabToolstrip.tsx` (our own look and words, not a copy): tabs Home,
+Plots, Apps (`role="tablist"`), a "Search help" box (opens `FunctionBrowser` with its new `initial` query), a fold
+button (localStorage `uv-lab-strip`). Home's groups: File (New script: a `Menu` of `LANGS` with their starters; Open:
+up to 20 files of ≤ 1 MB as new scripts; Find in scripts: `findInScripts`, a hit opens the script at its line through
+`jump`; Compare: `lineDiff`, an LCS line diff of the open script against another, in `src/lib/lab/diff.ts` with tests),
+Data (Import = the Files picker; Save / Load workspace = `save('workspace.mat')` / `load(…)`; Clear = `clear`), Code
+(Run, Analyse code = `lintScript` printed to the command window, Run and time, Run step by step, Stop, Clear commands),
+Simulate, Environment (Layout: Variables and Files, Figure, put back; Preferences: code text size 12–17 px through
+`--lab-code`, which LabEditor's theme now reads; LabApp keeps both in localStorage `uv-lab-layout` and changes its grid's
+columns), Resources (Help, Examples: a copy of any example, Learn). Plots: "Draw … against …" from Hyperion's own numeric
+variables (not another language's) and 18 kinds (matrix-only kinds need a matrix), each running `figure; <cmd>`. Apps:
+Simulate's benches and Learn's tabs, chosen through their sessionStorage keys (`uv-sim-kind`, `uv-learn-tab`). The
+toolstrip's lines run as `From` 'tool': like a command but always in the MATLAB engine, never marking the editor's
+lines. The shared `Menu`/`Popover` trigger keeps its 32 px height and padding unless given `bare` classes. Not built:
+the ribbon's other programs' extras (Set Path, Parallel, Add-Ons, Community), a current-folder bar (Files is it).
+
+## M473 (23 Nov): Hyperion's toolstrip, smaller and with more tools
+
+The owner, 23 Nov: "everything needs to be a little small so that more items can fit here", then "also add more
+fuctions and features there". `LabToolstrip.tsx`: big buttons ~3.4 rem with 16 px icons, small ones 12 px icons,
+text 11 px (the reading floor), tighter groups; the strip is about 100 px tall. New: Home → Download script, New
+variable (`Ask`: a one-line popover, then runs; text put in MATLAB quotes by `q`), List variables (`whos`), Explain each
+line and Notebook view toggles (props from LabApp); Plots → Figure (new, hold on/off, grid, colour bar, close all, axes
+fit / equal) and Labels (title, x and y labels, legend from comma-separated names); a new **Analyse** tab on the chosen
+variable (`varPicker`, shared with Plots): statistics, fit a line, a cubic, spectrum, smooth, slope, area under, running
+total, sort, counts, correlation (needs "against"), range: each one line in the engine, results as new variables
+(`<name>_smooth`, `p_<name>`…); Apps → Toolbox starters (12 examples opened as copies). Trap: commands are template
+literals inside TS, so MATLAB's `\n` must be written `\\n` there (one Statistics run failed on a real line break).
+
+## M474 (23 Nov): Hyperion's toolstrip with no gaps: six full tabs
+
+The owner, 23 Nov: "just dont leave gap there add more tools and functions there". Six tabs, each measured to fill a
+1440-wide window exactly without scrolling (`#lab-strip-panel` scrollWidth = clientWidth): Home (File with Download
+script, Data, Code, Simulate, Environment, Resources), Plots (Variables, a 3-row gallery of 19 kinds with Log–log,
+Figure, 3D and colour), Figure (Axes: x/y/z limits, tick marks, a title over all plots; Labels; Lines and layout:
+horizontal and vertical lines, text, a grid of plots, 3D line and points; More colours; Save the figure: PNG, SVG,
+LaTeX through LabApp's figure functions), Analyse (Variables, Calculate, Matrix: transpose, inverse, determinant,
+eigenvalues, rank, norm; Signal: envelope, autocorrelation, standardise, shape of spread, moving max, unique values),
+Maths (Quick maths: calculate, solve f(x) = 0, polynomial roots, integrate, plot a function, a surface of f(x, y); New
+matrix: magic, random, identity, evenly spaced, grid, normal noise; Numbers: primes, factorial, combinations, gcd, lcm,
+remainder), Apps (Simulate's benches, Learn, 27 toolbox starters, Functions, Import). Layout: `Stack` columns are
+`w-max`, groups `flex-auto` with centred contents, so a tab's groups spread across the width. Only functions the engine
+has (checked against help.ts; findpeaks, svd, saveas, butter and similar aren't there yet).
+
+## M475: Hyperion finds peaks, SVD and filters; a smooth toolstrip (23 Nov)
+
+The owner, 23 Nov: add finding peaks, SVD and filter design, "make everything ultra smooth", smooth animations on every tool.
+- `src/lib/lab/dsp.ts` (maths, tested in `dsp.test.ts` against MATLAB's numbers) and `dsp-lab.ts` (the language
+  functions, imported by `lab.worker.ts` and `help.test.ts`): `findpeaks`, `svd`, `butter`, `filtfilt`, `lowpass`,
+  `highpass`, `bandpass` (Butterworth order 8, 4 per side of a band, run both ways so no lag; fs optional). Help entries
+  in `help.ts`. `findpeaks`' widths are 0 for now (shortcut: half-height widths not computed).
+- Toolstrip: Analyse → Matrix → SVD; Signal → Find peaks, Low-pass, High-pass ('Range' left out so Analyse fits 1440 px).
+- Smoothness: `LabToolstrip` keeps the latest props in a ref and hands a memo'd `ToolstripView` only data props plus a
+  stable `act(name, …args)`: never pass a callback prop into the view directly, or typing re-renders the whole strip.
+  All six panes stay mounted (`hidden`); the shown one slides in by `el.animate` (transform, opacity, 260 ms); the tab
+  underline moves by `transform`; a pressed tool's icon pops (skipped with Reduce Motion); fold is a grid-rows ease
+  with `inert`. Measured on the production build: at normal CPU 0 long tasks and 0 slow frames for typing, tabs, tools,
+  menus and fold; at 4× slower CPU typing costs the same with the strip folded, so what's left is the editor's own.
 ## M453: Ghidra quicker and with whole answers; the weak skills' instructions (23 Nov)
 
 The owner (23 Nov): "merge and after that work on [the 0% skills and the ones the add-on made worse]… when i was
@@ -12502,6 +12563,25 @@ testing my ai also it was so much slow and not providing answer properly". The l
   wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
 
 
+## M476: the light/dark switch slower and smoother (23 Nov)
+
+The owner, 23 Nov: switching between light and dark "is fast so make it slow and it should be ultra smooth".
+`applyTheme` (`src/lib/theme.ts`): the circle reveal from the tapped switch now lasts 1100 ms with
+`cubic-bezier(0.65, 0, 0.25, 1)` (starts gently, settles softly). The crossfade without a tap point (the command
+palette) is 800 ms, scoped to `html.theme-fading` in `globals.css` so ordinary page morphs keep 320 ms. Only the
+snapshot's `clip-path` / `opacity` animate (the page itself is frozen behind the View Transition, `.theme-fading *`
+has no transitions). Measured in a browser without a graphics chip, the circle and a plain fade drop the same frames,
+so the cost is that browser's software drawing, not the effect; the one long frame at the start is the page restyling
+to the new theme, before the animation begins.
+
+## M477: the handwritten face in more places (24 Nov)
+
+The owner, 24 Nov, with a picture of the search window: "the text does not match… the main headers… add it in more
+places". `globals.css` (after `.display-face`): `:is(.hand, .side-label, .ios-segment, [role="tab"], h4, h5, h6)` take
+`--font-display` (Shantell Sans); people's own documents keep Inter for h4–h6 too; the dyslexic font still overrides.
+`.hand` is put on the search window's field, chips, section names and result titles (`CommandPalette.tsx`) and on the
+top bar's entries, its menus' rows and group names (`TopNav.tsx`). Hints, body text, fields people fill, tables and
+numbers stay Inter (readability). For a new label that should look like a heading, add `hand`.
 ## M454: Google sign-in always asks which account (24 Nov)
 
 The owner signed out of a student account in the Hyperion computer app and chose Google again: it signed straight back
