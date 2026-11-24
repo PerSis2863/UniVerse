@@ -13185,3 +13185,23 @@ The second of M534–M537's "left out" list.
   points of double accuracy, RMSE within 0.05.
 - **Trap:** in a C test's `printf("%d %ld", f(q, v), v[0])` the order arguments are worked out isn't fixed; call first.
 
+## M540 (24 Nov): Hyperion lsqminnorm's tolerance for fi values, and 'warn' in its C
+
+The owner pasted M538–M539's "left out" list and "push all": both parts built.
+
+- **A tolerance for fi** (`codegen-lab.ts` `tolCols`, `codegen.ts` `tolParts`): `lsqminnorm(A, B, tol, T)` (tol and T in
+  either order) keeps a column of A only when the part of it the earlier kept columns don't explain is longer than tol:
+  QR's |R(k,k)|, as MATLAB's lsqminnorm compares. On G = AᵀA in stored units that is pivot / previous pivot > tol² ·
+  2^(2·fa) in a fraction-free elimination with each diagonal as its pivot (every number left is a minor of G over the
+  kept columns, so it stays exact). tol is kept to 16 significant bits (`mt2 · 2^sh`, a power of two costing no
+  multiplier). Without a tolerance nothing changed (`elimStored`'s pivots; the same columns for a positive semi-definite G).
+- **In C:** `fx…_minnorm(…, tol, mt2, sh)` does the same steps and gives the rank; the tolerance must be written in the code
+  (it sets the bits: `minNormBits`' tol term, the larger of −sh and bits(mt2) + sh past G's minors).
+- **'warn' in C:** `lsq_minnorm_d/_f` and `fx…_minnorm` return the rank; with `'warn'` the call is followed by
+  `HYPERION_WARN("lsqminnorm: A's rank is below n: …")`, which prints to stderr unless the file that includes it defines
+  `HYPERION_WARN(msg)` first (a log, a light on a chip).
+- **Checked:** `codegen.test.ts` M540: R(2,2) = 0.001 dropped under 0.01 (Hyperion and C, in 32-bit pieces), a tolerance of
+  0 equal to none, a 4-bit system with tol 2 in 64-bit working (native and `-DHYPERION_FX_PORTABLE`) equal to Hyperion,
+  two warnings on stderr (fixed point and plain).
+- **Trap:** lsqminnorm's working grows fast (H = G_PᵀG_P's minors): even 6-bit values in a 4×3 system go past 64 bits.
+

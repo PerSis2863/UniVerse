@@ -1897,6 +1897,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M537 | Hyperion: 'int8full' for linear models, polynomial kernels of any order, up to 65,536 inputs | **Done** (branch `claude/hyperion-signals-capabilities`) | `embedded-int.ts`: fitlm as one linear unit (predict_q gives F, the answer F · S), polynomial powers as fractions in Q30, inputs to 65,536; C equal to the twin. |
 | M538 | Hyperion: lsqminnorm of plain numbers in C (through the SVD), its tolerance and 'warn' | **Done** (branch `claude/hyperion-signals-capabilities`) | `codegen.ts` `minNormType`, `minNormInto`, `minNormC` (one-sided Jacobi as Hyperion's svd); `codegen-lab.ts` tol and 'warn'; wide, singular, tall, zero, a tolerance and single equal in C. |
 | M539 | Hyperion: trees and tree ensembles wholly in whole numbers ('int8full') | **Done** (branch `claude/hyperion-signals-capabilities`) | `embedded-trees.ts` `planTree`, `runTree` (the twin), `treeIntC`; class and regression trees, bagged, AdaBoost and LSBoost ensembles: the C equal to the twin on every iris row. |
+| M540 | Hyperion: lsqminnorm's tolerance for fi values (exact) and 'warn' in its C | **Done** (branch `claude/hyperion-signals-capabilities`) | `codegen.ts` `tolParts`, `fx…_minnorm` with a tolerance and the rank, `HYPERION_WARN`; `codegen-lab.ts` `tolCols`; the C equal to Hyperion in 32-bit pieces and 64-bit working, native and portable, warnings on stderr. |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

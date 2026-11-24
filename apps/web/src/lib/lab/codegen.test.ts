@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -633,7 +633,6 @@ int main(void) {
     expect([...toMat(l.vars.get('xt')!).d]).toEqual([0.1, 0]);
     expect(out.join('')).toMatch(/rank is 1 \(tolerance 0\.01000\), below 2/);
     expect(() => l.run("lsqminnorm(A, b, 'loud')")).toThrow(/'warn' or 'nowarn'/);
-    expect(() => l.run('lsqminnorm(fi(A, 1, 16, 8), fi(b, 1, 16, 8), 0.01)')).toThrow(/no tolerance/);
   });
   it.skipIf(!hasCc)('M538: lsqminnorm of plain numbers in C gives Hyperion’s answers (wide, singular, tall, zero, a tolerance, single)', () => {
     const files = new FileStore(), l = new Lab({ out: () => {}, files });
@@ -666,7 +665,7 @@ int main(void) {
     const [A, B] = [[[10, 0], [0, 1e-3], [0, 0]], [[1], [1], [1]]];
     add('mnt', 'mnt0', 'zeros(3, 2), zeros(3, 1), 0', `${m(A)}, ${m(B)}, 0.01`, ['a', 'b', '0.01', 'x'], `double a[] = {${flat(A).join(', ')}}, b[] = {1, 1, 1}, x[2];`, 2);
     add('mnd', 'mnf0', `single(zeros(${cases[2][0].length}, 2)), single(zeros(${cases[2][1].length}, 1))`, `single(${m(cases[2][0])}), single(${m(cases[2][1])})`, ['a', 'b', 'x'], `float a[] = {${flat(cases[2][0]).join(', ')}}, b[] = {${flat(cases[2][1]).join(', ')}}, x[2];`, 2);
-    expect(files.text('mnd.c')).toContain('static void lsq_minnorm_f(const float *A');
+    expect(files.text('mnd.c')).toContain('static int lsq_minnorm_f(const float *A');
     writeFileSync(join(dir, 'main.c'), `#include <stdio.h>\n${units.map((u) => `#include "${u}.h"`).join('\n')}\nint main(void) {\n${mains.join('\n')}\n  return 0;\n}`);
     execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), ...units.map((u) => join(dir, `${u}.c`)), '-lm'], { cwd: dir });
     const got = execFileSync(join(dir, 'run')).toString().trim().split(/\s+/).map(Number);
@@ -675,5 +674,57 @@ int main(void) {
     expect(want.slice(-6, -4)).toEqual([0, 0]); // all-zero A gives 0
     expect(want.slice(-4, -2)).toEqual([0.1, 0]); // the tolerance dropped the small singular value
     expect(() => l.run("codegen('mnd', {int16(zeros(2)), zeros(2, 1)})")).toThrow(/whole-number types/);
+  }, 60000);
+  it.skipIf(!hasCc)('M540: lsqminnorm of fi values takes a tolerance (exact, in Hyperion and C); \'warn\' warns in C', () => {
+    const out: string[] = [], files = new FileStore(), l = new Lab({ out: (t: string) => out.push(t), files });
+    // R(2,2) = 0.001: under a tolerance of 0.01 the second column doesn't count
+    l.run(`A = fi([10 0; 0 0.001; 0 0], 1, 32, 16); b = fi([1; 1; 1], 1, 32, 16); T = numerictype(1, 32, 16);
+      x0 = lsqminnorm(A, b, T); xt = lsqminnorm(A, b, 0.01, T); xw = lsqminnorm(A, b, T, 0.01, 'warn');`);
+    expect(st(l, 'xt')).toEqual([Math.round(0.1 * 2 ** 16), 0]);
+    expect(st(l, 'xw')).toEqual(st(l, 'xt'));
+    expect(Math.abs(st(l, 'x0')[1] / 2 ** 16 - 1 / (66 / 2 ** 16))).toBeLessThan(1); // 0.001 is stored as 66 / 2^16
+    expect(out.join('')).toMatch(/rank is 1, below 2/);
+    // a tolerance of 0 keeps every independent column: the same as none
+    l.run('A3 = fi([1 2 3; 2 4 6; 0.5 -1 2], 1, 16, 8); b3 = fi([1; 3; -2], 1, 16, 8); y0 = lsqminnorm(A3, b3, numerictype(1, 32, 20)); y1 = lsqminnorm(A3, b3, 0, numerictype(1, 32, 20));');
+    expect(st(l, 'y1')).toEqual(st(l, 'y0'));
+    expect(() => l.run('lsqminnorm(A, b, -1, T)')).toThrow(/0 or more/);
+    // in C: the same stored integers, and HYPERION_WARN when the rank is short (fixed point and plain numbers)
+    l.run("function x = mt(A, b)\n  x = lsqminnorm(A, b, 0.01, numerictype(1, 32, 16), 'warn');\nend\nfunction x = mp(A, b)\n  x = lsqminnorm(A, b, 'warn');\nend");
+    l.run('codegen(\'mt\', {A, b}); codegen(\'mp\', {zeros(2), zeros(2, 1)});');
+    expect(files.text('mt.c')).toContain('#define HYPERION_WARN');
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-m540-'));
+    for (const f of ['mt', 'mp']) { writeFileSync(join(dir, `${f}.c`), files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), files.text(`${f}.h`)); }
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+#include "mt.h"
+#include "mp.h"
+int main(void) {
+  int32_t a[] = {${st(l, 'A').join(', ')}}, b[] = {${st(l, 'b').join(', ')}}, x[2];
+  double p[] = {1, 2, 2, 4}, q[] = {1, 2}, y[2];
+  mt(a, b, x);
+  mp(p, q, y);
+  printf("%ld %ld %.12g %.12g\\n", (long)x[0], (long)x[1], y[0], y[1]);
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), join(dir, 'mt.c'), join(dir, 'mp.c'), '-lm'], { cwd: dir });
+    const r = spawnSync(join(dir, 'run'), { encoding: 'utf8' });
+    const got = r.stdout.trim().split(/\s+/).map(Number);
+    expect(got.slice(0, 2)).toEqual(st(l, 'xt'));
+    l.run('yp = lsqminnorm([1 2; 2 4], [1; 2]);');
+    [...toMat(l.vars.get('yp')!).d].forEach((v, i) => expect(got[2 + i]).toBeCloseTo(v, 10));
+    expect(r.stderr.match(/Warning: lsqminnorm: A's rank is below 2/g)).toHaveLength(2);
+    expect(files.text('mt.c')).toContain('fxb_t'); // that one worked in 32-bit pieces
+    // small whole numbers and a tolerance of 2 stay in 64-bit working, natively and in two halves
+    l.run("function x = mw(A, b)\n  x = lsqminnorm(A, b, 2, numerictype(1, 16, 8));\nend");
+    l.run('Aw = fi([4 0; 0 1; 1 0], 1, 4, 0); bw = fi([1; 2; 3], 1, 4, 0); xw2 = mw(Aw, bw); codegen(\'mw\', {Aw, bw});');
+    const cw = files.text('mw.c');
+    expect(cw).not.toContain('fxb_t');
+    writeFileSync(join(dir, 'mw.c'), cw); writeFileSync(join(dir, 'mw.h'), files.text('mw.h'));
+    writeFileSync(join(dir, 'mainw.c'), `#include <stdio.h>\n#include "mw.h"\nint main(void) { int8_t a[] = {${st(l, 'Aw').join(', ')}}, b[] = {${st(l, 'bw').join(', ')}}; int16_t x[2]; mw(a, b, x); printf("%d %d", x[0], x[1]); return 0; }`);
+    const wantW = st(l, 'xw2');
+    expect(wantW).toEqual([Math.round((7 / 17) * 256), 0]); // R(2,2) = 1 is under 2: only the first column counts, x1 = 7/17
+    for (const portable of [false, true]) {
+      execFileSync('cc', ['-std=c99', '-Wall', '-Werror', ...(portable ? ['-DHYPERION_FX_PORTABLE'] : []), '-o', join(dir, 'runw'), join(dir, 'mainw.c'), join(dir, 'mw.c'), '-lm'], { cwd: dir });
+      expect(execFileSync(join(dir, 'runw')).toString().trim().split(/\s+/).map(Number)).toEqual(wantW);
+    }
   }, 60000);
 });

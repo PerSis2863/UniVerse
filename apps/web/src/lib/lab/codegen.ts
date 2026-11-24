@@ -65,14 +65,26 @@ export function solveBits(a: Nt, b: Nt, R: number, N: number, s: number, ls: boo
   for (let k = 0; k < N; k++) need = Math.max(need, D(k) + D(k + 1));
   return Math.ceil(need) + 2;
 }
+/** M540: lsqminnorm's tolerance for fi values, exact: a column of A counts when the part of it the earlier counted columns
+ * don't explain is longer than tol (QR's |R(k,k)|), i.e. on G = AᵀA in stored units pivot / previous pivot > tol² · 2^(2·fa).
+ * tol is kept to 16 significant bits: tol² · 2^(2·fa) = mt2 · 2^sh. */
+export function tolParts(tol: number, fa: number): { mt2: number; sh: number } {
+  if (!(tol > 0)) return { mt2: 0, sh: 0 };
+  const e = Math.floor(Math.log2(tol));
+  let mt = Math.round(tol * 2 ** (15 - e)), ex = e - 15;
+  while (mt % 2 === 0) { mt /= 2; ex++; } // (a power of two needs no multiplier)
+  return { mt2: mt * mt, sh: 2 * ex + 2 * fa };
+}
 /** M535: the bits lsqminnorm's working needs: G = AᵀA and C = AᵀB, H = G_PᵀG_P (P at most N columns), the minors of
- * [H | C_P] (Hadamard), and each answer's numerator G_P·(det·z), scaled by the answer's extra fraction bits. */
-export function minNormBits(a: Nt, b: Nt, R: number, N: number, s: number): number {
+ * [H | C_P] (Hadamard), and each answer's numerator G_P·(det·z), scaled by the answer's extra fraction bits. M540: with a
+ * tolerance, G's pivots compared with mt2 · 2^sh times the one before. */
+export function minNormBits(a: Nt, b: Nt, R: number, N: number, s: number, tol?: { mt2: number; sh: number }): number {
   const mag = (t: Nt) => (t.signed ? t.wl - 1 : t.wl), lr = Math.log2(Math.max(1, R)), ln = Math.log2(Math.max(1, N));
   const lg = lr + 2 * mag(a), lc = lr + mag(a) + mag(b), lh = ln + 2 * lg;
   const D = (k: number) => (k === 0 ? 0 : (k / 2) * Math.log2(k) + (k - 1) * lh + Math.max(lh, lc));
   let need = Math.max(lh, lc, ln + lg + D(N) + Math.max(s, 0), D(N) + Math.max(-s, 0));
   for (let k = 0; k < N; k++) need = Math.max(need, D(k) + D(k + 1));
+  if (tol) { const g = (N / 2) * Math.log2(Math.max(1, N)) + N * lg; need = Math.max(need, g + Math.max(-tol.sh, Math.log2(tol.mt2 + 1) + Math.max(tol.sh, 0)) + 1); }
   return Math.ceil(need) + 2;
 }
 /** M527: a ./ b's own type: the larger word, the fraction a's minus b's (divide(T, a, b) chooses another). */
@@ -332,14 +344,22 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       }
       return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * ./ \\ / and comparisons).`);
     }
-    /** M538: lsqminnorm's inputs: A, B and the third (a tolerance for plain numbers, a type for fi); 'warn' / 'nowarn'
-     * last is accepted and has no effect in C (nothing is printed). */
-    function minNormArgs(a: Expr[]): { A: Expr; B: Expr; tol: Expr | undefined } {
+    /** M538: lsqminnorm's inputs: A, B and the rest (a tolerance for plain numbers; for fi a tolerance and the answer's
+     * type T, M540); 'warn' / 'nowarn' last (M540: 'warn' calls HYPERION_WARN when A's rank is short). */
+    function minNormArgs(a: Expr[]): { A: Expr; B: Expr; rest: Expr[]; warn: boolean } {
       const last = a[a.length - 1], flag = a.length > 2 && last.k === 'str';
       if (flag && !['warn', 'nowarn'].includes((last as { v: string }).v.toLowerCase())) fail("lsqminnorm's last input is 'warn' or 'nowarn'.");
       const b = flag ? a.slice(0, -1) : a;
-      if (b.length < 2 || b.length > 3) fail('lsqminnorm(A, B) or lsqminnorm(A, B, tol) here (for fi: lsqminnorm(A, B, T)).');
-      return { A: b[0], B: b[1], tol: b[2] };
+      if (b.length < 2 || b.length > 4) fail('lsqminnorm(A, B), lsqminnorm(A, B, tol) here (for fi: lsqminnorm(A, B, tol, T)).');
+      return { A: b[0], B: b[1], rest: b.slice(2), warn: flag && (last as { v: string }).v.toLowerCase() === 'warn' };
+    }
+    /** M540: a fi lsqminnorm's answer type T and tolerance (written in the code, as tolParts' whole numbers). */
+    function minNormFi(Ae: Expr, rest: Expr[]): { T?: Nt; tol?: { mt2: number; sh: number } } {
+      const Ts = rest.filter((x) => isFx(typeOf(x))), tols = rest.filter((x) => !isFx(typeOf(x)));
+      if (Ts.length > 1 || tols.length > 1 || Ts.some((x) => !scalar(typeOf(x)))) fail("lsqminnorm(A, B, tol, T) of fixed-point values: tol a number, T the answer's type (numerictype(s, w, f) or a fi value).");
+      const v = tols.length ? literal(tols[0]) : null;
+      if (tols.length && !(v !== null && v >= 0)) fail('lsqminnorm(A, B, tol) of fixed-point values: tol is a number of 0 or more written in the code (it sets how many bits the working needs).');
+      return { T: Ts.length ? typeOf(Ts[0]).fx : undefined, tol: v === null ? undefined : tolParts(v, typeOf(Ae).fx!.fl) };
     }
     /** M538: lsqminnorm of plain numbers: x is N×m for A R×N and B R×m, double (single when either is). */
     function minNormType(Ae: Expr, Be: Expr, tol?: Expr): Ty {
@@ -353,29 +373,30 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
     /** M538: target = lsqminnorm(A, B[, tol]) of plain numbers, through the SVD (lsq_minnorm_d / _f: one-sided Jacobi, as
      * Hyperion's pinv), into fixed-size working arrays. */
     function minNormInto(target: string, e: Extract<Expr, { k: 'index' }>, t: Ty) {
-      const { A: Ae, B: Be, tol } = minNormArgs(e.args), at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be);
+      const { A: Ae, B: Be, rest: [tol], warn } = minNormArgs(e.args), at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be);
       const R = at.r, N = at.c, m = bt.c, big = Math.max(R, N), sm = Math.min(R, N), f = t.cls === 'single' ? 'f' : 'd', T = CTYPE[t.cls];
       const conv = (src: string, ty: Ty, len: number, name: string) => { if (ty.cls === t.cls) return src; out(`  ${T} ${name}[${len}];`); out(`  for (int k = 0; k < ${len}; k++) ${name}[k] = (${T})${src}[k];`); return name; };
       out(`{ /* lsqminnorm(A, B${tol ? ', tol' : ''}): the smallest least-squares answer, through the SVD */`);
       const a = conv(A, at, R * N, 'mn_a'), b = conv(B, bt, R * m, 'mn_b');
       out(`  ${T} mn_w[${big * sm}], mn_v[${sm * sm}];`);
-      out(`  lsq_minnorm_${f}(${a}, ${R}, ${N}, ${b}, ${m}, ${tol ? `(${T})(${scal(tol).code})` : '-1'}, mn_w, mn_v, ${target});`);
+      const call = `lsq_minnorm_${f}(${a}, ${R}, ${N}, ${b}, ${m}, ${tol ? `(${T})(${scal(tol).code})` : '-1'}, mn_w, mn_v, ${target})`;
+      out(warn ? `  if (${call} < ${sm}) HYPERION_WARN("lsqminnorm: A's rank is below ${sm}: the smallest of many answers is given");` : `  ${call};`);
       out('}');
     }
     /** M530–M531: A \ B (left) or B / A: the answer's type and size; T chooses the type (mldivide / mrdivide's third input). */
-    function solveType(Ae: Expr, Be: Expr, left: boolean, T?: Nt, mn = false): Ty {
+    function solveType(Ae: Expr, Be: Expr, left: boolean, T?: Nt, mn = false, tol?: { mt2: number; sh: number }): Ty {
       const a = typeOf(Ae), b = typeOf(Be);
       if (!isFx(a) || !isFx(b)) fail('a matrix division of fixed-point values needs both fixed point (fi(…)).');
       // A \ B: A is R×N, B R×m, x N×m. B / A: A is r×c, B p×c, x p×r.
       if (left ? b.r !== a.r : b.c !== a.c) fail(`the sizes don’t agree: ${left ? `${sizeText(a)} \\ ${sizeText(b)}` : `${sizeText(b)} / ${sizeText(a)}`}.`);
       const nt = T ? { ...fmOf(b.fx!, a.fx!), ...T } : quotientType(b.fx!, a.fx!);
       const t = left ? fxTy(nt, a.c, b.c) : fxTy(nt, b.r, a.r);
-      solvePlan(a, b, left, nt, mn);
+      solvePlan(a, b, left, nt, mn, tol);
       return t;
     }
     /** M531: how each way of solving is worked: 'w' in fxw_t (64 bits, or 128 when the file is wide) or 'b' in fxb_t
      * (whole numbers of 32-bit pieces, past 128 bits), and the fraction bits the answers add. */
-    function solvePlan(a: Ty, b: Ty, left: boolean, to: Nt, mn = false) {
+    function solvePlan(a: Ty, b: Ty, left: boolean, to: Nt, mn = false, tol?: { mt2: number; sh: number }) {
       const R = left ? a.r : a.c, N = left ? a.c : a.r, s = to.fl - b.fx!.fl + a.fx!.fl;
       const pick = (need: number, mayWiden: boolean): 'w' | 'b' => {
         if (need > FXB_MAX) fail(`a ${R}×${N} fixed-point matrix division of ${Math.max(a.fx!.wl, b.fx!.wl)}-bit values needs ${need} bits of working (at most ${FXB_MAX} here): use shorter words.`);
@@ -384,15 +405,16 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         fxbK = Math.max(fxbK, Math.ceil(need / 32));
         return 'b';
       };
-      if (mn) return { s, R, N, direct: null, ls: pick(minNormBits(a.fx!, b.fx!, R, N, s), false) };
+      if (mn) return { s, R, N, direct: null, ls: pick(minNormBits(a.fx!, b.fx!, R, N, s, tol), false) };
       const direct = R === N ? pick(solveBits(a.fx!, b.fx!, R, N, s, false), true) : null;
       return { s, R, N, direct, ls: pick(solveBits(a.fx!, b.fx!, R, N, s, true), false) };
     }
     /** M531: the C for target = A \ B (or B / A): a square A by exact fraction-free elimination on whole numbers, a
      * non-square or singular one through the normal equations (least squares); then each answer one division rounded
      * into its type. The engine's fiSolve does the same steps. */
-    function solveInto(target: string, Ae: Expr, Be: Expr, left: boolean, t: Ty, mn = false) {
-      const at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be), { s, R, N, direct, ls } = solvePlan(at, bt, left, t.fx!, mn), m = left ? bt.c : bt.r, w = N + m;
+    function solveInto(target: string, Ae: Expr, Be: Expr, left: boolean, t: Ty, mn = false, mnArgs: Expr[] = []) {
+      const opt = mn ? minNormArgs(mnArgs) : null, tol = opt ? minNormFi(Ae, opt.rest).tol : undefined;
+      const at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be), { s, R, N, direct, ls } = solvePlan(at, bt, left, t.fx!, mn, tol), m = left ? bt.c : bt.r, w = N + m;
       // B / A is (A.' \ B.').': read A and B across, write the answer across.
       const aAt = (i: string, j: string) => (left ? `${A}[${i} + ${j} * ${R}]` : `${A}[${j} + ${i} * ${N}]`);
       const bAt = (i: string, j: string) => (left ? `${B}[${i} + ${j} * ${R}]` : `${B}[${j} + ${i} * ${m}]`);
@@ -425,7 +447,8 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         out(`  fx${ls}_t sv_det;`);
         load(ls, 'sv_a');
         out(`  fx${ls}_normal(sv_a, ${R}, ${N}, ${w}, sv_g);`);
-        out(`  fx${ls}_minnorm(sv_g, ${N}, ${m}, sv_h, sv_piv, sv_p, sv_x, &sv_det);`);
+        const call = `fx${ls}_minnorm(sv_g, ${N}, ${m}, sv_h, sv_piv, sv_p, sv_x, &sv_det, ${tol ? `1, ${big(tol.mt2)}, ${tol.sh}` : '0, 0, 0'})`;
+        out(opt!.warn ? `  if (${call} < ${Math.min(R, N)}) HYPERION_WARN("lsqminnorm: A's rank is below ${Math.min(R, N)}: the smallest of many answers is given");` : `  ${call};`);
         out(`  for (int sj = 0; sj < ${m}; sj++) for (int sc = 0; sc < ${N}; sc++) ${xAt('sc', 'sj')} = ${E.to(q, t.fx!)};`);
         out('}');
         return;
@@ -551,10 +574,12 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         return fxTy(T ? { ...fmOf(bt.fx!, at.fx!), ...T } : quotientType(bt.fx!, at.fx!), bt.r, bt.c);
       }
       if (fname === 'lsqminnorm' && !fns.has(fname)) {
-        const { A, B, tol } = minNormArgs(a);
-        if (t[0].cls !== 'fixed' && t[1].cls !== 'fixed') return minNormType(A, B, tol);
-        if (tol && !(isFx(typeOf(tol)) && scalar(typeOf(tol)))) fail('lsqminnorm(A, B, T) of fixed-point values: T the answer\'s type (numerictype(s, w, f) or a fi value; their rank is exact, so no tolerance).');
-        return solveType(A, B, true, tol ? typeOf(tol).fx! : undefined, true);
+        const { A, B, rest, warn } = minNormArgs(a);
+        if (warn) helpers.add('warn');
+        if (t[0].cls !== 'fixed' && t[1].cls !== 'fixed') { if (rest.length > 1) fail('lsqminnorm(A, B, tol) of plain numbers takes one tolerance.'); return minNormType(A, B, rest[0]); }
+        if (!isFx(typeOf(A))) fail('lsqminnorm(A, B) of fixed-point values needs both fixed point (fi(…)).');
+        const { T, tol } = minNormFi(A, rest);
+        return solveType(A, B, true, T, true, tol);
       }
       if (fname === 'numerictype' && !fns.has(fname)) {
         if (a.length !== 3) fail('numerictype(signed, wordLength, fractionLength) here: all three, so the type is known.');
@@ -751,7 +776,7 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       if (isSolve(e)) {
         // M530: into a temporary first when the answer's type differs from the target's (it is then converted).
         const st = typeOf(e), into = sameFx(st, t) ? target : fresh(st), [Ae, Be, left, mn] = solveArgs(e);
-        solveInto(into, Ae, Be, left, st, mn);
+        solveInto(into, Ae, Be, left, st, mn, mn ? (e as Extract<Expr, { k: 'index' }>).args : []);
         if (into !== target) out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${cast(t, { code: `${into}[k]`, t: { ...st, r: 1, c: 1 } })};`);
         return;
       }
@@ -907,6 +932,8 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
     if (helpers.has('elim_w')) help.push(elimC('fxw'));
     if (helpers.has('elim_b')) help.push(fxbC(fxbK, wide), elimC('fxb'));
   }
+  // M540: 'warn' in C: HYPERION_WARN(message), printed to stderr unless the chip's own is defined before this file.
+  if (helpers.has('warn')) help.push('/* lsqminnorm(…, \'warn\'): define HYPERION_WARN(message) before this file for your own (a log, a light) */\n#ifndef HYPERION_WARN\n#include <stdio.h>\n#define HYPERION_WARN(msg) fprintf(stderr, "Warning: %s\\n", msg)\n#endif');
   for (const f of ['d', 'f'] as const) if (helpers.has(`minnorm_${f}`)) help.push(minNormC(f));
   if (helpers.has('mod')) help.push('/* mod: the remainder with the sign of the divisor */\nstatic double mod_d(double a, double b) {\n  if (b == 0.0) return a;\n  double r = fmod(a, b);\n  return (r != 0.0 && ((r < 0) != (b < 0))) ? r + b : r;\n}');
   if (helpers.has('rem')) help.push('/* rem: the remainder with the sign of the dividend */\nstatic double rem_d(double a, double b) { return b == 0.0 ? a : fmod(a, b); }');
@@ -1124,11 +1151,24 @@ static inline void ${S}_normal(const ${S}_t *a, int R, int N, int w, ${S}_t *M) 
 /* M535: the smallest least-squares answer from g = [AᵀA | AᵀB] (N rows, N + m columns): P, the columns of AᵀA with a
  * pivot; H = g_Pᵀ g_P with g's right part's rows P beside it (r rows, in h), solved fraction-free; x = g_P·(det·z), so
  * each answer is x / det. */
-static inline void ${S}_minnorm(const ${S}_t *g, int N, int m, ${S}_t *h, int *piv, int *P, ${S}_t *x, ${S}_t *det) {
+static inline int ${S}_minnorm(const ${S}_t *g, int N, int m, ${S}_t *h, int *piv, int *P, ${S}_t *x, ${S}_t *det, int tol, int64_t mt2, int sh) {
   int r = 0;
   for (int i = 0; i < N * (N + m); i++) h[i] = g[i];
-  (void)${S}_elim(h, N, N, N + m, piv, det);
-  for (int k = 0; k < N; k++) if (piv[k] >= 0) P[r++] = k;
+  if (tol) {
+    /* M540: a tolerance: each diagonal the pivot, a column kept when pivot / previous (QR's R(k,k)²) > mt2 · 2^sh */
+    ${S}_t prev = ${S}_of(1), pk, m2 = ${S}_of(mt2), zero = ${S}_of(0);
+    for (int k = 0; k < N; k++) {
+      pk = h[k + k * N];
+      if (${S}_cmp(pk, zero) <= 0) continue;
+      if (sh >= 0 ? ${S}_cmp(pk, ${S}_shl(${S}_mul(m2, prev), sh)) <= 0 : ${S}_cmp(${S}_shl(pk, -sh), ${S}_mul(m2, prev)) <= 0) continue;
+      for (int j = k + 1; j < N; j++) for (int i = k + 1; i < N; i++) h[i + j * N] = ${S}_div(${S}_subw(${S}_mulw(pk, h[i + j * N]), ${S}_mulw(h[i + k * N], h[k + j * N])), prev);
+      prev = pk;
+      P[r++] = k;
+    }
+  } else {
+    (void)${S}_elim(h, N, N, N + m, piv, det);
+    for (int k = 0; k < N; k++) if (piv[k] >= 0) P[r++] = k;
+  }
   for (int q = 0; q < r; q++) {
     for (int p = 0; p < r; p++) {
       ${S}_t s = ${S}_of(0);
@@ -1143,6 +1183,7 @@ static inline void ${S}_minnorm(const ${S}_t *g, int N, int m, ${S}_t *h, int *p
     for (int q = 0; q < r; q++) s = ${S}_addw(s, ${S}_mulw(g[i + P[q] * N], h[piv[q] + (r + j) * r]));
     x[i + j * N] = s;
   }
+  return r;
 }`;
 /** M531: whole numbers of k 32-bit pieces (two's complement, lowest first) for matrix divisions past 128 bits: the
  * operations, the rounding division and the fit written as fx_rdiv, fx_fit and fx_div are, and the way to and from fxw_t. */
@@ -1225,13 +1266,14 @@ static inline fxw_t fxb_tow(fxb_t a) { uint64_t u = (uint64_t)a.d[0] | ((uint64_
 
 /** M538: lsqminnorm for plain numbers in C: the SVD by one-sided Jacobi on the tall form (the same rotations and stops as
  * Hyperion's svd, dsp.ts), then x = pinv(A) · B without forming pinv: singular values at or below tol count as zero (a
- * negative tol: max(size) · eps(largest), as pinv's default). w holds max(R, N) × min(R, N) numbers, v min² of them. */
+ * negative tol: max(size) · eps(largest), as pinv's default). w holds max(R, N) × min(R, N) numbers, v min² of them.
+ * M540: it gives the rank (the singular values kept), for 'warn'. */
 function minNormC(f: 'd' | 'f'): string {
   const T = f === 'd' ? 'double' : 'float', F = (x: string) => (f === 'd' ? x : `${x}f`), stop = f === 'd' ? '1e-15' : '1e-7f', bits = f === 'd' ? 52 : 23;
   return `/* lsqminnorm: the smallest least-squares answer of A x = B (A R×N, B R×m, x N×m), through the SVD; singular values
  * at or below tol count as zero (tol < 0: max(R, N) · eps of the largest, as pinv). w: max(R, N)·min(R, N), v: min(R, N)². */
-static void lsq_minnorm_${f}(const ${T} *A, int R, int N, const ${T} *B, int m, ${T} tol, ${T} *w, ${T} *v, ${T} *x) {
-  int tall = R >= N, r = tall ? R : N, c = tall ? N : R, e;
+static int lsq_minnorm_${f}(const ${T} *A, int R, int N, const ${T} *B, int m, ${T} tol, ${T} *w, ${T} *v, ${T} *x) {
+  int tall = R >= N, r = tall ? R : N, c = tall ? N : R, e, rank = 0;
   ${T} smax = 0;
   for (int j = 0; j < c; j++) for (int i = 0; i < r; i++) w[i + j * r] = tall ? A[i + j * R] : A[j + i * R];
   for (int j = 0; j < c; j++) for (int i = 0; i < c; i++) v[i + j * c] = (${T})(i == j);
@@ -1258,6 +1300,7 @@ static void lsq_minnorm_${f}(const ${T} *A, int R, int N, const ${T} *B, int m, 
     ${T} s2 = 0;
     for (int i = 0; i < r; i++) s2 += w[i + k * r] * w[i + k * r];
     if (!(${F('sqrt')}(s2) > tol)) continue;
+    rank++;
     for (int j = 0; j < m; j++) {
       ${T} d = 0;
       for (int i = 0; i < R; i++) d += (tall ? w[i + k * r] : v[i + k * c]) * B[i + j * R];
@@ -1265,5 +1308,6 @@ static void lsq_minnorm_${f}(const ${T} *A, int R, int N, const ${T} *B, int m, 
       for (int i = 0; i < N; i++) x[i + j * N] += (tall ? v[i + k * c] : w[i + k * r]) * d;
     }
   }
+  return rank;
 }`;
 }
