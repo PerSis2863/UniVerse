@@ -84,10 +84,54 @@ function mix(a: Cls, b: Cls): Cls {
 
 interface Fn { def: FnDef; args: Ty[]; outs: Ty[]; cname: string; code: string[]; decls: Map<string, Ty> }
 
-export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { c: string; h: string } {
+export function generate(fns0: Map<string, FnDef>, entry: string, args: Ty[]): { c: string; h: string } {
+  const fns = new Map([...fns0].map(([k, d]) => [k, cSafe(d)]));
   // M530: the wide way of writing is chosen before writing: a first pass finds out whether anything needs it.
   const first = emit(fns, entry, args, false);
   return first.wide ? emit(fns, entry, args, true) : first;
+}
+
+// M534: names the C itself uses (loop counters, temporaries, helpers) and C's own words. A variable of the script
+// with one of these names is renamed in the C (a _ added) so it can't clash: an output called i used to turn the
+// loops' own i into (*i).
+const C_WORDS = new Set('auto bool break case char const continue default do double else enum extern false float for goto if inline int long register restrict return short signed sizeof static struct switch true typedef union unsigned void volatile while abs exp log sqrt round floor ceil fabs fmod pow sin cos tan isnan main NULL'.split(' '));
+const C_OWN = /^([ijk]|t\d+|s[ijc]|sv_\w*|mp_\w*|fx\w*_\w*|fx128_t|sat_\w+|int\d+_t|uint\d+_t)$/;
+export const cClash = (v: string) => C_WORDS.has(v) || C_OWN.test(v);
+
+function cSafe(def: FnDef): FnDef {
+  const vars = new Set([...def.params, ...def.outs]);
+  const root = (e: Expr): void => { if (e.k === 'id') vars.add(e.name); else if (e.k === 'index' || e.k === 'field') root(e.of); };
+  const seen = (b: Stmt[]): void => b.forEach((st) => {
+    if (st.s === 'assign') st.to.forEach(root);
+    else if (st.s === 'for') { root(st.v); seen(st.body); }
+    else if (st.s === 'if') { st.arms.forEach((a) => seen(a.body)); if (st.other) seen(st.other); }
+    else if (st.s === 'while' || st.s === 'do') seen(st.body);
+    else if (st.s === 'switch') { st.cases.forEach((c) => seen(c.body)); if (st.other) seen(st.other); }
+    else if (st.s === 'try') { if (st.id) vars.add(st.id); seen(st.body); seen(st.handler); }
+    else if (st.s === 'global') st.names.forEach((v) => vars.add(v));
+  });
+  seen(def.body);
+  const ren = new Map<string, string>();
+  for (const v of vars) {
+    if (!cClash(v)) continue;
+    let w = `${v}_`;
+    while (vars.has(w) || cClash(w) || [...ren.values()].includes(w)) w += '_';
+    ren.set(v, w);
+  }
+  if (!ren.size) return def;
+  const to = (v: string) => ren.get(v) ?? v;
+  const walk = (x: unknown): unknown => {
+    if (Array.isArray(x)) return x.map(walk);
+    if (!x || typeof x !== 'object') return x;
+    const o = x as Record<string, unknown>;
+    if (o.k === 'id') return { ...o, name: to(o.name as string) };
+    if (o.k === 'field') return { ...o, of: walk(o.of), name: typeof o.name === 'string' ? o.name : walk(o.name) };
+    if (o.k === 'lambda' || o.k === 'handle') return o;
+    const r: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(o)) r[key] = key === 'id' && typeof val === 'string' ? to(val) : key === 'names' && o.s === 'global' ? (val as string[]).map(to) : walk(val);
+    return r;
+  };
+  return { ...def, params: def.params.map(to), outs: def.outs.map(to), body: walk(def.body) as Stmt[] };
 }
 
 /** M530: fixed-point C written for 64-bit work (plain operators) or wide work (the fxw_ operations). */

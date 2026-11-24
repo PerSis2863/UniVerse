@@ -45,7 +45,7 @@ describe('Hyperion C code generation (M480)', () => {
     const { l, files } = lab();
     l.run("codegen('smooth3', {zeros(1, 8), 1})");
     const c = files.text('smooth3.c'), h = files.text('smooth3.h');
-    expect(h).toContain('void smooth3(const double x[8], double k, double y[8], double *total);');
+    expect(h).toContain('void smooth3(const double x[8], double k_, double y[8], double *total);');
     expect(c).toContain('static double norm2(const double v[8])');
     expect(c).not.toMatch(/malloc/);
     expect(() => l.run("codegen('smooth3', {zeros(1, 8)})")).toThrow(/takes 2 inputs/);
@@ -499,5 +499,37 @@ int main(void) {
       execFileSync('cc', ['-std=c99', '-Wall', '-Werror', ...(portable ? ['-DHYPERION_FX_PORTABLE'] : []), '-o', exe, join(dir, 'main.c'), join(dir, 'modes2.c'), '-lm'], { cwd: dir });
       expect(execFileSync(exe).toString().trim().split(/\s+/).map(Number)).toEqual(want);
     }
+  });
+  it.skipIf(!hasCc)('M534: outputs and variables named i, j, k, t1, int or abs don’t clash with the C’s own names', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    l.run(`function [i, j, k] = clash(x, t1)
+  k = 0;
+  int = 2;
+  abs = x .* t1;
+  i = abs + int;
+  j = zeros(2, 2);
+  for s = 1:numel(x)
+    k = k + x(s) * int;
+  end
+  j = [1 2; 3 4] * [x(1) 0; 0 x(2)];
+end`);
+    l.run("codegen('clash', {zeros(1, 2), 0}); [a, b, c] = clash([1.5 -2], 3);");
+    const c = files.text('clash.c'), h = files.text('clash.h');
+    expect(h).toContain('void clash(const double x[2], double t1_, double i_[2], double j_[4], double *k_);');
+    expect(c).not.toMatch(/\(\*i\)|\bint = /);
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-cg534-'));
+    writeFileSync(join(dir, 'clash.c'), c);
+    writeFileSync(join(dir, 'clash.h'), h);
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+#include "clash.h"
+int main(void) {
+  double x[2] = {1.5, -2}, i[2], j[4], k;
+  clash(x, 3, i, j, &k);
+  printf("%.12g %.12g %.12g %.12g %.12g %.12g %.12g", i[0], i[1], j[0], j[1], j[2], j[3], k);
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), join(dir, 'clash.c'), '-lm'], { cwd: dir });
+    const want = ['a', 'b', 'c'].flatMap((v) => [...toMat(l.vars.get(v)!).d]);
+    expect(execFileSync(join(dir, 'run')).toString().trim().split(/\s+/).map(Number)).toEqual(want);
   });
 });

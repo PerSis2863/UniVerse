@@ -13086,3 +13086,18 @@ in 8 bits and did the arithmetic in float; `'int8full'` now runs them wholly in 
   from float inputs at most two rows apart (input rounding); over 90% right; embedreport's int8full within 4 points of
   double. A test bug on the way: C doesn't fix the order of a call's arguments, so read outputs after the call.
 - **Left out:** regression models (these three only classify), polynomial kernels past order 6, more than 256 inputs.
+
+## M534 (24 Nov): Hyperion's C, the script's names never clash with the C's own
+
+The owner pasted M531–M533's "left out" list and chose "build all of them"; this is the C names part.
+
+- **What was wrong:** the C's own loops count with `i`, `j`, `k`, its temporaries are `t1`, `t2`…, and a scalar output is
+  rewritten as `(*name)` everywhere in the body: an output called `i` turned the loops' `i` into `(*i)`, a variable called
+  `t1` or `int` broke the file.
+- **The fix** (`codegen.ts` `cSafe`, `cClash`): before writing, each function's variables (inputs, outputs, anything
+  assigned, loop variables, `try` / `global` names) that match the C's own names (`i j k`, `t<number>`, `si sj sc`, `sv_…`,
+  `mp_…`, `fx…_…`, `sat_…`, `intN_t`) or C's words (`int`, `double`, `for`, `bool`, `abs`, `exp`, `round`…) get a `_`
+  (more if that's taken). Only `id` nodes and those names are renamed; field names, lambdas and function names aren't.
+  The header shows the new names (`double t1_`); the order of inputs and outputs is unchanged, so callers are unaffected.
+- **Checked:** `codegen.test.ts` M534: outputs `i`, `j`, `k` and variables `t1`, `int`, `abs` compiled with `-Wall -Werror`,
+  equal to Hyperion. `smooth3`'s input `k` is now `k_` in its header.
