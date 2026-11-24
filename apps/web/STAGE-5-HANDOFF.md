@@ -12609,3 +12609,128 @@ resonance shows as a dip, as in real steppers). Language in `motor-lab.ts`: `foc
 'MTPA', 0/1)`, `stepper`, `stepperSim` (a table and the steps lost), `stepperPullout`. Tests in `motor.test.ts`.
 Example motors.m. Not built: six-step (trapezoidal) BLDC commutation with Hall sensors, space-vector PWM inside the
 motor model, motor heating, closed-loop steppers.
+## M452: the owner's handwritten style for headings (23 Nov)
+
+The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
+in a rounded handwritten face over clean body text): "please use this writing style across the whole project both of
+them were it is needed". Told once that new looks are paused until 5 Dec; asked where and which face: "Big headings
+everywhere" and **Shantell Sans** (of Itim, Mali, Shantell Sans, Comic Neue shown side by side).
+
+- `public/fonts/shantell-sans/` (latin and latin-ext, variable weight 300–800, OFL.txt), `@font-face` and
+  `--font-display` in `globals.css`, preloaded in `layout.tsx`. h1–h3 (so `CardHead` titles too) use it at natural
+  spacing; h4–h6 and everything read or pressed stay Inter (`--font-sans`). `.accent-word` (`<Accent>`) now uses the same
+  face (no serif italic); the Instrument Serif files stay for the UniVersity scene's study signs (`backdrop.ts`).
+- `.display-face` for big headings that aren't headings in the markup (the homes' greeting, `DashHead`).
+- People's own writing keeps Inter headings: `:where(.doc-prose, .ProseMirror, [contenteditable="true"])`. OpenDyslexic
+  (Settings) wins over it for headings too.
+- Checked in a browser (dev): landing, student, teacher and hub at 1280 and 390, light and dark; every visible h1–h3
+  in Shantell Sans, no sideways scroll. Non-Latin scripts (Hindi, Arabic) fall back to Inter / the system font.
+
+## M447 (results) and M451: Ghidra's add-on scored and wired in (23 Nov)
+
+- **The run** (pod `p1l0yv2lj9hn4u`, A100 80GB, 12:34–15:44 UTC, about US$6.70): the teacher's material (96 passages,
+  40 products, 80 towns, 30 names); 2,698 questions, two answers each; **2,224 lessons** kept (none for class-notes,
+  research, meetings, careers' outlines, impact-rooms: the teacher fails those rules too); 2 epochs (loss ~0.55; Unsloth
+  packed the lessons into ~400 rows of 4,096 tokens); the exam without / with: **1,844 → 1,938 of 2,290 (81% → 85%)**.
+  Higher: boards 67→70, carbon 95→98, careers 70→100, daily-brief 62→100, health 36→84, hyperion 90→95, parents 82→92,
+  passport 50→94, quiz-draft 88→95, quiz-marking 73→88, semester 97→100, study-plan 74→90, support 92→93, syllabus
+  62→96, translate 90→92, tutor 99→100, whisper 98→100. Lower: reading-level 92→58, concepts 90→72, school-insights
+  90→82, social 67→58. Still 0% either way: research (cites in the points, not the summary), class-notes (recaps 60–80
+  words), impact-rooms (names the student): their instructions need work, not training.
+- **Upload**: the script's own upload failed ("the token reaches 0 Cloudflare accounts"): the pod had no
+  `CLOUDFLARE_ACCOUNT_ID` (the M441 note says to give it; `ghidra-gpu.sh` should pass it next time). Uploaded by hand
+  from the pod started on CPUs: **`ghidra-20261123-1827`**, a test question answered through it.
+- **Traps:** the pod stopped itself at the end and its GPU was taken at once, so the results were stuck until the owner
+  started it on CPUs (RunPod console → "Start Pod using CPUs"): rent with a network volume next time. Killing the
+  safety timer's `sleep` was safe here; do it the same way (a new `sleep` armed first).
+- **M451**: `ghidra/addon.ts` registers the add-on with the brain (`setOwnModel`, a slot in `brain.ts`; loaded with the
+  API from `app.ts` and `assignments.ts`); only `ADDON_SKILLS` (`addon-skills.ts`, the 17 above) go to it, skipping
+  skills with their own path (hyperion, support keep `HYPERION_LORA` / `AGENTS_LORA`; moving them to `GHIDRA_LORA` is a
+  next step), behind the switch `ghidra-addon` (off), `GHIDRA_LORA`, and the paid-AI limit (`spendCloudAi(null)`, the
+  site's count). JSON answers must have every required field or Gemini answers. Tests: `addon.test.ts`.
+
+## M472 (23 Nov): Hyperion's toolstrip
+
+The owner, 23 Nov, with a screenshot of a desktop maths program's tabbed ribbon: "my other agent didnt add all these
+tools in the hyperion website and downloaded app". `LabToolstrip.tsx` (our own look and words, not a copy): tabs Home,
+Plots, Apps (`role="tablist"`), a "Search help" box (opens `FunctionBrowser` with its new `initial` query), a fold
+button (localStorage `uv-lab-strip`). Home's groups: File (New script: a `Menu` of `LANGS` with their starters; Open:
+up to 20 files of ≤ 1 MB as new scripts; Find in scripts: `findInScripts`, a hit opens the script at its line through
+`jump`; Compare: `lineDiff`, an LCS line diff of the open script against another, in `src/lib/lab/diff.ts` with tests),
+Data (Import = the Files picker; Save / Load workspace = `save('workspace.mat')` / `load(…)`; Clear = `clear`), Code
+(Run, Analyse code = `lintScript` printed to the command window, Run and time, Run step by step, Stop, Clear commands),
+Simulate, Environment (Layout: Variables and Files, Figure, put back; Preferences: code text size 12–17 px through
+`--lab-code`, which LabEditor's theme now reads; LabApp keeps both in localStorage `uv-lab-layout` and changes its grid's
+columns), Resources (Help, Examples: a copy of any example, Learn). Plots: "Draw … against …" from Hyperion's own numeric
+variables (not another language's) and 18 kinds (matrix-only kinds need a matrix), each running `figure; <cmd>`. Apps:
+Simulate's benches and Learn's tabs, chosen through their sessionStorage keys (`uv-sim-kind`, `uv-learn-tab`). The
+toolstrip's lines run as `From` 'tool': like a command but always in the MATLAB engine, never marking the editor's
+lines. The shared `Menu`/`Popover` trigger keeps its 32 px height and padding unless given `bare` classes. Not built:
+the ribbon's other programs' extras (Set Path, Parallel, Add-Ons, Community), a current-folder bar (Files is it).
+
+## M473 (23 Nov): Hyperion's toolstrip, smaller and with more tools
+
+The owner, 23 Nov: "everything needs to be a little small so that more items can fit here", then "also add more
+fuctions and features there". `LabToolstrip.tsx`: big buttons ~3.4 rem with 16 px icons, small ones 12 px icons,
+text 11 px (the reading floor), tighter groups; the strip is about 100 px tall. New: Home → Download script, New
+variable (`Ask`: a one-line popover, then runs; text put in MATLAB quotes by `q`), List variables (`whos`), Explain each
+line and Notebook view toggles (props from LabApp); Plots → Figure (new, hold on/off, grid, colour bar, close all, axes
+fit / equal) and Labels (title, x and y labels, legend from comma-separated names); a new **Analyse** tab on the chosen
+variable (`varPicker`, shared with Plots): statistics, fit a line, a cubic, spectrum, smooth, slope, area under, running
+total, sort, counts, correlation (needs "against"), range: each one line in the engine, results as new variables
+(`<name>_smooth`, `p_<name>`…); Apps → Toolbox starters (12 examples opened as copies). Trap: commands are template
+literals inside TS, so MATLAB's `\n` must be written `\\n` there (one Statistics run failed on a real line break).
+
+## M474 (23 Nov): Hyperion's toolstrip with no gaps: six full tabs
+
+The owner, 23 Nov: "just dont leave gap there add more tools and functions there". Six tabs, each measured to fill a
+1440-wide window exactly without scrolling (`#lab-strip-panel` scrollWidth = clientWidth): Home (File with Download
+script, Data, Code, Simulate, Environment, Resources), Plots (Variables, a 3-row gallery of 19 kinds with Log–log,
+Figure, 3D and colour), Figure (Axes: x/y/z limits, tick marks, a title over all plots; Labels; Lines and layout:
+horizontal and vertical lines, text, a grid of plots, 3D line and points; More colours; Save the figure: PNG, SVG,
+LaTeX through LabApp's figure functions), Analyse (Variables, Calculate, Matrix: transpose, inverse, determinant,
+eigenvalues, rank, norm; Signal: envelope, autocorrelation, standardise, shape of spread, moving max, unique values),
+Maths (Quick maths: calculate, solve f(x) = 0, polynomial roots, integrate, plot a function, a surface of f(x, y); New
+matrix: magic, random, identity, evenly spaced, grid, normal noise; Numbers: primes, factorial, combinations, gcd, lcm,
+remainder), Apps (Simulate's benches, Learn, 27 toolbox starters, Functions, Import). Layout: `Stack` columns are
+`w-max`, groups `flex-auto` with centred contents, so a tab's groups spread across the width. Only functions the engine
+has (checked against help.ts; findpeaks, svd, saveas, butter and similar aren't there yet).
+
+## M475: Hyperion finds peaks, SVD and filters; a smooth toolstrip (23 Nov)
+
+The owner, 23 Nov: add finding peaks, SVD and filter design, "make everything ultra smooth", smooth animations on every tool.
+- `src/lib/lab/dsp.ts` (maths, tested in `dsp.test.ts` against MATLAB's numbers) and `dsp-lab.ts` (the language
+  functions, imported by `lab.worker.ts` and `help.test.ts`): `findpeaks`, `svd`, `butter`, `filtfilt`, `lowpass`,
+  `highpass`, `bandpass` (Butterworth order 8, 4 per side of a band, run both ways so no lag; fs optional). Help entries
+  in `help.ts`. `findpeaks`' widths are 0 for now (shortcut: half-height widths not computed).
+- Toolstrip: Analyse → Matrix → SVD; Signal → Find peaks, Low-pass, High-pass ('Range' left out so Analyse fits 1440 px).
+- Smoothness: `LabToolstrip` keeps the latest props in a ref and hands a memo'd `ToolstripView` only data props plus a
+  stable `act(name, …args)`: never pass a callback prop into the view directly, or typing re-renders the whole strip.
+  All six panes stay mounted (`hidden`); the shown one slides in by `el.animate` (transform, opacity, 260 ms); the tab
+  underline moves by `transform`; a pressed tool's icon pops (skipped with Reduce Motion); fold is a grid-rows ease
+  with `inert`. Measured on the production build: at normal CPU 0 long tasks and 0 slow frames for typing, tabs, tools,
+  menus and fold; at 4× slower CPU typing costs the same with the strip folded, so what's left is the editor's own.
+## M453: Ghidra quicker and with whole answers; the weak skills' instructions (23 Nov)
+
+The owner (23 Nov): "merge and after that work on [the 0% skills and the ones the add-on made worse]… when i was
+testing my ai also it was so much slow and not providing answer properly". The live `error_reports` and
+`ghidra_reports` had nothing about AI, so it wasn't failing loudly.
+
+- **The cause found:** the newer Gemini models (the chain starts at 3.6 Flash) think before answering, and thinking
+  counts against `maxOutputTokens`. Our jobs ask for 200–800 tokens (the chat 1,024): answers came back cut or empty
+  (JSON that won't parse → null → "couldn't…"), after seconds of thinking; the corner chat then fell back to the tiny
+  on-device model. **Fix** (`src/server/gemini.ts`): `quickThinking(model, body)` asks Gemini 3 for `thinkingLevel: low`,
+  2.5 Flash for `thinkingBudget: 0`, and gives every answer at least 1,024 tokens; `geminiFetch` sends it and, on a 400
+  (a model that refuses the setting), sends the plain request. Every call (`call`) and the streaming chat
+  (`api/ai/route.ts`, now 2,048 tokens) go through it; `brain-gate.test.ts` checks the chat imports only `geminiFetch`;
+  `gemini.test.ts`. **Not verified against Gemini itself** (no key here): the owner's console exam run shows it.
+- **The weak skills:** research's format asks for the source number inside the summary after every sentence (the rule
+  needs two there; both models cited only in the points); social: X at most 250 characters, dates, times and numbers
+  only from the request, else [add date] / [add time]; sponsor reports: highlights may name people, so "a student", "a
+  volunteer" or "the team" instead; class recaps: 220–320 words from a 20-minute class, about two thirds of what was
+  taught for a shorter one (the instructions already said short classes get short content). The exam's recap rule now
+  matches (the exam's classes are a few minutes): this morning's answers re-marked, class-notes **0% → 96%**.
+- **Not changed:** reading-level, concepts, school-insights and social stay off the add-on (ADDON_SKILLS); their
+  base scores (90–92%, social 67%) stand. The agents' add-on (AGENTS_LORA) was trained on the old research and social
+  wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
+

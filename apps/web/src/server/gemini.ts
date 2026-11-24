@@ -10,13 +10,31 @@ import { withTextModels } from './ai-models';
 export const SAFETY = ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
   .map((category) => ({ category, threshold: 'BLOCK_MEDIUM_AND_ABOVE' }));
 
-async function call(model: string, apiKey: string, body: unknown) {
-  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+/** M453: newer Gemini models think before they answer, and the thinking counts against maxOutputTokens: with the small
+ *  limits our jobs use, answers came back cut short or empty, and slowly. Each call asks for the least thinking the model
+ *  allows (Gemini 3: thinkingLevel "low"; 2.5 Flash: no thinking budget) and never less than 1,024 tokens of room; a model
+ *  that refuses the setting (400) is asked again without it. */
+export function quickThinking(model: string, body: object): object {
+  const b = body as { generationConfig?: Record<string, unknown> };
+  const config = { ...(b.generationConfig ?? {}) };
+  config.maxOutputTokens = Math.max(1024, Number(config.maxOutputTokens) || 0);
+  if (/^gemini-3/.test(model)) config.thinkingConfig = { thinkingLevel: 'low' };
+  else if (/^gemini-2\.5-flash/.test(model)) config.thinkingConfig = { thinkingBudget: 0 };
+  return { ...b, generationConfig: config };
+}
+
+/** Sends a Gemini request with quickThinking, and once more as given when the model refuses the setting. */
+export async function geminiFetch(model: string, apiKey: string, method: 'generateContent' | 'streamGenerateContent?alt=sse', body: object) {
+  const send = (b: object) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({ safetySettings: SAFETY, ...(body as object) }),
+    body: JSON.stringify({ safetySettings: SAFETY, ...b }),
   });
+  const res = await send(quickThinking(model, body));
+  return res.status === 400 ? send(body) : res;
 }
+
+const call = (model: string, apiKey: string, body: unknown) => geminiFetch(model, apiKey, 'generateContent', body as object);
 
 /**
  * Asks Gemini for JSON matching `schema` (an OpenAPI-style schema). `lite` uses the smaller model
