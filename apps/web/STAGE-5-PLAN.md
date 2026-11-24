@@ -1917,6 +1917,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M485 | Mechatronics | **Done** | DC motors as transfer functions for the control toolbox and as simulations with a load; a brushless (PMSM) motor under field-oriented control in the dq frame, its gains tuned; Clarke and Park; gearboxes; encoders. Example motors.m. |
 | M482b | Robot arms that branch, collision checking | **Done** | The owner's "do all the left out work": arms that branch (a two-armed robot on a turning waist, each hand its own tool), links as capsules checked against each other, spheres and boxes; in the Robot arm window: Two arms, a ball to put in the way, touching links in red. |
 | M483b | Car-style route planning | **Done** | Dubins paths (the shortest forward-only curves for a car) and Hybrid A* (a car that reverses where it must, e.g. into a parking bay); Path planner → Car with a car park, start and goal headings and the car driving its route. |
+| M484b | SLAM that closes loops | **Done** | Back at a place seen long ago, SLAM recognises it and re-solves the whole path as a pose graph, straightening the map; Sensing → "Drive round a loop and close it"; `optimizePoseGraph` in code. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

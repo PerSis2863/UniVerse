@@ -5,6 +5,7 @@
 // before it is added. Maps and positions as robot-motion.ts (metres, origin bottom-left, row 0 at the top).
 
 import { blocked, cellOf, followPath, freeAt, type Grid, type Pose } from './robot-motion';
+import { optimise, relative, type Edge } from './pose-graph';
 
 export type Rand = () => number;
 export const lcg = (seed = 1): Rand => { let s = seed >>> 0 || 1; return () => ((s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 2 ** 32); };
@@ -185,23 +186,59 @@ export function buildMap(scans: number[][], poses: Pose[], angles: number[], res
 /** SLAM: each new pose is the odometry's step from the last corrected pose, refined by matching the scan to the map so
  * far (coarse then fine search in x, y and heading), then the scan is added. Returns the map and the poses; maps of
  * the snapshots along the way when asked. */
-export function slam(scans: number[][], odom: Pose[], angles: number[], res: number, maxR: number, o: { window?: number; snapshots?: number } = {}) {
+/** Matches a scan against a small map made from a few earlier scans, searching widely (±1 m, ±0.3 rad) round a guess.
+ * Returns the best pose and the share of the scan's beams that land on those walls. */
+function matchWide(sub: LogMap, z: number[], angles: number[], maxR: number, guess: Pose, fine?: LogMap): { pose: Pose; share: number; shareAtGuess: number } {
+  const D = wallDistance(sub), Df = fine ? wallDistance(fine) : D;
+  let best = guess, bs = -Infinity;
+  for (const [span, n, turn, nt] of [[1, 10, 0.3, 12], [0.1, 4, 0.03, 4], [0.025, 3, 0.006, 3]] as const) {
+    const c0 = best;
+    for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) for (let t = -nt; t <= nt; t++) {
+      // The wide search on the coarse map, the refinements on the fine one (when given).
+      const c: Pose = [c0[0] + (i / n) * span, c0[1] + (j / n) * span, wrap(c0[2] + (t / nt) * turn)], sc = span > 0.5 || !fine ? fit(sub, D, c, z, angles, maxR, span > 0.5 ? 3 : 1) : fit(fine, Df, c, z, angles, maxR, 1);
+      if (sc > bs) { bs = sc; best = c; }
+    }
+    bs = -Infinity;
+  }
+  const share = (p: Pose) => {
+    let valid = 0, on = 0;
+    for (let k = 0; k < angles.length; k++) {
+      if (z[k] >= maxR - 1e-9) continue;
+      valid++;
+      const a = p[2] + angles[k], e = z[k] + 0.5 / sub.res, i = cellIn(sub, p[0] + e * Math.cos(a), p[1] + e * Math.sin(a));
+      if (i >= 0 && D[i] < 0.2) on++;
+    }
+    return valid ? on / valid : 0;
+  };
+  return { pose: best, share: share(best), shareAtGuess: share(guess) };
+}
+export interface LoopClosure { from: number; to: number; z: Pose }
+export function slam(scans: number[][], odom: Pose[], angles: number[], res: number, maxR: number, o: { window?: number; snapshots?: number; loopClosure?: boolean; recent?: number } = {}) {
   const xs = odom.map((p) => p[0]), ys = odom.map((p) => p[1]), pad = maxR + 2;
   const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, m = emptyMap(Math.max(...xs) - x0 + pad, Math.max(...ys) - y0 + pad, res, x0, y0);
-  const poses: Pose[] = [odom[0]], snaps: { k: number; p: Float32Array }[] = [], win = o.window ?? 0.2;
+  let poses: Pose[] = [odom[0]];
+  const snaps: { k: number; p: Float32Array }[] = [], win = o.window ?? 0.2, edges: Edge[] = [], closures: LoopClosure[] = [];
   addScan(m, odom[0], scans[0], angles, maxR);
+  let lastClosure = -Infinity;
   for (let k = 1; k < odom.length; k++) {
     const mv = motion(odom[k - 1], odom[k]), p = poses[k - 1];
     let guess: Pose = [p[0] + mv.d * Math.cos(p[2] + mv.r1), p[1] + mv.d * Math.sin(p[2] + mv.r1), wrap(p[2] + mv.r1 + mv.r2)];
-    const D = wallDistance(m), odo = guess;
+    // What the scan is matched against: the whole map so far, or (`recent`) only the last few scans, as lidar odometry
+    // does: that drifts slowly, and loop closures take the drift out.
+    let M = m;
+    if (o.recent) {
+      M = emptyMap(2 * maxR + 4, 2 * maxR + 4, res, guess[0] - maxR - 2, guess[1] - maxR - 2);
+      for (let j = Math.max(0, k - o.recent); j < k; j++) addScan(M, poses[j], scans[j], angles, maxR);
+    }
+    const D = wallDistance(M), odo = guess;
     // A small price for straying from the odometry's guess, so an empty view doesn't pull the pose anywhere.
-    const score = (c: Pose) => fit(m, D, c, scans[k], angles, maxR, 1) - 8 * (((c[0] - odo[0]) ** 2 + (c[1] - odo[1]) ** 2) / (win * win) + wrap(c[2] - odo[2]) ** 2 / 0.0025);
+    const score = (c: Pose) => fit(M, D, c, scans[k], angles, maxR, 1) - 8 * (((c[0] - odo[0]) ** 2 + (c[1] - odo[1]) ** 2) / (win * win) + wrap(c[2] - odo[2]) ** 2 / 0.0025);
     // Match only when enough of the scan lands on walls already mapped (else it's a new room: trust the odometry).
     let valid = 0, seen = 0;
     for (let b = 0; b < angles.length; b++) {
       if (scans[k][b] >= maxR - 1e-9) continue;
       valid++;
-      const a = odo[2] + angles[b], e = scans[k][b] + 0.5 / m.res, i = cellIn(m, odo[0] + e * Math.cos(a), odo[1] + e * Math.sin(a));
+      const a = odo[2] + angles[b], e = scans[k][b] + 0.5 / M.res, i = cellIn(M, odo[0] + e * Math.cos(a), odo[1] + e * Math.sin(a));
       if (i >= 0 && D[i] < 0.3) seen++;
     }
     if (seen >= 0.6 * valid) for (const [span, n, turn] of [[win, 5, 0.05], [win / 4, 3, 0.012], [win / 12, 2, 0.003]] as const) {
@@ -213,8 +250,34 @@ export function slam(scans: number[][], odom: Pose[], angles: number[], res: num
       guess = best;
     }
     poses.push(guess);
+    // The move just made, as the scan matching saw it: an edge of the pose graph.
+    edges.push({ i: k - 1, j: k, z: relative(poses[k - 1], guess), info: [2500, 2500, 40000] });
     addScan(m, guess, scans[k], angles, maxR);
+    // M484b, loop closure: back near a place passed long ago? Match the scan against a small map of the scans taken
+    // there; if it fits well, that's one more edge, and the whole path is re-solved, then the map redrawn from it.
+    if ((o.loopClosure ?? !!o.recent) && k - lastClosure > 15 && k % 5 === 0) {
+      let cand = -1, cd = 2.5;
+      for (let j = 0; j < k - 60; j++) { const d = Math.hypot(poses[j][0] - guess[0], poses[j][1] - guess[1]); if (d < cd) { cd = d; cand = j; } }
+      if (cand >= 0) {
+        const lo = Math.max(0, cand - 8), hi = Math.min(k - 40, cand + 8), sub = emptyMap(2 * maxR + 4, 2 * maxR + 4, res, poses[cand][0] - maxR - 2, poses[cand][1] - maxR - 2);
+        const fine = emptyMap(2 * maxR + 4, 2 * maxR + 4, res * 2, sub.x0, sub.y0);
+        for (let j = lo; j <= hi; j++) { addScan(sub, poses[j], scans[j], angles, maxR); addScan(fine, poses[j], scans[j], angles, maxR); }
+        const r = matchWide(sub, scans[k], angles, maxR, guess, fine);
+        // Accepted only when it fits well, better than where the robot thinks it is, and the correction is no bigger than
+        // the drift could be (long straight walls let a scan slide along them and still "fit").
+        const moved = Math.hypot(r.pose[0] - guess[0], r.pose[1] - guess[1]), turned = Math.abs(wrap(r.pose[2] - guess[2]));
+        const drift = 0.15 + 0.01 * (k - cand);
+        if (r.share > 0.85 && r.share >= r.shareAtGuess + 0.05 && moved < Math.min(1, drift) && turned < Math.min(0.2, drift / 3)) {
+          edges.push({ i: cand, j: k, z: relative(poses[cand], r.pose), info: [150, 150, 2500] });
+          closures.push({ from: cand, to: k, z: edges[edges.length - 1].z });
+          poses = optimise(poses, edges);
+          lastClosure = k;
+          m.L.fill(0);
+          poses.forEach((pp, j) => addScan(m, pp, scans[j], angles, maxR));
+        }
+      }
+    }
     if (o.snapshots && (k % Math.max(1, Math.floor(odom.length / o.snapshots)) === 0 || k === odom.length - 1)) snaps.push({ k, p: probability(m) });
   }
-  return { map: m, poses, snaps };
+  return { map: m, poses, snaps, closures };
 }

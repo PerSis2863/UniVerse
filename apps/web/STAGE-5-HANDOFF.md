@@ -12568,3 +12568,27 @@ rows [x y heading direction], −1 reversing; outlines every 3 m when drawn), `r
 → Car (Hybrid A*), Map is a list now with Car park, start and goal headings, the car's outlines, forwards violet and
 backwards orange, Drive it moves the car. The canvas takes the map's shape. Tests in `car-path.test.ts`. Not built:
 Reeds–Shepp curves as the final shot (it uses forward-only Dubins), trailers, smoothing the route afterwards.
+
+## M484b (24 Nov): Hyperion SLAM that closes loops (pose-graph optimisation)
+
+M484's left-out. `src/lib/lab/pose-graph.ts` (pure): `relative`, `compose`, `graphError`, `optimise` (Gauss–Newton on
+SE(2) edges; H kept as one 3 × 3 block per node and per edge, solved by preconditioned conjugate gradients with the
+inverted diagonal blocks; the first pose held by a stiff prior; a 40-pose square with a biased heading goes from 2.7 m
+to 0.13 m off). `robot-sense.ts` `slam`: every step adds an edge (the move as scan matching saw it, info 2500/2500/
+40000); option `recent` matches each scan to a map of the last n scans only (lidar odometry: drifts slowly) instead
+of the whole map; loop closure (on with `recent` unless told otherwise): every 5 steps, at least 15 after the last
+closure, the nearest earlier pose ≥ 60 steps back within 2.5 m; the scan matched (`matchWide`: ±1 m and ±0.3 rad on a
+map of that place's 17 scans, refined on a map twice as fine) and accepted only if ≥ 85 % of its beams land on walls,
+5 % more than where the robot thought it was, and the correction is no bigger than the drift could be (long walls let
+a scan slide along them); the edge (info 150/150/2500: its real error is ~5–10 cm, 1°), the graph re-solved and the
+map redrawn from the new poses. Traps found: (1) `purePursuit` searched the whole path for the closest point, so on a
+path that crosses itself it jumped back and circled for 600 s; it now looks only a little way on from the segment
+reached (always at least the next one) and heads for the next corner when off the path; `followPath` stops only on the
+last segment. (2) With the whole-map front end SLAM barely drifts here, so a closure has little to fix and its own 5–10
+cm error can even add a little: closures pay off with `recent` (4 rooms runs: mean error 0.28 → 0.17 m in the test; in
+runs that hardly drift it can be slightly worse, as expected). Language: `slamGrid(run, 'Recent', 10, 'LoopClosure',
+true)` → a 4th output of closures [from to]; `optimizePoseGraph(poses, edges)` (MATLAB's takes a poseGraph object;
+ours rows [i j dx dy dθ (wx wy wθ)]). Window: Sensing → "Drive round a loop and close it" (the robot drives a loop and
+on past the start; closures as green dashes; "Loops closed: n of m"). Tests in `pose-graph.test.ts`. Not built: robust
+kernels or switchable constraints for wrong closures, place recognition by scan descriptors (it searches near the
+estimate only), 3D pose graphs.

@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { astar, followPath, inflate, rrt, sampleMap, shortcut, type Grid, type Plan, type Pose } from '@/lib/lab/robot-motion';
-import { mcl, simulateRun, slam } from '@/lib/lab/robot-sense';
+import { mcl, simulateRun, slam, type LoopClosure } from '@/lib/lab/robot-sense';
 import { hybridAstar } from '@/lib/lab/car-path';
 
 // Hyperion Simulate → Machines (M483–): the heavier jobs off the page's thread. Planning: the map grown by the robot's
@@ -8,24 +8,28 @@ import { hybridAstar } from '@/lib/lab/car-path';
 // map, Monte Carlo localisation from nowhere and SLAM, with what each step looked like for the replay.
 
 export type Method = 'astar' | 'rrt' | 'rrtstar' | 'car';
-export interface SenseOut { id: number; sense: true; map: Grid; truth: Pose[]; odom: Pose[]; est: Pose[]; spread: number[]; particles: Float32Array[]; scans: number[][]; angles: number[]; maxR: number; slamPoses: Pose[]; snaps: { k: number; p: Uint8Array }[]; slamMap: { rows: number; cols: number; res: number; x0: number; y0: number }; ms: number }
-export type ToMachines = { id: number; sense: { map: 'rooms' | 'warehouse'; particles: number; odomNoise: number; seed: number } } | { id: number; plan: { grid: Grid; start: [number, number]; goal: [number, number]; method: Method; radius: number; look: number; speed: number; heads?: [number, number] } };
+export interface SenseOut { id: number; sense: true; map: Grid; truth: Pose[]; odom: Pose[]; est: Pose[]; spread: number[]; particles: Float32Array[]; scans: number[][]; angles: number[]; maxR: number; slamPoses: Pose[]; snaps: { k: number; p: Uint8Array }[]; slamMap: { rows: number; cols: number; res: number; x0: number; y0: number }; closures: LoopClosure[]; ms: number }
+export type ToMachines = { id: number; sense: { map: 'rooms' | 'warehouse'; particles: number; odomNoise: number; seed: number; loop?: boolean } } | { id: number; plan: { grid: Grid; start: [number, number]; goal: [number, number]; method: Method; radius: number; look: number; speed: number; heads?: [number, number] } };
 export interface FromMachines { id: number; plan: Plan; smooth: [number, number][]; inflated: Uint8Array; drive: Pose[]; ms: number; back?: boolean[] }
 
 self.onmessage = (e: MessageEvent<ToMachines>) => {
   const t0 = performance.now();
   if ('sense' in e.data) {
     const { id, sense: o } = e.data, g = sampleMap(o.map), safe = inflate(g, 0.7);
-    const path = shortcut(safe, (o.map === 'rooms' ? astar(safe, [3, 3], [22, 22]) : astar(safe, [2, 2], [23, 23])).path);
+    // Across the building, or (M484b) round a loop and on past the start, so SLAM can recognise where it has been.
+    const wp: [number, number][] = o.loop ? (o.map === 'rooms' ? [[4, 5], [12, 7], [13, 20], [5, 17], [4, 5], [12, 7]] : [[2, 2], [23, 2], [23, 23], [2, 23], [2, 2], [23, 2]]) : o.map === 'rooms' ? [[3, 3], [22, 22]] : [[2, 2], [23, 23]];
+    let path: [number, number][] = [];
+    for (let i = 1; i < wp.length; i++) { const leg = shortcut(safe, astar(safe, wp[i - 1], wp[i]).path); path = path.concat(i > 1 ? leg.slice(1) : leg); }
     const run = simulateRun(g, path, { odomNoise: o.odomNoise, seed: o.seed });
     const steps = mcl(g, run.odom, run.scans, run.angles, { particles: o.particles, seed: o.seed + 5 });
-    const sl = slam(run.scans, run.odom, run.angles, 4, run.maxRange, { snapshots: 40 });
+    // Loop closure goes with matching each scan to the last few (as real lidar odometry does), which drifts slowly.
+    const sl = slam(run.scans, run.odom, run.angles, 4, run.maxRange, { snapshots: 40, ...(o.loop ? { recent: 10, loopClosure: true } : {}) });
     // At most 800 particles a step go back for drawing.
     const every = Math.max(1, Math.ceil(o.particles / 800));
     const particles = steps.map((s) => { const n = Math.ceil(o.particles / every), out = new Float32Array(n * 3); for (let i = 0; i < n; i++) out.set(s.particles.subarray(i * every * 3, i * every * 3 + 3), i * 3); return out; });
     const snaps = sl.snaps.map((x) => ({ k: x.k, p: Uint8Array.from(x.p, (v) => Math.round(v * 255)) }));
     const { rows, cols, res, x0, y0 } = sl.map;
-    (self as unknown as Worker).postMessage({ id, sense: true, map: g, truth: run.truth, odom: run.odom, est: steps.map((s) => s.pose), spread: steps.map((s) => s.spread), particles, scans: run.scans, angles: run.angles, maxR: run.maxRange, slamPoses: sl.poses, snaps, slamMap: { rows, cols, res, x0, y0 }, ms: performance.now() - t0 } satisfies SenseOut);
+    (self as unknown as Worker).postMessage({ id, sense: true, map: g, truth: run.truth, odom: run.odom, est: steps.map((s) => s.pose), spread: steps.map((s) => s.spread), particles, scans: run.scans, angles: run.angles, maxR: run.maxRange, slamPoses: sl.poses, snaps, slamMap: { rows, cols, res, x0, y0 }, closures: sl.closures, ms: performance.now() - t0 } satisfies SenseOut);
     return;
   }
   const { id, plan: p } = e.data;

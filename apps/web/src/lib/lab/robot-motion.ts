@@ -242,12 +242,20 @@ export function driveStep([x, y, th]: Pose, v: number, w: number, dt: number): P
   return [x + r * (Math.sin(th2) - Math.sin(th)), y - r * (Math.cos(th2) - Math.cos(th)), Math.atan2(Math.sin(th2), Math.cos(th2))];
 }
 /** Pure pursuit: the point on the path `look` metres ahead, and the turn that curves the robot onto it. */
-export function purePursuit(pose: Pose, path: [number, number][], look: number, v: number, wMax = Infinity): { v: number; w: number; target: [number, number] } {
+export function purePursuit(pose: Pose, path: [number, number][], look: number, v: number, wMax = Infinity, from = 0): { v: number; w: number; target: [number, number]; index: number } {
   const [x, y, th] = pose;
-  // The closest point of the path, then the first point at least `look` from the robot after it.
-  let best = 0, bd = Infinity;
-  for (let i = 0; i < path.length; i++) { const dd = Math.hypot(path[i][0] - x, path[i][1] - y); if (dd < bd) { bd = dd; best = i; } }
-  let target = path[path.length - 1];
+  // The closest segment of the path, looking only a little way on from the segment reached so far (`from`), so a path
+  // that crosses itself (a loop) is followed in order; then the first point at least `look` from the robot after it.
+  let best = Math.min(from, Math.max(0, path.length - 2)), bd = Infinity, ahead = 0;
+  const first = best;
+  for (let i = best; i < Math.max(1, path.length - 1) && (ahead < 3 * look + 5 || i < first + 2); i++) {
+    const [ax, ay] = path[i], [bx, by] = path[Math.min(i + 1, path.length - 1)], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    const u = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)) : 0, dd = Math.hypot(ax + u * dx - x, ay + u * dy - y);
+    if (dd < bd) { bd = dd; best = i; }
+    ahead += Math.sqrt(L2);
+  }
+  // Off the path by more than the look-ahead (no crossing ahead): head for the next corner, not the far end.
+  let target = path[Math.min(best + 1, path.length - 1)];
   for (let i = best; i < path.length - 1; i++) {
     const [ax, ay] = path[i], [bx, by] = path[i + 1], dx = bx - ax, dy = by - ay, fx = ax - x, fy = ay - y;
     const A = dx * dx + dy * dy, B = 2 * (fx * dx + fy * dy), C = fx * fx + fy * fy - look * look, disc = B * B - 4 * A * C;
@@ -257,7 +265,7 @@ export function purePursuit(pose: Pose, path: [number, number][], look: number, 
   const L = Math.max(1e-9, Math.hypot(target[0] - x, target[1] - y));
   // Turn on the spot first when the target is behind.
   const w = Math.abs(a) > Math.PI / 2 ? Math.sign(a) * Math.min(wMax, 2) : Math.max(-wMax, Math.min(wMax, (2 * v * Math.sin(a)) / L));
-  return { v: Math.abs(a) > Math.PI / 2 ? 0 : v, w, target };
+  return { v: Math.abs(a) > Math.PI / 2 ? 0 : v, w, target, index: best };
 }
 /** Drives along the path by pure pursuit until within `goalRadius` of its end (or `maxTime`). */
 export function followPath(path: [number, number][], o: { look?: number; speed?: number; wMax?: number; dt?: number; start?: Pose; goalRadius?: number; maxTime?: number } = {}) {
@@ -265,10 +273,13 @@ export function followPath(path: [number, number][], o: { look?: number; speed?:
   const p0 = path[0], p1 = path[1] ?? path[0];
   let pose: Pose = o.start ?? [p0[0], p0[1], Math.atan2(p1[1] - p0[1], p1[0] - p0[0])];
   const poses: Pose[] = [pose], t = [0], cmd: [number, number][] = [];
+  let seg = 0;
   const end = path[path.length - 1];
   for (let k = 1; k * dt <= maxT; k++) {
-    if (Math.hypot(pose[0] - end[0], pose[1] - end[1]) < goalR) break;
-    const c = purePursuit(pose, path, look, v, wMax);
+    // The end counts only once on the last segment (a loop may pass its end earlier).
+    if (seg >= path.length - 2 && Math.hypot(pose[0] - end[0], pose[1] - end[1]) < goalR) break;
+    const c = purePursuit(pose, path, look, v, wMax, seg);
+    seg = c.index;
     pose = driveStep(pose, c.v, c.w, dt);
     poses.push(pose); t.push(k * dt); cmd.push([c.v, c.w]);
   }

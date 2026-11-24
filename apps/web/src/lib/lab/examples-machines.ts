@@ -68,6 +68,16 @@ figure; slamGrid(run)
 [M, poses] = slamGrid(run);
 odometryMiss = norm(run.Odometry(end, 1:2) - run.True(end, 1:2))
 slamMiss = norm(poses(end, 1:2) - run.True(end, 1:2))
+% Round a loop and past the start: matching only the last 10 scans drifts slowly, closing the loop pulls it straight
+safe2 = inflateMap(map, 0.7, res);
+loop = [4 5; 12 7; 13 20; 5 17; 4 5; 12 7]; path2 = [];
+for i = 1:size(loop, 1) - 1
+  leg = shortenPath(astarGrid(safe2, loop(i, :), loop(i + 1, :), 'Resolution', res), safe2, res);
+  if i > 1, leg = leg(2:end, :); end
+  path2 = [path2; leg];
+end
+run2 = robotRun(map, path2, 'Resolution', res, 'OdometryNoise', 0.15);
+figure; slamGrid(run2, 'Recent', 10)
 ` },
   { name: 'motors.m', code: `% Mechatronics: a DC motor with a speed controller, and a brushless motor under field-oriented control
 m = dcmotor();                         % a small 24 V motor

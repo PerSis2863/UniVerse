@@ -24,6 +24,7 @@ export function SensingBench() {
   const [particles, setParticles] = useState(5000);
   const [noise, setNoise] = useState(0.08);
   const [seed, setSeed] = useState(1);
+  const [loop, setLoop] = useState(false);
   const [out, setOut] = useState<SenseOut | null>(null);
   const [busy, setBusy] = useState(true);
   const [k, setK] = useState(0);
@@ -39,8 +40,8 @@ export function SensingBench() {
     worker.current = w;
     return () => w.terminate();
   }, []);
-  const run = useEffectEvent(() => { if (!worker.current) return; setBusy(true); setPlaying(false); worker.current.postMessage({ id: ++seq.current, sense: { map: mapName, particles, odomNoise: noise, seed } } satisfies ToMachines); });
-  useEffect(() => { const t = window.setTimeout(run, 200); return () => clearTimeout(t); }, [mapName, particles, noise, seed]);
+  const run = useEffectEvent(() => { if (!worker.current) return; setBusy(true); setPlaying(false); worker.current.postMessage({ id: ++seq.current, sense: { map: mapName, particles, odomNoise: noise, seed, loop } } satisfies ToMachines); });
+  useEffect(() => { const t = window.setTimeout(run, 200); return () => clearTimeout(t); }, [mapName, particles, noise, seed, loop]);
   // The replay: five steps a second of the run is real time; shown three times faster, from where the slider is.
   useEffect(() => {
     if (!playing || !out) return;
@@ -103,6 +104,10 @@ export function SensingBench() {
       }
       path(R, out.odom.slice(0, k + 1), '#dc2626', 1.5, [4, 3]);
       path(R, out.slamPoses.slice(0, k + 1), '#7c3aed', 2);
+      // Loop closures found so far: the place recognised, joined to where it was first seen.
+      R.strokeStyle = '#16a34a'; R.lineWidth = 2; R.setLineDash([3, 3]);
+      for (const c of out.closures) if (c.to <= k) { const a = out.slamPoses[c.from], b = out.slamPoses[c.to]; R.beginPath(); R.moveTo(X(a[0]), Y(a[1])); R.lineTo(X(b[0]), Y(b[1])); R.stroke(); }
+      R.setLineDash([]);
       robot(R, out.odom[k], '#dc2626'); robot(R, out.slamPoses[k], '#7c3aed');
     }
   });
@@ -127,6 +132,10 @@ export function SensingBench() {
         </div>
         {range('Particles', particles, 500, 10000, 500, particles.toLocaleString(), setParticles)}
         {range('Wheel slip (odometry noise)', noise, 0.01, 0.2, 0.01, `${Math.round(noise * 100)}%`, setNoise)}
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={loop} onChange={(e) => setLoop(e.target.checked)} className="h-4 w-4 accent-violet-600" />Drive round a loop and close it</label>
+          <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{loop ? `SLAM matches each scan to the last few only, so it drifts slowly; when the robot is back where it has been, the match (green) pulls the whole path and map straight.${out ? ` Loops closed: ${out.closures.filter((c) => c.to <= k).length} of ${out.closures.length}.` : ''}` : 'The robot crosses the building once; SLAM matches each scan to everything mapped so far.'}</p>
+        </div>
         <div className="flex flex-wrap gap-1">
           <button type="button" className={small} disabled={!out} onClick={() => { if (out && k >= n - 1) setK(0); setPlaying((p) => !p); }}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Pause' : 'Replay'}</button>
           <button type="button" className={small} onClick={() => setSeed((s) => s + 1)}><RotateCcw className="h-3.5 w-3.5" aria-hidden />Another run</button>
@@ -134,7 +143,7 @@ export function SensingBench() {
         <label className={label}>Time <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{(k * STEP_S).toFixed(1)} s</span>
           <input type="range" min={0} max={n - 1} step={1} value={k} onChange={(e) => { setPlaying(false); setK(Number(e.target.value)); }} className="mt-1 w-full accent-violet-600" />
         </label>
-        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code: <span className="font-mono">lidarSim</span>, <span className="font-mono">robotRun</span>, <span className="font-mono">mclLocalize</span>, <span className="font-mono">slamGrid</span>, <span className="font-mono">buildMap</span> (example: robot_sensing.m).</p>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code: <span className="font-mono">lidarSim</span>, <span className="font-mono">robotRun</span>, <span className="font-mono">mclLocalize</span>, <span className="font-mono">slamGrid</span>, <span className="font-mono">optimizePoseGraph</span>, <span className="font-mono">buildMap</span> (example: robot_sensing.m).</p>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="Localisation and mapping">
         <div className="grid grid-cols-2 gap-4 px-4 pt-3 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
