@@ -5,7 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
-import { CAR_DEFAULT, G, ROLL_DEFAULT, accelRun, brakingDistance, handling, rampSteer, sineWithDwell, stepSteer, steerForCircle, vehicleSim, type Vehicle } from '@/lib/lab/vehicle';
+import { CAR_DEFAULT, G, ROLL_DEFAULT, accelRun, brakingDistance, fishhook, handling, rampSteer, sineWithDwell, stepSteer, steerForCircle, vehicleSim, type Vehicle } from '@/lib/lab/vehicle';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Vehicle (M486): a car seen from above running the standard handling tests (a step of
@@ -13,11 +13,15 @@ import { ui } from './bench-ui';
 // balance set to understeer, neutral or oversteer. The run is worked out at once (a few thousand steps), then replayed
 // in real time; with Reduce Motion it is shown at its end. The maths is vehicle.ts, the same as vehicleSim in code.
 
-type Test = 'step' | 'sinedwell' | 'ramp' | 'circle';
+type Test = 'step' | 'sinedwell' | 'ramp' | 'circle' | 'fishhook';
 type Road = 'dry' | 'wet' | 'snow';
 type Balance = 'under' | 'neutral' | 'over';
 // Body roll (M486b): off (one tyre per axle), a saloon's, or a van's tall body that can lift a wheel.
 type Body = 'none' | 'saloon' | 'van';
+// Suspension geometry (M486c): plain (the wheels stay upright, nothing steers), MacPherson struts (the wheels lean
+// most with the body), double wishbones (less lean, the rear steering into the turn as it rolls).
+type Susp = 'plain' | 'strut' | 'wishbone';
+const SUSP: Record<Susp, { camber?: [number, number]; camberStiff?: number; rollSteer?: [number, number] }> = { plain: {}, strut: { camber: [0.8, 0.8], camberStiff: 0.1, rollSteer: [0.05, 0.05] }, wishbone: { camber: [0.45, 0.45], camberStiff: 0.1, rollSteer: [0.02, 0.1] } };
 const MU: Record<Road, number> = { dry: 1, wet: 0.6, snow: 0.3 };
 // The rear tyres' cornering stiffness sets the balance: neutral when both axles slip alike (Fzf/Cf = Fzr/Cr).
 const CR: Record<Balance, number> = { under: 95000, neutral: (CAR_DEFAULT.cf * CAR_DEFAULT.lf) / CAR_DEFAULT.lr, over: 40000 };
@@ -30,6 +34,7 @@ export function VehicleBench() {
   const [balance, setBalance] = useState<Balance>('under');
   const [body, setBody] = useState<Body>('none');
   const [front, setFront] = useState(60);
+  const [susp, setSusp] = useState<Susp>('plain');
   const [kmh, setKmh] = useState(80);
   const [amp, setAmp] = useState(3.5);
   const [k, setK] = useState(0);
@@ -37,13 +42,15 @@ export function VehicleBench() {
   const top = useRef<HTMLCanvasElement>(null), chart = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
 
   const car: Vehicle = useMemo(() => {
-    const total = ROLL_DEFAULT.kf + ROLL_DEFAULT.kr, roll = body === 'none' ? undefined : { ...ROLL_DEFAULT, kf: (total * front) / 100, kr: (total * (100 - front)) / 100 };
-    return { ...CAR_DEFAULT, mu: MU[road], cr: CR[balance], roll, ...(body === 'van' ? { h: 1.1, m: 2200, iz: 4200 } : {}) };
-  }, [road, balance, body, front]);
+    const total = ROLL_DEFAULT.kf + ROLL_DEFAULT.kr, roll = body === 'none' ? undefined : { ...ROLL_DEFAULT, kf: (total * front) / 100, kr: (total * (100 - front)) / 100, ...SUSP[susp], ...(body === 'van' ? { track: 1.6, ix: 1400 } : {}) };
+    // The van: heavier, its centre of mass 1.2 m up on a 1.6 m track, so past about 0.67 g it tips (M486c).
+    return { ...CAR_DEFAULT, mu: MU[road], cr: CR[balance], roll, ...(body === 'van' ? { h: 1.2, m: 2500, iz: 4500, cf: 110000, cr: CR[balance] * 1.4 } : {}) };
+  }, [road, balance, body, front, susp]);
   const run = useMemo(() => {
     const u = kmh / 3.6, a = (amp * Math.PI) / 180;
     // The sine with dwell is run coasting, as the test is; the others with a driver holding the speed.
     if (test === 'sinedwell') return vehicleSim(car, sineWithDwell(a), 4.5, { v0: u, force: () => 0, points: 450 });
+    if (test === 'fishhook') return vehicleSim(car, fishhook(a), 6, { v0: u, force: () => 0, points: 600 });
     if (test === 'step') return vehicleSim(car, stepSteer(a), 4, { speed: u, points: 400 });
     if (test === 'ramp') return vehicleSim(car, rampSteer(a / 4), 8, { speed: u, points: 800 });
     return vehicleSim(car, () => steerForCircle(car, 40, u), 10, { speed: u, points: 1000 });
@@ -93,7 +100,7 @@ export function VehicleBench() {
       T.moveTo(X(xs[0]), Y(ys[0]));
       for (let i = 1; i <= k; i++) T.lineTo(X(xs[i]), Y(ys[i]));
       T.stroke();
-      const spunNow = run.beta.slice(0, k + 1).some((b2) => Math.abs(b2) > (15 * Math.PI) / 180);
+      const spunNow = run.beta.slice(0, k + 1).some((b2) => Math.abs(b2) > (15 * Math.PI) / 180) || (Number.isFinite(run.rolled) && k === n - 1);
       const c = Math.cos(run.psi[k]), sn = Math.sin(run.psi[k]), cx = X(xs[k]), cy = Y(ys[k]);
       const corner = (u: number, v: number) => [cx + (u * c - v * sn) * s, cy - (u * sn + v * c) * s];
       T.fillStyle = spunNow ? '#dc2626' : '#16a34a'; T.strokeStyle = bg; T.lineWidth = 1.5; T.beginPath();
@@ -108,7 +115,8 @@ export function VehicleBench() {
     if (C) {
       C.fillStyle = bg; C.fillRect(0, 0, W, 130);
       const tEnd = run.t[n - 1], tx = (t: number) => 8 + ((W - 16) * t) / tEnd;
-      const series: [number[], string][] = [[run.steer.map(deg), '#f59e0b'], [run.r.map(deg), '#7c3aed']];
+      // With body roll, the lean too (the body on its springs plus any tip onto two wheels).
+      const series: [number[], string][] = [[run.steer.map(deg), '#f59e0b'], [run.r.map(deg), '#7c3aed'], ...(car.roll ? [[run.roll.map((x, i) => deg(x + run.tip[i])), '#16a34a'] as [number[], string]] : [])];
       const peak = Math.max(1, ...series.flatMap(([v]) => v.map(Math.abs)));
       C.strokeStyle = faint; C.beginPath(); C.moveTo(8, 65); C.lineTo(W - 8, 65); C.stroke();
       for (const [v, colour] of series) { C.strokeStyle = colour; C.lineWidth = 2; C.beginPath(); v.forEach((y, i) => { const px = tx(run.t[i]), py = 65 - (y / peak) * 55; if (i) C.lineTo(px, py); else C.moveTo(px, py); }); C.stroke(); }
@@ -124,12 +132,14 @@ export function VehicleBench() {
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => set(Number(e.target.value))} className="mt-1 w-full accent-violet-600" />
     </label>
   );
+  const rolled = Number.isFinite(run.rolled), tipped = run.tip.some((x) => x !== 0);
   const peakG = Math.max(...run.ay.map(Math.abs)) / G, peakSlip = deg(Math.max(...run.beta.map(Math.abs))), peakRoll = deg(Math.max(...run.roll.map(Math.abs)));
   const h = facts.h, balanceText = h.K > 1e-6 ? `understeers ${deg(h.K * G).toFixed(1)}°/g` : h.K < -1e-6 ? `oversteers, unstable past ${(h.critical * 3.6).toFixed(0)} km/h` : 'neutral';
   const explain: Record<Test, string> = {
     sinedwell: 'The stability-control test: a 0.7 Hz swing of the steering with a half-second hold, foot off the pedal. A car passes when it keeps pointing where it is going.',
     step: 'A quick turn of the wheel held there: the yaw rate rises, overshoots a little and settles.',
     ramp: 'The steering wound on slowly: the side force grows until the tyres reach their grip.',
+    fishhook: 'The rollover test: a quick turn one way, a quarter-second hold, then hard over the other way and held, foot off the pedal. A tall vehicle whose tyres grip more than its width allows tips onto two wheels.',
     circle: 'A steady 40 m circle with the steering the simple model asks for: an understeering car runs wide as it goes faster.',
   };
   const rollNote = car.roll ? ' With body roll, load moves to the outer tyres, and a tyre with more load grips less per kilo: the axle with the stiffer roll bar loses grip first, so more stiffness at the front understeers and more at the rear can spin.' : '';
@@ -138,7 +148,7 @@ export function VehicleBench() {
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Vehicle settings" data-no-motion>
         <div className="space-y-2">
           <span className={label}>Test</span>
-          <Segmented<Test> label="Test" value={test} onChange={setTest} segments={[{ value: 'sinedwell', label: 'Sine' }, { value: 'step', label: 'Step' }, { value: 'ramp', label: 'Ramp' }, { value: 'circle', label: 'Circle' }]} />
+          <Segmented<Test> label="Test" value={test} onChange={setTest} segments={[{ value: 'sinedwell', label: 'Sine' }, { value: 'step', label: 'Step' }, { value: 'ramp', label: 'Ramp' }, { value: 'circle', label: 'Circle' }, { value: 'fishhook', label: 'Hook' }]} />
           <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{explain[test]}{rollNote}</p>
         </div>
         <div className="space-y-2">
@@ -154,6 +164,11 @@ export function VehicleBench() {
           <Segmented<Body> label="Body roll" value={body} onChange={setBody} segments={[{ value: 'none', label: 'Off' }, { value: 'saloon', label: 'Saloon' }, { value: 'van', label: 'Tall van' }]} />
         </div>
         {body !== 'none' && range('Roll stiffness at the front', front, 20, 80, 5, `${front} %`, setFront)}
+        {body !== 'none' && <div className="space-y-2">
+          <span className={label}>Suspension</span>
+          <Segmented<Susp> label="Suspension" value={susp} onChange={setSusp} segments={[{ value: 'plain', label: 'Plain' }, { value: 'strut', label: 'Struts' }, { value: 'wishbone', label: 'Wishbones' }]} />
+          <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{susp === 'plain' ? 'The wheels stay upright and nothing steers as the body rolls.' : susp === 'strut' ? 'Struts let the wheels lean out with the body, which pushes them outwards, and both axles steer a little against the turn: more understeer.' : 'Wishbones keep the wheels more upright; the rear steers into the turn as the body rolls, steadying the car.'}</p>
+        </div>}
         {range('Speed', kmh, 30, 150, 5, `${kmh} km/h`, setKmh)}
         {test !== 'circle' && range(test === 'ramp' ? 'Steering after 4 s (at the wheels)' : 'Steering (at the wheels)', amp, 0.5, 8, 0.5, `${amp.toFixed(1)}°`, setAmp)}
         <button type="button" className={small} onClick={() => { if (k >= n - 1) setK(0); setPlaying((p) => !p); }}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Pause' : 'Replay'}</button>
@@ -165,11 +180,11 @@ export function VehicleBench() {
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The car from above">
         <div ref={box} className="flex min-h-0 flex-1 flex-col gap-2 p-3">
           <canvas ref={top} role="img" aria-label={`The car from above: ${run.spun ? 'it spins' : 'it stays in control'}, up to ${peakG.toFixed(2)} g sideways`} className="rounded-lg ring-1 ring-zinc-200 dark:ring-white/10" />
-          <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-300"><span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#f59e0b' }} aria-hidden />steering</span><span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#7c3aed' }} aria-hidden />yaw rate</span></div>
+          <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-300"><span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#f59e0b' }} aria-hidden />steering</span><span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#7c3aed' }} aria-hidden />yaw rate</span>{car.roll && <span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#16a34a' }} aria-hidden />lean</span>}</div>
           <canvas ref={chart} role="img" aria-label="Steering and yaw rate over time" className="rounded-lg ring-1 ring-zinc-200 dark:ring-white/10" />
         </div>
         <div className="grid grid-cols-4 gap-4 border-t border-zinc-200/80 px-4 py-3 text-xs dark:border-white/10" aria-live="polite">
-          {([['Result', run.spun ? 'Spun' : run.lift ? 'A wheel lifted' : 'In control'], ['Most sideways', `${peakG.toFixed(2)} g, slip ${peakSlip.toFixed(1)}°${car.roll ? `, lean ${peakRoll.toFixed(1)}°` : ''}`], ['This car', balanceText], ['0–100 km/h · stop from 100', `${Number.isNaN(facts.acc.time) ? '–' : `${facts.acc.time.toFixed(1)} s`} · ${facts.stop.distance.toFixed(0)} m`]] as const).map(([a, b]) => <div key={a}><p className="font-semibold text-zinc-500 dark:text-zinc-400">{a}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{b}</p></div>)}
+          {([['Result', rolled ? `Rolled over at ${run.rolled.toFixed(1)} s` : tipped ? 'Up on two wheels' : run.spun ? 'Spun' : run.lift ? 'A wheel lifted' : 'In control'], ['Most sideways', `${peakG.toFixed(2)} g, slip ${peakSlip.toFixed(1)}°${car.roll ? `, lean ${peakRoll.toFixed(1)}°` : ''}`], ['This car', balanceText], ['0–100 km/h · stop from 100', `${Number.isNaN(facts.acc.time) ? '–' : `${facts.acc.time.toFixed(1)} s`} · ${facts.stop.distance.toFixed(0)} m`]] as const).map(([a, b]) => <div key={a}><p className="font-semibold text-zinc-500 dark:text-zinc-400">{a}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{b}</p></div>)}
         </div>
       </section>
     </div>

@@ -150,6 +150,12 @@ stiffRear = vehicle('Roll', true, 'RollStiffFront', 20000, 'RollStiffRear', 8000
 fprintf('Stiff rear roll bar: spun = %d, leaning up to %.1f degrees\\n', info.Spun, info.PeakRoll*180/pi)
 van = vehicle('Roll', true, 'CgHeight', 1.1, 'Mass', 2200);
 figure; vehicleSim(van, 'step', 3, 'Amplitude', 0.12, 'Speed', 25)   % a tall van lifts a wheel
+% Rollover: a tall van in the fishhook test tips onto two wheels and rolls; on a slippery road it slides instead
+van = vehicle('Mass', 2500, 'Inertia', 4500, 'CgHeight', 1.2, 'Cf', 110000, 'Cr', 140000, 'Track', 1.6, 'RollInertia', 1400, 'CamberRoll', [0.8 0.8], 'CamberStiffness', 0.1, 'RollSteer', [0.05 0.05]);
+figure; vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22)
+[~, dry] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22);
+van.Mu = 0.55; [~, ice] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22);
+fprintf('Dry road: rolled over %d; slippery: rolled over %d\\n', dry.RolledOver, ice.RolledOver)
 ` },
   { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead
 c = vehicle();

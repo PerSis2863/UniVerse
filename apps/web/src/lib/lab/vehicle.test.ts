@@ -65,6 +65,28 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(vd.vehicleSim({ ...rc, h: 1.1 }, vd.stepSteer(0.12), 3, { speed: 25 }).lift).toBe(true);
     expect(vd.vehicleSim(rc, vd.stepSteer(0.12), 3, { speed: 25 }).lift).toBe(false);
   });
+  it('suspension geometry and rollover (M486c): roll steer and camber cost turning, a tall van rolls in the fishhook', () => {
+    const rc: vd.Vehicle = { ...vd.CAR_DEFAULT, roll: { ...vd.ROLL_DEFAULT } };
+    const yaw = (v: vd.Vehicle) => vd.vehicleSim(v, vd.stepSteer(0.03), 4, { speed: 22 }).r.at(-1)!;
+    // Without geometry the run is M486b's exactly; roll understeer and leaning wheels both turn it less.
+    expect(yaw({ ...rc, roll: { ...rc.roll!, rollSteer: [0, 0], camber: [0, 0], camberStiff: 0 } })).toBe(yaw(rc));
+    expect(yaw({ ...rc, roll: { ...rc.roll!, rollSteer: [0.1, 0.1] } })).toBeLessThan(0.97 * yaw(rc));
+    expect(yaw({ ...rc, roll: { ...rc.roll!, rollSteer: [-0.1, -0.1] } })).toBeGreaterThan(yaw(rc));
+    // Rear wheels leaning out with the body lose the rear more: less understeer, more yaw.
+    expect(yaw({ ...rc, roll: { ...rc.roll!, camber: [0, 0.8], camberStiff: 0.1 } })).toBeGreaterThan(yaw(rc));
+    expect(yaw({ ...rc, roll: { ...rc.roll!, camber: [0.8, 0], camberStiff: 0.1 } })).toBeLessThan(yaw(rc));
+    // The fishhook: up, hold, over to the other side; ends straight.
+    const fh = vd.fishhook(0.1);
+    expect(fh(0.4)).toBe(0); expect(fh(0.5 + 0.125 + 0.1)).toBeCloseTo(0.1, 9); expect(fh(0.5 + 0.125 + 0.25 + 0.25 + 1)).toBeCloseTo(-0.1, 9); expect(fh(10)).toBe(0);
+    // A tall van (centre of mass 1.2 m up on a 1.6 m track: tips past 0.67 g) rolls over in it; the saloon doesn't; the
+    // van on a slippery road (grip 0.55 g) slides instead.
+    const van: vd.Vehicle = { ...vd.CAR_DEFAULT, m: 2500, iz: 4500, h: 1.2, cf: 110000, cr: 140000, roll: { ...vd.ROLL_DEFAULT, track: 1.6, ix: 1400 } };
+    const go = (v: vd.Vehicle) => vd.vehicleSim(v, vd.fishhook(0.12), 6, { speed: 22 });
+    const tall = go(van);
+    expect(Number.isFinite(tall.rolled)).toBe(true); expect(Math.max(...tall.tip.map(Math.abs))).toBeGreaterThan(0.3);
+    expect(Number.isNaN(go(rc).rolled)).toBe(true); expect(Math.max(...go(rc).tip.map(Math.abs))).toBe(0);
+    expect(Number.isNaN(go({ ...van, mu: 0.55 }).rolled)).toBe(true);
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     lab.run("c = vehicle('Cr', 50000); k = c.UndersteerGradient; [r, info] = vehicleSim(c, 'sinedwell', 4, 'Amplitude', 0.1, 'Speed', 28); s = info.Spun; [a, ai] = accelRun(vehicle()); t = ai.Time; d = brakingDistance(vehicle(), 27.78); f = magicFormula([0 0.1], 10, 1.3, 1, -0.6); h = vehicleHandling(vehicle()); figure; vehicleSim(vehicle(), 'step', 3, 'Speed', 20); figure; vehicleHandling(c); v = vehicle('Roll', true, 'CgHeight', 1.1); g = v.RollGradient; [rr, ri] = vehicleSim(v, 'step', 3, 'Amplitude', 0.12, 'Speed', 25); lift = ri.WheelLift; figure; vehicleSim(v, 'step', 3, 'Amplitude', 0.12, 'Speed', 25); v2 = vehicle('RollStiffFront', 80000); g2 = v2.RollGradient;");
@@ -73,5 +95,7 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(d('t')[0]).toBeGreaterThan(5); expect(d('d')[0]).toBeGreaterThan(35);
     expect(d('f')[0]).toBe(0); expect(d('f')[1]).toBeGreaterThan(0.5);
     expect(d('g')[0]).toBeGreaterThan(0.01); expect(d('lift')).toEqual([1]); expect(d('g2')[0]).toBeGreaterThan(0);
+    lab.run("van = vehicle('Mass', 2500, 'Inertia', 4500, 'CgHeight', 1.2, 'Cf', 110000, 'Cr', 140000, 'Track', 1.6, 'RollInertia', 1400, 'RollSteer', [0.05 0.05], 'CamberRoll', [0.8 0.8], 'CamberStiffness', 0.1); [vr, vi] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22); ro = vi.RolledOver; cr = van.CamberRoll; figure; vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22);");
+    expect(d('ro')).toEqual([1]); expect(d('cr')).toEqual([0.8, 0.8]);
   });
 });

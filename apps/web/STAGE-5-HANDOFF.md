@@ -12970,6 +12970,26 @@ train late, recovery %, tracks per station; outbound violet, back amber, the tim
 Example railways.m. Not built: passing loops between stations, trains that don't stop everywhere, junctions, a
 dispatcher that reorders meets to cut the total delay (it's first come, first served).
 
+## M486c (24 Nov): Hyperion vehicles, suspension geometry and rollover
+
+`vehicle.ts`: `Roll` gains optional `camber` [f, r] (how far the wheels lean with the body against the road per radian
+of roll), `camberStiff` (camber stiffness as a share of cornering stiffness) and `rollSteer` [f, r] (radians an axle
+steers per radian of roll, **positive = understeer**: the front's sign is flipped inside). Both enter as slip angles:
+`α_f += −sf·φ − cs·camber_f·φ`, `α_r += sr·φ − cs·camber_r·φ` (a wheel leaning out of the turn pushes outwards; going
+through the slip angle keeps the grip limit and the Magic Formula). Without them every result is M486b's exactly
+(tested). **Rollover**: a tip angle θ about the outer wheels' contact line, outside the RK4 (semi-implicit Euler at
+the 1 ms step): `I_o·θ'' = m·|ay|·H − m·g·D` with H = (t/2)·sinθ + h·cosθ, D = (t/2)·cosθ − h·sinθ − (h − hr)·sin(lean)
+(the body's own lean moves the centre outwards), I_o = Ix + m((t/2)² + h²); it starts when that moment turns positive,
+lands back at θ ≤ 0, and **rolls over** once D < 0 while still tipping (the run stops there: `rolled`, the time;
+`tip[]`). While tipped the outer tyres carry the whole load (`forces(…, tip)`). `fishhook(amp)` (NHTSA: 0.8 rad/s at
+the wheels, 0.25 s hold, over to −amp, 3 s). Checked: roll understeer and front camber cut the yaw rate, rear camber
+and roll oversteer raise it; a van (1.2 m on a 1.6 m track, 0.67 g) rolls in the fishhook at 22 m/s, the saloon doesn't
+tip at all, the van on grip 0.55 slides instead. Language: `vehicle(..., 'CamberRoll', [f r], 'CamberStiffness',
+'RollSteer', [f r])`, `vehicleSim(car, 'fishhook', …)` with `info.RolledOver`, `RolledAt`, `PeakTip` and a Tip column.
+Window: Vehicle → a fifth test **Hook**, Body roll → Suspension (Plain / Struts / Wishbones), the Tall van now 1.2 m on
+1.6 m, the lean (green) on the chart, "Up on two wheels" / "Rolled over at …". Example vehicles.m. Not built: pitch and
+dive, the car tumbling after it rolls, kerb trips (only tyre forces tip it), anti-dive and anti-squat.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

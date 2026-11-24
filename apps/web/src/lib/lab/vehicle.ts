@@ -20,7 +20,14 @@ export interface Vehicle {
 /** The body rolling on its springs: track (m), each axle's roll stiffness (N·m/rad, springs and anti-roll bar), the
  * roll damping (N·m·s/rad), the body's roll inertia (kg·m²), the roll axis' height (m), and how much a tyre's grip per
  * newton of load falls as the load grows (0–0.4; 0.15 is typical): what makes load transfer cost grip. */
-export interface Roll { track: number; kf: number; kr: number; c: number; ix: number; hr: number; sens: number }
+export interface Roll {
+  track: number; kf: number; kr: number; c: number; ix: number; hr: number; sens: number;
+  /** Suspension geometry (M486c), all optional and 0 by default: how far each axle's wheels lean with the body against
+   * the road per radian of roll (0 a beam axle keeping them upright, ~0.8 a MacPherson strut), the tyres' camber
+   * stiffness as a share of their cornering stiffness (~0.1), and how far each axle steers per radian of roll (positive
+   * adds understeer: the front turning out of the corner, the rear into it). */
+  camber?: [number, number]; camberStiff?: number; rollSteer?: [number, number];
+}
 export const ROLL_DEFAULT: Roll = { track: 1.55, kf: 60000, kr: 40000, c: 5000, ix: 550, hr: 0.1, sens: 0.15 };
 /** A mid-size saloon, rear-driven, slightly understeering. */
 export const CAR_DEFAULT: Vehicle = { m: 1500, iz: 2500, lf: 1.2, lr: 1.5, h: 0.55, cf: 80000, cr: 95000, mu: 1, cd: 0.3, area: 2.2, crr: 0.012, power: 110e3, drive: 'rear', tyre: 'magic', maxSteer: 0.6 };
@@ -49,7 +56,7 @@ export interface VState { x: number; y: number; psi: number; vx: number; vy: num
 export interface VInput { steer: number; force: number; grade?: number }
 /** The forces on the car now: longitudinal force split to the axles (driving limited by power and grip, braking by
  * the loads), loads shifted by the last accelerations `ax` and (with roll) `ay`. */
-function forces(v: Vehicle, s: VState, u: VInput, ax: number, ay = 0) {
+function forces(v: Vehicle, s: VState, u: VInput, ax: number, ay = 0, tip = false) {
   const vx = Math.max(s.vx, 0.5), Lw = L(v), fzf = Math.max(0, (v.m * (G * v.lr - ax * v.h)) / Lw), fzr = Math.max(0, (v.m * (G * v.lf + ax * v.h)) / Lw);
   const d = Math.max(-v.maxSteer, Math.min(v.maxSteer, u.steer));
   let fxf = 0, fxr = 0;
@@ -63,15 +70,20 @@ function forces(v: Vehicle, s: VState, u: VInput, ax: number, ay = 0) {
     const k = fzf / (fzf + fzr || 1);
     fxf = Math.max(u.force * k, -v.mu * fzf); fxr = Math.max(u.force * (1 - k), -v.mu * fzr);
   }
-  const af = d - Math.atan2(s.vy + v.lf * s.r, vx), ar = -Math.atan2(s.vy - v.lr * s.r, vx);
+  const R = v.roll, phi0 = s.phi ?? 0;
+  // Roll steer (M486c): each axle steers a little as the body rolls; camber turns into a slip angle's worth of thrust
+  // (a wheel leaning out of the corner pushes outwards).
+  const sF = -(R?.rollSteer?.[0] ?? 0) * phi0, sR = (R?.rollSteer?.[1] ?? 0) * phi0, cs = R?.camberStiff ?? 0;
+  const af = d + sF - Math.atan2(s.vy + v.lf * s.r, vx) - cs * (R?.camber?.[0] ?? 0) * phi0, ar = sR - Math.atan2(s.vy - v.lr * s.r, vx) - cs * (R?.camber?.[1] ?? 0) * phi0;
   let fyf: number, fyr: number, dF = 0, dR = 0;
-  const R = v.roll;
   if (R) {
     // Load across each axle (outer tyres gain dF, inner lose it): through the roll springs and damper as the body
     // leans, and straight through the roll centres. Each tyre then gives its own side force.
     const phi = s.phi ?? 0, p = s.p ?? 0, kk = R.kf + R.kr;
     dF = (R.kf * phi + (R.c * R.kf * p) / kk + (v.m * v.lr * ay * R.hr) / Lw) / R.track;
     dR = (R.kr * phi + (R.c * R.kr * p) / kk + (v.m * v.lf * ay * R.hr) / Lw) / R.track;
+    // Tipped onto its outer wheels (M486c): they carry everything.
+    if (tip) { dF = fzf / 2; dR = fzr / 2; }
     const two = (axle: 0 | 1, a: number, fz: number, fx: number, d: number) => sideForce(v, axle, a, Math.max(0, fz / 2 + d), fx / 2, 0.5) + sideForce(v, axle, a, Math.max(0, fz / 2 - d), fx / 2, 0.5);
     fyf = two(0, af, fzf, fxf, dF); fyr = two(1, ar, fzr, fxr, dR);
   } else { fyf = sideForce(v, 0, af, fzf, fxf); fyr = sideForce(v, 1, ar, fzr, fxr); }
@@ -81,8 +93,8 @@ function forces(v: Vehicle, s: VState, u: VInput, ax: number, ay = 0) {
   const lift = !!R && (fzf / 2 - Math.abs(dF) <= 0 || fzr / 2 - Math.abs(dR) <= 0);
   return { FX, FY, MZ, af, ar, fzf, fzr, fyf, fyr, d, lift };
 }
-function deriv(v: Vehicle, s: VState, u: VInput, ax: number, ay: number): VState {
-  const f = forces(v, s, u, ax, ay), R = v.roll;
+function deriv(v: Vehicle, s: VState, u: VInput, ax: number, ay: number, tip = false): VState {
+  const f = forces(v, s, u, ax, ay, tip), R = v.roll;
   // The body's roll: the side force acting at the centre of mass above the roll axis, gravity once it leans, against
   // the springs and the damper.
   const hs = v.h - (R?.hr ?? 0), phi = s.phi ?? 0, p = s.p ?? 0;
@@ -94,8 +106,8 @@ function deriv(v: Vehicle, s: VState, u: VInput, ax: number, ay: number): VState
 }
 const addS = (a: VState, b: VState, k: number): VState => ({ x: a.x + k * b.x, y: a.y + k * b.y, psi: a.psi + k * b.psi, vx: a.vx + k * b.vx, vy: a.vy + k * b.vy, r: a.r + k * b.r, phi: (a.phi ?? 0) + k * (b.phi ?? 0), p: (a.p ?? 0) + k * (b.p ?? 0) });
 /** One Runge–Kutta step; `ax` and `ay` the accelerations felt last step (for the load shifts). */
-export function vehicleStep(v: Vehicle, s: VState, u: VInput, dt: number, ax = 0, ay = 0): VState {
-  const k1 = deriv(v, s, u, ax, ay), k2 = deriv(v, addS(s, k1, dt / 2), u, ax, ay), k3 = deriv(v, addS(s, k2, dt / 2), u, ax, ay), k4 = deriv(v, addS(s, k3, dt), u, ax, ay);
+export function vehicleStep(v: Vehicle, s: VState, u: VInput, dt: number, ax = 0, ay = 0, tip = false): VState {
+  const k1 = deriv(v, s, u, ax, ay, tip), k2 = deriv(v, addS(s, k1, dt / 2), u, ax, ay, tip), k3 = deriv(v, addS(s, k2, dt / 2), u, ax, ay, tip), k4 = deriv(v, addS(s, k3, dt), u, ax, ay, tip);
   const sum = (key: keyof VState) => (k1[key] ?? 0) + 2 * (k2[key] ?? 0) + 2 * (k3[key] ?? 0) + (k4[key] ?? 0);
   const n = addS(s, { x: sum('x'), y: sum('y'), psi: sum('psi'), vx: sum('vx'), vy: sum('vy'), r: sum('r'), phi: sum('phi'), p: sum('p') }, dt / 6);
   // It doesn't roll backwards on its own (braking to a stop stops).
@@ -103,7 +115,7 @@ export function vehicleStep(v: Vehicle, s: VState, u: VInput, dt: number, ax = 0
   return n;
 }
 
-export interface VRun { t: number[]; x: number[]; y: number[]; psi: number[]; vx: number[]; vy: number[]; r: number[]; ay: number[]; ax: number[]; beta: number[]; steer: number[]; af: number[]; ar: number[]; roll: number[]; spun: boolean; lift: boolean }
+export interface VRun { t: number[]; x: number[]; y: number[]; psi: number[]; vx: number[]; vy: number[]; r: number[]; ay: number[]; ax: number[]; beta: number[]; steer: number[]; af: number[]; ar: number[]; roll: number[]; spun: boolean; lift: boolean; tip: number[]; rolled: number }
 /** Drives the car: steering δ(t) at the wheels (rad), and either a speed to hold (a controller on the force) or a
  * force (N, negative brakes). 1 ms steps. A car whose body slip passes 15° or whose yaw turns past 1.5 rad/s past
  * what the steering asks is reported as spun. */
@@ -111,23 +123,36 @@ export function vehicleSim(v: Vehicle, steer: (t: number) => number, T: number, 
   const dt = 1e-3, n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1200)));
   const target = typeof o.speed === 'number' ? (() => o.speed as number) : o.speed;
   let s: VState = { x: 0, y: 0, psi: 0, vx: o.v0 ?? (typeof o.speed === 'number' ? o.speed : 0), vy: 0, r: 0, phi: 0, p: 0 }, ax = 0, ay = 0, spun = false, lift = false;
-  const out: VRun = { t: [], x: [], y: [], psi: [], vx: [], vy: [], r: [], ay: [], ax: [], beta: [], steer: [], af: [], ar: [], roll: [], spun: false, lift: false };
+  const out: VRun = { t: [], x: [], y: [], psi: [], vx: [], vy: [], r: [], ay: [], ax: [], beta: [], steer: [], af: [], ar: [], roll: [], spun: false, lift: false, tip: [], rolled: NaN };
+  // Tipping onto the outer wheels (M486c): the whole car turning about their contact line by θ, towards `side`.
+  let th = 0, thd = 0, side = 0;
   const rec = (t: number, u: VInput, f: ReturnType<typeof forces>) => {
     out.t.push(t); out.x.push(s.x); out.y.push(s.y); out.psi.push(s.psi); out.vx.push(s.vx); out.vy.push(s.vy); out.r.push(s.r);
-    out.ay.push(f.FY / v.m); out.ax.push(f.FX / v.m); out.beta.push(Math.atan2(s.vy, Math.max(s.vx, 0.1))); out.steer.push(u.steer); out.af.push(f.af); out.ar.push(f.ar); out.roll.push(s.phi ?? 0);
+    out.ay.push(f.FY / v.m); out.ax.push(f.FX / v.m); out.beta.push(Math.atan2(s.vy, Math.max(s.vx, 0.1))); out.steer.push(u.steer); out.af.push(f.af); out.ar.push(f.ar); out.roll.push(s.phi ?? 0); out.tip.push(side * th);
   };
   for (let k = 0; k <= n; k++) {
     const t = k * dt, grade = o.grade ? o.grade(t) : 0;
     // Holding a speed: a firm P controller on the force (a driver keeping the pedal right), limited later by power and grip.
     const force = target ? v.m * 2 * (target(t) - s.vx) + 0.5 * RHO * v.cd * v.area * s.vx * s.vx + v.crr * v.m * G + v.m * G * Math.sin(grade) : o.force ? o.force(t) : 0;
     const u: VInput = { steer: steer(t), force, grade };
-    const f = forces(v, s, u, ax, ay);
+    const f = forces(v, s, u, ax, ay, th > 0);
     if (f.lift) lift = true;
     if (k % every === 0 || k === n) rec(t, u, f);
     if (Math.abs(Math.atan2(s.vy, Math.max(s.vx, 0.1))) > (15 * Math.PI) / 180) spun = true;
     if (k === n) break;
     ax = f.FX / v.m; ay = f.FY / v.m;
-    s = vehicleStep(v, s, u, dt, ax, ay);
+    s = vehicleStep(v, s, u, dt, ax, ay, th > 0);
+    const R = v.roll;
+    if (R) {
+      // The moment about the outer wheels' contact line: the side force's (felt at the centre of mass, height H above
+      // the line) against gravity's (D inwards of it). The body's own lean on its springs moves the centre outwards.
+      if (th === 0) side = Math.sign(ay);
+      const hs = v.h - R.hr, lean = Math.max(0, side * (s.phi ?? 0)), D = (R.track / 2) * Math.cos(th) - v.h * Math.sin(th) - hs * Math.sin(lean), H = (R.track / 2) * Math.sin(th) + v.h * Math.cos(th);
+      const M = v.m * Math.max(0, side * ay) * H - v.m * G * D, io = R.ix + v.m * ((R.track / 2) ** 2 + v.h ** 2);
+      if (th > 0 || M > 0) { thd += (M / io) * dt; th += thd * dt; if (th <= 0) { th = 0; thd = 0; } }
+      // Past the point where the centre of mass is over the wheels, nothing brings it back: it rolls over.
+      if (D < 0 && thd > 0) { out.rolled = t; rec(t + dt, u, f); break; }
+    }
   }
   return { ...out, spun, lift };
 }
@@ -195,5 +220,18 @@ export function sineWithDwell(amp: number, at = 0.5, f = 0.7) {
     if (s < t1 + dwell) return -amp;
     if (s < 1 / f + dwell) return amp * Math.sin(w * (s - dwell));
     return 0;
+  };
+}
+/** The fishhook rollover test (NHTSA): to `amp` at `rate` rad/s (720°/s at the steering wheel is about 0.8 at the
+ * wheels), held 0.25 s, then over to −amp at the same rate, held 3 s, then straight. */
+export function fishhook(amp: number, at = 0.5, rate = 0.8) {
+  const t1 = amp / rate, t2 = t1 + 0.25, t3 = t2 + (2 * amp) / rate, t4 = t3 + 3;
+  return (t: number) => {
+    const s = t - at;
+    if (s < 0) return 0;
+    if (s < t1) return rate * s;
+    if (s < t2) return amp;
+    if (s < t3) return amp - rate * (s - t2);
+    return s < t4 ? -amp : 0;
   };
 }
