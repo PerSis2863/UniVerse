@@ -12582,3 +12582,11 @@ places". `globals.css` (after `.display-face`): `:is(.hand, .side-label, .ios-se
 `.hand` is put on the search window's field, chips, section names and result titles (`CommandPalette.tsx`) and on the
 top bar's entries, its menus' rows and group names (`TopNav.tsx`). Hints, body text, fields people fill, tables and
 numbers stay Inter (readability). For a new label that should look like a heading, add `hand`.
+## M454: Google sign-in always asks which account (24 Nov)
+
+The owner signed out of a student account in the Hyperion computer app and chose Google again: it signed straight back
+into the same account with no chooser. Google remembers the last account in its own cookies (kept by the app's sign-in
+window, and by a browser), and Firebase's popup skips the chooser unless asked. Fix: `provider.setCustomParameters({
+prompt: 'select_account' })` on the Google provider in `login/page.tsx` and `register/page.tsx` (Microsoft already had
+it). Not set inside `popupSignIn`: `setCustomParameters` replaces the whole object and would drop Microsoft's `tenant`.
+Web only: the computer app loads the live site, so it needs no new build, only the merge.
