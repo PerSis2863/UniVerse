@@ -53,4 +53,49 @@ describe('Hyperion flight in six directions (M489c)', () => {
     expect(v('hd')).toBeCloseTo(90, -1); expect(v('mx')).toBeGreaterThan(1.05); expect(v('ee')).toBeCloseTo(200, -1);
     expect(() => lab.run("aircraftSim6DOF(aircraft(), 10, 'Wind', [1 2])")).toThrow(/north east down/);
   });
+  it('engines failing, the propeller, wind shear and a microburst (M489d)', { timeout: 60_000 }, () => {
+    const ac = fl.PLANE_DEFAULT, last = (x: number[]) => x[x.length - 1], D = 180 / Math.PI;
+    // A twin's right engine fails: hands off it yaws and rolls right, towards the dead engine; the left one, left.
+    const tw = { count: 2 as const, fail: { at: 2, which: 1 as const } };
+    const off = fl.flight6(ac, 20, { V0: 50, h0: 1000, engines: tw }), offL = fl.flight6(ac, 20, { V0: 50, h0: 1000, engines: { count: 2, fail: { at: 2, which: 0 } } });
+    expect(last(off.psi) * D).toBeGreaterThan(30); expect(last(off.phi)).toBeGreaterThan(0); expect(last(offL.psi)).toBeCloseTo(-last(off.psi), 6);
+    // The autopilot holds the heading (within 5°) on left rudder, banked a little to the good engine; it sinks, less
+    // with the dead propeller feathered.
+    const held = fl.flight6(ac, 40, { V0: 50, h0: 1000, engines: tw, holdHeading: () => 0, yawDamper: true, points: 400 });
+    const fea = fl.flight6(ac, 40, { V0: 50, h0: 1000, engines: { ...tw, feather: true }, holdHeading: () => 0, yawDamper: true, points: 400 });
+    expect(Math.max(...held.psi.map(Math.abs)) * D).toBeLessThan(5); expect(last(held.dr)).toBeGreaterThan(0.05); expect(last(held.phi)).toBeLessThan(0);
+    expect(last(held.h)).toBeLessThan(950); expect(last(fea.h)).toBeGreaterThan(last(held.h) + 20);
+    // Vmc: full rudder just balances one engine at full power there.
+    const lat = fl.LAT_DEFAULT, Vm = fl.vmc(ac, lat, 1.8, 0), q = 0.5 * 1.225 * Vm * Vm;
+    expect(Vm).toBeGreaterThan(fl.stallSpeed(ac)); expect(fl.vmc(ac, lat, 1.8, 0, true)).toBeLessThan(Vm);
+    expect(1.8 * (fl.thrust(ac, Vm, 0, 1) / 2 + 0.1 * q * Math.PI * 0.81)).toBeCloseTo(q * ac.S * ac.b * Math.abs(lat.cndr) * lat.drMax, 0);
+    // A single engine stopping: a glide of roughly 6 to 12 to one, the speed held near its trim by the elevator.
+    const gl = fl.flight6(ac, 90, { V0: 50, h0: 1000, engines: { count: 1, fail: { at: 1 } }, points: 900 }), i = gl.t.findIndex((t) => t > 60);
+    const ratio = (gl.ground[i] * (last(gl.t) - gl.t[i])) / (gl.h[i] - last(gl.h));
+    expect(ratio).toBeGreaterThan(6); expect(ratio).toBeLessThan(12);
+    // The propeller at climb power, hands off: a swing and roll left (clockwise from behind); the other way round, right;
+    // at the trimmed power (rigged for it) nothing; without the propeller nothing.
+    const climb = (prop?: fl.Prop) => fl.flight6(ac, 10, { V0: 35, h0: 500, throttle: () => 1, prop, holdHeight: () => 1500 });
+    const cw = climb({ dir: 1 }), ccw = climb({ dir: -1 });
+    expect(last(cw.psi)).toBeLessThan(-0.1); expect(last(cw.phi)).toBeLessThan(0); expect(last(ccw.psi)).toBeCloseTo(-last(cw.psi), 6);
+    expect(last(climb().psi)).toBe(0);
+    expect(Math.abs(last(fl.flight6(ac, 10, { V0: 35, h0: 500, prop: { dir: 1 }, holdHeight: () => 500 }).psi))).toBeLessThan(1e-6);
+    // The autopilot with its yaw damper holds it within a few degrees.
+    expect(Math.max(...fl.flight6(ac, 40, { V0: 35, h0: 500, throttle: () => 1, prop: { dir: 1 }, holdHeight: () => 1500, holdHeading: () => 0, yawDamper: true }).psi.map(Math.abs)) * D).toBeLessThan(3);
+    // Shear: a 5 m/s wind at 10 m is 16^(1/7) times that at 160 m; held above 500 m.
+    expect(fl.windField({ steady: [0, 5, 0], shear: {} }, 0, 0, 160)[1]).toBeCloseTo(5 * 16 ** (1 / 7), 9);
+    expect(fl.windField({ steady: [0, 5, 0], shear: {} }, 0, 0, 900)[1]).toBeCloseTo(fl.windField({ steady: [0, 5, 0], shear: {} }, 0, 0, 500)[1], 9);
+    // A microburst: outflow away from its centre, down the middle, nothing down at the ground.
+    const mb = { n: 1500, e: 0, radius: 600, outflow: 15, down: 8 }, at = (n: number, h: number) => fl.windField({ microburst: mb }, n, 0, h);
+    expect(at(1000, 50)[0]).toBeLessThan(-5); expect(at(2000, 50)[0]).toBeGreaterThan(5); expect(at(1500, 300)[2]).toBeCloseTo(8, 9); expect(at(1500, 0)[2]).toBe(0);
+    // Flying through it at 300 m: a headwind (faster), the downdraught, then a tailwind (slower); hands off it falls
+    // far, the autopilot loses less.
+    const thru = fl.flight6(ac, 60, { V0: 50, h0: 300, wind: { microburst: mb }, points: 600 }), ap = fl.flight6(ac, 60, { V0: 50, h0: 300, wind: { microburst: mb }, holdHeight: () => 300, holdSpeed: 50, points: 600 });
+    expect(Math.max(...thru.V)).toBeGreaterThan(55); expect(Math.min(...thru.V)).toBeLessThan(42);
+    expect(Math.min(...thru.h)).toBeLessThan(200); expect(Math.min(...ap.h)).toBeGreaterThan(Math.min(...thru.h) + 100);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("ac = aircraft(); [t, i] = aircraftSim6DOF(ac, 20, 'Engines', 2, 'EngineFail', [2 2], 'HoldHeading', 0, 'YawDamper', 1); v = aircraftVmc(ac, 'Height', 1000); [~, j] = aircraftSim6DOF(ac, 30, 'Height', 300, 'Microburst', [1500 0 600 15 8]); [~, k] = aircraftSim6DOF(ac, 5, 'Wind', [0 5 0], 'Shear', 1/7, 'Propeller', 1); figure; aircraftSim6DOF(ac, 10, 'EngineFail', 1);");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('i', 'Vmc')).toBeCloseTo(toMat(lab.vars.get('v')!).d[0], 6); expect(f('j', 'MaxAirspeed')).toBeGreaterThan(51);
+  });
 });

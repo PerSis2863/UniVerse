@@ -5,16 +5,17 @@ import { Pause, Play } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
-import { PLANE_DEFAULT, flight6 } from '@/lib/lab/flight';
+import { PLANE_DEFAULT, flight6, vmc } from '@/lib/lab/flight';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Aeroplane → All six (M489c): the whole aeroplane at once, so turning and climbing
 // affect each other, and wind: a half turn (with the autopilot holding height and speed, or hands off so it sinks), a
 // steady wind from the left (it crabs into it and drifts), a '1 − cos' gust from below, and turbulence. Seen from
 // above, with bank, height change and load factor below. Worked out at once, replayed twice real time (at its end with
-// Reduce Motion). The maths is flight.ts (flight6), the same as aircraftSim6DOF in code.
+// Reduce Motion). The maths is flight.ts (flight6), the same as aircraftSim6DOF in code. M489d: a twin's engine failing
+// (feathered or windmilling), the propeller's pull at climb power, and a microburst at 300 m.
 
-type Move = 'turn' | 'cross' | 'gust' | 'rough';
+type Move = 'turn' | 'cross' | 'gust' | 'rough' | 'engine' | 'prop' | 'burst';
 type Rough = 'light' | 'moderate' | 'severe';
 const ROUGH: Record<Rough, number> = { light: 1.5, moderate: 3, severe: 6 };
 const deg = (r: number) => (r * 180) / Math.PI;
@@ -26,6 +27,8 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
   const [hold, setHold] = useState<'hold' | 'off'>('hold');
   const [wind, setWind] = useState(10);
   const [rough, setRough] = useState<Rough>('moderate');
+  const [feather, setFeather] = useState(false);
+  const [propOn, setPropOn] = useState(true);
   const [k, setK] = useState(0);
   const [playing, setPlaying] = useState(false);
   const top = useRef<HTMLCanvasElement>(null), chart = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
@@ -37,8 +40,14 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
     // A wind from the west (blowing east) while the autopilot keeps the nose north.
     if (move === 'cross') return flight6(ac, 60, { V0: V, h0, wind: { steady: [0, wind, 0] }, holdHeading: () => 0, ...pilot, points: 700 });
     if (move === 'gust') return flight6(ac, 12, { V0: V, h0, wind: { gust: { at: 2, length: 60, up: wind / 2 } }, points: 1200 });
+    // A twin's right engine stops 5 s in.
+    if (move === 'engine') return flight6(ac, 40, { V0: V, h0, engines: { count: 2, fail: { at: 5, which: 1 }, feather }, ...(hold === 'hold' ? { holdHeading: () => 0, yawDamper: true } : {}), points: 800 });
+    // Full power at 35 m/s, climbing: the propeller swings the nose left.
+    if (move === 'prop') return flight6(ac, 20, { V0: 35, h0: 500, throttle: () => 1, holdHeight: () => 1500, prop: propOn ? { dir: 1 } : undefined, ...(hold === 'hold' ? { holdHeading: () => 0, yawDamper: true } : {}), points: 800 });
+    // A microburst 1.5 km ahead at 300 m.
+    if (move === 'burst') return flight6(ac, 60, { V0: V, h0: 300, wind: { microburst: { n: 1500, e: 0, radius: 600, outflow: wind * 1.5, down: wind * 0.8 } }, ...(hold === 'hold' ? { holdHeight: () => 300, holdSpeed: V } : {}), points: 1200 });
     return flight6(ac, 60, { V0: V, h0, wind: { turbulence: { sigma: ROUGH[rough], seed: 3 } }, holdHeading: () => 0, ...pilot, points: 1200 });
-  }, [ac, move, hold, wind, rough]);
+  }, [ac, move, hold, wind, rough, feather, propOn]);
   const n = run.t.length;
 
   const kNow = useRef(0);
@@ -81,6 +90,8 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
         T.strokeStyle = dark ? 'rgba(125,211,252,0.5)' : 'rgba(2,132,199,0.45)'; T.lineWidth = 1.5;
         for (let yy = 40; yy < H; yy += 90) for (let xx = 30; xx < W; xx += 140) { T.beginPath(); T.moveTo(xx, yy); T.lineTo(xx + 30, yy); T.lineTo(xx + 24, yy - 4); T.moveTo(xx + 30, yy); T.lineTo(xx + 24, yy + 4); T.stroke(); }
       }
+      // The microburst's ring, where its outflow is strongest.
+      if (move === 'burst') { T.strokeStyle = 'rgba(220,38,38,0.55)'; T.lineWidth = 1.5; T.setLineDash([4, 4]); T.beginPath(); T.arc(X(0), Y(1500), 600 * s, 0, 2 * Math.PI); T.stroke(); T.setLineDash([]); }
       T.strokeStyle = dark ? 'rgba(161,161,170,0.45)' : 'rgba(113,113,122,0.4)'; T.setLineDash([5, 4]); T.beginPath();
       ns.forEach((x, i) => { if (i) T.lineTo(X(es[i]), Y(x)); else T.moveTo(X(es[i]), Y(x)); });
       T.stroke(); T.setLineDash([]);
@@ -103,7 +114,8 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
       C.fillStyle = bg; C.fillRect(0, 0, W, 130);
       const tEnd = run.t[n - 1], tx = (t: number) => 8 + ((W - 16) * t) / tEnd;
       C.strokeStyle = faint; C.beginPath(); C.moveTo(8, 65); C.lineTo(W - 8, 65); C.stroke();
-      for (const [v, colour] of [[run.phi.map(deg), '#7c3aed'], [run.h.map((h) => h - h0), '#16a34a'], [run.nz.map((x) => x - 1), '#f59e0b']] as const) {
+      const start = run.h[0];
+    for (const [v, colour] of [[run.phi.map(deg), '#7c3aed'], [run.h.map((h) => h - start), '#16a34a'], [move === 'burst' ? run.V.map((x) => x - run.V[0]) : run.nz.map((x) => x - 1), '#f59e0b']] as const) {
         const peak = Math.max(0.05, ...v.map(Math.abs));
         C.strokeStyle = colour; C.lineWidth = 2; C.beginPath(); v.forEach((y, i) => { const px = tx(run.t[i]), py = 65 - (y / peak) * 55; if (i) C.lineTo(px, py); else C.moveTo(px, py); }); C.stroke();
       }
@@ -118,13 +130,16 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
     turn: hold === 'hold' ? 'The autopilot turns it round to the south, banking up to 35°. Banked, the wing’s lift tilts, so it must pull harder (more g) and add power to keep its height and speed.' : 'The same half turn with nobody on the elevator or throttle: banked, the tilted lift no longer holds the weight up, so the nose drops and it sinks.',
     cross: 'Flying north with a wind from the left. The autopilot keeps the nose pointing north; the air carries the aeroplane east, so its track drifts while its heading doesn’t.',
     gust: 'Level flight into a rising gust (a smooth bump of air, 60 m long): the wing meets the air at a steeper angle, lift jumps and it is pushed up, then the nose settles.',
+    engine: hold === 'hold' ? `A twin’s right engine stops 5 s in. The other, out on the left wing, now pushes alone and yaws the nose right; the autopilot holds the heading with left rudder, banked a little towards the good engine, and it sinks${feather ? ' (the dead propeller feathered, edge-on, so it drags less)' : ' (the dead propeller windmilling, dragging)'}. Below ${vmc(ac, undefined, 1.8, h0, feather).toFixed(0)} m/s (Vmc) full rudder couldn’t hold it.` : 'A twin’s right engine stops 5 s in, hands off: it yaws and rolls towards the dead engine and spirals down.',
+    prop: propOn ? (hold === 'hold' ? 'Full power at 35 m/s, climbing: the propeller (clockwise seen from behind) rolls the aeroplane left by its torque, its spiralling slipstream hits the fin and the descending blade pulls harder (P-factor), swinging the nose left; the autopilot holds the heading with right rudder.' : 'Full power at 35 m/s, climbing, hands off: the propeller’s torque, slipstream and P-factor swing the nose left and roll it left. (It is rigged so they cancel at cruise power.)') : 'Full power at 35 m/s with the propeller’s side effects left out: it climbs straight.',
+    burst: hold === 'hold' ? 'Flying into a microburst at 300 m: a headwind first (the airspeed jumps), then air falling down its middle, then a tailwind (the airspeed drops). The autopilot pulls up and adds power, and still loses height.' : 'The same microburst hands off: the headwind lifts it, then the falling air and the tailwind take away airspeed and height: the kind of wind shear that brings aeroplanes down on approach.',
     rough: 'Random gusts in every direction (Dryden turbulence) with the autopilot holding heading, height and speed: the wings rock and the load jumps about.',
   };
-  const ground = run.ground[k], lost = Math.min(0, ...run.h.map((h) => h - h0)), drift = deg(Math.atan2(run.e[n - 1] - run.e[0], run.n[n - 1] - run.n[0]));
+  const h00 = run.h[0], ground = run.ground[k], lost = Math.min(0, ...run.h.map((h) => h - h00)), drift = deg(Math.atan2(run.e[n - 1] - run.e[0], run.n[n - 1] - run.n[0]));
   const f: [string, string][] = [
     ['Heading · track', move === 'cross' ? `${deg(run.psi[k]).toFixed(0)}° · ${drift.toFixed(0)}°` : `${((deg(run.psi[k]) + 360) % 360).toFixed(0)}°`],
-    ['Height change', `${(run.h[k] - h0).toFixed(0)} m (most ${lost.toFixed(0)} m)`],
-    ['Load factor, most', `${Math.max(...run.nz).toFixed(2)} g`],
+    ['Height change', `${(run.h[k] - h00).toFixed(0)} m (most ${lost.toFixed(0)} m)`],
+    move === 'burst' ? ['Airspeed, most · least', `${Math.max(...run.V).toFixed(0)} · ${Math.min(...run.V).toFixed(0)} m/s`] : move === 'engine' || move === 'prop' ? ['Sideslip · rudder', `${deg(run.beta[k]).toFixed(1)}° · ${deg(run.dr[k]).toFixed(1)}°`] : ['Load factor, most', `${Math.max(...run.nz).toFixed(2)} g`],
     ['Air · ground speed', `${run.V[k].toFixed(0)} · ${ground.toFixed(0)} m/s`],
   ];
   return (
@@ -133,14 +148,16 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
         {switcher}
         <div className="space-y-2">
           <span className={label}>Flight</span>
-          <Segmented<Move> label="Flight" value={move} onChange={setMove} segments={[{ value: 'turn', label: 'Turn' }, { value: 'cross', label: 'Crosswind' }, { value: 'gust', label: 'Gust' }, { value: 'rough', label: 'Rough' }]} />
+          <Segmented<Move> label="Flight" value={move} onChange={setMove} className="flex-wrap" segments={[{ value: 'turn', label: 'Turn' }, { value: 'cross', label: 'Crosswind' }, { value: 'gust', label: 'Gust' }, { value: 'rough', label: 'Rough' }, { value: 'engine', label: 'Engine out' }, { value: 'prop', label: 'Propeller' }, { value: 'burst', label: 'Microburst' }]} />
           <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{explain[move]}</p>
         </div>
-        {move === 'turn' && <div className="space-y-2">
-          <span className={label}>Height and speed</span>
-          <Segmented<'hold' | 'off'> label="Height and speed" value={hold} onChange={setHold} segments={[{ value: 'hold', label: 'Autopilot holds' }, { value: 'off', label: 'Hands off' }]} />
+        {(move === 'turn' || move === 'engine' || move === 'prop' || move === 'burst') && <div className="space-y-2">
+          <span className={label}>{move === 'turn' || move === 'burst' ? 'Height and speed' : 'Heading'}</span>
+          <Segmented<'hold' | 'off'> label={move === 'turn' || move === 'burst' ? 'Height and speed' : 'Heading'} value={hold} onChange={setHold} segments={[{ value: 'hold', label: 'Autopilot holds' }, { value: 'off', label: 'Hands off' }]} />
         </div>}
-        {(move === 'cross' || move === 'gust') && <label className={label}>{move === 'cross' ? 'Wind' : 'Gust'} <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{move === 'cross' ? wind : wind / 2} m/s</span>
+        {move === 'engine' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={feather} onChange={(e) => setFeather(e.target.checked)} className="h-4 w-4 accent-violet-600" />Feather the dead propeller</label>}
+        {move === 'prop' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={propOn} onChange={(e) => setPropOn(e.target.checked)} className="h-4 w-4 accent-violet-600" />The propeller’s torque, slipstream and P-factor</label>}
+        {(move === 'cross' || move === 'gust' || move === 'burst') && <label className={label}>{move === 'cross' ? 'Wind' : move === 'gust' ? 'Gust' : 'Outflow'} <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{move === 'cross' ? wind : move === 'gust' ? wind / 2 : wind * 1.5} m/s</span>
           <input type="range" min={2} max={20} step={1} value={wind} onChange={(e) => setWind(Number(e.target.value))} className="mt-1 w-full accent-violet-600" />
         </label>}
         {move === 'rough' && <div className="space-y-2">
@@ -151,15 +168,15 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
         <label className={label}>Time <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{run.t[k].toFixed(1)} s</span>
           <input type="range" min={0} max={n - 1} step={1} value={k} onChange={(e) => { setPlaying(false); setK(Number(e.target.value)); }} className="mt-1 w-full accent-violet-600" />
         </label>
-        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">All six motions at once (forward, sideways, up and down; roll, pitch and yaw), 50 m/s at 1,000 m. In code: <span className="font-mono">aircraftSim6DOF</span> (example: flight.m).</p>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">All six motions at once (forward, sideways, up and down; roll, pitch and yaw), 50 m/s at 1,000 m (the propeller at 35 m/s from 500 m, the microburst at 300 m). In code: <span className="font-mono">aircraftSim6DOF</span> (example: flight.m).</p>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The aeroplane from above">
         <div ref={box} className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-          <canvas ref={top} role="img" aria-label={`The aeroplane from above: ${run.crashed ? 'it reached the ground' : `height change ${(run.h[n - 1] - h0).toFixed(0)} m at the end`}, up to ${Math.max(...run.nz).toFixed(2)} g`} className="rounded-lg ring-1 ring-zinc-200 dark:ring-white/10" />
+          <canvas ref={top} role="img" aria-label={`The aeroplane from above: ${run.crashed ? 'it reached the ground' : `height change ${(run.h[n - 1] - run.h[0]).toFixed(0)} m at the end`}, up to ${Math.max(...run.nz).toFixed(2)} g`} className="rounded-lg ring-1 ring-zinc-200 dark:ring-white/10" />
           <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-300">
             <span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#7c3aed' }} aria-hidden />bank</span>
             <span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#16a34a' }} aria-hidden />height change</span>
-            <span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#f59e0b' }} aria-hidden />extra g</span>
+            <span><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: '#f59e0b' }} aria-hidden />{move === 'burst' ? 'airspeed change' : 'extra g'}</span>
           </div>
           <canvas ref={chart} role="img" aria-label="Bank, height change and load factor over time" className="rounded-lg ring-1 ring-zinc-200 dark:ring-white/10" />
         </div>

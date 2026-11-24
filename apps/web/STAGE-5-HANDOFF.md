@@ -13080,6 +13080,32 @@ cable beside it, at" 10–300 m (running · fault volts, flagged over 60 / 430).
 railways.m. Not built: rail-to-earth (touch) voltages and stray current, the grid's unbalance and harmonics, storage
 on AC lines, a storage unit's own losses and ageing.
 
+## M489d (24 Nov): Hyperion aeroplanes, engines failing, the propeller and wind shear
+
+`flight.ts` (`flight6`). **Engines** (`Engines`: one on the nose or two `arm` m out, each half the thrust; `fail` at a
+time, which; `feather`): a dead engine's thrust goes, its windmilling propeller drags 0.1·q·πR² unless feathered; on a
+twin the yaw is arm·(T_L − T_R) + arm·(D_R − D_L), towards the dead engine. A single engine stopping just glides (~7–8 to
+one at its trim speed, windmilling). `vmc(ac, lat, arm, h, feather)`: where full rudder balances one engine at full
+power (wings level), by bisection (~31 m/s on the default airframe made a twin, stall 25). **The propeller** (`Prop`:
+dir 1 = clockwise from behind): torque roll −dir·shaft/ω, slipstream on the fin −dir·0.015·T·4.5 m, P-factor
+−dir·T·0.25 m·α; **rigged** by default: the same at the trimmed power is subtracted (aeroplanes are built to cancel it at
+cruise), so only more power or less speed swings it. **The heading autopilot**, when engines or a propeller are given,
+adds an integral of sideslip on the rudder (−0.3·∫β; "dead foot, dead engine"); **trap:** without the yaw damper the
+heading autopilot oscillates and diverges at 35 m/s even with no propeller (an old weakness, unseen at 50 m/s): use
+`yawDamper` with these (the window does). **Wind shear** (`Wind.shear`: the steady wind is what blows at 10 m, ×
+(h/10)^exponent to 500 m) and a **microburst** (`Wind.microburst`: outflow growing with distance to the radius then
+dying, fading over 500 m of height; a bell-shaped downdraught to nothing at the ground; a simple shape, said so, not
+Oseguera–Bowles), both through `windField(W, n, e, h)` taken at the aeroplane each step. Checked: a twin's right engine
+out yaws and rolls right (left mirrors it exactly); held within 5° on left rudder, banked left, sinking, less
+feathered; Vmc's balance by hand; the propeller swings left at climb power (mirror for −1), nothing at trim power; the
+autopilot holds it within 3°; shear's 16^(1/7); the microburst's directions; flying through it: faster then slower,
+>100 m lost hands off, far less with the autopilot. Language: `aircraftSim6DOF(…, 'Engines', 2, 'EngineArm',
+'EngineFail', [t which], 'Feather', 'Propeller', ±1, 'Shear', exp, 'Microburst', [n e R out down])` → info.Vmc,
+MinAirspeed, MaxAirspeed; `aircraftVmc(ac, 'EngineArm', 'Height', 'Feather')`. Window: Aeroplane → All six, wind → three
+more flights (the row wraps): Engine out (autopilot or hands off, Feather), Propeller (on or off), Microburst (its ring
+drawn; the outflow slider; airspeed change in the chart). Example flight.m. Not built: a propeller's gyroscopic
+precession, an engine's own lag, turbulence that changes with height, landing gear on the ground.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

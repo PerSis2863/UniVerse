@@ -240,6 +240,47 @@ export interface Wind {
   /** Dryden turbulence: its strength (m/s rms in each direction; about 1.5 light, 3 moderate, 6 severe), the length
    * scale (m, 533 at medium heights) and a seed so a run repeats. */
   turbulence?: { sigma: number; scale?: number; seed?: number };
+  /** Wind shear with height (M489d): the steady wind is what blows at `ref` metres (10, where it's measured) and grows
+   * as (h / ref)^exponent (1/7 over open country, about 0.25 over towns) up to 500 m, steady above. */
+  shear?: { exponent?: number; ref?: number };
+  /** A microburst (M489d): a column of air falling at up to `down` m/s at (n, e) metres, spreading out along the
+   * ground at up to `outflow` m/s at `radius` metres from its centre. A simple shape, not Oseguera–Bowles: the outflow
+   * grows with distance to the radius and dies away beyond, strongest near the ground (fading over 500 m), the
+   * downdraught a bell of the same radius, slowing to nothing at the ground. */
+  microburst?: { n: number; e: number; radius: number; outflow: number; down: number };
+}
+/** The air's velocity (m/s, north, east, down) from the steady wind with its shear and a microburst, at a place. */
+export function windField(W: Wind, n: number, e: number, h: number): [number, number, number] {
+  const st = W.steady ?? [0, 0, 0], sh = W.shear;
+  const k = sh ? Math.pow(Math.max(0.5, Math.min(500, h)) / (sh.ref ?? 10), sh.exponent ?? 1 / 7) : 1;
+  const out: [number, number, number] = [st[0] * k, st[1] * k, st[2]];
+  const mb = W.microburst;
+  if (mb) {
+    const dn = n - mb.n, de = e - mb.e, r = Math.hypot(dn, de), R = mb.radius, x = r / R;
+    const radial = mb.outflow * (x <= 1 ? x : Math.exp(1 - x * x) / x) * Math.exp(-Math.max(0, h) / 500);
+    if (r > 1e-6) { out[0] += (radial * dn) / r; out[1] += (radial * de) / r; }
+    out[2] += mb.down * Math.exp(-x * x) * Math.min(1, Math.max(0, h) / 100);
+  }
+  return out;
+}
+// Engines and propellers (M489d). One engine on the nose, or two `arm` metres either side, each giving its share of
+// the thrust; one may fail at a time (its thrust gone, its windmilling propeller dragging unless feathered), which on a
+// twin yaws the aeroplane towards the dead engine. A propeller turning clockwise seen from behind (`dir` 1, the usual)
+// rolls the aeroplane the other way by its torque (shaft power / ω), its spiralling slipstream strikes the fin's left
+// side and yaws the nose left (`slip`·T·fin arm), and at a high angle of attack the descending blade on the right
+// pulls harder (the P-factor, `pf` m per radian of angle). Rough light-aeroplane figures, not any one design.
+export interface Engines { count: 1 | 2; arm?: number; fail?: { at: number; which?: 0 | 1 }; feather?: boolean }
+export interface Prop { dir: 1 | -1; rpm?: number; slip?: number; pf?: number; fin?: number; radius?: number; rigged?: boolean }
+interface Pw { working: [number, number]; count: 1 | 2; arm: number; feather: boolean; prop?: Prop; ref?: [number, number] }
+/** The slowest speed (m/s) at which full rudder holds a twin's heading with one engine at full power and the other
+ * windmilling (wings level; banking 5° towards the good engine, as pilots do, lowers it a little). NaN if none. */
+export function vmc(ac: Aircraft, lat: Lateral = LAT_DEFAULT, arm = 1.8, h = 0, feather = false) {
+  const need = (V: number) => { const q = 0.5 * isa(h).rho * V * V; return arm * (thrust(ac, V, h, 1) / 2 + (feather ? 0 : 0.1 * q * Math.PI * 0.9 ** 2)) - q * ac.S * ac.b * Math.abs(lat.cndr) * lat.drMax; };
+  let lo = 5, hi = 150;
+  if (need(lo) <= 0) return NaN;
+  if (need(hi) > 0) return Infinity;
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (need(m) > 0) lo = m; else hi = m; }
+  return (lo + hi) / 2;
 }
 export interface F6State { n: number; e: number; h: number; u: number; v: number; w: number; p: number; q: number; r: number; q0: number; q1: number; q2: number; q3: number }
 type Air = [number, number, number];
@@ -271,16 +312,33 @@ export function quatOf(phi: number, theta: number, psi: number) {
   return { q0: cf * ct * cp + sf * st * sp, q1: sf * ct * cp - cf * st * sp, q2: cf * st * cp + sf * ct * sp, q3: cf * ct * sp - sf * st * cp };
 }
 interface Ctl { de: number; da: number; dr: number; thr: number }
-function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air) {
+const NO_PW: Pw = { working: [1, 1], count: 1, arm: 0, feather: false };
+function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air, pw: Pw = NO_PW) {
   // The air's velocity in body axes, and the aeroplane's through it.
   const wb = toBody(s, windE), ur = s.u - wb[0], vr = s.v - wb[1], wr = s.w - wb[2], V = Math.hypot(ur, vr, wr) || 1e-6;
   const alpha = Math.atan2(wr, ur), beta = Math.asin(Math.max(-1, Math.min(1, vr / V))), rho = isa(s.h).rho, qS = 0.5 * rho * V * V * ac.S;
-  const cl = liftCoef(ac, alpha, c.de, (s.q * ac.c) / (2 * V)), L = qS * cl, D = qS * dragCoef(ac, cl, alpha), T = thrust(ac, V, s.h, c.thr);
+  const cl = liftCoef(ac, alpha, c.de, (s.q * ac.c) / (2 * V)), L = qS * cl, D = qS * dragCoef(ac, cl, alpha), Tall = thrust(ac, V, s.h, c.thr);
   const ph = (s.p * ac.b) / (2 * V), rh = (s.r * ac.b) / (2 * V);
+  // Each engine's thrust (left, right on a twin), a dead one's windmilling drag, and the yaw and roll they make.
+  const share = Tall / pw.count, Te = [share * pw.working[0], pw.count === 2 ? share * pw.working[1] : 0], qbar = 0.5 * rho * V * V;
+  const R = pw.prop?.radius ?? (pw.count === 2 ? 0.9 : 0.95), mill = (i: number) => (pw.feather || pw.working[i] > 0 || (i === 1 && pw.count === 1) ? 0 : 0.1 * qbar * Math.PI * R * R);
+  const T = Te[0] + Te[1] - mill(0) - mill(1);
+  let Lp = 0, Np = pw.count === 2 ? pw.arm * (Te[0] - Te[1]) + pw.arm * (mill(1) - mill(0)) : 0;
+  if (pw.prop) {
+    const pr = pw.prop, omega = ((pr.rpm ?? 2400) * 2 * Math.PI) / 60, shaft = Math.max(0, c.thr) * powerAt(ac, s.h) / pw.count;
+    for (let i = 0; i < pw.count; i++) {
+      if (!pw.working[i]) continue;
+      Lp += (-pr.dir * shaft) / omega;
+      Np += -pr.dir * Te[i] * ((pr.slip ?? 0.015) * (pr.fin ?? 4.5) + (pr.pf ?? 0.25) * alpha);
+    }
+    // Rigged (the usual): the fin's offset and the wings' set cancel what the propeller does at the trimmed power, so
+    // only the change from it is felt (more power, slower: a swing left).
+    if (pw.ref) { Lp -= pw.ref[0]; Np -= pw.ref[1]; }
+  }
   const Y = qS * (lat.cyb * beta + lat.cydr * c.dr);
-  const Lm = qS * ac.b * (lat.clb * beta + lat.clp * ph + lat.clr * rh + lat.clda * c.da + lat.cldr * c.dr);
+  const Lm = qS * ac.b * (lat.clb * beta + lat.clp * ph + lat.clr * rh + lat.clda * c.da + lat.cldr * c.dr) + Lp;
   const Mm = qS * ac.c * (ac.cm0 + ac.cma * alpha + ac.cmq * ((s.q * ac.c) / (2 * V)) + ac.cmde * c.de);
-  const Nm = qS * ac.b * (lat.cnb * beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * c.da + lat.cndr * c.dr);
+  const Nm = qS * ac.b * (lat.cnb * beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * c.da + lat.cndr * c.dr) + Np;
   const g = toBody(s, [0, 0, G0]);
   const Fx = T + L * Math.sin(alpha) - D * Math.cos(alpha), Fz = -L * Math.cos(alpha) - D * Math.sin(alpha);
   const du = Fx / ac.m + g[0] + s.r * s.v - s.q * s.w, dv = Y / ac.m + g[1] + s.p * s.w - s.r * s.u, dw = Fz / ac.m + g[2] + s.q * s.u - s.p * s.v;
@@ -316,12 +374,20 @@ export function flight6(ac: Aircraft, T: number, o: {
   V0?: number; h0?: number; lat?: Lateral; wind?: Wind;
   elevator?: (t: number) => number; aileron?: (t: number) => number; rudder?: (t: number) => number; throttle?: (t: number) => number;
   holdHeight?: (t: number) => number; holdSpeed?: number; holdHeading?: (t: number) => number; maxBank?: number; yawDamper?: boolean; points?: number;
+  engines?: Engines; prop?: Prop;
 } = {}): Flight6Run {
   const lat = o.lat ?? LAT_DEFAULT, tr = trim(ac, o.V0 ?? 50, o.h0 ?? 1000), dt = 0.005, n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1500)));
   const W = o.wind ?? {}, steady: Air = W.steady ?? [0, 0, 0], clamp = (x: number, m: number) => Math.max(-m, Math.min(m, x)), maxBank = o.maxBank ?? (30 * Math.PI) / 180;
-  // Starting in trim relative to the air: the ground velocity is the trim's plus the steady wind.
+  // Starting in trim relative to the air: the ground velocity is the trim's plus the wind where it starts.
   let s: F6State = { n: 0, e: 0, h: tr.h, u: tr.state.u, v: 0, w: tr.state.w, p: 0, q: 0, r: 0, ...quatOf(0, tr.state.th, 0) };
-  const wb0 = toBody(s, steady);
+  const wb0 = toBody(s, W.shear || W.microburst ? windField(W, 0, 0, tr.h) : steady);
+  const eng = o.engines, pw: Pw = { working: [1, 1], count: eng?.count ?? 1, arm: eng?.arm ?? 1.8, feather: !!eng?.feather, prop: o.prop };
+  if (o.prop && o.prop.rigged !== false) {
+    const pr = o.prop, Tt = thrust(ac, tr.V, tr.h, tr.throttle), shaft = tr.throttle * powerAt(ac, tr.h);
+    pw.ref = [(-pr.dir * shaft) / (((pr.rpm ?? 2400) * 2 * Math.PI) / 60), -pr.dir * Tt * ((pr.slip ?? 0.015) * (pr.fin ?? 4.5) + (pr.pf ?? 0.25) * tr.alpha)];
+  }
+  let betaI = 0;
+  const pilotFix = !!(o.engines || o.prop);
   s = { ...s, u: s.u + wb0[0], v: s.v + wb0[1], w: s.w + wb0[2] };
   // Dryden turbulence, the MIL-F-8785C forms: each direction white noise through a first-order filter with time
   // constant L/V (the vertical one is near enough the same at this level of detail).
@@ -338,8 +404,10 @@ export function flight6(ac: Aircraft, T: number, o: {
       if (into < W.gust.length) up = (W.gust.up / 2) * (1 - Math.cos((2 * Math.PI * into) / W.gust.length));
     }
     if (tb && tb.sigma > 0) { const a = Math.exp((-tr.V * dt) / Lt), b = tb.sigma * Math.sqrt(1 - a * a); for (let i = 0; i < 3; i++) turb[i] = a * turb[i] + b * rnd(); }
-    const wind: Air = [steady[0] + turb[0], steady[1] + turb[1], steady[2] + turb[2] - up];
-    const e = eulerOf(s), f = deriv6(ac, lat, s, { de: 0, da: 0, dr: 0, thr: 0 }, wind);
+    const base = W.shear || W.microburst ? windField(W, s.n, s.e, s.h) : steady;
+    const wind: Air = [base[0] + turb[0], base[1] + turb[1], base[2] + turb[2] - up];
+    if (eng?.fail && t >= eng.fail.at) pw.working = eng.count === 2 ? ((eng.fail.which ?? 1) === 0 ? [0, 1] : [1, 0]) : [0, 0];
+    const e = eulerOf(s), f = deriv6(ac, lat, s, { de: 0, da: 0, dr: 0, thr: 0 }, wind, pw);
     let de = tr.de + (o.elevator ? o.elevator(t) : 0), thr = tr.throttle + (o.throttle ? o.throttle(t) : 0), da = o.aileron ? o.aileron(t) : 0, dr = o.rudder ? o.rudder(t) : 0;
     const hdot = f.d.h;
     if (o.holdHeight) {
@@ -350,10 +418,15 @@ export function flight6(ac: Aircraft, T: number, o: {
       de = tr.de + 2.0 * (e.theta - thWant) + 0.6 * s.q;
     }
     if (o.holdSpeed !== undefined) { const err = o.holdSpeed - f.V; iv += err * dt; thr = clamp(tr.throttle + 0.08 * err + 0.02 * iv, 1); }
-    if (o.holdHeading) { const want = clamp(1.2 * Math.atan2(Math.sin(o.holdHeading(t) - e.psi), Math.cos(o.holdHeading(t) - e.psi)), maxBank); da += 1.5 * (want - e.phi) - 0.35 * s.p; dr += -1.5 * f.beta; }
+    if (o.holdHeading) {
+      const want = clamp(1.2 * Math.atan2(Math.sin(o.holdHeading(t) - e.psi), Math.cos(o.holdHeading(t) - e.psi)), maxBank); da += 1.5 * (want - e.phi) - 0.35 * s.p; dr += -1.5 * f.beta;
+      // With engines or a propeller pushing it sideways the rudder must be held over: the sideslip's integral finds how
+      // much (a pilot's "dead foot, dead engine").
+      if (pilotFix) { betaI = clamp(betaI + f.beta * dt, 1); dr += -0.3 * betaI; }
+    }
     if (o.yawDamper) dr += 1.2 * (s.r - rLow);
     de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
-    const c: Ctl = { de, da, dr, thr }, g = deriv6(ac, lat, s, c, wind);
+    const c: Ctl = { de, da, dr, thr }, g = deriv6(ac, lat, s, c, wind, pw);
     if (g.alpha > ac.alphaStall) stalled = true;
     if (k % every === 0 || k === n) {
       const pos = toEarth(s, [s.u, s.v, s.w]);
@@ -363,7 +436,7 @@ export function flight6(ac: Aircraft, T: number, o: {
     }
     if (k === n) break;
     if (s.h < 0) { crashed = true; break; }
-    const k1 = g.d, k2 = deriv6(ac, lat, add6(s, k1, dt / 2), c, wind).d, k3 = deriv6(ac, lat, add6(s, k2, dt / 2), c, wind).d, k4 = deriv6(ac, lat, add6(s, k3, dt), c, wind).d;
+    const k1 = g.d, k2 = deriv6(ac, lat, add6(s, k1, dt / 2), c, wind, pw).d, k3 = deriv6(ac, lat, add6(s, k2, dt / 2), c, wind, pw).d, k4 = deriv6(ac, lat, add6(s, k3, dt), c, wind, pw).d;
     s = Object.fromEntries(KEYS6.map((x) => [x, s[x] + (dt / 6) * (k1[x] + 2 * k2[x] + 2 * k3[x] + k4[x])])) as unknown as F6State;
     // Keep the quaternion a unit one.
     const qn = Math.hypot(s.q0, s.q1, s.q2, s.q3); s.q0 /= qn; s.q1 /= qn; s.q2 /= qn; s.q3 /= qn;

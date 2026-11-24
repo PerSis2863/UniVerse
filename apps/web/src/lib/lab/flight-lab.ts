@@ -121,6 +121,12 @@ def('aircraftLateralSim', (a, nout, lab) => {
   call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', row(r.t), row(d(r.phi)), row(r.t), row(d(r.beta))); call(lab, 'legend', str('bank (°)'), str('sideslip (°)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
   return [];
 });
+// The slowest speed a twin can hold its heading with one engine out (M489d): aircraftVmc(ac, 'EngineArm', 1.8, 'Height', 0, 'Feather', 0).
+def('aircraftVmc', (a) => {
+  const ac = acOf(a[0]), o = pairs(a, 1), n = (k: string, d: number) => (o.get(k) ? toMat(o.get(k)!).d[0] : d), arm = n('enginearm', 1.8);
+  if (!(arm > 0 && arm <= 10)) throw new LabError("'EngineArm' is above 0 up to 10 m.");
+  return [num(fl.vmc(ac, latOf(o.get('lateral')), arm, n('height', 0), !!n('feather', 0)))];
+});
 // The whole aeroplane, six ways at once, and wind (M489c).
 def('aircraftSim6DOF', (a, nout, lab) => {
   if (a.length < 2) throw new LabError("aircraftSim6DOF needs the aeroplane and the time: aircraftSim6DOF(aircraft(), 60, 'HoldHeading', 90, 'HoldHeight', 1000, 'Wind', [0 10 0]).");
@@ -137,14 +143,29 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   if (o.get('gust')) { const g = toMat(o.get('gust')!).d; if (g.length !== 3 || !(g[0] >= 0 && g[1] > 0 && Math.abs(g[2]) <= 30)) throw new LabError("'Gust' is [start (s) length (m) up (m/s)]: a '1 − cos' gust, up to 30 m/s."); wind.gust = { at: g[0], length: g[1], up: g[2] }; }
   const sig = num1('turbulence');
   if (sig !== undefined) { if (!(sig >= 0 && sig <= 15)) throw new LabError("'Turbulence' is its strength, 0 to 15 m/s (1.5 light, 3 moderate, 6 severe)."); wind.turbulence = { sigma: sig, scale: num1('turbulencescale'), seed: num1('seed') }; }
+  // Wind shear (M489d): 'Shear', the exponent (1/7 open country; the 'Wind' is then what blows 10 m up), and
+  // 'Microburst', [north east (m) radius (m) outflow (m/s) down (m/s)].
+  const shx = num1('shear');
+  if (shx !== undefined) { if (!(shx >= 0 && shx <= 0.6)) throw new LabError("'Shear' is the exponent of the wind's growth with height, 0 to 0.6 (1/7 over open country)."); wind.shear = { exponent: shx }; }
+  if (o.get('microburst')) { const m = toMat(o.get('microburst')!).d; if (m.length !== 5 || !(m[2] >= 100 && m[2] <= 5000 && Math.abs(m[3]) <= 40 && Math.abs(m[4]) <= 30)) throw new LabError("'Microburst' is [north east radius outflow down]: metres, a radius of 100 to 5,000 m, outflow up to 40 and down up to 30 m/s."); wind.microburst = { n: m[0], e: m[1], radius: m[2], outflow: m[3], down: m[4] }; }
+  // Engines and the propeller (M489d): 'Engines', 1 or 2 ('EngineArm' m out on a twin), 'EngineFail', [time which]
+  // (which 1 left, 2 right; a single just stops), 'Feather', 1; 'Propeller', 1 (clockwise from behind), -1, or 0 off.
+  const ne = num1('engines') ?? 1, fail = o.get('enginefail') ? [...toMat(o.get('enginefail')!).d] : undefined, pd = num1('propeller') ?? 0;
+  if (ne !== 1 && ne !== 2) throw new LabError("'Engines' is 1 or 2.");
+  if (fail && !(fail[0] >= 0 && (fail.length === 1 || fail[1] === 1 || fail[1] === 2))) throw new LabError("'EngineFail' is [time (s) which engine (1 left, 2 right)].");
+  if (![0, 1, -1].includes(pd)) throw new LabError("'Propeller' is 1 (turning clockwise seen from behind), -1 or 0 (its effects left out).");
+  const arm = num1('enginearm') ?? 1.8;
+  if (!(arm > 0 && arm <= 10)) throw new LabError("'EngineArm' is how far out each engine is, above 0 up to 10 m.");
+  const engines: fl.Engines | undefined = ne === 2 || fail ? { count: ne as 1 | 2, arm, fail: fail && { at: fail[0], which: ((fail[1] ?? 2) - 1) as 0 | 1 }, feather: !!num1('feather') } : undefined;
   const head = fn('holdheading', 'The heading to hold');
   const r = fl.flight6(ac, T, {
+    engines, prop: pd ? { dir: pd as 1 | -1 } : undefined,
     V0, h0, lat: latOf(o.get('lateral')), wind,
     elevator: fn('elevator', 'The elevator'), aileron: fn('aileron', 'The aileron'), rudder: fn('rudder', 'The rudder'), throttle: fn('throttle', 'The throttle'),
     holdHeight: fn('holdheight', 'The height to hold'), holdSpeed: num1('holdspeed'), holdHeading: head && ((t: number) => rad(head(t))),
     maxBank: o.get('maxbank') ? rad(toMat(o.get('maxbank')!).d[0]) : undefined, yawDamper: o.get('yawdamper') ? !!toMat(o.get('yawdamper')!).d[0] : false,
   });
-  const info = struct([['Stalled', r.stalled ? 1 : 0], ['Crashed', r.crashed ? 1 : 0], ['MinHeight', Math.min(...r.h)], ['MaxHeight', Math.max(...r.h)], ['MaxLoadFactor', Math.max(...r.nz)], ['MinLoadFactor', Math.min(...r.nz)]]);
+  const info = struct([['Stalled', r.stalled ? 1 : 0], ['Crashed', r.crashed ? 1 : 0], ['MinHeight', Math.min(...r.h)], ['MaxHeight', Math.max(...r.h)], ['MaxLoadFactor', Math.max(...r.nz)], ['MinLoadFactor', Math.min(...r.nz)], ['MinAirspeed', Math.min(...r.V)], ['MaxAirspeed', Math.max(...r.V)], ...(ne === 2 ? [['Vmc', fl.vmc(ac, latOf(o.get('lateral')), arm, h0, !!num1('feather'))] as [string, number]] : [])]);
   if (nout > 0) return [table([['Time', col(r.t)], ['North', col(r.n)], ['East', col(r.e)], ['Height', col(r.h)], ['Airspeed', col(r.V)], ['GroundSpeed', col(r.ground)], ['Alpha', col(d(r.alpha))], ['Sideslip', col(d(r.beta))], ['Bank', col(d(r.phi))], ['Pitch', col(d(r.theta))], ['Heading', col(d(r.psi))], ['RollRate', col(d(r.p))], ['PitchRate', col(d(r.q))], ['YawRate', col(d(r.r))], ['LoadFactor', col(r.nz)], ['Elevator', col(r.de)], ['Aileron', col(r.da)], ['Rudder', col(r.dr)], ['Throttle', col(r.thr)]]), info];
   call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot3', row(r.e), row(r.n), row(r.h), str('LineWidth'), num(2)); call(lab, 'grid', str('on'));
   call(lab, 'xlabel', str('east (m)')); call(lab, 'ylabel', str('north (m)')); call(lab, 'zlabel', str('height (m)')); call(lab, 'title', str(r.crashed ? 'It reached the ground' : r.stalled ? 'The wing stalled' : 'The flight path'));

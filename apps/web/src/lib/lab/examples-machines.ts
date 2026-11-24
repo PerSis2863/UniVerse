@@ -214,6 +214,11 @@ cw = aircraftSim6DOF(ac, 60, 'Wind', [0 10 0], 'HoldHeading', 0, 'HoldHeight', 1
 fprintf('A 10 m/s crosswind carried it %.0f m east in a minute\\n', cw.East(end))
 [~, g] = aircraftSim6DOF(ac, 8, 'Gust', [2 60 4]);
 fprintf('A 4 m/s gust: up to %.2f g\\n', g.MaxLoadFactor)
+% An engine failing on a twin: it yaws towards the dead engine; the autopilot holds it on rudder
+[~, out] = aircraftSim6DOF(ac, 40, 'Engines', 2, 'EngineFail', [2 2], 'HoldHeading', 0, 'YawDamper', 1);
+fprintf('Engine out: %.0f m lost in 40 s; it can be held down to %.1f m/s (Vmc)\\n', 1000 - out.MinHeight, aircraftVmc(ac))
+% Through a microburst at 300 m: a headwind, then falling air, then a tailwind
+figure; aircraftSim6DOF(ac, 60, 'Height', 300, 'Microburst', [1500 0 600 15 8])
 ` },
   { name: 'orbits.m', code: `% Space flight: orbits, ground tracks, transfers and rockets (metres, m/s, degrees)
 Re = 6378137;
