@@ -6,6 +6,7 @@ import { mat, num, str, toMat, type Cell, type Mat, type Struct, type Value } fr
 import { inverse } from './ml';
 import { bytes, classOf, eightOf, fullIntC, modelC, planFullInt, quantizeInput, roundTrip, runFullInt, type NetSpec, type Prec, type Spec } from './embedded';
 import { intBytes, intInput, intModelC, planInt, runInt } from './embedded-int';
+import { planTree, runTree, treeBytes, treeInput, treeIntC } from './embedded-trees';
 
 // Hyperion's embedded AI in the language (M481): quantizemodel, modelsize, embedreport and exportmodel, for the neural
 // networks (fitcnet, fitrnet) and decision trees (fitctree, fitrtree) of the machine-learning toolbox. MATLAB does this
@@ -14,6 +15,7 @@ import { intBytes, intInput, intModelC, planInt, runInt } from './embedded-int';
 // and linear models (fitlm), in single or double; and networks wholly in 8 bits ('int8full', embedded.ts).
 // M529: and SVMs for many classes (fitcecoc), naive Bayes (fitcnb) and linear discriminants (fitcdiscr); M530: those three
 // also in 8 bits (their numbers whole from −127 to 127 with a scale; embedreport measures it, exportmodel writes it).
+// M539: trees and tree ensembles wholly in whole numbers ('int8full', embedded-trees.ts).
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 1, lab);
@@ -29,7 +31,7 @@ function modelOf(v: Value | undefined): Struct {
   return v;
 }
 const namesOf = (v: Value | undefined): string[] | null => (!v ? null : v.k === 'cell' ? v.d.map((x) => textOf(x)) : [...toMat(v).d].map(String));
-const precOf = (v: Value | undefined): Prec => { const p = v ? textOf(v).toLowerCase() : 'int8'; if (p !== 'double' && p !== 'single' && p !== 'int8' && p !== 'int8full') throw new LabError("The precision is 'double', 'single', 'int8' (8-bit weights) or 'int8full' (wholly in whole numbers: networks, many-class SVMs, naive Bayes, discriminants, linear models)."); return p; };
+const precOf = (v: Value | undefined): Prec => { const p = v ? textOf(v).toLowerCase() : 'int8'; if (p !== 'double' && p !== 'single' && p !== 'int8' && p !== 'int8full') throw new LabError("The precision is 'double', 'single', 'int8' (8-bit weights) or 'int8full' (wholly in whole numbers: networks, many-class SVMs, naive Bayes, discriminants, linear models, trees and tree ensembles)."); return p; };
 const rowsOf = (m: Mat): number[][] => Array.from({ length: m.r }, (_, i) => Array.from({ length: m.c }, (_, j) => m.d[i + j * m.r]));
 const treeAt = (t: Struct) => { const pred = [...toMat(fld(t, 'CutPredictorIndex')).d].map((p) => p - 1), ch = toMat(fld(t, 'Children')), n = pred.length; return { pred, cut: [...toMat(fld(t, 'CutPoint')).d], left: pred.map((_, i) => ch.d[i] - 1), right: pred.map((_, i) => ch.d[i + n] - 1) }; };
 const stdOf = (m: Struct) => { const on = m.f.get('Standardize') && toMat(m.f.get('Standardize')!).d[0] && toMat(fld(m, 'Mu')).d.length; return on ? { mu: [...toMat(fld(m, 'Mu')).d], sigma: [...toMat(fld(m, 'Sigma')).d] } : { mu: null, sigma: null }; };
@@ -107,7 +109,7 @@ function quantized(m: Struct, p: Prec): Struct {
     out.f.set('LayerWeights', { ...cell, d: cell.d.map((w) => { const x = toMat(w); return mat(x.r, x.c, roundTrip(x.d, p)); }) });
     if (p !== 'double') { const bc = fld(m, 'LayerBiases') as Cell; out.f.set('LayerBiases', { ...bc, d: bc.d.map((v) => { const x = toMat(v); return mat(x.r, x.c, roundTrip(x.d, 'single')); }) }); }
   } else {
-    if (p === 'int8') throw new LabError("A tree's split points are kept as 'single' or 'double' (8 bits would move them).");
+    if (p === 'int8') throw new LabError("A tree's split points are kept as 'single' or 'double' here; wholly in whole numbers it runs in C (exportmodel with 'Precision', 'int8full'), and embedreport measures it.");
     const c = toMat(fld(m, 'CutPoint'));
     out.f.set('CutPoint', mat(c.r, c.c, roundTrip(c.d, p)));
   }
@@ -132,6 +134,14 @@ def('embedreport', (a, nout, lab) => {
       const plan = planInt(spec, rowsOf(toMat(fld(m, 'X'))));
       rows.push({ p: 'int8full', size: intBytes(plan), err: X.reduce((n, x, i) => n + (runInt(plan, intInput(plan, x)).cls === truth[i] ? 0 : 1), 0) / X.length });
     } catch (e) { lab.host.out(`(int8full: ${(e as Error).message})\n`); }
+  }
+  // M539: a tree or an ensemble of trees wholly in whole numbers, run as its C (runTree, the C's twin).
+  if (spec.kind === 'tree' || spec.kind === 'ensemble') {
+    const plan = planTree(spec, rowsOf(toMat(fld(m, 'X')))), X = rowsOf(toMat(a[1])), Y = a[2], run = (x: number[]) => runTree(plan, treeInput(plan, x));
+    if (spec.classes) {
+      const names = spec.classes, truth = Y.k === 'cell' ? Y.d.map((v) => names.indexOf(textOf(v))) : [...toMat(Y).d].map((v) => names.indexOf(String(v)));
+      rows.push({ p: 'int8full', size: treeBytes(plan), err: X.reduce((n, x, i) => n + (run(x).cls === truth[i] ? 0 : 1), 0) / X.length });
+    } else { const t = toMat(Y).d; rows.push({ p: 'int8full', size: treeBytes(plan), err: X.reduce((n, x, i) => n + (run(x).F * plan.S - t[i]) ** 2, 0) / X.length }); }
   }
   // M537: a linear model wholly in whole numbers: its answer F · S, run as its C.
   if (spec.kind === 'linear') {
@@ -167,10 +177,13 @@ def('exportmodel', (a, nout, lab) => {
   const spec = specOf(m);
   const eight = spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr';
   if (spec.kind === 'linear' && p === 'int8') throw new LabError("A linear model is written with 'single', 'double' or 'int8full' (wholly in whole numbers) numbers.");
-  if (spec.kind !== 'net' && spec.kind !== 'linear' && p.startsWith('int8') && !eight) throw new LabError("This model is written with 'single' or 'double' numbers.");
+  const trees = spec.kind === 'tree' || spec.kind === 'ensemble';
+  if (trees && p === 'int8') throw new LabError("Trees are written with 'single', 'double' or 'int8full' (wholly in whole numbers) numbers.");
+  if (spec.kind !== 'net' && spec.kind !== 'linear' && !trees && p.startsWith('int8') && !eight) throw new LabError("This model is written with 'single' or 'double' numbers.");
   let out: { c: string; h: string }, size = 0;
   try {
-    if ((eight || spec.kind === 'linear') && p === 'int8full') { const plan = planInt(spec as Parameters<typeof planInt>[0], rowsOf(toMat(fld(m, 'X')))); out = intModelC(plan, name); size = intBytes(plan); } // M533
+    if (trees && p === 'int8full') { const plan = planTree(spec, rowsOf(toMat(fld(m, 'X')))); out = treeIntC(plan, name); size = treeBytes(plan); } // M539
+    else if ((eight || spec.kind === 'linear') && p === 'int8full') { const plan = planInt(spec as Parameters<typeof planInt>[0], rowsOf(toMat(fld(m, 'X')))); out = intModelC(plan, name); size = intBytes(plan); } // M533
     else out = spec.kind === 'net' && p === 'int8full' ? fullIntC(planFullInt(spec, rowsOf(toMat(fld(m, 'X')))), name) : modelC(spec, name, p);
   } catch (e) { throw new LabError((e as Error).message); }
   size ||= bytes(spec, p);

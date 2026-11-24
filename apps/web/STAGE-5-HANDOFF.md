@@ -13165,3 +13165,23 @@ The owner pasted M534–M537's "left out" list (as before: build all of them); t
 - **Checked:** `codegen.test.ts` M538: the tolerance and the warning in Hyperion; in C a wide, a singular, a tall and an
   all-zero system, a run-time tolerance and single, with `-Wall -Werror`, equal to Hyperion (1e-10; single 1e-5).
 
+## M539 (24 Nov): Hyperion trees and tree ensembles wholly in whole numbers
+
+The second of M534–M537's "left out" list.
+
+- **How** (`embedded-trees.ts`): inputs become 8-bit as in M533 (each its centre and step from the training rows, the
+  same `floor(… + 0.5)` rounding); each split point x < cut becomes xq < cq with cq the cut rounded the same way, kept in
+  `int16_t` (−128 and 128 mean always right / always left), so a walk only compares whole numbers. A class tree's leaves
+  are class numbers already. A bagged forest's leaf chances are 0–255 and summed into `int32_t` votes; a boosted one
+  (AdaBoostM1/M2) adds each tree's weight, 15 bits of the largest. Regression leaves are `int32_t` on one scale S
+  (at most 2^23; LSBoost's weights folded in, Init on the same scale), summed in 64 bits, the answer F · S (a bagged
+  forest's mean folded into S).
+- **The C:** `name_predict_q(xq[, votes])` (the class, or F for a regression), `name_predict(x[, scores])` from float
+  inputs (scores: each class's share of the votes). `runTree` is the C's twin (plain numbers: every sum stays far
+  inside 2^53). `exportmodel(…, 'Precision', 'int8full')` and embedreport's int8full row; 'int8' for trees is refused,
+  naming 'int8full'.
+- **Checked:** `embedded.test.ts` M539: on iris a class tree, a bagged forest (15), AdaBoostM2 (12), a regression tree,
+  LSBoost (20) and a bagged regression (10): the C's class, votes and F equal the twin on every row; int8full within 3
+  points of double accuracy, RMSE within 0.05.
+- **Trap:** in a C test's `printf("%d %ld", f(q, v), v[0])` the order arguments are worked out isn't fixed; call first.
+

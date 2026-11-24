@@ -12,6 +12,8 @@ import './embedded-lab';
 import { classOf, eightOf, quantizeLayer, type BayesSpec, type DiscrSpec, type EcocSpec, type LinSpec } from './embedded';
 import { specOf } from './embedded-lab';
 import { intInput, planInt, runInt } from './embedded-int';
+import { planTree, runTree, treeInput } from './embedded-trees';
+import type { EnsSpec, TreeSpec } from './embedded';
 import type { Struct } from './values';
 
 let hasCc = true;
@@ -299,5 +301,54 @@ int main(void) {
     const wr = [Array(P).fill(1), Array(P).fill(-1)];
     expect(runInt(planInt(wide, wr), intInput(planInt(wide, wr), wr[0])).cls).toBe(0);
     expect(() => planInt({ ...wide, w: [Array(70000).fill(0)] }, [Array(70000).fill(0)])).toThrow(/65,536 inputs/);
+  });
+  it.skipIf(!hasCc)('M539: trees and tree ensembles wholly in whole numbers: C exactly as its twin', () => {
+    const t = make();
+    t.l.run(`rng(3); load fisheriris; y = meas(:, 1); Z = meas(:, 2:4);
+      ct = fitctree(meas, species); rt = fitrtree(Z, y);
+      bag = fitcensemble(meas, species, 'Method', 'Bag', 'NumLearningCycles', 15);
+      ada = fitcensemble(meas, species, 'Method', 'AdaBoostM2', 'NumLearningCycles', 12);
+      ls = fitrensemble(Z, y, 'Method', 'LSBoost', 'NumLearningCycles', 20);
+      rb = fitrensemble(Z, y, 'Method', 'Bag', 'NumLearningCycles', 10);
+      exportmodel(ct, 'w_ct', 'Precision', 'int8full'); exportmodel(rt, 'w_rt', 'Precision', 'int8full');
+      exportmodel(bag, 'w_bag', 'Precision', 'int8full'); exportmodel(ada, 'w_ada', 'Precision', 'int8full');
+      exportmodel(ls, 'w_ls', 'Precision', 'int8full'); exportmodel(rb, 'w_rb', 'Precision', 'int8full');
+      a1 = embedreport(ct, meas, species); a2 = embedreport(bag, meas, species); a3 = embedreport(ada, meas, species);
+      e1 = embedreport(rt, Z, y); e2 = embedreport(ls, Z, y); e3 = embedreport(rb, Z, y);`);
+    const col = (n: string, f: string) => [...toMat((t.l.vars.get(n) as unknown as { f: Map<string, never> }).f.get(f)!).d];
+    for (const n of ['a1', 'a2', 'a3']) { const a = col(n, 'Accuracy'); expect(a).toHaveLength(3); expect(a[2]).toBeGreaterThan(a[0] - 3); } // double, single, int8full
+    for (const n of ['e1', 'e2', 'e3']) { const e = col(n, 'RMSE'); expect(e).toHaveLength(3); expect(e[2]).toBeLessThan(e[0] + 0.05); }
+    expect(t.files.text('w_ada.c')).not.toMatch(/float (CUT|LEAF|ALPHA)|double/);
+    expect(() => t.l.run("exportmodel(ct, 'x', 'Precision', 'int8')")).toThrow(/int8full/);
+    const M = toMat(t.l.vars.get('meas')!), rows = Array.from({ length: M.r }, (_, i) => [0, 1, 2, 3].map((j) => M.d[i + j * M.r])), zr = rows.map((r) => r.slice(1));
+    const models: [string, string, boolean][] = [['ct', 'w_ct', true], ['bag', 'w_bag', true], ['ada', 'w_ada', true], ['rt', 'w_rt', false], ['ls', 'w_ls', false], ['rb', 'w_rb', false]];
+    const plans = models.map(([m, , c]) => planTree(specOf(t.l.vars.get(m) as Struct) as TreeSpec | EnsSpec, c ? rows : zr));
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-m539-'));
+    for (const [, f] of models) { writeFileSync(join(dir, `${f}.c`), t.files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), t.files.text(`${f}.h`)); }
+    const xq4 = rows.map((x) => treeInput(plans[0], x)), xq3 = zr.map((x) => treeInput(plans[3], x));
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+${models.map(([, f]) => `#include "${f}.h"`).join('\n')}
+static const int8_t Q4[${rows.length}][4] = {${xq4.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+static const int8_t Q3[${rows.length}][3] = {${xq3.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+static const float X4[${rows.length}][4] = {${rows.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+int main(void) {
+  int32_t v[3]; int c;
+  for (int i = 0; i < ${rows.length}; i++) {
+    printf("%d %d ", w_ct_predict_q(Q4[i]), w_ct_predict(X4[i]));
+    c = w_bag_predict_q(Q4[i], v); printf("%d %ld %ld %ld ", c, (long)v[0], (long)v[1], (long)v[2]);
+    c = w_ada_predict_q(Q4[i], v); printf("%d %ld %ld %ld ", c, (long)v[0], (long)v[1], (long)v[2]);
+    printf("%lld %lld %lld\\n", (long long)w_rt_predict_q(Q3[i]), (long long)w_ls_predict_q(Q3[i]), (long long)w_rb_predict_q(Q3[i]));
+  }
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), ...models.map(([, f]) => join(dir, `${f}.c`)), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split('\n').map((l) => l.trim().split(' ').map(Number));
+    rows.forEach((_, i) => {
+      const [ct, bag, ada, rt, ls, rb] = plans.map((p, k) => runTree(p, k < 3 ? xq4[i] : xq3[i]));
+      expect(got[i].slice(0, 2)).toEqual([ct.cls, ct.cls]);
+      expect(got[i].slice(2, 6)).toEqual([bag.cls, ...bag.votes]);
+      expect(got[i].slice(6, 10)).toEqual([ada.cls, ...ada.votes]);
+      expect(got[i].slice(10)).toEqual([rt.F, ls.F, rb.F]);
+    });
   });
 });
