@@ -12981,9 +12981,9 @@ sides matches a loop to 1e-4; `coulomb3` in 3D; `fieldLine` is RK4 along the uni
 the box, near a sink, when the field vanishes or when it closes on its seed. `bfield`'s drawing seeds along a line from
 the wire's middle toward its nearest point (a straight wire on its axis gets an offset), so a loop's lines thread it.
 **Optics:** a system is text ('d L; f F; s R n1 n2; m R'), rays [height; angle], matrices multiplied last-first;
-focal length −1/C, back −A/C, front −D/C, an image at si = −(A so + B)/(C so + D); the mirror is unfolded (R < 0
-concave, focal length −R/2 comes out as efl = R/2 with the sign convention of the matrix [1 0; −2/R 1]: concave R = −100
-gives −50, said in the test). `gaussianBeam` propagates q (complex, written out) through d, f and m only (no index
+focal length −1/C, back −A/C, front −D/C, an image at si = −(A so + B)/(C so + D); the mirror is unfolded with the
+matrix [1 0; −2/R 1], so a concave (focusing) mirror is R > 0 with focal length R/2 and 'm -100' is a convex one, f = −50
+(the test checks it). `gaussianBeam` propagates q (complex, written out) through d, f and m only (no index
 changes) and reports the last waist. **Relativity:** `relativisticParticle` is the Boris push on u = γv (the rotation
 with t = qBdt/(2mγ⁻)); the speed is kept exactly in a pure B field and stays below c under any E; `chargedParticle(…,
 'Relativistic', true)`. `lorentz`, `addVelocity`, `relativistic`, `minkowskiDiagram`. **Quantum** (eV, nm, electron
