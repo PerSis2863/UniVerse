@@ -98,4 +98,25 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     lab.run("van = vehicle('Mass', 2500, 'Inertia', 4500, 'CgHeight', 1.2, 'Cf', 110000, 'Cr', 140000, 'Track', 1.6, 'RollInertia', 1400, 'RollSteer', [0.05 0.05], 'CamberRoll', [0.8 0.8], 'CamberStiffness', 0.1); [vr, vi] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22); ro = vi.RolledOver; cr = van.CamberRoll; figure; vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22);");
     expect(d('ro')).toEqual([1]); expect(d('cr')).toEqual([0.8, 0.8]);
   });
+  it('tumbling after a rollover and kerb trips (M486d)', { timeout: 60_000 }, () => {
+    const saloon = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, van = { ...vd.CAR_DEFAULT, h: 1.2, m: 2500, roll: { ...vd.ROLL_DEFAULT, track: 1.6, ix: 1400 } };
+    // The trip speed by hand: ½·I_edge·ω² = m·g·rise with ω = m·v·(h − kerb) / I_edge.
+    const sh = vd.shape(saloon), hh = 0.55 - 0.15, Ie = sh.ix + 1500 * (0.775 ** 2 + hh * hh), v0 = vd.tripSpeed(saloon);
+    expect(0.5 * Ie * ((1500 * v0 * hh) / Ie) ** 2).toBeCloseTo(1500 * vd.G * (Math.hypot(0.775, hh) - hh), 6);
+    expect(v0).toBeGreaterThan(6); expect(v0).toBeLessThan(11); expect(vd.tripSpeed(van)).toBeLessThan(v0 / 2);
+    // Just under it, it rocks back onto its wheels; just over, it goes over; much faster, more turns.
+    const under = vd.kerbTrip(saloon, v0 * 0.95), over = vd.kerbTrip(saloon, v0 * 1.1), fast = vd.kerbTrip(saloon, 18);
+    expect(under.tripped).toBe(false); expect(under.rests).toBe('wheels');
+    expect(over.tripped).toBe(true); expect(over.quarters).toBeGreaterThanOrEqual(1); expect(fast.quarters).toBeGreaterThan(over.quarters);
+    // Sliding sideways across tarmac it doesn't trip; soft soil's grip on the wheels trips it.
+    expect(vd.kerbTrip(saloon, 15, 0, vd.GROUNDS.tarmac).quarters).toBe(0);
+    expect(vd.kerbTrip(saloon, 15, 0, vd.GROUNDS.soil).quarters).toBeGreaterThan(0);
+    // The fishhook rollover now tumbles on and comes to rest, off its wheels, metres away.
+    const fh = vd.vehicleSim(van, vd.fishhook(0.12), 6, { v0: 22, force: () => 0, points: 600 });
+    expect(Number.isFinite(fh.rolled)).toBe(true); expect(fh.tumble!.quarters).toBeGreaterThan(0); expect(fh.tumble!.rests).not.toBe('wheels'); expect(fh.tumble!.slid).toBeGreaterThan(1);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("van = vehicle('CgHeight', 1.2, 'Mass', 2500, 'Roll', true, 'Track', 1.6, 'RollInertia', 1400); [~, i] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'InitialSpeed', 22, 'Force', 0); [~, j] = vehicleTrip(vehicle('Roll', true), 12, 'Kerb', 0.15); figure; vehicleTrip(vehicle('Roll', true), 15, 'Kerb', 0, 'Ground', 'soil');");
+    const f = (n: string, k: string) => (lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!;
+    expect(toMat(f('i', 'Rolls')).d[0]).toBeGreaterThan(0); expect(toMat(f('j', 'Tripped')).d[0]).toBe(1); expect(toMat(f('j', 'TripSpeed')).d[0]).toBeCloseTo(v0, 6);
+  });
 });

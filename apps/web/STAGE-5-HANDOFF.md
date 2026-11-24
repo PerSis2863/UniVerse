@@ -13106,6 +13106,17 @@ more flights (the row wraps): Engine out (autopilot or hands off, Feather), Prop
 drawn; the outflow slider; airspeed change in the chart). Example flight.m. Not built: a propeller's gyroscopic
 precession, an engine's own lag, turbulence that changes with height, landing gear on the ground.
 
+## M486d (24 Nov): Hyperion vehicles, tumbling after a rollover and kerb trips
+
+`vehicle.ts`: after `vehicleSim` rolls over it hands on to `tumble` (the car's cross-section: wheels and roof edges,
+`shape`; penalty contact 4e6 N/m with damping, friction per corner, `GROUNDS` tarmac/grass/soil) until it rests:
+`run.tumble` (quarters, rests wheels/side/roof, slid, time). `kerbTrip(car, vlat, kerb, ground)`: angular momentum about
+the kerb's edge kept, a pivot phase about the edge (falls back or passes over), then `tumble` with the pavement kerb high
+past the edge; `tripSpeed` by energy (saloon ~30 km/h sideways over 15 cm, van ~12). Soft soil trips it with no kerb.
+Language: vehicleSim info Rolls, RestsOn, TumbleDistance, TumbleTime; `vehicleTrip(car, v, 'Kerb', 'Ground')`. Window:
+Vehicle → Kerb (`KerbView.tsx`, seen from behind). Not built: the roof crushing, yaw while tumbling. **Full `pnpm check`
+not run** (stopped at the owner's request; types, lint of changed files, the lab tests and lean passed).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

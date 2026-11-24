@@ -156,6 +156,12 @@ figure; vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22)
 [~, dry] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22);
 van.Mu = 0.55; [~, ice] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Speed', 22);
 fprintf('Dry road: rolled over %d; slippery: rolled over %d\\n', dry.RolledOver, ice.RolledOver)
+% After rolling over it tumbles on; and a car sliding sideways into a kerb trips over it
+van.Mu = 1; [~, hk] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'InitialSpeed', 22, 'Force', 0);
+fprintf('Rolled %d quarter turns, resting on its %s, %.1f m away\\n', hk.Rolls, hk.RestsOn, hk.TumbleDistance)
+[~, kb] = vehicleTrip(vehicle('Roll', true), 12, 'Kerb', 0.15);
+fprintf('A 15 cm kerb trips it from %.0f km/h sideways\\n', kb.TripSpeed*3.6)
+figure; vehicleTrip(vehicle('Roll', true), 15, 'Kerb', 0, 'Ground', 'soil')
 ` },
   { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead
 c = vehicle();

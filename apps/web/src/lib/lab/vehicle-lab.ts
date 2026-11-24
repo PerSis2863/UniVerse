@@ -108,6 +108,39 @@ const outline = (x: number, y: number, psi: number, v: vd.Vehicle) => {
   const c = Math.cos(psi), s = Math.sin(psi), f = v.lf + 0.9, b = -(v.lr + 0.9), w = 0.9;
   return [[b, -w], [f, -w], [f, w], [b, w], [b, -w]].map(([u, q]) => [x + u * c - q * s, y + u * s + q * c]);
 };
+// After a rollover (M486d): how many quarter turns, what it rests on, how far it slid sideways, how long.
+const tumbleFields = (tb: vd.Tumble): [string, Value][] => [['Rolls', num(tb.quarters)], ['RestsOn', str(tb.rests)], ['TumbleDistance', num(tb.slid)], ['TumbleTime', num(tb.time)]];
+/** The car's cross-section (wheels and roof) at a tumble's moment, for drawing from behind. */
+const section = (v: vd.Vehicle, y: number, z: number, th: number) => {
+  const sh = vd.shape(v), rot = (a: number, b: number) => [y + a * Math.cos(th) + b * Math.sin(th), z - a * Math.sin(th) + b * Math.cos(th)];
+  return [[sh.t / 2, -v.h], [sh.roofW / 2, sh.roof - v.h], [-sh.roofW / 2, sh.roof - v.h], [-sh.t / 2, -v.h], [sh.t / 2, -v.h]].map(([a, b]) => rot(a, b));
+};
+// vehicleTrip(car, speed, 'Kerb', 0.15, 'Ground', 'tarmac'): sliding sideways at `speed` m/s into a kerb (or, with
+// 'Kerb', 0, across the ground: 'tarmac', 'grass' or 'soil'). Drawn from behind, or [table, info].
+def('vehicleTrip', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError("vehicleTrip needs the vehicle and its sideways speed (m/s): vehicleTrip(car, 10, 'Kerb', 0.15).");
+  const v = vehicleOf(a[0]), vlat = toMat(a[1]).d[0], o = pairs(a, 2), kerb = o.get('kerb') ? toMat(o.get('kerb')!).d[0] : 0.15;
+  const gname = o.get('ground') ? textOf(o.get('ground')!).toLowerCase() : 'tarmac', ground = vd.GROUNDS[gname];
+  if (!(vlat > 0 && vlat <= 40)) throw new LabError('The sideways speed is above 0 up to 40 m/s.');
+  if (!(kerb >= 0 && kerb < v.h)) throw new LabError("'Kerb' is its height in metres, 0 up to the centre of mass's height.");
+  if (!ground) throw new LabError("'Ground' is 'tarmac', 'grass' or 'soil'.");
+  const tb = vd.kerbTrip(v, vlat, kerb, ground);
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
+  if (nout > 0) return [table([['Time', col(tb.t)], ['Across', col(tb.y)], ['Height', col(tb.z)], ['Roll', col(tb.th)], ['RollRate', col(tb.w)]]), info];
+  call(lab, 'hold', str('on'));
+  let last = -Infinity;
+  tb.t.forEach((t, k) => {
+    if (t - last < 0.12 && k !== tb.t.length - 1) return;
+    last = t;
+    const sc = section(v, tb.y[k], tb.z[k], tb.th[k]);
+    call(lab, 'plot', row(sc.map((p) => p[0])), row(sc.map((p) => p[1])), str('Color'), row([0.45, 0.45, 0.55]));
+  });
+  const lo = Math.min(...tb.y) - 2, hi = Math.max(...tb.y) + 2;
+  call(lab, 'plot', row(kerb > 0 ? [lo, 0, 0, hi] : [lo, hi]), row(kerb > 0 ? [0, 0, kerb, kerb] : [0, 0]), str('k'), str('LineWidth'), num(2));
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('across (m)')); call(lab, 'ylabel', str('height (m)'));
+  call(lab, 'title', str(tb.tripped ? `Tripped: ${tb.quarters} quarter turns, resting on its ${tb.rests}` : 'It rocked and fell back onto its wheels'));
+  return [];
+});
 def('vehicleSim', (a, nout, lab) => {
   if (a.length < 3) throw new LabError("vehicleSim needs the vehicle, the steering (at the wheels, rad: a number, @(t) …, or 'step', 'ramp', 'sinedwell') and the time: vehicleSim(car, 'sinedwell', 4, 'Amplitude', 0.08, 'Speed', 22).");
   const v = vehicleOf(a[0]), T = toMat(a[2]).d[0], o = pairs(a, 3);
@@ -118,7 +151,7 @@ def('vehicleSim', (a, nout, lab) => {
   const v0 = o.get('initialspeed') ? toMat(o.get('initialspeed')!).d[0] : speed ? speed(0) : 0;
   const r = vd.vehicleSim(v, steerOf(lab, a[1], amp), T, { speed, force, grade, v0 });
   if (nout > 0) {
-    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))], ['PeakRoll', num(Math.max(...r.roll.map(Math.abs)))], ['WheelLift', num(r.lift ? 1 : 0)], ['RolledOver', num(Number.isFinite(r.rolled) ? 1 : 0)], ['RolledAt', num(r.rolled)], ['PeakTip', num(Math.max(0, ...r.tip.map(Math.abs)))]]) };
+    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))], ['PeakRoll', num(Math.max(...r.roll.map(Math.abs)))], ['WheelLift', num(r.lift ? 1 : 0)], ['RolledOver', num(Number.isFinite(r.rolled) ? 1 : 0)], ['RolledAt', num(r.rolled)], ['PeakTip', num(Math.max(0, ...r.tip.map(Math.abs)))], ...(r.tumble ? tumbleFields(r.tumble) : [['Rolls', num(0)], ['RestsOn', str('wheels')], ['TumbleDistance', num(0)], ['TumbleTime', num(0)]] as [string, Value][])]) };
     return [table([['Time', col(r.t)], ['X', col(r.x)], ['Y', col(r.y)], ['Yaw', col(r.psi)], ['Vx', col(r.vx)], ['Vy', col(r.vy)], ['YawRate', col(r.r)], ['Ay', col(r.ay)], ['Ax', col(r.ax)], ['SideSlip', col(r.beta)], ['Steer', col(r.steer)], ['SlipFront', col(r.af)], ['SlipRear', col(r.ar)], ['Roll', col(r.roll)], ['Tip', col(r.tip)]]), info];
   }
   call(lab, 'subplot', num(2), num(2), num(1)); call(lab, 'plot', row(r.x), row(r.y), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
