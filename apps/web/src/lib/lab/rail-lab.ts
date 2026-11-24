@@ -97,11 +97,33 @@ function lineOpts(o: Map<string, Value>) {
   return { signals: sig as 'fixed' | 'moving', block: n('block', 100, 10000, "'Block'"), margin: n('margin', 0, 2000, "'Margin'") };
 }
 const lineTable = (run: rl.LineRun) => table([['Name', { k: 'cell', r: run.trains.length, c: 1, d: run.trains.map((x) => str(x.name)) }], ['Depart', col(run.trains.map((x) => x.depart / 60))], ['Arrive', col(run.trains.map((x) => x.arrive / 60))], ['Minutes', col(run.trains.map((x) => (x.arrive - x.depart) / 60))], ['Delay', col(run.trains.map((x) => (x.arrive - x.depart - x.alone) / 60))], ['Held', col(run.trains.map((x) => x.held / 60))]]);
+// The power supply (M491c): 'Supply', 'metro' (750 V) or 'intercity' (3 kV), or a struct (Vnom, V0, Vmin, Vmax, Rs,
+// Rline in Ω/km there and back, Substations in m); 'SubstationSpacing' places them evenly instead.
+const SUP_FIELDS: [string, keyof rl.Supply][] = [['Vnom', 'vnom'], ['V0', 'v0'], ['Vmin', 'vmin'], ['Vmax', 'vmax'], ['Rs', 'rs'], ['Rline', 'rline']];
+function supplyOf(o: Map<string, Value>, r: rl.Route): rl.Supply | undefined {
+  const x = o.get('supply'), L = rl.routeLength(r);
+  if (!x) return undefined;
+  let sup: rl.Supply;
+  if (x.k === 'str') { const make = rl.SUPPLIES[textOf(x).toLowerCase()]; if (!make) throw new LabError("'Supply' is 'metro' (750 V), 'intercity' (3 kV) or a struct."); sup = make(L); }
+  else if (x.k === 'struct') {
+    sup = { ...rl.SUPPLIES.metro(L) };
+    for (const [k, f] of SUP_FIELDS) { const v = x.f.get(k); if (v) (sup as unknown as Record<string, number>)[f] = toMat(v).d[0]; }
+    if (x.f.get('Substations')) sup.subs = [...toMat(x.f.get('Substations')!).d];
+  } else throw new LabError("'Supply' is 'metro', 'intercity' or a struct.");
+  if (o.get('substationspacing')) { const e = toMat(o.get('substationspacing')!).d[0]; if (!(e >= 200)) throw new LabError("'SubstationSpacing' is at least 200 m."); sup.subs = rl.spaced(L, e); }
+  if (!(sup.vmin > 0 && sup.vmin < sup.vnom && sup.vnom <= sup.v0 && sup.v0 < sup.vmax && sup.rs > 0 && sup.rline > 0)) throw new LabError('The supply needs 0 < Vmin < Vnom ≤ V0 < Vmax, and Rs and Rline above 0.');
+  if (!sup.subs.length || sup.subs.some((s) => !(s >= 0 && s <= L))) throw new LabError(`The substations are positions along the line, 0 to ${L} m.`);
+  return sup;
+}
 def('railLine', (a, nout, lab) => {
   if (a.length < 3) throw new LabError("railLine needs the route, the train (or a cell of trains) and the departures in seconds: railLine('metro', trainModel('metro'), [0 90 180], 'Signals', 'fixed', 'Block', 400).");
-  const r = routeOf(a[0]), run = rl.railLine(r, lineTrains(a), lineOpts(pairs(a, 3)));
-  if (nout > 0) return [lineTable(run), { k: 'cell', r: 1, c: run.trains.length, d: run.trains.map((x) => table([['Time', col(x.t)], ['Position', col(x.s)], ['Speed', col(x.v.map((v) => v * 3.6))], ['Power', col(x.power.map((p) => p / 1000))]])) }];
-  // The train graph: distance against time, one line per train, stations as dashed lines.
+  const r = routeOf(a[0]), o = pairs(a, 3), sup = supplyOf(o, r), feed = sup ? rl.supplyFor(sup, 0.5) : undefined;
+  const run = rl.railLine(r, lineTrains(a), { ...lineOpts(o), supply: feed?.step });
+  const lg = feed?.log, info: Struct | undefined = lg && { k: 'struct', f: new Map<string, Value>([['MinVoltage', num(Math.min(...lg.minVolt))], ['FromSubstationsKWh', num(lg.fromSubsKwh)], ['LossKWh', num(lg.lossKwh)], ['RegenUsedKWh', num(lg.regenUsedKwh)], ['RegenWastedKWh', num(lg.regenWastedKwh)], ['TrippedSeconds', num(lg.tripped)], ['Time', col(lg.t)], ['LowestVoltage', col(lg.minVolt)]]) };
+  if (nout > 0) return [lineTable(run), { k: 'cell', r: 1, c: run.trains.length, d: run.trains.map((x) => table([['Time', col(x.t)], ['Position', col(x.s)], ['Speed', col(x.v.map((v) => v * 3.6))], ['Power', col(x.power.map((p) => p / 1000))]])) }, ...(info ? [info] : [])];
+  // The train graph: distance against time, one line per train, stations as dashed lines (with a supply, the lowest
+  // voltage at any train below it).
+  if (lg) call(lab, 'subplot', num(2), num(1), num(1));
   call(lab, 'hold', str('on'));
   for (const x of run.trains) call(lab, 'plot', row(x.t.map((t) => t / 60)), row(x.s.map((s) => s / 1000)), str('LineWidth'), num(1.5));
   const tEnd = Math.max(...run.trains.map((x) => x.t[x.t.length - 1])) / 60;
@@ -109,5 +131,9 @@ def('railLine', (a, nout, lab) => {
   call(lab, 'hold', str('off')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('time (min)')); call(lab, 'ylabel', str('distance (km)'));
   const late = run.trains.reduce((m, x) => Math.max(m, x.arrive - x.depart - x.alone), 0);
   call(lab, 'title', str(`${run.trains.length} trains, ${run.signals === 'fixed' ? 'fixed blocks' : 'moving block'}: the latest ${(late / 60).toFixed(1)} min behind its time alone`));
+  if (lg && sup) {
+    call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', row(lg.t.map((t) => t / 60)), row(lg.minVolt), row([0, tEnd]), row([sup.vmin, sup.vmin]), str('--'));
+    call(lab, 'legend', str('lowest voltage at a train'), str('trains trip below')); call(lab, 'xlabel', str('time (min)')); call(lab, 'ylabel', str('volts')); call(lab, 'grid', str('on'));
+  }
   return [];
 });

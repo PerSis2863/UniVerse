@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
-import { ROUTES, TRAINS, railLine, routeLength } from '@/lib/lab/rail';
+import { ROUTES, SUPPLIES, TRAINS, railLine, routeLength, spaced, supplyFor } from '@/lib/lab/rail';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Railway → Several trains (M491b): trains leaving one after another along the same
@@ -23,19 +23,22 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
   const [gap, setGap] = useState(1.5);
   const [block, setBlock] = useState(400);
   const [freightFirst, setFreightFirst] = useState(false);
-  const graph = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
+  const [power, setPower] = useState(false);
+  const [subKm, setSubKm] = useState(2);
+  const graph = useRef<HTMLCanvasElement>(null), volts = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
 
   const route = useMemo(() => ROUTES[routeName](), [routeName]), L = routeLength(route);
   const run = useMemo(() => {
     const main = routeName === 'metro' ? TRAINS.metro : TRAINS.intercity;
     const list = Array.from({ length: count }, (_, k) => ({ train: k === 0 && freightFirst && routeName === 'intercity' ? TRAINS.freight : main, depart: k * gap * 60 }));
-    return railLine(route, list, { signals, block: routeName === 'metro' ? block : block * 4 });
-  }, [route, routeName, count, gap, signals, block, freightFirst]);
+    const sup = power ? { ...SUPPLIES[routeName](L), subs: spaced(L, subKm * (routeName === 'metro' ? 1000 : 7500)) } : null, feed = sup ? supplyFor(sup, 0.5) : null;
+    return { ...railLine(route, list, { signals, block: routeName === 'metro' ? block : block * 4, supply: feed?.step }), log: feed?.log ?? null, sup };
+  }, [route, routeName, L, count, gap, signals, block, freightFirst, power, subKm]);
 
   const draw = useEffectEvent(() => {
     const b = box.current;
     if (!b) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1), W = b.clientWidth - 24, H = Math.max(240, b.clientHeight - 40);
+    const dpr = Math.min(2, window.devicePixelRatio || 1), W = b.clientWidth - 24, H = Math.max(240, b.clientHeight - (run.log ? 180 : 40));
     const c = graph.current;
     if (!c || W <= 0) return;
     c.style.width = `${W}px`; c.style.height = `${H}px`; c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
@@ -59,6 +62,23 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
       x.t.forEach((t, i) => { if (t < x.depart || t > x.arrive + 1) return; if (started) g.lineTo(X(t), Y(x.s[i])); else { g.moveTo(X(t), Y(x.s[i])); started = true; } });
       g.stroke();
     });
+    // The substations as ticks on the distance axis.
+    if (run.sup) { g.fillStyle = '#f59e0b'; for (const x of run.sup.subs) g.fillRect(38, Y(x) - 1.5, 6, 3); }
+    // Under it: the lowest voltage at a running train, the line where trains trip dashed.
+    const vc = volts.current, lg = run.log, sup = run.sup;
+    if (vc && lg && sup) {
+      const h = 120;
+      vc.style.width = `${W}px`; vc.style.height = `${h}px`; vc.width = Math.round(W * dpr); vc.height = Math.round(h * dpr);
+      const v = vc.getContext('2d')!; v.setTransform(dpr, 0, 0, dpr, 0, 0);
+      v.fillStyle = bg; v.fillRect(0, 0, W, h);
+      const lo = Math.min(sup.vmin * 0.8, ...lg.minVolt), hi = sup.vmax * 1.03, VY = (x: number) => h - 12 - ((h - 24) * (x - lo)) / (hi - lo);
+      v.strokeStyle = '#dc2626'; v.setLineDash([5, 4]); v.beginPath(); v.moveTo(44, VY(sup.vmin)); v.lineTo(W - 12, VY(sup.vmin)); v.stroke(); v.setLineDash([]);
+      v.strokeStyle = '#f59e0b'; v.lineWidth = 1.5; v.beginPath();
+      lg.minVolt.forEach((x, i) => { const px = X(lg.t[i]), py = VY(x); if (i) v.lineTo(px, py); else v.moveTo(px, py); });
+      v.stroke();
+      v.fillStyle = ink; v.font = '11px Inter, system-ui, sans-serif';
+      v.fillText(`${sup.vmax} V`, 4, VY(sup.vmax) + 4); v.fillText(`${sup.v0} V`, 4, VY(sup.v0) + 4); v.fillText(`${sup.vmin} V`, 4, VY(sup.vmin) + 4);
+    }
   });
   useEffect(() => { draw(); });
   useEffect(() => { const b = box.current; if (!b) return; const ro = new ResizeObserver(() => draw()); ro.observe(b); return () => ro.disconnect(); }, []);
@@ -70,7 +90,13 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     </label>
   );
   const late = run.trains.map((x) => x.arrive - x.depart - x.alone), last = run.trains[run.trains.length - 1];
-  const facts: [string, string][] = [
+  const lg = run.log;
+  const facts: [string, string][] = lg ? [
+    ['Most delayed', `${(Math.max(...late) / 60).toFixed(1)} min (train ${late.indexOf(Math.max(...late)) + 1})`],
+    ['Lowest voltage', `${Math.min(...lg.minVolt).toFixed(0)} V${lg.tripped > 0 ? `, tripped ${lg.tripped.toFixed(0)} s` : ''}`],
+    ['From the substations · lost', `${lg.fromSubsKwh.toFixed(0)} kWh · ${lg.lossKwh.toFixed(0)} kWh`],
+    ['Braking reused · burnt', `${lg.regenUsedKwh.toFixed(0)} kWh · ${lg.regenWastedKwh.toFixed(0)} kWh`],
+  ] : [
     ['Last train arrives', Number.isFinite(last.arrive) ? `at ${(last.arrive / 60).toFixed(1)} min` : 'Not yet'],
     ['Most delayed', `${(Math.max(...late) / 60).toFixed(1)} min (train ${late.indexOf(Math.max(...late)) + 1})`],
     ['Held at signals, all trains', `${(run.trains.reduce((s, x) => s + x.held, 0) / 60).toFixed(1)} min`],
@@ -92,8 +118,11 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
         {range('Trains', count, 2, 8, 1, `${count}`, setCount)}
         {range('Minutes between departures', gap, routeName === 'metro' ? 0.5 : 2, routeName === 'metro' ? 4 : 15, routeName === 'metro' ? 0.5 : 1, `${gap}`, setGap)}
         {signals === 'fixed' && range('Block length', block, 200, 1000, 100, `${routeName === 'metro' ? block : block * 4} m`, setBlock)}
+        <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={power} onChange={(e) => setPower(e.target.checked)} className="h-4 w-4 accent-violet-600" />The power supply ({routeName === 'metro' ? '750 V' : '3 kV'} DC)</label>
+        {power && range('Substations every', subKm, 1, 5, 1, `${routeName === 'metro' ? subKm : subKm * 7.5} km`, setSubKm)}
+        {power && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each train draws from the substations (amber ticks) through the line’s resistance: far from them and with many trains pulling, the voltage sags and trains lose power; under {routeName === 'metro' ? '500' : '2,000'} V they trip. A braking train feeds the others; what nobody takes is burnt in its resistors.</p>}
         {routeName === 'intercity' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={freightFirst} onChange={(e) => setFreightFirst(e.target.checked)} className="h-4 w-4 accent-violet-600" />A slow freight train first</label>}
-        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each line is a train: steep means fast, flat means stopped. Where lines crowd together, trains are waiting for the one ahead. In code: <span className="font-mono">railLine</span> (example: railways.m).</p>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each line is a train: steep means fast, flat means stopped. Where lines crowd together, trains are waiting for the one ahead. In code: <span className="font-mono">railLine</span> with <span className="font-mono">{"'Supply'"}</span> (example: railways.m).</p>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The train graph">
         <div ref={box} className="flex min-h-0 flex-1 flex-col gap-2 p-3">
@@ -101,6 +130,7 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
             {run.trains.map((x, k) => <span key={k}><span className="me-1 inline-block h-0.5 w-4 align-middle" style={{ background: COLOURS[k % COLOURS.length] }} aria-hidden />{k + 1}{x.name === 'freight' ? ' freight' : ''}</span>)}
           </div>
           <canvas ref={graph} role="img" aria-label={`Train graph: ${run.trains.length} trains, distance against time; the most delayed ${(Math.max(...late) / 60).toFixed(1)} minutes late`} className="rounded-lg ring-1 ring-zinc-200 dark:ring-white/10" />
+          {lg && <canvas ref={volts} role="img" aria-label={`The lowest voltage at a train over time, down to ${Math.min(...lg.minVolt).toFixed(0)} V`} className="rounded-lg ring-1 ring-zinc-200 dark:ring-white/10" />}
         </div>
         <div className="grid grid-cols-4 gap-4 border-t border-zinc-200/80 px-4 py-3 text-xs dark:border-white/10" aria-live="polite">
           {facts.map(([a, b2]) => <div key={a}><p className="font-semibold text-zinc-500 dark:text-zinc-400">{a}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{b2}</p></div>)}

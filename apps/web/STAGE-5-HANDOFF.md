@@ -12888,6 +12888,30 @@ train first; the train graph with blocks and stations; static). Browser check ta
 timetables and their conflicts at junctions, two directions on single track with passing loops, the train ahead's own
 delays spreading (each train leaves on time).
 
+
+## M491c (24 Nov): Hyperion railways, the power supply
+
+`rail.ts`: `Supply` (nominal, no-load, lowest and highest voltage, a substation's resistance, the line's Ω/km there and
+back, substation positions), `SUPPLIES` (metro 750 V: 825 no-load, 500–950, 0.02 Ω, 0.03 Ω/km, every 2 km;
+intercity 3 kV: 3,400, 2,000–3,900, 0.08 Ω, 0.04 Ω/km, every 15 km), `spaced`. `solveSupply(sup, s, p)`: nodes
+(substations and trains) sorted by position, Kirchhoff at each, a tridiagonal solve (Thomas) iterated 40 times at most
+with half-step damping: a train's current is `P / max(V, vmin)` (**its current limit: without it, loads past what the
+line can carry have no answer and the voltage collapses to ~0**, seen with substations only at the ends);
+substations through diodes (off while the line is above their no-load voltage, never negative); a braking train's
+**chopper** as a stiff 1,000 S path to vmax when it would lift the line past it (first try scaled the braking power
+down by 0.9 per pass: with nobody to take it the voltage went to 3 MV). Results: volts at each train, each
+substation's power, line loss, the braking actually given. Checked by hand: 1 MW midway between two substations 2 km
+apart, V = 825 − 0.025·P/V (793.5 V). `supplyFor(sup, dt)` gives `railLine`'s `supply` callback (called each step
+with positions and last step's powers; returns each train's share of traction, V/vnom up to 1, 0 under vmin, which
+counts as tripped) and its log (lowest train voltage, substation kW, loss, kWh from substations, lost, braking reused
+and burnt). Checked: closer substations hold the voltage higher with less loss; alone, under 5% of a train's braking
+is reused, with five trains about 40%; substations only at a 5.2 km metro's ends trip trains and make them late.
+Language: `railLine(..., 'Supply', 'metro' | 'intercity' | struct, 'SubstationSpacing', m)` with a third output struct;
+drawn with the lowest voltage under the train graph. Window: Several trains → "The power supply (750 V / 3 kV DC)" and
+"Substations every"; the substations as amber ticks; a voltage chart with the trip line; facts become delay, lowest
+voltage, kWh from substations and lost, braking reused and burnt. Browser check tab `supply`. Example railways.m. Not
+built: AC (25 kV) lines with their reactance and booster transformers, rail-to-earth voltages, storage on the line.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

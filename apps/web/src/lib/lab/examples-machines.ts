@@ -247,5 +247,9 @@ figure; railLine('metro', trainModel('metro'), (0:4)*90, 'Signals', 'fixed', 'Bl
 lt = railLine('metro', trainModel('metro'), (0:4)*90, 'Signals', 'moving')   % Delay and Held in minutes
 % A slow freight train ahead of an intercity: it can't pass
 mix = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0 300])
+% The power supply: 750 V DC, substations every 2.6 km; the lowest voltage drawn under the train graph
+figure; railLine('metro', trainModel('metro'), (0:4)*60, 'Block', 400, 'Supply', 'metro', 'SubstationSpacing', 2600)
+[~, ~, sup] = railLine('metro', trainModel('metro'), (0:4)*60, 'Block', 400, 'Supply', 'metro', 'SubstationSpacing', 5200);
+fprintf('Substations only at the ends: down to %.0f V, trains tripped for %.0f s\\n', sup.MinVoltage, sup.TrippedSeconds)
 ` },
 ];

@@ -50,11 +50,31 @@ describe('Hyperion railways (M491)', () => {
     const mix = rl.railLine(rl.ROUTES.intercity(), [{ train: rl.TRAINS.freight, depart: 0 }, { train: rl.TRAINS.intercity, depart: 300 }]);
     expect(mix.trains[1].held).toBeGreaterThan(1200); expect(mix.trains[1].arrive).toBeGreaterThan(mix.trains[0].arrive);
   });
+  it('the power supply (M491c): the voltage by hand, closer substations, braking reused by other trains, a weak line slowing them', () => {
+    const r = rl.ROUTES.metro(), L = rl.routeLength(r), t = rl.TRAINS.metro, sup = rl.SUPPLIES.metro(L);
+    // 1 MW midway between two substations 2 km apart: each path 0.02 + 0.03 Ω, both 0.025 Ω: V = 825 − 0.025·P/V.
+    const one = rl.solveSupply({ ...sup, subs: [0, 2000] }, [1000], [1e6]), V = one.volts[0];
+    expect(V).toBeCloseTo(825 - (0.025 * 1e6) / V, 3); expect(one.subPower[0]).toBeCloseTo(one.subPower[1], 6);
+    // A braking train with nobody to take it: the diodes block, the substations give nothing.
+    const back = rl.solveSupply({ ...sup, subs: [0, 2000] }, [1000], [-1e6]);
+    expect(back.subPower.every((x) => x === 0)).toBe(true); expect(back.volts[0]).toBeLessThanOrEqual(sup.vmax + 30);
+    const go = (every: number, n: number) => { const sp = rl.supplyFor({ ...sup, subs: rl.spaced(L, every) }, 0.5); const run = rl.railLine(r, Array.from({ length: n }, (_, k) => ({ train: t, depart: k * 60 })), { block: 400, supply: sp.step }); return { log: sp.log, run }; };
+    const near = go(2000, 5), far = go(5200, 5), alone = go(2000, 1);
+    expect(Math.min(...near.log.minVolt)).toBeGreaterThan(Math.min(...far.log.minVolt));
+    expect(near.log.lossKwh).toBeLessThan(far.log.lossKwh);
+    // Alone, almost nothing it gives back is used; with trains around, much of it is.
+    expect(alone.log.regenUsedKwh).toBeLessThan(0.05 * alone.log.regenWastedKwh);
+    expect(near.log.regenUsedKwh).toBeGreaterThan(0.3 * near.log.regenWastedKwh);
+    // Substations only at the ends sag the line under five trains: they trip and arrive later.
+    expect(far.log.tripped).toBeGreaterThan(0);
+    expect(Math.max(...far.run.trains.map((x) => x.arrive))).toBeGreaterThan(Math.max(...rl.railLine(r, Array.from({ length: 5 }, (_, k) => ({ train: t, depart: k * 60 })), { block: 400 }).trains.map((x) => x.arrive)));
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
-    lab.run("t = trainModel('metro'); r = railRoute('metro'); [x, info] = trainRun(t, r, 'Coast', 0.1); m = info.Minutes; mine = railRoute([1000 0 0 80; 500 10 400 60], [0 1500]); [y, yi] = trainRun(t, mine); [h, n] = railHeadway(trainModel('intercity'), 200, 'Moving', 1); figure; trainRun(trainModel('intercity'), 'intercity'); vmax = t.MaxSpeed; [lt, lruns] = railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'fixed', 'Block', 400); dl = lt.Delay; nr = numel(lruns); figure; railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'moving'); lm = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0 300]); hm = lm.Held;");
+    lab.run("t = trainModel('metro'); r = railRoute('metro'); [x, info] = trainRun(t, r, 'Coast', 0.1); m = info.Minutes; mine = railRoute([1000 0 0 80; 500 10 400 60], [0 1500]); [y, yi] = trainRun(t, mine); [h, n] = railHeadway(trainModel('intercity'), 200, 'Moving', 1); figure; trainRun(trainModel('intercity'), 'intercity'); vmax = t.MaxSpeed; [lt, lruns] = railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'fixed', 'Block', 400); dl = lt.Delay; nr = numel(lruns); figure; railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'moving'); lm = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0 300]); hm = lm.Held; [st, sr, sinfo] = railLine('metro', trainModel('metro'), [0 60 120], 'Supply', 'metro', 'SubstationSpacing', 2600); mv = sinfo.MinVoltage; figure; railLine('metro', trainModel('metro'), [0 60], 'Supply', struct('Vnom', 750, 'V0', 825, 'Vmin', 500, 'Vmax', 950, 'Rs', 0.02, 'Rline', 0.03, 'Substations', [0 5200]));");
     const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
     expect(d('m')[0]).toBeGreaterThan(7); expect(d('vmax')[0]).toBeCloseTo(80, 9); expect(d('n')[0]).toBeGreaterThan(30);
+    expect(d('mv')[0]).toBeGreaterThan(400); expect(d('mv')[0]).toBeLessThan(750);
     expect(d('dl')[0]).toBeCloseTo(0, 5); expect(d('dl')[2]).toBeGreaterThan(0.3); expect(d('nr')).toEqual([3]); expect(d('hm')[1]).toBeGreaterThan(20);
   });
 });

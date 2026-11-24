@@ -193,3 +193,80 @@ export function railLine(r: Route, trains: LineTrain[], o: { signals?: 'fixed' |
   out.forEach((o2, k) => { o2.arrive = st[k].arrive; o2.held = st[k].held; if (Number.isNaN(o2.alone)) o2.alone = o2.arrive - o2.depart; });
   return { trains: out, blocks, signals, dt };
 }
+
+// ——— The power supply (M491c) ———
+// A DC line: substations along it (each a voltage behind a resistance, through diodes, so they can't take power back),
+// the contact line and rails between (ohms per km, there and back), and the trains as loads of the power they draw
+// (or give back braking). Solved each step as a chain of nodes by position (tridiagonal), the trains' current P / V
+// iterated to agree. A train's current is limited at what its power needs at the line's lowest voltage; below its
+// nominal voltage it gets that share of its power, under the lowest it trips; braking that would push the line past its
+// highest is burnt in the train's resistors.
+export interface Supply { vnom: number; v0: number; vmin: number; vmax: number; rs: number; rline: number; subs: number[] }
+/** Typical DC lines: 750 V (metro, third rail) and 3 kV (main line), substations every 2 km and 15 km. */
+export const SUPPLIES: Record<string, (L: number) => Supply> = {
+  metro: (L) => ({ vnom: 750, v0: 825, vmin: 500, vmax: 950, rs: 0.02, rline: 0.03, subs: spaced(L, 2000) }),
+  intercity: (L) => ({ vnom: 3000, v0: 3400, vmin: 2000, vmax: 3900, rs: 0.08, rline: 0.04, subs: spaced(L, 15000) }),
+};
+/** Substations every `every` metres from the start, the last at the end. */
+export function spaced(L: number, every: number) { const n = Math.max(1, Math.round(L / every)); return Array.from({ length: n + 1 }, (_, i) => (L * i) / n); }
+export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number }
+/** One moment: the voltage at each train and what each substation gives, for trains at `s` drawing `p` (W). */
+export function solveSupply(sup: Supply, s: number[], p: number[]) {
+  type Node = { x: number; sub: boolean; k: number };
+  const nodes: Node[] = [...sup.subs.map((x, k) => ({ x, sub: true, k })), ...s.map((x, k) => ({ x, sub: false, k }))].sort((a, b) => a.x - b.x || (a.sub ? -1 : 1));
+  const n = nodes.length, V = new Array<number>(n).fill(sup.v0), on = sup.subs.map(() => true), chop = s.map(() => false), GC = 1e3;
+  const G = nodes.slice(1).map((nd, i) => 1 / Math.max(1e-6, (sup.rline * (nd.x - nodes[i].x)) / 1000));
+  for (let it = 0; it < 40; it++) {
+    // Kirchhoff at each node: Σ G(V − Vn) + (substation: (V − v0)/rs) + (train: I) = 0, the train's I = P / V.
+    const a = new Array<number>(n).fill(0), b = new Array<number>(n).fill(0), c = new Array<number>(n).fill(0), d = new Array<number>(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      if (i > 0) { a[i] = -G[i - 1]; b[i] += G[i - 1]; }
+      if (i < n - 1) { c[i] = -G[i]; b[i] += G[i]; }
+      const nd = nodes[i];
+      if (nd.sub) { if (on[nd.k]) { b[i] += 1 / sup.rs; d[i] += sup.v0 / sup.rs; } else b[i] += 1e-9; }
+      // A train's current is limited (its most power at the lowest voltage): without it, loads past what the line can
+      // carry have no answer and the voltage collapses.
+      else {
+        d[i] -= p[nd.k] / Math.max(V[i], p[nd.k] > 0 ? sup.vmin : 1);
+        // A braking train's resistors (a chopper) take whatever would lift the line past vmax: a stiff path to vmax.
+        if (chop[nd.k]) { b[i] += GC; d[i] += GC * sup.vmax; }
+      }
+    }
+    // Thomas algorithm.
+    for (let i = 1; i < n; i++) { const w = a[i] / b[i - 1]; b[i] -= w * c[i - 1]; d[i] -= w * d[i - 1]; }
+    const nv = new Array<number>(n);
+    nv[n - 1] = d[n - 1] / b[n - 1];
+    for (let i = n - 2; i >= 0; i--) nv[i] = (d[i] - c[i] * nv[i + 1]) / b[i];
+    let change = 0;
+    for (let i = 0; i < n; i++) { change = Math.max(change, Math.abs(nv[i] - V[i])); V[i] = 0.5 * V[i] + 0.5 * Math.max(1, nv[i]); }
+    // A substation's diodes block when the line is above its voltage; braking that pushes a train past vmax is cut.
+    nodes.forEach((nd, i) => { if (nd.sub) on[nd.k] = V[i] < sup.v0 + 1e-6; else if (p[nd.k] < 0) chop[nd.k] = V[i] > sup.vmax; });
+    if (change < 1e-3 && it > 3) break;
+  }
+  const volts = s.map(() => 0), subP = sup.subs.map(() => 0);
+  let loss = 0;
+  const given = p.slice();
+  nodes.forEach((nd, i) => {
+    if (nd.sub) subP[nd.k] = on[nd.k] ? (sup.v0 * Math.max(0, sup.v0 - V[i])) / sup.rs : 0;
+    else { volts[nd.k] = V[i]; if (chop[nd.k]) given[nd.k] = Math.min(0, p[nd.k] + GC * Math.max(0, V[i] - sup.vmax) * V[i]); }
+    if (i < n - 1) loss += G[i] * (V[i] - V[i + 1]) ** 2;
+  });
+  return { volts, subPower: subP, loss, given };
+}
+/** A supply for `railLine`: returns the step function it calls and the log it fills. */
+export function supplyFor(sup: Supply, dt: number) {
+  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0 };
+  let time = 0;
+  const step = (s: number[], p: number[]) => {
+    const r = solveSupply(sup, s, p), j = 3.6e6;
+    const back = p.reduce((q, x) => q + Math.max(0, -x), 0), givenBack = r.given.reduce((q, x) => q + Math.max(0, -x), 0);
+    log.t.push(time); log.volts.push(r.volts); log.subPower.push(r.subPower.map((x) => x / 1000)); log.lossKw.push(r.loss / 1000);
+    const running = r.volts.filter((_, k) => p[k] !== 0);
+    log.minVolt.push(running.length ? Math.min(...running) : sup.v0);
+    log.fromSubsKwh += (r.subPower.reduce((q, x) => q + x, 0) * dt) / j; log.lossKwh += (r.loss * dt) / j;
+    log.regenUsedKwh += (givenBack * dt) / j; log.regenWastedKwh += ((back - givenBack) * dt) / j;
+    time += dt;
+    return r.volts.map((v, k) => { if (v < sup.vmin && p[k] > 0) { log.tripped += dt; return 0; } return Math.min(1, v / sup.vnom); });
+  };
+  return { step, log };
+}
