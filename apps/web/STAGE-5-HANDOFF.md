@@ -13141,6 +13141,17 @@ from the ends, two 4 MW / 200 kWh units hold the lowest voltage >1 kV higher and
 'Storage' works on AC; info MaxRailVolts. Window: Several trains → the power supply → Storage on AC too, "Rails to
 earth, most". Not built: the rails' bonding to earth at substations, stray currents on DC lines.
 
+## M489e (24 Nov): Hyperion aeroplanes, the propeller's gyroscopic pull and turbulence by height
+
+`flight.ts`: in `deriv6` a working propeller's angular momentum H = dir·Ip·ω (`Prop.inertia`, 1.6 kg·m²) adds −(ω × H):
+pitch moment −r·H, yaw moment q·H (nose down with a clockwise propeller from behind yaws left). `turbulenceAt(h, w20)`:
+MIL-F-8785C's low-altitude model (feet inside: scales h and h/(0.177 + 0.000823h)^1.2, σw 0.1·W20, σu,v σw /
+(…)^0.4), medium values above 610 m (533 m, 0.1·W20), blended between; `Wind.turbulence.w20` makes `flight6` filter each
+direction with its own σ and L at the current height. Checked: the gyroscopic yaw's sign both ways (against inertia 0),
+the formula at 30 m, the medium values, gustier along the way at 60 m than 800 m. Language: 'PropInertia',
+'TurbulenceWind20'. Window: All six → Rough → "Near the ground (60 m)". Not built: the propeller's gyroscopic load on
+the engine mount, turbulence's rotational parts (p, q, r gusts).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

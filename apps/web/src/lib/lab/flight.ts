@@ -239,7 +239,7 @@ export interface Wind {
   gust?: { at: number; length: number; up: number };
   /** Dryden turbulence: its strength (m/s rms in each direction; about 1.5 light, 3 moderate, 6 severe), the length
    * scale (m, 533 at medium heights) and a seed so a run repeats. */
-  turbulence?: { sigma: number; scale?: number; seed?: number };
+  turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number };
   /** Wind shear with height (M489d): the steady wind is what blows at `ref` metres (10, where it's measured) and grows
    * as (h / ref)^exponent (1/7 over open country, about 0.25 over towns) up to 500 m, steady above. */
   shear?: { exponent?: number; ref?: number };
@@ -248,6 +248,21 @@ export interface Wind {
    * grows with distance to the radius and dies away beyond, strongest near the ground (fading over 500 m), the
    * downdraught a bell of the same radius, slowing to nothing at the ground. */
   microburst?: { n: number; e: number; radius: number; outflow: number; down: number };
+}
+/** Turbulence by height (M489e, MIL-F-8785C's low-altitude model) for a wind of `w20` m/s at 6 m (20 ft): below 305 m
+ * the eddies are smaller near the ground (scale h across, h/(0.177 + 0.000823·h)^1.2 along, h in feet) and the vertical
+ * gusts weaker (0.1·W20; along and across 1/(0.177 + 0.000823·h)^0.4 times that); above 610 m the medium-height values
+ * (533 m, all three 0.1·W20); between, a straight blend. Strength (m/s rms) and scale (m) along, across, down. */
+export function turbulenceAt(h: number, w20: number) {
+  const low = (hm: number) => {
+    const ft = Math.max(10, hm / 0.3048), d = 0.177 + 0.000823 * ft, sw = 0.1 * w20;
+    return { s: [sw / d ** 0.4, sw / d ** 0.4, sw], L: [(ft / d ** 1.2) * 0.3048, (ft / d ** 1.2) * 0.3048, ft * 0.3048] };
+  };
+  const med = { s: [0.1 * w20, 0.1 * w20, 0.1 * w20], L: [533, 533, 533] };
+  if (h <= 305) return low(h);
+  if (h >= 610) return med;
+  const a = low(305), f = (h - 305) / 305;
+  return { s: a.s.map((x, i) => x + (med.s[i] - x) * f), L: a.L.map((x, i) => x + (med.L[i] - x) * f) };
 }
 /** The air's velocity (m/s, north, east, down) from the steady wind with its shear and a microburst, at a place. */
 export function windField(W: Wind, n: number, e: number, h: number): [number, number, number] {
@@ -270,7 +285,7 @@ export function windField(W: Wind, n: number, e: number, h: number): [number, nu
 // side and yaws the nose left (`slip`·T·fin arm), and at a high angle of attack the descending blade on the right
 // pulls harder (the P-factor, `pf` m per radian of angle). Rough light-aeroplane figures, not any one design.
 export interface Engines { count: 1 | 2; arm?: number; fail?: { at: number; which?: 0 | 1 }; feather?: boolean }
-export interface Prop { dir: 1 | -1; rpm?: number; slip?: number; pf?: number; fin?: number; radius?: number; rigged?: boolean }
+export interface Prop { dir: 1 | -1; rpm?: number; slip?: number; pf?: number; fin?: number; radius?: number; rigged?: boolean; inertia?: number }
 interface Pw { working: [number, number]; count: 1 | 2; arm: number; feather: boolean; prop?: Prop; ref?: [number, number] }
 /** The slowest speed (m/s) at which full rudder holds a twin's heading with one engine at full power and the other
  * windmilling (wings level; banking 5° towards the good engine, as pilots do, lowers it a little). NaN if none. */
@@ -323,12 +338,16 @@ function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air, pw: 
   const share = Tall / pw.count, Te = [share * pw.working[0], pw.count === 2 ? share * pw.working[1] : 0], qbar = 0.5 * rho * V * V;
   const R = pw.prop?.radius ?? (pw.count === 2 ? 0.9 : 0.95), mill = (i: number) => (pw.feather || pw.working[i] > 0 || (i === 1 && pw.count === 1) ? 0 : 0.1 * qbar * Math.PI * R * R);
   const T = Te[0] + Te[1] - mill(0) - mill(1);
-  let Lp = 0, Np = pw.count === 2 ? pw.arm * (Te[0] - Te[1]) + pw.arm * (mill(1) - mill(0)) : 0;
+  let gyM = 0, gyN = 0, Lp = 0, Np = pw.count === 2 ? pw.arm * (Te[0] - Te[1]) + pw.arm * (mill(1) - mill(0)) : 0;
   if (pw.prop) {
     const pr = pw.prop, omega = ((pr.rpm ?? 2400) * 2 * Math.PI) / 60, shaft = Math.max(0, c.thr) * powerAt(ac, s.h) / pw.count;
     for (let i = 0; i < pw.count; i++) {
       if (!pw.working[i]) continue;
       Lp += (-pr.dir * shaft) / omega;
+      // Gyroscopic (M489e): the spinning propeller's angular momentum H = Ip·ω along the nose (dir 1 points it forward);
+      // turning the aeroplane at (p, q, r) needs −(ω × H): pitching yaws it, yawing pitches it.
+      const H = pr.dir * (pr.inertia ?? 1.6) * omega;
+      gyM += -s.r * H; gyN += s.q * H;
       Np += -pr.dir * Te[i] * ((pr.slip ?? 0.015) * (pr.fin ?? 4.5) + (pr.pf ?? 0.25) * alpha);
     }
     // Rigged (the usual): the fin's offset and the wings' set cancel what the propeller does at the trimmed power, so
@@ -337,8 +356,8 @@ function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air, pw: 
   }
   const Y = qS * (lat.cyb * beta + lat.cydr * c.dr);
   const Lm = qS * ac.b * (lat.clb * beta + lat.clp * ph + lat.clr * rh + lat.clda * c.da + lat.cldr * c.dr) + Lp;
-  const Mm = qS * ac.c * (ac.cm0 + ac.cma * alpha + ac.cmq * ((s.q * ac.c) / (2 * V)) + ac.cmde * c.de);
-  const Nm = qS * ac.b * (lat.cnb * beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * c.da + lat.cndr * c.dr) + Np;
+  const Mm = qS * ac.c * (ac.cm0 + ac.cma * alpha + ac.cmq * ((s.q * ac.c) / (2 * V)) + ac.cmde * c.de) + gyM;
+  const Nm = qS * ac.b * (lat.cnb * beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * c.da + lat.cndr * c.dr) + Np + gyN;
   const g = toBody(s, [0, 0, G0]);
   const Fx = T + L * Math.sin(alpha) - D * Math.cos(alpha), Fz = -L * Math.cos(alpha) - D * Math.sin(alpha);
   const du = Fx / ac.m + g[0] + s.r * s.v - s.q * s.w, dv = Y / ac.m + g[1] + s.p * s.w - s.r * s.u, dw = Fz / ac.m + g[2] + s.q * s.u - s.p * s.v;
@@ -403,7 +422,11 @@ export function flight6(ac: Aircraft, T: number, o: {
       const into = (t - gustStart) * tr.V;
       if (into < W.gust.length) up = (W.gust.up / 2) * (1 - Math.cos((2 * Math.PI * into) / W.gust.length));
     }
-    if (tb && tb.sigma > 0) { const a = Math.exp((-tr.V * dt) / Lt), b = tb.sigma * Math.sqrt(1 - a * a); for (let i = 0; i < 3; i++) turb[i] = a * turb[i] + b * rnd(); }
+    if (tb && tb.w20) {
+      // By height (M489e): each direction its own strength and scale where the aeroplane is now.
+      const th2 = turbulenceAt(s.h, tb.w20);
+      for (let i = 0; i < 3; i++) { const a = Math.exp((-tr.V * dt) / th2.L[i]), b = th2.s[i] * Math.sqrt(1 - a * a); turb[i] = a * turb[i] + b * rnd(); }
+    } else if (tb && tb.sigma > 0) { const a = Math.exp((-tr.V * dt) / Lt), b = tb.sigma * Math.sqrt(1 - a * a); for (let i = 0; i < 3; i++) turb[i] = a * turb[i] + b * rnd(); }
     const base = W.shear || W.microburst ? windField(W, s.n, s.e, s.h) : steady;
     const wind: Air = [base[0] + turb[0], base[1] + turb[1], base[2] + turb[2] - up];
     if (eng?.fail && t >= eng.fail.at) pw.working = eng.count === 2 ? ((eng.fail.which ?? 1) === 0 ? [0, 1] : [1, 0]) : [0, 0];

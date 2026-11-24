@@ -98,4 +98,18 @@ describe('Hyperion flight in six directions (M489c)', () => {
     const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('i', 'Vmc')).toBeCloseTo(toMat(lab.vars.get('v')!).d[0], 6); expect(f('j', 'MaxAirspeed')).toBeGreaterThan(51);
   });
+  it("the propeller's gyroscopic pull and turbulence by height (M489e)", { timeout: 60_000 }, () => {
+    const ac = fl.PLANE_DEFAULT, last = (x: number[]) => x[x.length - 1];
+    // Pitching the nose down with a clockwise propeller (from behind) yaws it left; the other way round, right.
+    const go = (prop: fl.Prop) => last(fl.flight6(ac, 4, { V0: 50, h0: 1000, prop, elevator: (t) => (t < 1 ? 0.08 : 0) }).psi);
+    expect(go({ dir: 1 }) - go({ dir: 1, inertia: 0 })).toBeLessThan(-1e-3);
+    expect(go({ dir: -1 }) - go({ dir: -1, inertia: 0 })).toBeGreaterThan(1e-3);
+    // MIL-F-8785C at 30 m with a 15 m/s wind: vertical 1.5 m/s rms over 30 m eddies; above 610 m all 1.5 m/s over 533 m.
+    const lo = fl.turbulenceAt(30, 15), d = 0.177 + 0.000823 * (30 / 0.3048);
+    expect(lo.s[2]).toBeCloseTo(1.5, 9); expect(lo.L[2]).toBeCloseTo(30, 6); expect(lo.s[0]).toBeCloseTo(1.5 / d ** 0.4, 9);
+    expect(fl.turbulenceAt(1000, 15)).toEqual({ s: [1.5, 1.5, 1.5], L: [533, 533, 533] });
+    // Flying through it: gustier along the way near the ground than high up.
+    const rms = (h0: number) => { const r = fl.flight6(ac, 60, { V0: 50, h0, wind: { turbulence: { sigma: 0, w20: 15, seed: 2 } }, holdHeight: () => h0, holdSpeed: 50, holdHeading: () => 0, yawDamper: true, points: 3000 }); return Math.sqrt(r.wind.reduce((q, x) => q + x[0] ** 2, 0) / r.wind.length); };
+    expect(rms(60)).toBeGreaterThan(1.5 * rms(800));
+  });
 });

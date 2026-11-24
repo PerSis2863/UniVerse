@@ -141,6 +141,9 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   const wind: fl.Wind = {};
   if (o.get('wind')) { const w = toMat(o.get('wind')!).d; if (w.length !== 3 || ![...w].every((x) => Math.abs(x) <= 60)) throw new LabError("'Wind' is [north east down] in m/s (the way the air moves), each up to 60."); wind.steady = [w[0], w[1], w[2]]; }
   if (o.get('gust')) { const g = toMat(o.get('gust')!).d; if (g.length !== 3 || !(g[0] >= 0 && g[1] > 0 && Math.abs(g[2]) <= 30)) throw new LabError("'Gust' is [start (s) length (m) up (m/s)]: a '1 − cos' gust, up to 30 m/s."); wind.gust = { at: g[0], length: g[1], up: g[2] }; }
+  // By height (M489e): 'TurbulenceWind20', the wind 6 m up (m/s), sets strength and scale from the height each moment.
+  const w20 = num1('turbulencewind20');
+  if (w20 !== undefined) { if (!(w20 >= 0 && w20 <= 40)) throw new LabError("'TurbulenceWind20' is the wind 6 m up, 0 to 40 m/s."); wind.turbulence = { sigma: 0, w20, seed: num1('seed') }; }
   const sig = num1('turbulence');
   if (sig !== undefined) { if (!(sig >= 0 && sig <= 15)) throw new LabError("'Turbulence' is its strength, 0 to 15 m/s (1.5 light, 3 moderate, 6 severe)."); wind.turbulence = { sigma: sig, scale: num1('turbulencescale'), seed: num1('seed') }; }
   // Wind shear (M489d): 'Shear', the exponent (1/7 open country; the 'Wind' is then what blows 10 m up), and
@@ -159,7 +162,7 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   const engines: fl.Engines | undefined = ne === 2 || fail ? { count: ne as 1 | 2, arm, fail: fail && { at: fail[0], which: ((fail[1] ?? 2) - 1) as 0 | 1 }, feather: !!num1('feather') } : undefined;
   const head = fn('holdheading', 'The heading to hold');
   const r = fl.flight6(ac, T, {
-    engines, prop: pd ? { dir: pd as 1 | -1 } : undefined,
+    engines, prop: pd ? { dir: pd as 1 | -1, inertia: num1('propinertia') } : undefined,
     V0, h0, lat: latOf(o.get('lateral')), wind,
     elevator: fn('elevator', 'The elevator'), aileron: fn('aileron', 'The aileron'), rudder: fn('rudder', 'The rudder'), throttle: fn('throttle', 'The throttle'),
     holdHeight: fn('holdheight', 'The height to hold'), holdSpeed: num1('holdspeed'), holdHeading: head && ((t: number) => rad(head(t))),
