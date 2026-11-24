@@ -47,4 +47,27 @@ describe('Hyperion space flight (M490)', () => {
     expect(d('ss')[0]).toBeCloseTo(98.19, 1); expect(d('fell')).toEqual([0]);
     expect(d('jd2')[0]).toBe(2451545); expect(d('jd')[0]).toBeGreaterThan(2461119); expect(Math.hypot(...d('mp')) / 1000).toBeCloseTo(368410, -3);
   });
+  it('air drag (M490c): density table, the orbit shrinking at the rate the formula gives, a low orbit falling', { timeout: 30_000 }, () => {
+    expect(sp.airDensity(0)).toBeCloseTo(1.225, 6);
+    expect(sp.airDensity(400)).toBeCloseTo(3.725e-12, 15);
+    expect(sp.airDensity(420) / sp.airDensity(400)).toBeCloseTo(Math.exp(-20 / 58.515), 6);
+    // Two days at 400 km, bc 0.01: the semi-major axis falls by ρ·bc·√(μa) a second (±25%: the air turns with the
+    // Earth, the orbit isn't quite circular, the bulge stirs a).
+    const a0 = sp.RE + 400, s = sp.toState({ a: a0, e: 0, i: 0.9, raan: 0, argp: 0, nu: 0 }), T = 2 * 86400, bc = 0.01;
+    const meanA = (r: ReturnType<typeof sp.propagate>, from: number) => { const xs = r.r.slice(from).map((q, k) => sp.toElements(q, r.v[from + k]).a); return xs.reduce((p, x) => p + x, 0) / xs.length; };
+    const per = Math.round(sp.period(a0) / 10);
+    const run = sp.propagate(s.r, s.v, T, { dt: 10, drag: bc, points: 1e6 }), still = sp.propagate(s.r, s.v, T, { dt: 10, points: 1e6 });
+    const fell = (meanA(still, run.r.length - per) - meanA(run, run.r.length - per)) * 1000, want = sp.airDensity(400) * bc * Math.sqrt(sp.MU * a0) * 1e6 * T;
+    expect(fell / want).toBeGreaterThan(0.75); expect(fell / want).toBeLessThan(1.25);
+    // A 160 km orbit falls within days; the station's lasts about a year or two; 800 km lasts for decades.
+    const low = sp.toState({ a: sp.RE + 160, e: 0, i: 0.9, raan: 0, argp: 0, nu: 0 });
+    expect(sp.propagate(low.r, low.v, 10 * 86400, { dt: 5, drag: 0.02, points: 50 }).crashed).toBe(true);
+    expect(sp.decayTime(160, 0.02)).toBeLessThan(5);
+    const iss = sp.decayTime(400, 0.008); expect(iss).toBeGreaterThan(150); expect(iss).toBeLessThan(1500);
+    expect(sp.decayTime(800, 0.01)).toBeGreaterThan(20 * 365);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("rho = airDensity([0 400e3]); d = orbitDecay(400e3, 0.008); [r, v] = keplerian2ijk(6378137+300e3, 0, 51.6, 0, 0, 0); [tr, fell] = orbitPropagate(r, v, 6000, 'Drag', 0.01);");
+    expect([...toMat(lab.vars.get('rho')!).d][0]).toBeCloseTo(1.225, 6); expect([...toMat(lab.vars.get('fell')!).d]).toEqual([0]);
+    expect([...toMat(lab.vars.get('d')!).d][0]).toBeCloseTo(iss, 6);
+  });
 });

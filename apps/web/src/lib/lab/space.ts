@@ -102,11 +102,39 @@ export function thirdBody(r: V3, s: V3, mu: number): V3 {
   return [mu * (d[0] / dn - s[0] / sn), mu * (d[1] / dn - s[1] / sn), mu * (d[2] / dn - s[2] / sn)];
 }
 
+// ——— Air drag (M490c) ———
+// Vallado's exponential atmosphere (Fundamentals of Astrodynamics, table 8-4): base height (km), density there (kg/m³)
+// and scale height (km), for average solar activity. Real density swings several times with the Sun's 11-year cycle.
+const ATM: [number, number, number][] = [[0, 1.225, 7.249], [25, 3.899e-2, 6.349], [30, 1.774e-2, 6.682], [40, 3.972e-3, 7.554], [50, 1.057e-3, 8.382], [60, 3.206e-4, 7.714], [70, 8.77e-5, 6.549], [80, 1.905e-5, 5.799], [90, 3.396e-6, 5.382], [100, 5.297e-7, 5.877], [110, 9.661e-8, 7.263], [120, 2.438e-8, 9.473], [130, 8.484e-9, 12.636], [140, 3.845e-9, 16.149], [150, 2.07e-9, 22.523], [180, 5.464e-10, 29.74], [200, 2.789e-10, 37.105], [250, 7.248e-11, 45.546], [300, 2.418e-11, 53.628], [350, 9.518e-12, 53.298], [400, 3.725e-12, 58.515], [450, 1.585e-12, 60.828], [500, 6.967e-13, 63.822], [600, 1.454e-13, 71.835], [700, 3.614e-14, 88.667], [800, 1.17e-14, 124.64], [900, 5.245e-15, 181.05], [1000, 3.019e-15, 268]];
+/** The air's density (kg/m³) at a height (km). */
+export function airDensity(h: number) {
+  if (!(h >= 0)) return ATM[0][1];
+  const b = ATM.findLast((x) => x[0] <= h)!;
+  return b[1] * Math.exp(-(h - b[0]) / b[2]);
+}
+/** Drag's pull (km/s²) on a satellite at r (km) moving at v (km/s) with ballistic coefficient `bc` = Cd·A/m (m²/kg),
+ * through air turning with the Earth. ½ρ·bc·|w|·w with w in m/s, given back in km/s². */
+export function dragAccel(r: V3, v: V3, bc: number): V3 {
+  const w: V3 = [v[0] + WE * r[1], v[1] - WE * r[0], v[2]], rho = airDensity(norm(r) - RE), k = -0.5 * rho * bc * 1000 * norm(w);
+  return sc(w, k);
+}
+/** About how long (days) a circular orbit h km up lasts before it reaches 120 km (it then falls within a day): the
+ * semi-major axis shrinks by ρ·bc·√(μa) each second. Infinity past 100 years. */
+export function decayTime(h: number, bc: number) {
+  let a = RE + h, t = 0;
+  while (a - RE > 120) {
+    const rate = airDensity(a - RE) * bc * Math.sqrt(MU * a) * 1000, step = Math.min(86400 * 5, Math.max(60, 0.5 / Math.max(rate, 1e-12)));
+    a -= rate * step; t += step;
+    if (t > 100 * 365.25 * 86400) return Infinity;
+  }
+  return t / 86400;
+}
+
 export interface OrbitRun { t: number[]; r: V3[]; v: V3[]; lat: number[]; lon: number[]; alt: number[]; raan: number[]; crashed: boolean }
 /** Propagates position and velocity for T seconds (RK4, step dt), with the ground track (the Earth turning under it).
  * With a start date `jd0` (Julian) the Earth's rotation angle comes from it (unless `gst0` is given), and `sun` and
  * `moon` add their pull, found where they are at each moment. */
-export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: number; points?: number; gst0?: number; jd0?: number; sun?: boolean; moon?: boolean } = {}): OrbitRun {
+export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: number; points?: number; gst0?: number; jd0?: number; sun?: boolean; moon?: boolean; drag?: number } = {}): OrbitRun {
   // The step shrunk a little so the last one lands exactly at T.
   const n = Math.max(1, Math.ceil(T / (o.dt ?? 10))), dt = T / n, every = Math.max(1, Math.floor(n / (o.points ?? 2000))), j2 = o.j2 ?? true;
   let r = r0, v = v0, crashed = false;
@@ -115,7 +143,7 @@ export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: num
   // The Sun and Moon move little in a step: found once at its start, middle and end.
   let bodies: [V3, number][][] = [];
   const at = (t: number): [V3, number][] => [...(o.sun ? [[sunPosition(jd0 + t / 86400), MU_SUN] as [V3, number]] : []), ...(o.moon ? [[moonPosition(jd0 + t / 86400), MU_MOON] as [V3, number]] : [])];
-  const f = (x: V3, y: V3, which: number): [V3, V3] => { let g = gravity(x, j2); for (const [s, mu] of bodies[which] ?? []) g = add(g, thirdBody(x, s, mu)); return [y, g]; };
+  const f = (x: V3, y: V3, which: number): [V3, V3] => { let g = gravity(x, j2); if (o.drag) g = add(g, dragAccel(x, y, o.drag)); for (const [s, mu] of bodies[which] ?? []) g = add(g, thirdBody(x, s, mu)); return [y, g]; };
   for (let k = 0; k <= n; k++) {
     const t = k * dt;
     if (k % every === 0 || k === n) {
@@ -123,7 +151,8 @@ export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: num
       out.t.push(t); out.r.push(r); out.v.push(v); out.lat.push(lat); out.lon.push(Math.atan2(Math.sin(lon), Math.cos(lon))); out.alt.push(rn - RE); out.raan.push(toElements(r, v).raan);
     }
     if (k === n) break;
-    if (norm(r) < RE) { crashed = true; break; }
+    // With drag a satellite is gone once it's 100 km up: it burns up within minutes.
+    if (norm(r) < RE + (o.drag ? 100 : 0)) { crashed = true; break; }
     if (o.sun || o.moon) bodies = [at(t), at(t + dt / 2), at(t + dt)];
     const [a1, b1] = f(r, v, 0), [a2, b2] = f(add(r, sc(a1, dt / 2)), add(v, sc(b1, dt / 2)), 1), [a3, b3] = f(add(r, sc(a2, dt / 2)), add(v, sc(b2, dt / 2)), 1), [a4, b4] = f(add(r, sc(a3, dt)), add(v, sc(b3, dt)), 2);
     r = add(r, sc(add(add(a1, sc(a2, 2)), add(sc(a3, 2), a4)), dt / 6));

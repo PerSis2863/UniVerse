@@ -221,6 +221,13 @@ a2 = orbitPropagate(gr, gv, 60*86400, 'Step', 120, 'Epoch', [2026 1 1], 'Sun', 1
 [~, ~, i2] = ijk2keplerian([a2.X(end) a2.Y(end) a2.Z(end)], [a2.Vx(end) a2.Vy(end) a2.Vz(end)]);
 fprintf('In 60 days the Sun and Moon tip it %.3f degrees (about %.2f a year)\\n', i2 - i1, (i2 - i1)*365.25/60)
 moonPosition([2026 1 1])                       % where the Moon is (m)
+% Air drag: how long a low orbit lasts, and one skimming the air falling
+for h = [300 400 500 600]
+  fprintf('%d km up: about %.0f days\\n', h, orbitDecay(h*1e3, 0.01))
+end
+[lr, lv] = keplerian2ijk(6378137 + 175e3, 0.001, 51.6, 0, 0, 0);
+[tr, fell] = orbitPropagate(lr, lv, 2*86400, 'Drag', 0.01);
+fprintf('Fell: %d after %.1f hours\\n', fell, tr.Time(end)/3600)
 ` },
   { name: 'railways.m', code: `% Railways: running a train along a line, driving to save energy, and how close trains can follow
 t = trainModel('metro');

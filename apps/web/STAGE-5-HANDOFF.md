@@ -12912,6 +12912,20 @@ drawn with the lowest voltage under the train graph. Window: Several trains → 
 voltage, kWh from substations and lost, braking reused and burnt. Browser check tab `supply`. Example railways.m. Not
 built: AC (25 kV) lines with their reactance and booster transformers, rail-to-earth voltages, storage on the line.
 
+## M490c (24 Nov): Hyperion orbits, air drag
+
+The owner pasted M491c's left-outs (24 Nov), read as "build these" (all five, one commit each). `space.ts`: Vallado's
+exponential atmosphere (table 8-4, 0–1,000 km, average solar activity: the real density swings several times over the
+Sun's cycle, said in help) as `airDensity(h km)`; `dragAccel(r, v, bc)` with the air turning with the Earth (w = v − ω×r)
+and bc = Cd·A/m in m²/kg (units: ½ρ·bc·|w|·w with w in m/s, back in km/s², so the factor is 1000); `propagate`'s
+`drag` (a run with drag ends as crashed at 100 km, where it burns up); `decayTime(h, bc)`: the circular orbit's a
+shrinking by ρ·bc·√(μa) a second, stepped to 120 km. Checked: the numerical run's mean a falls at that rate within
+25% over two days at 400 km; 160 km falls within days; the station (bc 0.008) lasts ~390 days; 800 km decades.
+Language: `orbitPropagate(..., 'Drag', 0.01)`, `airDensity(h m)`, `orbitDecay(h m, bc)` (days). Window: Orbit → "Air
+drag (a small satellite, average Sun)", a fifth orbit **Skimming** (175 km, turns drag on), the fact "Air drag brings it
+down in" in place of "Round in", "burnt up" at the end. Example orbits.m. Not built: the Sun's cycle (F10.7) and
+NRLMSISE-00, a satellite's attitude changing its area, solar radiation pressure.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
