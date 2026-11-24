@@ -13055,3 +13055,37 @@ soma; 1 kHz kept and 50 Hz cut by the band-pass, the notch alone killing 50 and 
 4 Hz and 80 mV of hum sorted after filtering (> 85% found, > 90% agreeing); ABF2 and NWB read back. Not built: ABF 1,
 NWB's processing modules and units tables, channel types other than HH's on the tree, 3D views of the morphology (drawn
 from above), spines.
+
+## M518 (24 Nov): Hyperion physics, more left-outs
+
+From M515's "Not built". `physics-more.ts` (pure) and its language part at the end of `physics-lab.ts`.
+**Orientation** (`spinBody`): state [ω (body), q (scalar first, body → space)], Euler's equations with a torque,
+q' = ½ q ⊗ (0, ω), `rk45` at 1e-11, q renormalised on output; gravity for a top on a fixed point as m·g·l with the centre
+of mass on the body's third axis and gravity down space z (body torque = l e3 × (−mg Rᵀẑ)); reports the third axis and
+L in space and the energy. **Real rays** (`traceSurfaces`): surfaces [R t n (Vd)], the first vertex at z = 0, light
+from −z, the stop at the first surface; the sphere's intersection on the vertex's side (−b − √ for R > 0, + for R < 0),
+vector Snell, total reflection drops the ray; n(λ) by two-term Cauchy from nd and Vd (F, d, C lines); `axisCrossing`,
+`paraxialFocus` (a ray at 1e-5 of the aperture), `spot` (hexagonal rings filling the pupil, field angle in y–z), an
+optional `paths` record for drawing. **Schwarzschild** (G = c = M = 1): bound orbits from their turning points
+(1/L² = (u1 + u2)/2 − (u1² + u1u2 + u2²); refused unless the cubic's third root u3 = ½ − u1 − u2 lies above u1);
+u'' = 1/L² − u + 3u² by rk45, perihelia where u' changes sign; light u'' = −u + 3u² from u = 0, u' = 1/b; both
+right-hand sides frozen once u > 0.6 (inside the horizon) so the solver doesn't chase the singularity.
+`perihelionShift` in SI. **Wave packet** (`wavePacket`): Crank–Nicolson in eV, nm, fs (ħ = 0.6582119569 eV·fs,
+ħ²/2m from `HB2M`), ψ = 0 beyond the grid, the tridiagonal complex factorisation done once, |ψ|² saved at the asked
+times. **2D/3D** (`boundStates`): LOBPCG on [X W P] with modified Gram–Schmidt twice (dropping dependent vectors) and
+Rayleigh–Ritz by `symEig` (sim/modal.ts), block size states + 3, deterministic start; preconditioner the exact inverse
+of (−(ħ²/2m)∇² + mean(V − Vmin)) by dense sine transforms along each axis (O(n·N) per axis); stops at residual
+< 1e-6 × scale or when the energies stop moving (< 1e-10 × scale) with residuals under 1e-3 × scale (degenerate states
+converge slowly: a 24³ oscillator takes ~4 s). In the language V is in meshgrid's layout (rows y) or a function; ours
+runs x fastest, converted both ways. Language: `rigidRotation`, `lensAberration`, `spotDiagram`, `realRayTrace`,
+`schwarzschildOrbit`, `lightBending`, `perihelionShift`, `wavePacket`, `schrodinger2D`, `schrodinger3D`. Example
+`physics3.m`. Tests: a free symmetric body's ω1 = A cos((I3 − I1)/I1 ω3 t) to 1e-6 and L in space fixed to 1e-7; a
+fast top precessing at mgl/(I3ω3) within 5% with energy to 1e-7; one refracting surface against the exact
+sine-rule crossing to 1e-9 and nR/(n − 1); a plano-convex lens's aberration negative and growing as h², blue focus
+short of red, best focus spot under half the paraxial one, the image height f tan θ; precession and deflection
+within 1% of 6πM/(a(1 − e²)) and 4M/b far out, capture at b = 5.1 and not 5.3, Mercury's 43″; a free packet's norm
+to 1e-6, its spread σ√(1 + (ħt/2mσ²)²) and speed; a barrier's transmitted share against the plane waves' transmission
+averaged over the packet's momenta (to 0.005); the 2D box against the discrete eigenvalues to 1e-7 (with the (1,2),
+(2,1) pair); the 3D oscillator's 3/2 and threefold 5/2 ħω within 5%. Not built: contact between rigid shapes other than
+disks, aspheres and Seidel coefficients, Kerr (spinning) black holes and orbits out of the plane, time-dependent
+packets in 2D, 3D views of 3D states (slices only).

@@ -4,12 +4,14 @@ import { type Lab } from './interp';
 import { mat, num, str, toMat, type Value } from './values';
 import * as ph from './physics';
 import * as pp from './physics-plus';
+import * as pm from './physics-more';
 import { call, col, def, lines, need, nums, one, options, optNum, record, row, rows } from './sci-kit';
 
 // Hyperion's physics in the language (M497): projectile, pendulum, pendulumPeriod, doublePendulum, nbody,
 // chargedParticle, stringWave, slitPattern, waveField, efield. Our own names (MATLAB has no physics toolbox functions
 // like these). Each drawing takes 'At', t: the state at that moment, so a live slider on t (and Sweep) animates it.
-// M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
+// M518: rigidRotation, lensAberration, spotDiagram, realRayTrace, schwarzschildOrbit, lightBending, perihelionShift,
+// wavePacket, schrodinger2D, schrodinger3D. M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
 // relativistic, minkowskiDiagram, chargedParticle's 'Relativistic', schrodinger1D, finiteWell, tunneling,
 // transmission, rigidBody, collide1d, diskCollisions.
 
@@ -357,3 +359,160 @@ def('diskCollisions', (a, nout, lab) => {
   call(lab, 'title', str(`t = ${at.toPrecision(3)}: ${res.hits.pairs} collisions between disks, ${res.hits.walls} with the walls`));
   return [];
 });
+
+// ——— M518: orientation, real lenses, Schwarzschild, wave packets, 2D and 3D wells ———
+const wrapP = <T>(f: () => T): T => { try { return f(); } catch (e) { if (e instanceof LabError) throw e; throw new LabError(e instanceof Error ? e.message : String(e)); } };
+def('rigidRotation', (a, nout, lab) => {
+  const I = nums(a[0], 'The principal moments [I1 I2 I3]'), w0 = nums(a[1], 'The body rates [w1 w2 w3]'), T = need(a[2], 'The time');
+  const o = options(a, 3, ['Orientation', 'Gravity', 'Points'], 'rigidRotation'), q0 = o.has('Orientation') ? nums(o.get('Orientation')) : [1, 0, 0, 0], mgl = optNum(o, 'Gravity', 0), n = Math.round(optNum(o, 'Points', 1000));
+  if (I.length !== 3 || I.some((x) => !(x > 0)) || w0.length !== 3 || !(T > 0)) throw new LabError('rigidRotation([I1 I2 I3], [w1 w2 w3], T): positive moments and time.');
+  if (q0.length !== 4 || !(Math.hypot(...q0) > 0)) throw new LabError("'Orientation' is a quaternion [w x y z] (scalar first).");
+  if (!(n >= 10 && n <= 20000)) throw new LabError("'Points' is 10 to 20,000.");
+  const r = wrapP(() => pm.spinBody(I, w0, q0, steps(T, n), mgl));
+  if (nout > 0) return [col(r.t), rows(r.w), rows(r.q), rows(r.axis), rows(r.L)];
+  call(lab, 'plot3', row(r.axis.map((v) => v[0])), row(r.axis.map((v) => v[1])), row(r.axis.map((v) => v[2])), str('LineWidth'), num(1.5));
+  call(lab, 'xlabel', str('x')); call(lab, 'ylabel', str('y')); call(lab, 'zlabel', str('z')); call(lab, 'grid', str('on')); call(lab, 'axis', str('equal'));
+  call(lab, 'title', str(mgl ? 'The tip of a top: precession and nutation' : 'Where the body\'s third axis points'));
+  const dE = Math.max(...r.energy) - Math.min(...r.energy);
+  lab.host.out(`Energy ${r.energy[0].toPrecision(6)} (drift ${dE.toExponential(1)})${mgl ? '' : `, L in space [${r.L[0].map((v) => v.toPrecision(5)).join(' ')}]`}\n`);
+  return [];
+});
+const lensOf = (v: Value | undefined): pm.Surface[] => {
+  const M = toMat(v ?? mat(0, 0), 'The lens');
+  if (!M.r || (M.c !== 3 && M.c !== 4)) throw new LabError('A lens is one row per surface: [radius thickness index] or [radius thickness nd Vd] (mm; Inf for flat; the index after the surface; the last thickness unused).');
+  const S = Array.from({ length: M.r }, (_, i) => { const g = (j: number) => M.d[i + j * M.r]; return { R: g(0), t: g(1), n: g(2), V: M.c === 4 ? g(3) : undefined }; });
+  if (S.some((s) => s.R === 0 || !(s.n >= 1) || !(s.t >= 0))) throw new LabError('Radii are non-zero (Inf for flat), thicknesses ≥ 0 and indices ≥ 1.');
+  return S;
+};
+def('lensAberration', (a, nout, lab) => {
+  const S = lensOf(a[0]), ap = need(a[1], 'The aperture radius (mm)');
+  if (!(ap > 0)) throw new LabError('The aperture radius is positive.');
+  const h = Array.from({ length: 41 }, (_, i) => (ap * (i + 1)) / 41), lams = [486.13, 587.56, 656.27];
+  const fp = lams.map((l) => pm.paraxialFocus(S, ap, l)), sa = h.map((x) => pm.axisCrossing(S, x) - fp[1]);
+  if (!Number.isFinite(fp[1])) throw new LabError("This lens doesn't bring parallel light to a focus behind it.");
+  if (nout > 0) return [col(h), col(sa), row(fp)];
+  call(lab, 'plot', row(sa), row(h), str('LineWidth'), num(2)); call(lab, 'xline', num(0), str(':'));
+  call(lab, 'xlabel', str('Where the ray crosses the axis, from the paraxial focus (mm)')); call(lab, 'ylabel', str('Ray height (mm)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`Spherical aberration: the edge focuses ${Math.abs(sa[sa.length - 1]).toPrecision(3)} mm ${sa[sa.length - 1] < 0 ? 'short' : 'long'}`));
+  lab.host.out(`Paraxial focus ${fp[1].toPrecision(6)} mm after the last surface (blue F ${fp[0].toPrecision(6)}, red C ${fp[2].toPrecision(6)}: colour spreads it ${(fp[2] - fp[0]).toPrecision(3)} mm)\n`);
+  return [];
+});
+def('spotDiagram', (a, nout, lab) => {
+  const S = lensOf(a[0]), ap = need(a[1], 'The aperture radius (mm)'), ang = one(a[2], 0), o = options(a, 3, ['Defocus', 'Wavelength', 'Rings'], 'spotDiagram');
+  const lam = optNum(o, 'Wavelength', 587.56), fp = pm.paraxialFocus(S, ap, 587.56), rings = Math.round(optNum(o, 'Rings', 10));
+  if (!(ap > 0 && Math.abs(ang) < 60 && lam > 200 && lam < 2000 && rings >= 1 && rings <= 40)) throw new LabError("The aperture radius is positive, the field angle under 60°, 'Wavelength' in nm and 'Rings' 1 to 40.");
+  const r = pm.spot(S, ap, (ang * Math.PI) / 180, fp + optNum(o, 'Defocus', 0), rings, lam);
+  if (nout > 0) return [rows(r.pts.length ? r.pts : [[]]), num(r.rms), row(r.centroid)];
+  call(lab, 'plot', row(r.pts.map((p) => p[0] * 1000)), row(r.pts.map((p) => p[1] * 1000)), str('.')); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on'));
+  call(lab, 'xlabel', str('x (µm)')); call(lab, 'ylabel', str('y (µm)')); call(lab, 'title', str(`Spot at ${ang}°: RMS radius ${(r.rms * 1000).toPrecision(3)} µm${r.lost ? `, ${r.lost} rays lost` : ''}`));
+  return [];
+});
+def('realRayTrace', (a, _n, lab) => {
+  const S = lensOf(a[0]), ap = need(a[1], 'The aperture radius (mm)'), ang = one(a[2], 0), th = (ang * Math.PI) / 180, fp = pm.paraxialFocus(S, ap);
+  if (!(ap > 0 && Math.abs(ang) < 60)) throw new LabError('The aperture radius is positive and the field angle under 60°.');
+  const rays = Array.from({ length: 11 }, (_, i) => ({ p: [0, ap * (i / 5 - 1) - 10 * Math.tan(th), -10], d: [0, Math.sin(th), Math.cos(th)] })), paths: number[][][] = [];
+  const tr = pm.traceSurfaces(S, rays, 587.56, ap * 1.0001, paths), zi = tr.zLast + (Number.isFinite(fp) ? fp : 50);
+  call(lab, 'hold', str('on'));
+  tr.rays.forEach((r, i) => { const p = paths[i]; if (r && r.d[2] > 0) { const t = (zi - r.p[2]) / r.d[2]; p.push([0, r.p[1] + t * r.d[1], zi]); } call(lab, 'plot', row(p.map((v) => v[2])), row(p.map((v) => v[1])), str('Color'), row([0.15, 0.4, 0.9])); });
+  let zv = 0;
+  S.forEach((s, k) => {
+    const ys = Array.from({ length: 41 }, (_, i) => ap * 1.1 * (i / 20 - 1)), zs = ys.map((y) => (Number.isFinite(s.R) ? zv + s.R - Math.sign(s.R) * Math.sqrt(Math.max(0, s.R * s.R - y * y)) : zv));
+    call(lab, 'plot', row(zs), row(ys), str('k'), str('LineWidth'), num(1.5));
+    if (k < S.length - 1) zv += s.t;
+  });
+  call(lab, 'hold', str('off')); call(lab, 'xlabel', str('z (mm)')); call(lab, 'ylabel', str('y (mm)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str('Real rays (Snell\'s law at every surface)'));
+  return [];
+});
+def('schwarzschildOrbit', (a, nout, lab) => {
+  const rp = need(a[0], 'The closest distance (in units of GM/c²)'), ra = need(a[1], 'The farthest distance'), n = one(a[2], 3);
+  if (!(rp > 2 && ra >= rp && n > 0 && n <= 50)) throw new LabError('schwarzschildOrbit(rClosest, rFarthest, orbits): distances in units of GM/c² (the horizon is at 2), up to 50 orbits.');
+  const r = wrapP(() => pm.schwarzschildOrbit(rp, ra, n));
+  if (nout > 0) return [col(r.x), col(r.y), num(r.shift), num(r.weak)];
+  call(lab, 'plot', row(r.x), row(r.y), str('LineWidth'), num(1.2)); call(lab, 'hold', str('on'));
+  const c = Array.from({ length: 121 }, (_, i) => (2 * Math.PI * i) / 120);
+  call(lab, 'fill', row(c.map((v) => 2 * Math.cos(v))), row(c.map((v) => 2 * Math.sin(v))), str('k')); call(lab, 'hold', str('off')); call(lab, 'axis', str('equal'));
+  call(lab, 'title', str(`The orbit turns ${((r.shift * 180) / Math.PI).toPrecision(4)}° an orbit (weak-field formula ${((r.weak * 180) / Math.PI).toPrecision(4)}°)`));
+  return [];
+});
+def('lightBending', (a, nout, lab) => {
+  const b = nums(a[0] ?? row([4, 5.2, 6, 8, 12, 20]), 'The impact parameters (in GM/c²)');
+  if (!b.length || b.length > 40 || b.some((x) => !(x > 0))) throw new LabError('Impact parameters are positive (in GM/c²), up to 40.');
+  const r = b.map((x) => pm.lightRay(x));
+  if (nout > 0) return [row(r.map((x) => x.deflection)), row(r.map((x) => (x.captured ? 1 : 0)))];
+  call(lab, 'hold', str('on'));
+  r.forEach((x) => { const pts = x.x.map((v, j) => [-v, x.y[j]]).filter((p) => Math.hypot(p[0], p[1]) < 60); call(lab, 'plot', row(pts.map((p) => p[0])), row(pts.map((p) => p[1]))); });
+  const c = Array.from({ length: 121 }, (_, i) => (2 * Math.PI * i) / 120);
+  call(lab, 'fill', row(c.map((v) => 2 * Math.cos(v))), row(c.map((v) => 2 * Math.sin(v))), str('k'));
+  call(lab, 'plot', row(c.map((v) => 3 * Math.cos(v))), row(c.map((v) => 3 * Math.sin(v))), str('k:'));
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'xlim', row([-40, 40])); call(lab, 'ylim', row([-30, 30]));
+  call(lab, 'title', str('Light passing a black hole: caught inside b = 3√3 ≈ 5.2, bent outside'));
+  return [];
+});
+def('perihelionShift', (a) => {
+  const A = need(a[0], 'The semi-major axis (m)'), e = need(a[1], 'The eccentricity'), M = need(a[2], 'The central mass (kg)');
+  if (!(A > 0 && e >= 0 && e < 1 && M > 0)) throw new LabError('perihelionShift(a, e, M): a in m, 0 ≤ e < 1, M in kg.');
+  return [num(pm.perihelionShift(A, e, M))];
+});
+def('wavePacket', (a, nout, lab) => {
+  const x = nums(a[0], 'x (nm)'), V = nums(a[1], 'V (eV)'), { o, m } = qOpts(a, 2, 'wavePacket', ['X0', 'K0', 'Sigma', 'Times', 'Step']);
+  if (x.length < 10 || x.length > 50000 || V.length !== x.length) throw new LabError('x (an even grid in nm, 10 to 50,000 points) and V (eV) of the same length.');
+  const dx = x[1] - x[0];
+  if (!(dx > 0) || x.some((v, i) => i && Math.abs(v - x[i - 1] - dx) > 1e-6 * dx)) throw new LabError('x is an evenly spaced, rising grid.');
+  const x0 = optNum(o, 'X0', x[0] + (x[x.length - 1] - x[0]) / 4), k0 = optNum(o, 'K0', 2), s = optNum(o, 'Sigma', (x[x.length - 1] - x[0]) / 40);
+  const speed = (2 * pp.HB2M * Math.abs(k0)) / m / pm.HBAR_EVFS, Tdef = (0.5 * (x[x.length - 1] - x[0])) / Math.max(speed, 1e-6);
+  const times = o.has('Times') ? nums(o.get('Times')) : Array.from({ length: 101 }, (_, i) => (Tdef * i) / 100), dt = optNum(o, 'Step', Math.min(0.05, Tdef / 2000));
+  if (!(s > 0 && dt > 0) || times.some((t, i) => t < 0 || (i && t < times[i - 1]))) throw new LabError("'Sigma' and 'Step' (fs) are positive; 'Times' rise from 0 (fs).");
+  if ((times[times.length - 1] / dt) * x.length > 4e8) throw new LabError('Too many steps for that grid: a larger \'Step\', fewer points or a shorter time.');
+  const r = pm.wavePacket(x, V, m, x0, k0, s, times, dt);
+  if (nout > 0) return [col(r.t), rows(r.prob)];
+  call(lab, 'subplot', num(2), num(1), num(1));
+  call(lab, 'imagesc', row(x), row(r.t), rows(r.prob)); call(lab, 'xlabel', str('x (nm)')); call(lab, 'ylabel', str('Time (fs)')); call(lab, 'colorbar');
+  call(lab, 'title', str(`|ψ|² over time: starting at ${x0} nm, moving at ${speed.toPrecision(3)} nm/fs`));
+  call(lab, 'subplot', num(2), num(1), num(2));
+  const last = r.prob[r.prob.length - 1], top = Math.max(...last) || 1, vtop = Math.max(...V.map(Math.abs)) || 1;
+  lines(lab, x, [last, V.map((v) => (v / vtop) * top)], ['|ψ|² at the end', 'V (scaled)'], 'x (nm)', 'Probability density (1/nm)', `At ${r.t[r.t.length - 1].toPrecision(3)} fs`);
+  return [];
+});
+function gridOf(v: Value | undefined, name: string) {
+  const g = nums(v, name);
+  if (g.length < 3 || g.length > 400) throw new LabError(`${name} is an even grid of 3 to 400 points (nm).`);
+  const h = g[1] - g[0];
+  if (!(h > 0) || g.some((x, i) => i && Math.abs(x - g[i - 1] - h) > 1e-6 * h)) throw new LabError(`${name} is evenly spaced and rising.`);
+  return { g, h };
+}
+function wells(a: Value[], nout: number, lab: Lab, dimsN: 2 | 3) {
+  const name = dimsN === 2 ? 'schrodinger2D' : 'schrodinger3D', axes = (dimsN === 2 ? ['x', 'y'] : ['x', 'y', 'z']).map((n, i) => gridOf(a[i], `${n} (nm)`));
+  const { o, m } = qOpts(a, dimsN + 1, name, ['States']), k = Math.round(optNum(o, 'States', 4)), [nx, ny, nz] = [axes[0].g.length, axes[1].g.length, axes[2]?.g.length ?? 1];
+  const n = nx * ny * nz;
+  if (n > (dimsN === 2 ? 90000 : 64000)) throw new LabError(dimsN === 2 ? 'Up to 300 × 300 points.' : 'Up to 40 × 40 × 40 points.');
+  if (!(k >= 1 && k <= 20)) throw new LabError("'States' is 1 to 20.");
+  // Ours runs x fastest; V comes as meshgrid gives it (rows y, columns x, pages z) or as a function of x, y (, z).
+  const V = new Float64Array(n), Vv = a[dimsN];
+  if (Vv?.k === 'fn') {
+    const X: number[] = [], Y: number[] = [], Z: number[] = [];
+    for (let kz = 0; kz < nz; kz++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { X.push(axes[0].g[i]); Y.push(axes[1].g[j]); Z.push(axes[2]?.g[kz] ?? 0); }
+    const args = [col(X), col(Y), ...(dimsN === 3 ? [col(Z)] : [])], out = toMat(lab.callFn(Vv, args)[0], 'The potential');
+    if (out.d.length !== n) throw new LabError(`The potential function gives ${out.d.length} values for ${n} points: write it elementwise (.^, .*).`);
+    V.set(out.d);
+  } else {
+    const M = toMat(Vv ?? mat(0, 0), 'V (eV)');
+    if (M.r !== ny || M.c !== nx || (M.p ?? 1) !== nz) throw new LabError(`V is ${ny} × ${nx}${dimsN === 3 ? ` × ${nz}` : ''} (rows follow y, as meshgrid makes it), or a function @(x, y${dimsN === 3 ? ', z' : ''}).`);
+    for (let kz = 0; kz < nz; kz++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) V[i + nx * (j + ny * kz)] = M.d[j + ny * (i + nx * kz)];
+  }
+  const r = pm.boundStates(dimsN === 2 ? [nx, ny] : [nx, ny, nz], axes.map((x) => x.h), V, m, k);
+  // Back to meshgrid's layout: rows y, columns x (pages z), the states one after another.
+  const lay = (psi: number[]) => { const out = new Float64Array(n); for (let kz = 0; kz < nz; kz++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) out[j + ny * (i + nx * kz)] = psi[i + nx * (j + ny * kz)]; return out; };
+  if (nout > 0) { const all = new Float64Array(n * k); r.psi.forEach((p, s) => all.set(lay(p), s * n)); const P = mat(ny, nx, all); if (dimsN === 3) { delete P.p; P.nd = [nz, k]; } return [col(r.E), P]; }
+  const cols = Math.min(k, 3), rws = Math.ceil(Math.min(k, 6) / cols);
+  r.psi.slice(0, 6).forEach((p, s) => {
+    call(lab, 'subplot', num(rws), num(cols), num(s + 1));
+    const L = lay(p), mid = Math.floor(nz / 2), slice = Array.from({ length: nx * ny }, (_, q) => L[q + nx * ny * mid] ** 2);
+    call(lab, 'imagesc', row(axes[0].g), row(axes[1].g), mat(ny, nx, slice)); call(lab, 'axis', str('equal')); call(lab, 'axis', str('tight'));
+    call(lab, 'title', str(`E${s + 1} = ${r.E[s].toPrecision(4)} eV`));
+  });
+  lab.host.out(`Lowest ${k} energies (eV): ${r.E.map((e) => e.toPrecision(6)).join(', ')}${dimsN === 3 ? '  (pictures: the middle z slice)' : ''}\n`);
+  return [];
+}
+def('schrodinger2D', (a, nout, lab) => wells(a, nout, lab, 2));
+def('schrodinger3D', (a, nout, lab) => wells(a, nout, lab, 3));

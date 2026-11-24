@@ -253,6 +253,26 @@ figure; rigidBody([1 2 3], [0.01 1 0.01], 60)
 t = 10;   % slider 0 10
 figure; diskCollisions(25, 'Time', 10, 'At', t)
 ` },
+  { name: 'physics3.m', code: `% Physics: a spinning top, a real lens, a black hole, and quantum particles that move
+% 1. A top on a table: spin it fast and its axis circles slowly (precession) with small nods (nutation)
+spin = 150;   % slider 40 300
+rigidRotation([1 1 0.5], [0 0 spin], 3, 'Orientation', [cos(0.3) sin(0.3) 0 0], 'Gravity', 2)
+% 2. A real lens: rays at the edge focus short of the middle (spherical aberration), blue short of red
+lens = [51.68 6 1.5168 64.17; Inf 95 1 0];    % plano-convex BK7, f ≈ 100 mm
+figure; realRayTrace(lens, 12)
+figure; lensAberration(lens, 12)
+figure; spotDiagram(lens, 12, 3)
+% 3. Einstein's gravity: orbits that turn, light that bends, Mercury's 43 seconds of arc a century
+figure; schwarzschildOrbit(12, 40, 4)
+figure; lightBending()
+fprintf('Mercury: %.1f arcseconds a century\\n', perihelionShift(5.7909e10, 0.2056, 1.98892e30) * 415.2 * 206265)
+% 4. An electron as a moving wave packet meets a thin barrier: part goes through, part bounces back
+x = linspace(-80, 80, 3000); V = 0.3*(x >= 0 & x < 0.5);
+figure; wavePacket(x, V, 'X0', -25, 'K0', 2.6, 'Sigma', 4)
+% 5. A quantum dot: an electron held in 2D, its lowest states
+g = linspace(-6, 6, 60);
+figure; schrodinger2D(g, g, @(x, y) 0.02*(x.^2 + 2*y.^2), 'States', 6)
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north
