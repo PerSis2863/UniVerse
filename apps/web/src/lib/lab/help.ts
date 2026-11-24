@@ -418,10 +418,10 @@ upperbound | u = upperbound(a) | The largest value a fi type can hold.
 lowerbound | l = lowerbound(a) | The smallest value a fi type can hold.
 
 # Embedded AI
-quantizemodel | q = quantizemodel(net, 'int8') | A trained network (fitcnet, fitrnet) or tree (fitctree, fitrtree) with its numbers as a small chip would hold them: 'int8' (8-bit weights, one scale per layer), 'single' or 'double'. predict and loss work on it as on the original.
+quantizemodel | q = quantizemodel(net, 'int8') | A trained network (fitcnet, fitrnet), tree (fitctree, fitrtree), SVM (fitcsvm), k-NN (fitcknn), tree ensemble (fitcensemble, fitrensemble, TreeBagger) or linear model (fitlm; the last five 'single' or 'double') with its numbers as a small chip would hold them: 'int8' (8-bit weights, one scale per layer), 'single' or 'double'. predict and loss work on it as on the original.
 modelsize | b = modelsize(net, 'int8') | The bytes a model's numbers take in that precision.
-embedreport | T = embedreport(net, X, Y) | Size and accuracy (or RMSE) of the model in double, single and int8, tested on X and Y; drawn as bars without an output.
-exportmodel | exportmodel(net, 'mynet', 'Precision', 'int8') | Writes the model as plain C (mynet.c, mynet.h in Hyperion's files): its weights as constant arrays and mynet_predict(x, scores), giving the class's number (or the value). Trees take 'single' or 'double'.
+embedreport | T = embedreport(net, X, Y) | Size and accuracy (or RMSE) of the model in double, single and int8 (a network also 'int8full': wholly in 8 bits, run exactly as its C), tested on X and Y; drawn as bars without an output.
+exportmodel | exportmodel(net, 'mynet', 'Precision', 'int8') | Writes the model as plain C (any kind quantizemodel takes; 'int8full' writes a network wholly in 8-bit integers: 8-bit activations with scales from its training rows, ReLU as a clamp, tanh and sigmoid as 256-entry tables, mynet_predict_q for 8-bit inputs) (mynet.c, mynet.h in Hyperion's files): its weights as constant arrays and mynet_predict(x, scores), giving the class's number (or the value). Trees take 'single' or 'double'.
 
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).

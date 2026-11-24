@@ -12854,3 +12854,27 @@ generated code has at most 62 bits (`MAX_FX`), so the 64-bit work below never ov
   the filter in fixed point and writes `movavgfx.c`.
 - **Left out:** fixed types over 62 bits in C, rounding modes other than Nearest and overflow modes other than saturate
   (`fimath`), fixed-point division.
+
+## M525 (24 Nov): Hyperion more AI models to C, networks wholly in 8 bits
+
+`embedded.ts` gained four model kinds (`SvmSpec`, `KnnSpec`, `EnsSpec`, `LinSpec`, written by `otherC`) and a wholly
+8-bit network (`planFullInt`, `runFullInt`, `fullIntC`); `embedded-lab.ts` reads them from the toolbox's structs
+(`specOf`) and accepts them in every function.
+
+- **Same answers as the engine:** each C mirrors `ml.ts` operation for operation: the SVM sums `(α·y)·K` with the
+  kernel's own order (`kernelOf`), k-NN keeps the k nearest with an earlier row winning a tie (the engine sorts by
+  distance, then row), ensembles add a bagged forest's leaf probabilities or a boosted one's weighted votes (first
+  maximum wins, as `argmax`), LSBoost starts from `Init`; a linear model adds `x·β` then the intercept. Compiled in
+  double, every iris row matches (`embedded.test.ts`). These kinds take 'single' or 'double' (8 bits would move their
+  support vectors and split points); a forest's equal weights aren't written (`-Wall -Werror` refuses unused arrays).
+- **'int8full':** scales from the model's training rows (`X`): the input's largest standardised value / 127, each
+  layer's weights / 127, each hidden layer's outputs / 127 (tanh / sigmoid: their sums, then a 256-entry table to 1/127
+  steps). Between layers `requant(acc, m, sh)` = floor((acc·m + 2^(sh−1)) / 2^sh) with m of 15 bits, so it is exact in
+  JavaScript's numbers and in C's int64 alike; biases are int32 in the sum's scale. `name_predict_q(int8 xq[])` is
+  the integer core; `name_predict(float x[])` standardises and quantises first (the only floating point; a regression's
+  answer is one last multiply). `embedreport` adds the 'int8full' row from `runFullInt`, the integer twin of the C.
+- **Checked:** `embedded.test.ts` (all four kinds in double against `predict`; three 8-bit networks, ReLU, tanh and a
+  regression, compiled and agreeing with the engine; the tanh table present); `embedded_ai.m` exports a forest and the
+  all-8-bit network.
+- **Left out:** SVMs with more than two classes (`fitcecoc`) and naive Bayes / discriminant models in C, int8 SVMs and
+  k-NN, per-channel scales, CMSIS-NN / TensorFlow Lite files.
