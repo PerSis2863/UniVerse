@@ -3,15 +3,16 @@ import { textOf, transpose, type Lab } from './interp';
 import { mat, num, str, toMat, type Cell, type Value } from './values';
 import * as ch from './chem';
 import * as cp from './chem-plus';
+import * as cm from './chem-more';
 import { ELEMENT, ELEMENTS } from './elements';
 import { ros23, sample, type OdeOut } from './sci-num';
-import { call, col, def, lines, need, nums, one, optNum, optText, options, record, row, rows } from './sci-kit';
+import { call, col, def, field, lines, need, nums, one, optNum, optText, options, record, row, rows } from './sci-kit';
 
 // Hyperion's chemistry in the language (M495): odeset, ode15s and ode23s (stiff solvers; MATLAB's names, one
 // Rosenbrock 2(3) method behind both), kineticsSim, batchReactor, pfrReactor, cstrReactor, arrhenius, arrheniusFit,
 // chemEquilibrium, acidPH (our own names: MATLAB's SimBiology builds reactions as objects). M513: molarMass,
 // elementInfo, balanceEquation, polyproticPH, bufferPH, acidSpecies, titrationCurve, activityCoeff, ionicStrength,
-// heatedBatch, cstrSteadyStates.
+// heatedBatch, cstrSteadyStates. M516: rateLawSim, lhRate, ergunAlpha, packedBed, pitzerActivity.
 
 def('odeset', (a) => {
   const o = options(a, 0, ['RelTol', 'AbsTol', 'MaxStep', 'InitialStep'], 'odeset');
@@ -191,5 +192,72 @@ def('cstrSteadyStates', (a, nout, lab) => {
   for (const s of r.states) call(lab, 'plot', num(s.T), num(s.generated), str(s.stable ? 'ko' : 'kx'), str('MarkerSize'), num(10), str('LineWidth'), num(2));
   call(lab, 'hold', str('off'));
   lab.host.out(r.states.map((s) => `T = ${s.T.toFixed(2)} K  ${m.species.map((n, i) => `${n} = ${s.c[i].toPrecision(4)}`).join('  ')}  ${s.stable ? 'stable' : 'unstable'}`).join('\n') + '\n');
+  return [];
+});
+
+// ——— M516: packed beds with a pressure drop, rate laws that aren't mass action, Pitzer's salt corrections ———
+const rateOf = (a: Value | undefined, m: ch.Mechanism, lab: Lab, name: string): cm.RateLaw => {
+  const n = m.reactions.length;
+  if (a?.k === 'fn') return (c) => {
+    const r = toMat(lab.callFn(a, [mat(c.length, 1, c)])[0], 'The rate law');
+    if (r.d.length !== n) throw new LabError(`${name}: the rate law gives ${r.d.length} rates for ${n} reaction${n > 1 ? 's' : ''}.`);
+    return [...r.d];
+  };
+  const k = nums(a, 'The rate constants');
+  if (k.length !== ch.rateCount(m) || k.some((x) => !(x >= 0))) throw new LabError(`${name}: give ${ch.rateCount(m)} rate constant${ch.rateCount(m) > 1 ? 's' : ''} ≥ 0, or a rate law @(c) [...] with one net rate per reaction.`);
+  return cm.massAction(m, k);
+};
+def('rateLawSim', (a, nout, lab) => {
+  const m = mech(a[0]), rate = rateOf(a[1], m, lab, 'rateLawSim'), c0 = nums(a[2], 'The starting concentrations'), end = need(a[3], 'The end time');
+  if (c0.length !== m.species.length || c0.some((x) => !(x >= 0))) throw new LabError(`rateLawSim: give ${m.species.length} starting concentrations ≥ 0, in the order ${m.species.join(', ')}.`);
+  if (!(end > 0)) throw new LabError('The time must be positive.');
+  const r = wrap(() => cm.rateLawBatch(m, rate, c0, end));
+  if (nout > 0) return [col(r.t), rows(r.y), cellOf(m.species)];
+  lines(lab, r.t, m.species.map((_, i) => r.y.map((y) => y[i])), m.species, 'Time', 'Concentration', 'Your rate law');
+  return [];
+});
+def('lhRate', (a) => {
+  const k = need(a[0], 'The surface rate constant k'), K = nums(a[1], 'The adsorption constants K'), P = toMat(a[2] ?? num(NaN), 'The pressures or concentrations'), n = one(a[3], 1);
+  if (!K.length || K.some((x) => !(x >= 0))) throw new LabError('K is one adsorption constant ≥ 0 per species.');
+  if (n !== 1 && n !== 2) throw new LabError('The last number is 1 (one adsorbed reactant) or 2 (two adsorbed reactants meeting).');
+  if (n > K.length) throw new LabError('Two reactants need two adsorption constants.');
+  const per = P.c === K.length ? P.r : P.r === K.length && P.c === 1 ? 1 : -1;
+  if (per < 0) throw new LabError(`The pressures: a row of ${K.length} (one per K), or one row per case.`);
+  const out = Array.from({ length: per }, (_, i) => cm.lhRate(k, K, K.map((_, j) => (P.c === K.length ? P.d[i + j * P.r] : P.d[j])), n));
+  return [col(out)];
+});
+def('ergunAlpha', (a) => {
+  const v = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => need(a[i], ['G (kg/(m²·s))', 'Dp (m)', 'The void fraction φ', 'μ (Pa·s)', 'ρ0 (kg/m³)', 'Ac (m²)', 'ρc (kg/m³)', 'P0 (Pa)'][i]));
+  if (v.some((x) => !(x > 0)) || v[2] >= 1) throw new LabError('Every number is positive and the void fraction below 1.');
+  const r = cm.ergunAlpha(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+  return [num(r.alpha), num(r.beta0)];
+});
+def('packedBed', (a, nout, lab) => {
+  const m = mech(a[0]), rate = rateOf(a[1], m, lab, 'packedBed'), F0 = nums(a[2], 'The inlet molar flows (mol/s)'), W = need(a[3], 'The catalyst mass W (kg)');
+  if (F0.length !== m.species.length || F0.some((x) => !(x >= 0))) throw new LabError(`packedBed: give ${m.species.length} inlet flows ≥ 0 (mol/s), in the order ${m.species.join(', ')}.`);
+  const o = options(a, 4, ['P0', 'T', 'Alpha'], 'packedBed'), b = { P0: optNum(o, 'P0', 101325), T: optNum(o, 'T', 298.15), alpha: optNum(o, 'Alpha', 0) };
+  if (!(W > 0 && b.P0 > 0 && b.T > 0 && b.alpha >= 0)) throw new LabError("W, 'P0' (Pa) and 'T' (K) are positive, 'Alpha' (1/kg) ≥ 0.");
+  const r = wrap(() => cm.packedBed(m, rate, F0, W, b));
+  if (r.stoppedAt !== undefined) lab.host.out(`The pressure is all but gone (P/P0 < 0.01) by W = ${r.stoppedAt.toPrecision(3)} kg: a shorter bed or bigger particles.\n`);
+  if (nout > 0) return [col(r.W), rows(r.F), col(r.y), cellOf(m.species), rows(r.c)];
+  call(lab, 'subplot', num(2), num(1), num(1)); lines(lab, r.W, m.species.map((_, i) => r.F.map((f) => f[i])), m.species, 'Catalyst mass W (kg)', 'Molar flow (mol/s)', 'Packed bed');
+  call(lab, 'subplot', num(2), num(1), num(2)); lines(lab, r.W, [r.y, r.v.map((v) => v / r.v[0])], ['Pressure P/P0', 'Gas flow v/v0'], 'Catalyst mass W (kg)', 'Ratio', `Outlet pressure ${(100 * r.y[r.y.length - 1]).toFixed(1)}% of the inlet's`);
+  return [];
+});
+const saltOf = (v: Value | undefined): cm.PitzerSalt & { max: number } => {
+  if (v?.k === 'str') { const s = cm.PITZER[v.v.trim()]; if (!s) throw new LabError(`No Pitzer parameters for “${v.v}”: ${Object.keys(cm.PITZER).join(', ')}, or a struct with zM, zX, nuM, nuX, beta0, beta1, beta2, Cphi.`); return s; }
+  if (v?.k === 'struct') { const g = (k: string, d?: number) => (d !== undefined && !v.f.has(k) ? d : field(v, k, `The salt's ${k}`)); return { zM: g('zM'), zX: g('zX'), nuM: g('nuM'), nuX: g('nuX'), beta0: g('beta0'), beta1: g('beta1'), beta2: g('beta2', 0), Cphi: g('Cphi', 0), max: Infinity }; }
+  throw new LabError("The salt: a name ('NaCl') or a struct of Pitzer parameters.");
+};
+def('pitzerActivity', (a, nout, lab) => {
+  const s = saltOf(a[0]);
+  if (!(s.zM > 0 && s.zX < 0 && s.nuM > 0 && s.nuX > 0)) throw new LabError('zM > 0, zX < 0 and the counts nuM, nuX > 0.');
+  const M = a[1] ? nums(a[1], 'The molality (mol/kg)') : Array.from({ length: 121 }, (_, i) => (Math.min(s.max, 6) * i) / 120);
+  if (M.some((x) => !(x >= 0))) throw new LabError('Molalities are ≥ 0 (mol/kg).');
+  if (Number.isFinite(s.max) && M.some((x) => x > s.max)) lab.host.out(`Pitzer's parameters for this salt were fitted up to ${s.max} mol/kg; past it they guess.\n`);
+  const r = M.map((x) => cm.pitzer(s, x));
+  if (nout > 0 || a[1]) return [row(r.map((x) => x.gamma)), row(r.map((x) => x.phi)), row(r.map((x) => x.aw))];
+  const z = Math.abs(s.zM * s.zX), dav = r.map((x) => Math.exp(Math.log(cp.davies(1, x.I)) * z));
+  lines(lab, M, [r.map((x) => x.gamma), dav, r.map((x) => x.phi)], ['γ± (Pitzer)', 'γ± (Davies)', 'Osmotic coefficient φ'], 'Molality (mol/kg)', 'Coefficient', `${a[0]?.k === 'str' ? a[0].v : 'Salt'} in water at 25 °C`);
   return [];
 });

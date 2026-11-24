@@ -13004,3 +13004,23 @@ resonant tunnelling through two barriers; the middle-axis flip with energy and |
 kept through 30 disks' collisions with no overlaps, energy lost at e = 0.5. Not built: rigid bodies' orientation
 (quaternions) and contact between shapes other than disks, field lines of currents in a chosen plane only, thick-lens
 apertures and aberrations, general relativity, time-dependent quantum wave packets, potentials in 2D and 3D.
+
+## M516 (24 Nov): Hyperion chemistry, more left-outs
+
+From M513's "Not built" (the owner, 24 Nov, the list of what was left out). `chem-more.ts` (pure) and its language part
+at the end of `chem-lab.ts`. **Packed bed** (`packedBed`): isothermal, gas phase, along the catalyst mass W:
+dFᵢ/dW = Σ νᵢⱼ r′ⱼ with Cᵢ = C_T0 (Fᵢ/F_T) y (C_T0 = P0/RT in mol/L), dy/dW = −α/(2y) · F_T/F_T0 (Fogler, isothermal),
+by `ros23`; the gas flow v = v0 (F_T/F_T0)/y is reported; it stops where y < 0.01 (said in the window). α = 0 is a gas
+PFR whose flow grows with the moles (the changing volume). `ergunAlpha` gives α and β0 from the bed (SI units).
+**Rate laws** (`RateLaw`: concentrations and T → one net rate per reaction): `massAction`, `lhRate` (k Π K p of the first
+n species / (1 + Σ K p)^n), `rateLawBatch`; in the language `rateLawSim` and `packedBed` take rate constants or a
+function `@(c) [...]` (called with c only). **Pitzer** (`pitzer`, 25 °C, one salt, molality): Aφ = 0.3915, b = 1.2,
+α1 = 2 (2:2: α1 = 1.4, α2 = 12), ln γ± and φ as Pitzer and Mayorga; 2:1 salts stored from their printed (4/3)β0,
+(4/3)β1, (2^(5/2)/3)Cφ; a_w = exp(−φνmM_w). MgSO4 left out on purpose: the commonly quoted 1974 parameters gave γ±
+10% above Robinson and Stokes' table (0.055 against 0.049 at 1 mol/kg) where CuSO4's matched to 1%; a person can pass
+any salt as a struct. Language: `rateLawSim`, `lhRate`, `ergunAlpha`, `packedBed`, `pitzerActivity` (drawn beside
+Davies'). Example `beds.m`. Tests: NaCl's γ± 0.657 and φ 0.936 at 1 mol/kg, 0.986 at 6; KCl 0.604; CaCl2 0.500; CuSO4
+0.0423; y = √(1 − αW) without reaction and the stop near W = 1/α; A → 2B without pressure drop against Fogler's
+(1 + ε) ln(1/(1 − X)) − εX = kW/v0 and v/v0 = 1 + X; LH by hand; a Michaelis-like batch against its closed form. Not
+built: non-isothermal packed beds, mixed electrolytes in Pitzer's model (θ and ψ terms) and temperatures other than
+25 °C, Pitzer inside `solvePH`.

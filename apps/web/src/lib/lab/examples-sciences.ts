@@ -132,6 +132,22 @@ figure; heatedBatch('A -> B', 4e9, 75e3, -150e3, [2 0], 310, 600, 'UA', UA, 'Tco
 % A cooled stirred tank can settle cold, or hot: three steady states
 figure; cstrSteadyStates('A -> B', 1e10, 7500*8.314, -209e3, [2 0], 300, 0.05*exp(25)/1e10)
 ` },
+  { name: 'beds.m', code: `% Chemistry: a packed bed losing pressure, a catalyst's own rate law, and very salty water
+% 1. A gas over a catalyst bed: A -> 2 B makes moles, Ergun's friction takes pressure
+particle_mm = 6;   % slider 2 12
+alpha = ergunAlpha(1.5, particle_mm/1000, 0.45, 1.5e-5, 0.4, 0.01, 2000, 1e6);
+packedBed('A -> 2 B', 2e-3, [0.1 0], 20, 'P0', 1e6, 'T', 500, 'Alpha', alpha)
+% 2. A surface reaction: A and B must both sit on the catalyst (Langmuir–Hinshelwood)
+pA = linspace(0, 5, 100);
+r = lhRate(1, [1 1], [pA' ones(100, 1)], 2);
+figure; plot(pA, r, 'LineWidth', 2); grid on
+xlabel('Pressure of A'); ylabel('Rate'); title('Too much A crowds B off the surface')
+figure; rateLawSim('A + B -> C', @(c) 5*c(1)*c(2)/(1 + c(1) + c(2))^2, [2 1 0], 10)
+% 3. Sea water and brines: past 0.5 mol/kg Davies' equation fails, Pitzer's holds
+figure; pitzerActivity('NaCl')
+[g, phi, aw] = pitzerActivity('NaCl', 0.6);
+fprintf('Sea water (0.6 mol/kg NaCl): gamma %.3f, osmotic coefficient %.3f, water activity %.4f\\n', g, phi, aw)
+` },
   { name: 'neurons.m', code: `% Neuroscience: how a neuron fires, and how many of them talk
 % 1. Hodgkin and Huxley's squid axon: a current pulse from 10 to 90 ms
 I = 10;   % slider 0 30
