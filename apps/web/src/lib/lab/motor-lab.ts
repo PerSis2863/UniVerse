@@ -95,7 +95,10 @@ def('focSim', (a, nout, lab) => {
   if (!(T > 0 && T <= 5)) throw new LabError('focSim runs up to 5 s (steps of 20 µs).');
   const gs = o.get('gains'), g = gs && kindOf(gs) === 'focGains' ? { kpd: f(gs as Struct, 'KpD'), kid: f(gs as Struct, 'KiD'), kpq: f(gs as Struct, 'KpQ'), kiq: f(gs as Struct, 'KiQ'), kps: f(gs as Struct, 'KpSpeed'), kis: f(gs as Struct, 'KiSpeed') } : mo.focTune(m);
   const flag = (k: string) => (o.get(k) ? !!toMat(o.get(k)!).d[0] : true);
-  const r = mo.focSimulate(m, ofTime(lab, a[1], 0, 'The speed wanted'), T, loadOf(lab, o), g, { fieldWeakening: flag('fieldweakening'), mtpa: flag('mtpa') });
+  const pwm = o.get('pwm') ? toMat(o.get('pwm')!).d[0] : 0;
+  if (pwm && !(pwm >= 1000 && pwm <= 50000)) throw new LabError("'PWM' is the switching frequency, 1,000 to 50,000 Hz (0: averaged).");
+  if (pwm && T > 1) throw new LabError('With real switching focSim runs up to 1 s.');
+  const r = mo.focSimulate(m, ofTime(lab, a[1], 0, 'The speed wanted'), T, loadOf(lab, o), g, { fieldWeakening: flag('fieldweakening'), mtpa: flag('mtpa'), pwm });
   if (nout > 0) return [table([['Time', col(r.t)], ['Speed', col(r.w)], ['SpeedRef', col(r.wRef)], ['Id', col(r.id)], ['Iq', col(r.iq)], ['Vd', col(r.vd)], ['Vq', col(r.vq)], ['Torque', col(r.torque)], ['Ia', col(r.ia)], ['Ib', col(r.ib)], ['Ic', col(r.ic)], ['Power', col(r.power)]])];
   call(lab, 'subplot', num(3), num(1), num(1)); call(lab, 'plot', row(r.t), row(r.wRef), str('--'), row(r.t), row(r.w)); call(lab, 'ylabel', str('speed (rad/s)')); call(lab, 'legend', str('wanted'), str('motor')); call(lab, 'grid', str('on')); call(lab, 'title', str('PMSM under field-oriented control'));
   call(lab, 'subplot', num(3), num(1), num(2)); call(lab, 'plot', row(r.t), row(r.id), row(r.t), row(r.iq)); call(lab, 'ylabel', str('current (A)')); call(lab, 'legend', str('i_d'), str('i_q')); call(lab, 'grid', str('on'));
@@ -175,7 +178,9 @@ def('bldcSim', (a, nout, lab) => {
   if (!(T > 0 && T <= 2)) throw new LabError('bldcSim runs up to 2 s (steps of 2 µs).');
   if (o.get('duty') && o.get('speed')) throw new LabError("Give 'Duty' or 'Speed', not both.");
   const off = o.get('halloffset') ? (toMat(o.get('halloffset')!).d[0] * Math.PI) / 180 : 0;
-  const r = mo.bldcSimulate(m, T, { duty: o.get('duty') ? ofTime(lab, o.get('duty'), 1, 'The duty') : undefined, speed: o.get('speed') ? ofTime(lab, o.get('speed'), 0, 'The speed') : undefined, load: loadOf(lab, o), hallOffset: off });
+  const pwm = o.get('pwm') ? toMat(o.get('pwm')!).d[0] : 0;
+  if (pwm && !(pwm >= 1000 && pwm <= 50000)) throw new LabError("'PWM' is the switching frequency, 1,000 to 50,000 Hz (0: averaged).");
+  const r = mo.bldcSimulate(m, T, { pwm, duty: o.get('duty') ? ofTime(lab, o.get('duty'), 1, 'The duty') : undefined, speed: o.get('speed') ? ofTime(lab, o.get('speed'), 0, 'The speed') : undefined, load: loadOf(lab, o), hallOffset: off });
   if (nout > 0) return [table([['Time', col(r.t)], ['Speed', col(r.w)], ['Ia', col(r.ia)], ['Ib', col(r.ib)], ['Ic', col(r.ic)], ['Torque', col(r.torque)], ['Duty', col(r.duty)], ['Sector', col(r.sector.map((s) => s + 1))]])];
   call(lab, 'subplot', num(3), num(1), num(1)); call(lab, 'plot', row(r.t), row(r.w)); call(lab, 'ylabel', str('speed (rad/s)')); call(lab, 'grid', str('on'));
   call(lab, 'title', str(`Six-step brushless drive${off ? ` (Halls ${(off * 180 / Math.PI).toFixed(0)}° off)` : ''}`));

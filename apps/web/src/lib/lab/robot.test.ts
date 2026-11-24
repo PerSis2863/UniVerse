@@ -116,6 +116,12 @@ describe('Hyperion robot arms (M482)', () => {
     expect(cyl.colliding).toBe(false); expect(cyl.minDistance).toBeGreaterThan(0.14); expect(cyl.minDistance).toBeLessThan(0.151);
     const hit = rb.checkCollision(two, [0, 0], { cylinders: [[1.5, 0.12, -1, 1, 0.1]], meshes: [cube.map(([x, y, z]): rb.V3 => [x + 2.5, y - 0.5, z - 0.5])], radius: 0.05 });
     expect(hit.hits).toEqual([[1, 0]]);
+    // How deep (EPA): a point 0.3 inside the cube's face, a segment through it 0.4 in from the nearest side.
+    expect(rb.convexDepth([[0.5, 0.5, 0.7]], cube)).toBeCloseTo(0.3, 6);
+    expect(rb.convexDepth([[0.4, -1, 0.5], [0.4, 2, 0.5]], cube)).toBeCloseTo(0.4, 6);
+    expect(rb.convexDepth([[3, 0, 0]], cube)).toBe(0);
+    const deep = rb.checkCollision(two, [0, 0], { boxes: [[1.4, -0.1, -0.1, 3, 0.1, 0.1]], radius: 0.05, self: false });
+    expect(deep.minDistance).toBeCloseTo(-0.15, 6);
     const touch = rb.checkCollision(two, [0, 0], { meshes: [cube.map(([x, y, z]): rb.V3 => [x + 1.5, y - 0.5, z - 0.5])], radius: 0.05 });
     expect(touch.hits).toEqual([[1, 0]]);
   });

@@ -286,18 +286,50 @@ export function convexDist(P: V3[], Q: V3[]): number {
   }
   return Math.sqrt(dot(v, v));
 }
+/** How deep two overlapping convex shapes go into each other (0 when apart): the expanding polytope algorithm (EPA)
+ * on their Minkowski difference, started from a tetrahedron round the origin (M482d). */
+export function convexDepth(P: V3[], Q: V3[]): number {
+  if (convexDist(P, Q) > 1e-9) return 0;
+  const supp = (d: V3) => sub(far(P, d), far(Q, sc(d, -1)));
+  // A starting tetrahedron: the support points along ±x, ±y, ±z, the four that span the most volume.
+  const cand = ([[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1], [1, 1, 1], [-1, -1, -1]] as V3[]).map(supp);
+  const vol = (a: V3, b: V3, c: V3, d: V3) => dot(sub(b, a), cross(sub(c, a), sub(d, a)));
+  let best: V3[] = [], bv = 0;
+  for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) for (let k = j + 1; k < 8; k++) for (let l = k + 1; l < 8; l++) { const v = Math.abs(vol(cand[i], cand[j], cand[k], cand[l])); if (v > bv) { bv = v; best = [cand[i], cand[j], cand[k], cand[l]]; } }
+  if (bv < 1e-12) return 0; // a flat shape: no depth to measure
+  const pts: V3[] = [...best];
+  let faces: [number, number, number][] = [[0, 1, 2], [0, 3, 1], [0, 2, 3], [1, 3, 2]];
+  const centre = sc(add(add(pts[0], pts[1]), add(pts[2], pts[3])), 0.25);
+  const normal = (f: [number, number, number]) => { const n = cross(sub(pts[f[1]], pts[f[0]]), sub(pts[f[2]], pts[f[0]])), l = Math.hypot(...n) || 1; return sc(n, 1 / l); };
+  // Every face's normal points away from the centre.
+  faces = faces.map((f) => (dot(normal(f), sub(pts[f[0]], centre)) < 0 ? [f[0], f[2], f[1]] : f));
+  for (let it = 0; it < 64; it++) {
+    let fi = 0, fd = Infinity, fn: V3 = [0, 0, 1];
+    faces.forEach((f, k) => { const n = normal(f), d = dot(n, pts[f[0]]); if (d < fd) { fd = d; fi = k; fn = n; } });
+    const w = supp(fn);
+    if (dot(w, fn) - fd < 1e-9 || it === 63) return Math.max(0, fd);
+    const wi = pts.push(w) - 1, edges = new Map<string, [number, number]>();
+    faces = faces.filter((f, k) => {
+      if (k !== fi && dot(normal(f), sub(w, pts[f[0]])) <= 1e-12) return true;
+      for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) { const back = `${b},${a}`; if (edges.has(back)) edges.delete(back); else edges.set(`${a},${b}`, [a, b]); }
+      return false;
+    });
+    for (const [a, b] of edges.values()) faces.push([a, b, wi]);
+  }
+  return 0;
+}
 /** A vertical cylinder [x y z1 z2 r] as the corners of the 24-sided prism round it (so it is never smaller). */
 export function cylinderPoints(c: number[]): V3[] {
   const R = c[4] / Math.cos(Math.PI / 24), out: V3[] = [];
   for (let k = 0; k < 24; k++) { const a = (2 * Math.PI * k) / 24; for (const z of [c[2], c[3]]) out.push([c[0] + R * Math.cos(a), c[1] + R * Math.sin(a), z]); }
   return out;
 }
+const boxCorners = (b: number[]): V3[] => [0, 1, 2, 3, 4, 5, 6, 7].map((k) => [b[k & 1 ? 3 : 0], b[k & 2 ? 4 : 1], b[k & 4 ? 5 : 2]]);
 export interface Collision { colliding: boolean; minDistance: number; self: [number, number][]; hits: [number, number][] }
 /** Checks the arm against itself (links that don't touch at a joint) and against spheres [x y z r], boxes
  * [x1 y1 z1 x2 y2 z2], vertical cylinders [x y z1 z2 r] and convex meshes (each a list of its corners; a shape that
  * isn't convex counts as its hull). `hits` pair a link with an obstacle numbered spheres, boxes, cylinders, meshes.
- * Distances are between the capsules' surfaces (negative: they overlap; a capsule inside a cylinder or mesh counts
- * as −its radius, the overlap's depth isn't measured). */
+ * Distances are between the capsules' surfaces (negative: they overlap, by how deep, M482d). */
 export function checkCollision(arm: Arm, q: ArrayLike<number>, o: { radius?: number | number[]; spheres?: number[][]; boxes?: number[][]; cylinders?: number[][]; meshes?: V3[][]; self?: boolean } = {}): Collision {
   const F = frames(arm, q), n = arm.links.length, reach = arm.links.reduce((t, l) => t + Math.abs(l.a) + Math.abs(l.d), 0) || 1;
   const rad = (i: number) => (Array.isArray(o.radius) ? o.radius[i] ?? 0 : o.radius ?? reach * 0.03);
@@ -315,8 +347,10 @@ export function checkCollision(arm: Arm, q: ArrayLike<number>, o: { radius?: num
   for (let i = 0; i < n; i++) {
     const [A, B] = seg(i);
     spheres.forEach((sp, k) => note(segDist(A, B, [sp[0], sp[1], sp[2]], [sp[0], sp[1], sp[2]]) - sp[3] - rad(i), [i, k], out.hits));
-    boxes.forEach((bx, k) => note(segBoxDist(A, B, bx) - rad(i), [i, spheres.length + k], out.hits));
-    hulls.forEach((h, k) => note(convexDist([A, B], h) - rad(i), [i, spheres.length + boxes.length + k], out.hits));
+    // Inside a box or a hull, how deep (M482d) instead of 0.
+    const inside = (h: V3[], d: number) => (d > 1e-9 ? d : -convexDepth([A, B], h));
+    boxes.forEach((bx, k) => note(inside(boxCorners(bx), segBoxDist(A, B, bx)) - rad(i), [i, spheres.length + k], out.hits));
+    hulls.forEach((h, k) => note(inside(h, convexDist([A, B], h)) - rad(i), [i, spheres.length + boxes.length + k], out.hits));
   }
   return out;
 }

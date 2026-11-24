@@ -98,6 +98,16 @@ describe('Hyperion motors: field weakening, MTPA and steppers (M485b)', () => {
     const sp = mo.bldcSimulate(m, 0.5, { speed: () => 200, load: () => 0.03 });
     expect(mean(sp.w, Math.floor(sp.t.length * 0.8))).toBeCloseTo(200, -1);
   });
+  it('real switching: SVPWM under FOC and PWM in six-step give the averaged result plus ripple (M485d)', () => {
+    const m = mo.PMSM_DEFAULT, avg = mo.focSimulate(m, () => 100, 0.2, () => 1), sw = mo.focSimulate(m, () => 100, 0.2, () => 1, mo.focTune(m), { pwm: 10000 });
+    expect(sw.w.at(-1)!).toBeCloseTo(100, 0);
+    const tail = (v: number[]) => v.slice(Math.floor(v.length * 0.8)), spread = (v: number[]) => Math.max(...tail(v)) - Math.min(...tail(v));
+    expect(spread(sw.iq)).toBeGreaterThan(spread(avg.iq) + 0.05);
+    const mean = (v: number[]) => tail(v).reduce((a, b) => a + b, 0) / tail(v).length;
+    expect(mean(sw.iq)).toBeCloseTo(mean(avg.iq), 0);
+    const b = mo.BLDC_DEFAULT, ba = mo.bldcSimulate(b, 0.3, { duty: () => 0.5, load: () => 0.03 }), bs = mo.bldcSimulate(b, 0.3, { duty: () => 0.5, load: () => 0.03, pwm: 20000 });
+    expect(Math.abs(bs.w.at(-1)! - ba.w.at(-1)!)).toBeLessThan(0.05 * ba.w.at(-1)!);
+  });
   it('motor heating: the steady temperature by hand, the continuous rating, the time to the limit (M485c)', () => {
     const th = mo.THERMAL_DEFAULT;
     // Without copper's rise, T = Tamb + P·Rth; with it, a little hotter.

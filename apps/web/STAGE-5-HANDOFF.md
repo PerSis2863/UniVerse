@@ -12664,6 +12664,20 @@ torque meets the load, currents sum to 0, misplaced Halls ripple more, the speed
 the rating gives the limit, the simulation settles there). Example motors.m. Not built: sensorless (back-EMF zero
 crossing) starting, real PWM switching inside the motor model, iron losses from speed, a window of its own.
 
+## M482d and M485d (24 Nov): overlap depth (EPA) and real inverter switching
+
+The owner, 24 Nov, asked for the two left-outs of M482c and M485c. **M482d**, `robot.ts`: `convexDepth(P, Q)` (EPA on
+the Minkowski difference: the start is the four of eight support points that span the most volume, faces turned
+outwards from its centre, the horizon found by edges seen once; 0 for flat shapes); `checkCollision` reports a capsule
+inside a box (its 8 corners), a cylinder or a mesh as −(depth + radius). **M485d**, `motor.ts`: `focSimulate(..., { pwm })`
+runs the controller once a switching period and the motor in 100 steps a period with the legs really switched
+(min–max injection, the same as space-vector PWM; a triangle carrier; phase voltages about the star point through
+clarke/park); `bldcSimulate(..., { pwm })` switches the high side against a sawtooth carrier, its current freewheeling
+through the other leg's diode while off. Language: `focSim(..., 'PWM', f)` (1–50 kHz, up to 1 s), `bldcSim(..., 'PWM',
+f)`. Tests: depths of a point and a segment in a cube, a link 0.1 m into a box; FOC with 10 kHz switching holds speed with
+the same mean i_q and more ripple; six-step with 20 kHz PWM ends within 5 % of the averaged speed. Not built: dead
+time, switching losses, the overlap's direction.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

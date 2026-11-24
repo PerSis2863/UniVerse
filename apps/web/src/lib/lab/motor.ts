@@ -58,8 +58,9 @@ export function fieldWeakeningId(m: Pmsm, we: number, iq: number, vlim: number) 
  * i_d for the most torque per amp; `fieldWeakening` pushes i_d negative when the voltage would run out, so the motor
  * can turn faster than its base speed (both on unless switched off). Steps of 20 µs (a 50 kHz controller), the plant
  * integrated with the same steps. */
-export function focSimulate(m: Pmsm, wRef: (t: number) => number, T: number, load: (t: number) => number = () => 0, g: FocGains = focTune(m), mode: { fieldWeakening?: boolean; mtpa?: boolean } = {}, points = 1500) {
-  const dt = 2e-5, n = Math.ceil(T / dt), vmax = m.vdc / Math.sqrt(3), every = Math.max(1, Math.floor(n / points));
+export function focSimulate(m: Pmsm, wRef: (t: number) => number, T: number, load: (t: number) => number = () => 0, g: FocGains = focTune(m), mode: { fieldWeakening?: boolean; mtpa?: boolean; pwm?: number } = {}, points = 1500) {
+  // With `pwm` (Hz) the controller runs once a switching period and the inverter really switches (M485d, below).
+  const pwm = mode.pwm && mode.pwm > 0 ? mode.pwm : 0, dt = pwm ? 1 / pwm : 2e-5, n = Math.ceil(T / dt), vmax = m.vdc / Math.sqrt(3), every = Math.max(1, Math.floor(n / points));
   let id = 0, iq = 0, w = 0, th = 0, Id = 0, Iq = 0, Is = 0, idRef = 0;
   const fw = mode.fieldWeakening !== false, useMtpa = mode.mtpa !== false;
   const out = { t: [0], w: [0], wRef: [wRef(0)], id: [0], iq: [0], vd: [0], vq: [0], torque: [0], ia: [0], ib: [0], ic: [0], power: [0] };
@@ -81,12 +82,30 @@ export function focSimulate(m: Pmsm, wRef: (t: number) => number, T: number, loa
     let vd = g.kpd * ed + Id - we * m.lq * iq, vq = g.kpq * eq + Iq + we * (m.ld * id + m.psi);
     const mag = Math.hypot(vd, vq), held = mag > vmax;
     if (held) { vd *= vmax / mag; vq *= vmax / mag; } else { Id += g.kid * ed * dt; Iq += g.kiq * eq * dt; }
-    // The motor (semi-implicit Euler: the currents, then the speed with the new torque).
-    id += (dt * (vd - m.rs * id + we * m.lq * iq)) / m.ld;
-    iq += (dt * (vq - m.rs * iq - we * (m.ld * id + m.psi))) / m.lq;
-    const te = torqueOf(m, id, iq);
-    w += (dt * (te - m.b * w - load(t))) / m.j;
-    th += w * dt;
+    let te = 0;
+    if (pwm) {
+      // M485d: space-vector PWM switched for real. The voltage asked for becomes three duties (min–max injection, the
+      // same as space-vector modulation), each leg is on (+Vdc/2) while its duty is above a triangle carrier, else off
+      // (−Vdc/2); the motor sees the phase voltages about its star point. 100 small steps a period.
+      const [al, be] = invPark(vd, vq, m.p * th), [va, vb, vc] = invClarke(al, be), off = -(Math.max(va, vb, vc) + Math.min(va, vb, vc)) / 2;
+      const duty = [va, vb, vc].map((v) => Math.max(0, Math.min(1, 0.5 + (v + off) / m.vdc))), N = 100, h = dt / N;
+      for (let k = 0; k < N; k++) {
+        const c = 1 - Math.abs(1 - (2 * (k + 0.5)) / N), leg = duty.map((d) => (d > c ? m.vdc / 2 : -m.vdc / 2));
+        const [pa, pb] = clarke(leg[0], leg[1], leg[2]), [ud, uq] = park(pa, pb, m.p * th), wek = m.p * w;
+        id += (h * (ud - m.rs * id + wek * m.lq * iq)) / m.ld;
+        iq += (h * (uq - m.rs * iq - wek * (m.ld * id + m.psi))) / m.lq;
+        te = torqueOf(m, id, iq);
+        w += (h * (te - m.b * w - load(t + k * h))) / m.j;
+        th += w * h;
+      }
+    } else {
+      // The motor (semi-implicit Euler: the currents, then the speed with the new torque).
+      id += (dt * (vd - m.rs * id + we * m.lq * iq)) / m.ld;
+      iq += (dt * (vq - m.rs * iq - we * (m.ld * id + m.psi))) / m.lq;
+      te = torqueOf(m, id, iq);
+      w += (dt * (te - m.b * w - load(t))) / m.j;
+      th += w * dt;
+    }
     if (s % every === 0 || s === n) {
       const [al, be] = invPark(id, iq, m.p * th), [ia, ib, ic] = invClarke(al, be);
       out.t.push(s * dt); out.w.push(w); out.wRef.push(wRef(s * dt)); out.id.push(id); out.iq.push(iq); out.vd.push(vd); out.vq.push(vq); out.torque.push(te);
@@ -180,7 +199,7 @@ export const SIX_STEP: [number, number][] = Array.from({ length: 6 }, (_, s) => 
 /** Six-step drive: in each Hall sector one phase is switched to the supply (PWM at `duty`, as its average) and one to
  * ground; the third floats, but carries on through its diode until its current dies away (that's the commutation dip
  * in torque). Either a fixed duty or a speed PI on the duty (0–1). 2 µs steps. */
-export function bldcSimulate(m: Bldc, T: number, o: { duty?: (t: number) => number; speed?: (t: number) => number; load?: (t: number) => number; hallOffset?: number; kp?: number; ki?: number; points?: number } = {}) {
+export function bldcSimulate(m: Bldc, T: number, o: { duty?: (t: number) => number; speed?: (t: number) => number; load?: (t: number) => number; hallOffset?: number; kp?: number; ki?: number; points?: number; pwm?: number } = {}) {
   const dt = 2e-6, n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1500))), load = o.load ?? (() => 0), half = m.vdc / 2;
   const i = [0, 0, 0];
   let w = 0, th = 0, integ = 0, duty = 0;
@@ -197,7 +216,10 @@ export function bldcSimulate(m: Bldc, T: number, o: { duty?: (t: number) => numb
     const f = backEmfShape(the), e = f.map((x) => m.ke * w * x);
     // Terminal voltages (about the supply's middle): high side at the PWM average, low side at 0 V.
     const v = [0, 0, 0];
-    v[hi] = duty * m.vdc - half; v[lo] = -half;
+    // M485d: with `pwm` (Hz) the high side really switches: on while the duty is above a sawtooth carrier, and while
+    // it is off the high phase's current flows on through the opposite leg's diode (its terminal at the other rail).
+    const on = o.pwm ? duty > ((t * o.pwm) % 1) : true;
+    v[hi] = o.pwm ? (on ? half : i[hi] > 0 ? -half : half) : duty * m.vdc - half; v[lo] = -half;
     if (Math.abs(i[fl]) > 1e-9) {
       // The floating phase's current flows on through a diode: into the motor through the low one (−Vdc/2), out
       // through the high one (+Vdc/2). All three terminals are set, so the star point floats to their average.
