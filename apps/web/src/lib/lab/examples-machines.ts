@@ -290,6 +290,14 @@ t2 = railSingle('intercity', ic, [1 -1], [0 1200], 'Dispatch', 'priority', 'Prio
 fprintf('Return train late: %.1f min, with loops %.1f, put first %.1f\\n', t0.Delay(2), t1.Delay(2), t2.Delay(2))
 % An express through the middle stations, and a branch train joining at station 3
 figure; railSingle('metro', trainModel('metro'), [1 1 -1 1], [0 240 120 360], 'Skip', {[], [2 3 4 5], [], []}, 'From', [NaN NaN NaN 3], 'Dispatch', 'best')
+% Storage on a DC line: substations only at the ends, a supercapacitor midway
+[~, ~, plain] = railLine('metro', trainModel('metro'), [0 150], 'Supply', 'metro', 'SubstationSpacing', 5200);
+[~, ~, kept] = railLine('metro', trainModel('metro'), [0 150], 'Supply', 'metro', 'SubstationSpacing', 5200, 'Storage', 2600);
+fprintf('From the substations: %.0f kWh, with storage %.0f kWh (stored %.0f, given back %.0f)\\n', plain.FromSubstationsKWh, kept.FromSubstationsKWh, kept.StoredKWh, kept.ReturnedKWh)
+% A telephone cable 30 m from a 25 kV line: rail return against autotransformers
+[~, ~, rr] = railLine('intercity', trainModel('intercity'), [0 300], 'Supply', 'ac25', 'Cable', [30 100]);
+[~, ~, at] = railLine('intercity', trainModel('intercity'), [0 300], 'Supply', 'ac25at', 'Cable', [30 100]);
+fprintf('Induced while running: %.0f V (rails), %.0f V (autotransformers); a fault: %.0f V\\n', rr.MaxInducedVolts, at.MaxInducedVolts, rr.FaultInducedVolts)
 fprintf('With one track at each station they lock up after %.1f minutes\\n', stuck)
 % 25 kV AC: rail return against autotransformers, three intercity trains five minutes apart
 for s = {'ac25', 'ac25at'}

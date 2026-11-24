@@ -118,13 +118,44 @@ function supplyOf(o: Map<string, Value>, r: rl.Route): rl.Supply | undefined {
   if (o.get('substationspacing')) { const e = toMat(o.get('substationspacing')!).d[0]; if (!(e >= 200)) throw new LabError("'SubstationSpacing' is at least 200 m."); sup.subs = rl.spaced(L, e); }
   if (!(sup.vmin > 0 && sup.vmin < sup.vnom && sup.vnom <= sup.v0 && sup.v0 < sup.vmax && sup.rs > 0 && sup.rline > 0)) throw new LabError('The supply needs 0 < Vmin < Vnom ≤ V0 < Vmax, and Rs and Rline above 0.');
   if (!sup.subs.length || sup.subs.some((s) => !(s >= 0 && s <= L))) throw new LabError(`The substations are positions along the line, 0 to ${L} m.`);
+  // Storage on the line (M491g, DC only): 'Storage', positions in m (1 MW, 10 kWh each) or a struct At, Power (W),
+  // Energy (kWh), VCharge, VSupport.
+  const so = o.get('storage');
+  if (so) {
+    if (sup.ac) throw new LabError("'Storage' is for DC supplies (an AC line gives braking back to the grid).");
+    const f = so.k === 'struct' ? so.f : new Map<string, Value>([['At', so]]), get = (k: string, d: number) => (f.get(k) ? toMat(f.get(k)!).d[0] : d);
+    const at = f.get('At') ? [...toMat(f.get('At')!).d] : [];
+    if (!at.length || at.some((x) => !(x >= 0 && x <= L))) throw new LabError(`'Storage' needs its positions (At), 0 to ${L} m.`);
+    const st = rl.storageFor(sup, at, get('Power', 1e6), get('Energy', 10));
+    st.vcharge = get('VCharge', st.vcharge); st.vsupport = get('VSupport', st.vsupport);
+    if (!(st.power > 0 && st.energy > 0 && st.vsupport < st.vcharge)) throw new LabError("Storage needs Power and Energy above 0 and VSupport below VCharge.");
+    sup.storage = st;
+  }
   return sup;
 }
+// Interference (M491g): 'Cable', [separation m, soil resistivity Ω·m] of a cable beside an AC line (30 m, 100 Ω·m).
+function cableOf(o: Map<string, Value>): rl.Cable | undefined {
+  const x = o.get('cable');
+  if (!x) return undefined;
+  const d = [...toMat(x).d];
+  if (d.length !== 2 || !(d[0] >= 1 && d[0] <= 5000 && d[1] >= 1 && d[1] <= 1e4)) throw new LabError("'Cable' is [separation in m (1 to 5,000), soil resistivity in Ω·m (1 to 10,000)].");
+  return { sep: d[0], rho: d[1] };
+}
+// inducedVoltage(I, length, separation, rho, screening): the EMF (V) a current I (A) along `length` m of a 50 Hz line
+// induces in a cable beside it (Carson), times the screening factor (1 when not given).
+def('inducedVoltage', (a) => {
+  const n = (k: number, d: number) => (a[k] ? toMat(a[k]).d[0] : d), I = n(0, NaN), len = n(1, NaN), sep = n(2, 30), rho = n(3, 100), k = n(4, 1);
+  if (!(I >= 0 && len >= 0 && sep > 0 && rho > 0 && k >= 0 && k <= 1)) throw new LabError('inducedVoltage(current A, length m, separation m, soil resistivity Ω·m, screening 0 to 1).');
+  const zm = rl.mutualZ({ sep, rho });
+  return [num(Math.hypot(zm[0], zm[1]) * k * I * (len / 1000))];
+});
 def('railLine', (a, nout, lab) => {
   if (a.length < 3) throw new LabError("railLine needs the route, the train (or a cell of trains) and the departures in seconds: railLine('metro', trainModel('metro'), [0 90 180], 'Signals', 'fixed', 'Block', 400).");
-  const r = routeOf(a[0]), o = pairs(a, 3), sup = supplyOf(o, r), feed = sup ? rl.supplyFor(sup, 0.5) : undefined;
+  const r = routeOf(a[0]), o = pairs(a, 3), sup = supplyOf(o, r), cable = cableOf(o), feed = sup ? rl.supplyFor(sup, 0.5, cable) : undefined;
   const run = rl.railLine(r, lineTrains(a), { ...lineOpts(o), supply: feed?.step });
-  const lg = feed?.log, info: Struct | undefined = lg && { k: 'struct', f: new Map<string, Value>([['MinVoltage', num(Math.min(...lg.minVolt))], ['FromSubstationsKWh', num(lg.fromSubsKwh)], ['LossKWh', num(lg.lossKwh)], ['RegenUsedKWh', num(lg.regenUsedKwh)], ['RegenWastedKWh', num(lg.regenWastedKwh)], ['TrippedSeconds', num(lg.tripped)], ['NeutralSeconds', num(lg.neutral)], ['Time', col(lg.t)], ['LowestVoltage', col(lg.minVolt)]]) };
+  const lg = feed?.log, info: Struct | undefined = lg && { k: 'struct', f: new Map<string, Value>([['MinVoltage', num(Math.min(...lg.minVolt))], ['FromSubstationsKWh', num(lg.fromSubsKwh)], ['LossKWh', num(lg.lossKwh)], ['RegenUsedKWh', num(lg.regenUsedKwh)], ['RegenWastedKWh', num(lg.regenWastedKwh)], ['TrippedSeconds', num(lg.tripped)], ['NeutralSeconds', num(lg.neutral)], ['Time', col(lg.t)], ['LowestVoltage', col(lg.minVolt)],
+    ...(sup?.storage ? [['StoredKWh', num(lg.storedKwh)], ['ReturnedKWh', num(lg.returnedKwh)], ['Charge', mat(lg.soc.length, sup.storage.at.length, Float64Array.from({ length: lg.soc.length * sup.storage.at.length }, (_, q) => lg.soc[q % lg.soc.length][Math.floor(q / lg.soc.length)]))]] as [string, Value][] : []),
+    ...(sup?.ac ? [['MaxInducedVolts', num(lg.maxEmf)], ['FaultInducedVolts', num(Math.max(...rl.faultEmf(sup, cable ?? { sep: 30, rho: 100 }).map((x) => x.emf)))], ['InducedVolts', col(lg.emf)]] as [string, Value][] : [])]) };
   if (nout > 0) return [lineTable(run), { k: 'cell', r: 1, c: run.trains.length, d: run.trains.map((x) => table([['Time', col(x.t)], ['Position', col(x.s)], ['Speed', col(x.v.map((v) => v * 3.6))], ['Power', col(x.power.map((p) => p / 1000))]])) }, ...(info ? [info] : [])];
   // The train graph: distance against time, one line per train, stations as dashed lines (with a supply, the lowest
   // voltage at any train below it).

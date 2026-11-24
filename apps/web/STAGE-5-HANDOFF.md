@@ -13055,6 +13055,31 @@ first (First come / Priority / Best order) with the weighted delay against first
 Example railways.m. Not built: trains overtaking each other at loops (same direction), a junction's own crossing moves
 (the branch is off the model), the train's length in freeing sections.
 
+## M491g (24 Nov): Hyperion railways, storage on the line and interference from AC lines
+
+`rail.ts`. **Storage** (DC only): `Supply.storage` (`Storage`: positions, power W, energy J, vcharge, vsupport, eta;
+`storageFor(sup, at, W, kWh)`: v0 + 2% of nominal to charge, v0 − 4% to give back, 95% each way). In `solveSupply` each
+unit is a node in the tridiagonal solve: a conductance GS = 20 S to vcharge (charging, not full) or to vsupport (giving,
+not empty), or a fixed current at its power past that; its `mode` is picked from the last pass's voltage like the diodes
+and the chopper. **Traps:** first tried as a damped current outside the solve: it oscillated (stored energy in the
+millions of kWh); the power cap divides by max(V, ½·nominal), never V itself; with storage the solve runs up to 200
+passes (40 was too few for the chopper and the storage to settle: `given` came out 0 for a braking train). `soc` per
+unit (`supplyFor`, starts half full) clamps 0–1; the log gains `soc[]`, `storedKwh`, `returnedKwh`. Checked: by hand a
+unit midway holds a 3 MW train's voltage 50+ V higher and soaks up 1 MW of a 2 MW brake; full it takes nothing, empty it
+gives nothing; on the 5.2 km metro fed only at its ends, two trains take >10% less from the substations and reuse more
+than twice the braking. **Interference** (AC): Carson's mutual impedance `mutualZ({sep, rho})` (0.049 + j0.216 Ω/km at
+30 m, 100 Ω·m), screening `ac.screen` (rail return 0.5, BT 0.15, AT 0.1: typical figures, said so), the EMF in a cable
+along each side of each feeding section = |Zm·k·Σ I·distance from its substation| (`solveAc` now gives `emf`, the
+largest; `supplyFor(sup, dt, cable)` logs `emf[]`, `maxEmf`); `faultEmf` (a short at each section's far end: V0 /
+|Zs + Zline·len|); limits `EMF_LIMIT` 60 V, `EMF_FAULT_LIMIT` 430 V (ITU-T). Checked: the fault by hand; two intercity
+trains induce ~1 kV with rail return at 30 m, BT and AT far less, 300 m less. Language: `railLine(…, 'Storage', m or
+struct(At, Power, Energy, VCharge, VSupport))` → StoredKWh, ReturnedKWh, Charge; `railLine(…, 'Cable', [sep rho])` →
+MaxInducedVolts, FaultInducedVolts, InducedVolts; `inducedVoltage(I, len, sep, rho, k)`. Window: Several trains → the
+power supply → (DC) "Storage between substations" (green ticks; braking reused · burnt · stored), (AC) "A telephone
+cable beside it, at" 10–300 m (running · fault volts, flagged over 60 / 430). Browser check tab `storage`. Example
+railways.m. Not built: rail-to-earth (touch) voltages and stray current, the grid's unbalance and harmonics, storage
+on AC lines, a storage unit's own losses and ageing.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

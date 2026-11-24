@@ -205,8 +205,16 @@ export interface Supply {
   vnom: number; v0: number; vmin: number; vmax: number; rs: number; rline: number; subs: number[];
   /** A 25 kV AC line (M491d): each substation's transformer reactance (Ω), the line's reactance (Ω/km), the trains'
    * power factor drawing power, and the neutral section's length (m) midway between substations. */
-  ac?: { xs: number; xline: number; pf: number; neutral: number };
+  ac?: { xs: number; xline: number; pf: number; neutral: number; screen?: number };
+  /** Storage on the line (M491g, DC): units at positions (m), each able to take or give `power` (W) and hold
+   * `energy` (J); it charges when the line is above `vcharge` (a braking train lifting it) and supports below
+   * `vsupport`, each way at `eta`. Batteries or supercapacitors in lineside cabinets. */
+  storage?: Storage;
 }
+export interface Storage { at: number[]; power: number; energy: number; vcharge: number; vsupport: number; eta: number }
+/** Lineside storage for a DC supply: 1 MW and 10 kWh a unit (a metro's supercapacitor cabinet), charging a little above
+ * the no-load voltage and giving back a little below it (as soon as a train nearby draws power). */
+export const storageFor = (sup: Supply, at: number[], power = 1e6, kwh = 10): Storage => ({ at, power, energy: kwh * 3.6e6, vcharge: sup.v0 + 0.02 * sup.vnom, vsupport: sup.v0 - 0.04 * sup.vnom, eta: 0.95 });
 /** Typical DC lines: 750 V (metro, third rail) and 3 kV (main line), substations every 2 km and 15 km. */
 export const SUPPLIES: Record<string, (L: number) => Supply> = {
   metro: (L) => ({ vnom: 750, v0: 825, vmin: 500, vmax: 950, rs: 0.02, rline: 0.03, subs: spaced(L, 2000) }),
@@ -214,27 +222,49 @@ export const SUPPLIES: Record<string, (L: number) => Supply> = {
   // 25 kV 50 Hz (EN 50163: 27.5 kV no-load and highest held, 17.5 kV lowest), feeder stations every 50 km, each a
   // 20 MVA transformer (10%: about 3.1 Ω, mostly reactance). Rail return (booster transformers add a little more):
   // ~0.17 + j0.42 Ω/km; autotransformers (2 × 25 kV) feed at 50 kV, so a train sees about a third of that.
-  ac25: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.17, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.42, pf: 0.95, neutral: 200 } }),
-  ac25bt: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.21, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.6, pf: 0.95, neutral: 200 } }),
-  ac25at: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.06, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.15, pf: 0.95, neutral: 200 } }),
+  ac25: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.17, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.42, pf: 0.95, neutral: 200, screen: 0.5 } }),
+  ac25bt: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.21, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.6, pf: 0.95, neutral: 200, screen: 0.15 } }),
+  ac25at: (L) => ({ vnom: 25000, v0: 27500, vmin: 17500, vmax: 29000, rs: 0.3, rline: 0.06, subs: spaced(L, 50000), ac: { xs: 3.1, xline: 0.15, pf: 0.95, neutral: 200, screen: 0.1 } }),
 };
 /** Substations every `every` metres from the start, the last at the end. */
 export function spaced(L: number, every: number) { const n = Math.max(1, Math.round(L / every)); return Array.from({ length: n + 1 }, (_, i) => (L * i) / n); }
-export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number; neutral: number; stuck: number }
+export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number; neutral: number; stuck: number; soc: number[][]; storedKwh: number; returnedKwh: number; emf: number[]; maxEmf: number }
 /** One moment: the voltage at each train and what each substation gives, for trains at `s` drawing `p` (W). */
-export function solveSupply(sup: Supply, s: number[], p: number[]) {
-  if (sup.ac) return solveAc(sup, s, p);
-  type Node = { x: number; sub: boolean; k: number };
-  const nodes: Node[] = [...sup.subs.map((x, k) => ({ x, sub: true, k })), ...s.map((x, k) => ({ x, sub: false, k }))].sort((a, b) => a.x - b.x || (a.sub ? -1 : 1));
+export function solveSupply(sup: Supply, s: number[], p: number[], soc: number[] = [], cable?: Cable) {
+  if (sup.ac) return solveAc(sup, s, p, cable);
+  type Node = { x: number; sub: boolean; k: number; store?: boolean };
+  const st = sup.storage, units = st?.at ?? [];
+  const nodes: Node[] = [...sup.subs.map((x, k) => ({ x, sub: true, k })), ...s.map((x, k) => ({ x, sub: false, k })), ...units.map((x, k) => ({ x, sub: false, k, store: true }))].sort((a, b) => a.x - b.x || (a.sub ? -1 : 1));
   const n = nodes.length, V = new Array<number>(n).fill(sup.v0), on = sup.subs.map(() => true), chop = s.map(() => false), GC = 1e3;
+  // Storage (M491g): above vcharge (while not full) a conductance GS to vcharge, below vsupport (while not empty) one to
+  // vsupport, in the linear solve like a substation; past its power, a fixed current. `mode` is chosen from the last
+  // pass's voltage, as the chopper and the diodes are: 0 off, 1 charging, 2 charging at full power, −1 and −2 giving.
+  const GS = 20, mode = units.map(() => 0), capOf = (v: number) => (st ? st.power / Math.max(v, 0.5 * sup.vnom) : 0);
+  const storeI = (k: number, v: number) => {
+    if (!st || !mode[k]) return 0;
+    const cap = capOf(v), ref = mode[k] > 0 ? st.vcharge : st.vsupport;
+    return Math.abs(mode[k]) === 2 ? Math.sign(mode[k]) * cap : GS * (v - ref);
+  };
+  const modeOf = (k: number, v: number) => {
+    if (!st) return 0;
+    const cap = capOf(v), full = (soc[k] ?? 0.5) >= 1, empty = (soc[k] ?? 0.5) <= 0;
+    if (v > st.vcharge && !full) return GS * (v - st.vcharge) > cap ? 2 : 1;
+    if (v < st.vsupport && !empty) return GS * (st.vsupport - v) > cap ? -2 : -1;
+    return 0;
+  };
   const G = nodes.slice(1).map((nd, i) => 1 / Math.max(1e-6, (sup.rline * (nd.x - nodes[i].x)) / 1000));
-  for (let it = 0; it < 40; it++) {
+  for (let it = 0; it < (units.length ? 200 : 40); it++) {
     // Kirchhoff at each node: Σ G(V − Vn) + (substation: (V − v0)/rs) + (train: I) = 0, the train's I = P / V.
     const a = new Array<number>(n).fill(0), b = new Array<number>(n).fill(0), c = new Array<number>(n).fill(0), d = new Array<number>(n).fill(0);
     for (let i = 0; i < n; i++) {
       if (i > 0) { a[i] = -G[i - 1]; b[i] += G[i - 1]; }
       if (i < n - 1) { c[i] = -G[i]; b[i] += G[i]; }
       const nd = nodes[i];
+      if (nd.store) {
+        const md = mode[nd.k];
+        if (Math.abs(md) === 1) { b[i] += GS; d[i] += GS * (md > 0 ? st!.vcharge : st!.vsupport); } else if (md) d[i] -= Math.sign(md) * capOf(V[i]);
+        continue;
+      }
       if (nd.sub) { if (on[nd.k]) { b[i] += 1 / sup.rs; d[i] += sup.v0 / sup.rs; } else b[i] += 1e-9; }
       // A train's current is limited (its most power at the lowest voltage): without it, loads past what the line can
       // carry have no answer and the voltage collapses.
@@ -252,26 +282,37 @@ export function solveSupply(sup: Supply, s: number[], p: number[]) {
     let change = 0;
     for (let i = 0; i < n; i++) { change = Math.max(change, Math.abs(nv[i] - V[i])); V[i] = 0.5 * V[i] + 0.5 * Math.max(1, nv[i]); }
     // A substation's diodes block when the line is above its voltage; braking that pushes a train past vmax is cut.
-    nodes.forEach((nd, i) => { if (nd.sub) on[nd.k] = V[i] < sup.v0 + 1e-6; else if (p[nd.k] < 0) chop[nd.k] = V[i] > sup.vmax; });
+    nodes.forEach((nd, i) => { if (nd.store) mode[nd.k] = modeOf(nd.k, V[i]); else if (nd.sub) on[nd.k] = V[i] < sup.v0 + 1e-6; else if (p[nd.k] < 0) chop[nd.k] = V[i] > sup.vmax; });
     if (change < 1e-3 && it > 3) break;
   }
-  const volts = s.map(() => 0), subP = sup.subs.map(() => 0);
+  const volts = s.map(() => 0), subP = sup.subs.map(() => 0), storePower = units.map(() => 0);
   let loss = 0;
   const given = p.slice();
   nodes.forEach((nd, i) => {
-    if (nd.sub) subP[nd.k] = on[nd.k] ? (sup.v0 * Math.max(0, sup.v0 - V[i])) / sup.rs : 0;
+    if (nd.store) storePower[nd.k] = storeI(nd.k, V[i]) * V[i];
+    else if (nd.sub) subP[nd.k] = on[nd.k] ? (sup.v0 * Math.max(0, sup.v0 - V[i])) / sup.rs : 0;
     else { volts[nd.k] = V[i]; if (chop[nd.k]) given[nd.k] = Math.min(0, p[nd.k] + GC * Math.max(0, V[i] - sup.vmax) * V[i]); }
     if (i < n - 1) loss += G[i] * (V[i] - V[i + 1]) ** 2;
   });
-  return { volts, subPower: subP, loss, given };
+  return { volts, subPower: subP, loss, given, storePower, emf: 0 };
 }
 /** A supply for `railLine`: returns the step function it calls and the log it fills. */
-export function supplyFor(sup: Supply, dt: number) {
-  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0, neutral: 0, stuck: 0 };
+export function supplyFor(sup: Supply, dt: number, cable?: Cable) {
+  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0, neutral: 0, stuck: 0, soc: [], storedKwh: 0, returnedKwh: 0, emf: [], maxEmf: 0 };
   let time = 0;
-  const gap: number[] = [];
+  const gap: number[] = [], soc = (sup.storage?.at ?? []).map(() => 0.5);
   const step = (s: number[], p: number[]) => {
-    const r = solveSupply(sup, s, p), j = 3.6e6;
+    const r = solveSupply(sup, s, p, soc, cable), j = 3.6e6;
+    // Storage: charging fills it at eta, giving empties it at 1 / eta.
+    if (sup.storage) {
+      const st = sup.storage;
+      r.storePower.forEach((w, k) => {
+        if (w > 0) { soc[k] = Math.min(1, soc[k] + (w * st.eta * dt) / st.energy); log.storedKwh += (w * dt) / j; }
+        else { soc[k] = Math.max(0, soc[k] + (w * dt) / st.eta / st.energy); log.returnedKwh += (-w * dt) / j; }
+      });
+      log.soc.push(soc.slice());
+    }
+    log.emf.push(r.emf); log.maxEmf = Math.max(log.maxEmf, r.emf);
     const back = p.reduce((q, x) => q + Math.max(0, -x), 0), givenBack = r.given.reduce((q, x) => q + Math.max(0, -x), 0);
     log.t.push(time); log.volts.push(r.volts); log.subPower.push(r.subPower.map((x) => x / 1000)); log.lossKw.push(r.loss / 1000);
     const running = r.volts.filter((_, k) => p[k] !== 0);
@@ -303,7 +344,33 @@ const cabs = (a: Cx) => Math.hypot(a[0], a[1]);
 /** Midpoints between substations: where the neutral sections are. */
 const neutrals = (sup: Supply) => sup.subs.slice(1).map((x, k) => (x + sup.subs[k]) / 2);
 export const neutralAt = (sup: Supply, s: number) => !!sup.ac && neutrals(sup).some((m) => Math.abs(s - m) < sup.ac!.neutral / 2);
-function solveAc(sup: Supply, s: number[], p: number[]) {
+// ——— Interference from AC lines (M491g) ———
+// A 25 kV line's current, returning partly through the ground, induces a voltage along any metal running beside it
+// (telephone and signalling cables, pipes). Carson's mutual impedance between the overhead line and a cable `sep` metres
+// away, over earth of resistivity ρ (Ω·m), per km at f Hz: π²·f·10⁻⁴ + j·4π·f·10⁻⁴·ln(De / sep), De = 658·√(ρ / f). The
+// rails, a return conductor with booster transformers or autotransformers carry current back and cancel part of it:
+// the screening factor (rail return ~0.5, BT ~0.15, AT ~0.1, typical figures). A cable runs a feeding section, from
+// neutral section to neutral section (it is cut there too); its EMF is |Zm·k·Σ I_train·distance from the substation|.
+// Limits (ITU-T's Directives): 60 V in normal running, 430 V while a fault lasts.
+export const EMF_LIMIT = 60, EMF_FAULT_LIMIT = 430;
+export interface Cable { sep: number; rho: number }
+export function mutualZ(c: Cable, f = 50): Cx { return [Math.PI ** 2 * f * 1e-4, 4 * Math.PI * f * 1e-4 * Math.log((658 * Math.sqrt(c.rho / f)) / Math.max(0.1, c.sep))]; }
+/** The largest EMF (V) a fault at a feeding section's far end induces in the cable: the fault current there from the
+ * no-load voltage through the transformer and the line, times Zm, the screening and the length. Per substation and side. */
+export function faultEmf(sup: Supply, c: Cable) {
+  if (!sup.ac) return [];
+  const mids = neutrals(sup), zm = cabs(mutualZ(c)), k = sup.ac.screen ?? 0.5, out: { sub: number; side: -1 | 1; length: number; current: number; emf: number }[] = [];
+  sup.subs.forEach((x0, i) => {
+    for (const side of [-1, 1] as const) {
+      const end = side === -1 ? (i > 0 ? mids[i - 1] : x0) : i < mids.length ? mids[i] : x0, len = Math.abs(end - x0) / 1000;
+      if (len <= 0) continue;
+      const z = cabs([sup.rs + (sup.rline * len), sup.ac!.xs + sup.ac!.xline * len]), I = sup.v0 / z;
+      out.push({ sub: i, side, length: len * 1000, current: I, emf: zm * k * I * len });
+    }
+  });
+  return out;
+}
+function solveAc(sup: Supply, s: number[], p: number[], cable: Cable = { sep: 30, rho: 100 }) {
   const ac = sup.ac!, mids = neutrals(sup), n = s.length, tanPhi = Math.tan(Math.acos(Math.max(0.3, Math.min(1, ac.pf))));
   const feeder = s.map((x) => mids.filter((m) => m <= x).length), zl: Cx = [sup.rline / 1000, ac.xline / 1000], zt: Cx = [sup.rs, ac.xs];
   let V: Cx[] = s.map(() => [sup.v0, 0]);
@@ -342,8 +409,17 @@ function solveAc(sup: Supply, s: number[], p: number[]) {
     s.forEach((_, i) => { if (given[i] < 0 && cabs(V[i]) > sup.vmax) given[i] *= 0.9; });
     if (change < 1e-2 && it > 3) break;
   }
+  // The EMF in a cable beside each side of each substation's feeding section: the largest of them.
+  const zm = mutualZ(cable), k = ac.screen ?? 0.5;
+  let emf = 0;
+  sup.subs.forEach((x0, j) => {
+    for (const side of [-1, 1]) {
+      const sum = s.reduce<Cx>((q, x, i) => (feeder[i] === j && (x - x0) * side > 0 ? [q[0] + I[i][0] * Math.abs(x - x0) / 1000, q[1] + I[i][1] * Math.abs(x - x0) / 1000] : q), [0, 0]);
+      emf = Math.max(emf, k * cabs(cmul(zm, sum)));
+    }
+  });
   // A substation's power from the grid: Re(E·conj(I)); negative while braking trains feed back more than others draw.
-  return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given };
+  return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given, storePower: [] as number[], emf };
 }
 
 // ——— Single track both ways, with a timetable (M491e) ———

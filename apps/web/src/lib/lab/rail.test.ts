@@ -173,4 +173,38 @@ describe('Hyperion railways (M491)', () => {
     expect((lab.vars.get('d') as { d: Float64Array }).d[1]).toBeLessThan(1);
     expect((lab.vars.get('e') as { d: Float64Array }) ).toBeTruthy();
   });
+  it('storage on the line and interference from AC lines (M491g)', { timeout: 60_000 }, () => {
+    const r = rl.ROUTES.metro(), t = rl.TRAINS.metro, L = rl.routeLength(r);
+    // One moment by hand: a unit midway supports a train drawing 3 MW and soaks up 1 MW of a train braking 2 MW.
+    const sup = { ...rl.SUPPLIES.metro(L), subs: [0, L] }, plain = rl.solveSupply(sup, [L / 2], [3e6]);
+    const stored = { ...sup, storage: rl.storageFor(sup, [L / 2]) }, help = rl.solveSupply(stored, [L / 2], [3e6], [0.5]);
+    expect(help.volts[0]).toBeGreaterThan(plain.volts[0] + 50); expect(help.storePower[0]).toBeCloseTo(-1e6, -4);
+    const brake = rl.solveSupply(stored, [L / 2], [-2e6], [0.5]);
+    expect(brake.storePower[0]).toBeCloseTo(1e6, -4); expect(brake.given[0]).toBeCloseTo(-1e6, -4);
+    // Full, it takes nothing; empty, it gives nothing.
+    expect(rl.solveSupply(stored, [L / 2], [-2e6], [1]).storePower[0]).toBe(0);
+    expect(rl.solveSupply(stored, [L / 2], [3e6], [0]).storePower[0]).toBe(0);
+    // Over a run: less from the substations and more braking reused.
+    const go = (s: rl.Supply) => { const f = rl.supplyFor(s, 0.5); rl.railLine(r, [{ train: t, depart: 0 }, { train: t, depart: 150 }], { supply: f.step }); return f.log; };
+    const a = go(sup), b = go(stored);
+    expect(b.fromSubsKwh).toBeLessThan(0.9 * a.fromSubsKwh); expect(b.regenUsedKwh).toBeGreaterThan(2 * a.regenUsedKwh);
+    expect(b.storedKwh).toBeGreaterThan(0); expect(b.returnedKwh).toBeGreaterThan(0); expect(b.returnedKwh).toBeLessThan(b.storedKwh);
+    expect(b.soc.every((x) => x.every((q) => q >= 0 && q <= 1))).toBe(true);
+    // Carson's mutual impedance at 50 Hz, 30 m, 100 Ω·m: 0.049 + j0.216 Ω/km.
+    const zm = rl.mutualZ({ sep: 30, rho: 100 });
+    expect(zm[0]).toBeCloseTo(0.0493, 4); expect(zm[1]).toBeCloseTo(0.4 * Math.PI * 0.05 * Math.log(658 * Math.sqrt(2) / 30), 6);
+    // A fault at a 50 km section's far end: V0 / |Zs + Zline·25 km| through the cable's 25 km, screened by half.
+    const R = rl.ROUTES.intercity(), T = rl.TRAINS.intercity, L2 = rl.routeLength(R), ac = rl.SUPPLIES.ac25(L2);
+    const f0 = rl.faultEmf(ac, { sep: 30, rho: 100 })[0], If = 27500 / Math.hypot(0.3 + 0.17 * 25, 3.1 + 0.42 * 25);
+    expect(f0.current).toBeCloseTo(If, 3); expect(f0.emf).toBeCloseTo(Math.hypot(...zm) * 0.5 * If * 25, 3);
+    // Running trains: rail return far over 60 V, booster transformers and autotransformers far less; farther is less.
+    const emf = (k: string, sep = 30) => { const f = rl.supplyFor(rl.SUPPLIES[k](L2), 0.5, { sep, rho: 100 }); rl.railLine(R, [{ train: T, depart: 0 }, { train: T, depart: 300 }], { supply: f.step }); return f.log.maxEmf; };
+    const rail = emf('ac25');
+    expect(rail).toBeGreaterThan(rl.EMF_LIMIT * 5); expect(emf('ac25bt')).toBeLessThan(rail / 2); expect(emf('ac25at')).toBeLessThan(rail / 3); expect(emf('ac25', 300)).toBeLessThan(rail);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, ~, s1] = railLine('metro', trainModel('metro'), [0 150], 'Supply', 'metro', 'SubstationSpacing', 5200, 'Storage', 2600); [~, ~, s2] = railLine('intercity', trainModel('intercity'), [0 300], 'Supply', 'ac25', 'Cable', [30 100]); e = inducedVoltage(200, 25e3, 30, 100, 0.5); figure; railLine('metro', trainModel('metro'), [0 150], 'Supply', 'metro', 'Storage', struct('At', [1300 3900], 'Power', 2e6, 'Energy', 20));");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('s1', 'StoredKWh')).toBeGreaterThan(0); expect(f('s2', 'MaxInducedVolts')).toBeCloseTo(rail, 6); expect(f('s2', 'FaultInducedVolts')).toBeGreaterThan(1000);
+    expect(toMat(lab.vars.get('e')!).d[0]).toBeCloseTo(Math.hypot(...zm) * 0.5 * 200 * 25, 6);
+  });
 });

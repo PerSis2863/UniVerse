@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
-import { ROUTES, SUPPLIES, TRAINS, railLine, routeLength, spaced, supplyFor } from '@/lib/lab/rail';
+import { EMF_FAULT_LIMIT, EMF_LIMIT, ROUTES, SUPPLIES, TRAINS, faultEmf, railLine, routeLength, spaced, storageFor, supplyFor } from '@/lib/lab/rail';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Railway → Several trains (M491b): trains leaving one after another along the same
@@ -28,15 +28,21 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
   const [power, setPower] = useState(false);
   const [subKm, setSubKm] = useState(2);
   const [kind, setKind] = useState<Kind>('dc');
+  // M491g: lineside storage midway between substations (DC), and how far a telephone cable runs from an AC line.
+  const [store, setStore] = useState(false);
+  const [cableM, setCableM] = useState(30);
   const graph = useRef<HTMLCanvasElement>(null), volts = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
 
   const route = useMemo(() => ROUTES[routeName](), [routeName]), L = routeLength(route);
   const run = useMemo(() => {
     const main = routeName === 'metro' ? TRAINS.metro : TRAINS.intercity;
     const list = Array.from({ length: count }, (_, k) => ({ train: k === 0 && freightFirst && routeName === 'intercity' ? TRAINS.freight : main, depart: k * gap * 60 }));
-    const ac = routeName === 'intercity' && kind !== 'dc', sup = power ? { ...SUPPLIES[ac ? kind : routeName](L), subs: spaced(L, subKm * (routeName === 'metro' ? 1000 : ac ? 20000 : 7500)) } : null, feed = sup ? supplyFor(sup, 0.5) : null;
-    return { ...railLine(route, list, { signals, block: routeName === 'metro' ? block : block * 4, supply: feed?.step }), log: feed?.log ?? null, sup };
-  }, [route, routeName, L, count, gap, signals, block, freightFirst, power, subKm, kind]);
+    const ac = routeName === 'intercity' && kind !== 'dc', sup = power ? { ...SUPPLIES[ac ? kind : routeName](L), subs: spaced(L, subKm * (routeName === 'metro' ? 1000 : ac ? 20000 : 7500)) } : null;
+    // Storage: one unit midway between each pair of substations (1 MW, 10 kWh on the metro; 3 MW, 50 kWh on 3 kV).
+    if (sup && store && !ac) sup.storage = storageFor(sup, sup.subs.slice(1).map((x, k) => (x + sup.subs[k]) / 2), routeName === 'metro' ? 1e6 : 3e6, routeName === 'metro' ? 10 : 50);
+    const cable = { sep: cableM, rho: 100 }, feed = sup ? supplyFor(sup, 0.5, cable) : null;
+    return { ...railLine(route, list, { signals, block: routeName === 'metro' ? block : block * 4, supply: feed?.step }), log: feed?.log ?? null, sup, fault: sup?.ac ? Math.max(...faultEmf(sup, cable).map((x) => x.emf)) : 0 };
+  }, [route, routeName, L, count, gap, signals, block, freightFirst, power, subKm, kind, store, cableM]);
 
   const draw = useEffectEvent(() => {
     const b = box.current;
@@ -67,6 +73,8 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     });
     // The substations as ticks on the distance axis.
     if (run.sup) { g.fillStyle = '#f59e0b'; for (const x of run.sup.subs) g.fillRect(38, Y(x) - 1.5, 6, 3); }
+    // Storage units as green ticks.
+    if (run.sup?.storage) { g.fillStyle = '#16a34a'; for (const x of run.sup.storage.at) g.fillRect(38, Y(x) - 1.5, 6, 3); }
     // AC: the neutral sections midway between substations, a faint red band trains coast through.
     if (run.sup?.ac) { g.fillStyle = 'rgba(220,38,38,0.35)'; run.sup.subs.slice(1).forEach((x, k) => { const m = (x + run.sup!.subs[k]) / 2; g.fillRect(44, Y(m) - 1, W - 56, 2); }); }
     // Under it: the lowest voltage at a running train, the line where trains trip dashed.
@@ -100,7 +108,9 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     ['Most delayed', `${(Math.max(...late) / 60).toFixed(1)} min (train ${late.indexOf(Math.max(...late)) + 1})`],
     ['Lowest voltage', `${run.sup?.ac ? `${(Math.min(...lg.minVolt) / 1000).toFixed(1)} kV` : `${Math.min(...lg.minVolt).toFixed(0)} V`}${lg.tripped > 0 ? `, tripped ${lg.tripped.toFixed(0)} s` : ''}`],
     ['From the substations · lost', `${lg.fromSubsKwh.toFixed(0)} kWh · ${lg.lossKwh.toFixed(0)} kWh`],
-    [run.sup?.ac ? 'Braking to the grid · burnt' : 'Braking reused · burnt', `${lg.regenUsedKwh.toFixed(0)} kWh · ${lg.regenWastedKwh.toFixed(0)} kWh`],
+    run.sup?.ac ? ['In a cable beside it, running · a fault', `${lg.maxEmf.toFixed(0)} V${lg.maxEmf > EMF_LIMIT ? ' (over 60)' : ''} · ${run.fault.toFixed(0)} V${run.fault > EMF_FAULT_LIMIT ? ' (over 430)' : ''}`]
+      : run.sup?.storage ? ['Braking reused · burnt · stored', `${lg.regenUsedKwh.toFixed(0)} · ${lg.regenWastedKwh.toFixed(0)} · ${lg.storedKwh.toFixed(0)} kWh`]
+      : ['Braking reused · burnt', `${lg.regenUsedKwh.toFixed(0)} kWh · ${lg.regenWastedKwh.toFixed(0)} kWh`],
   ] : [
     ['Last train arrives', Number.isFinite(last.arrive) ? `at ${(last.arrive / 60).toFixed(1)} min` : 'Not yet'],
     ['Most delayed', `${(Math.max(...late) / 60).toFixed(1)} min (train ${late.indexOf(Math.max(...late)) + 1})`],
@@ -127,7 +137,10 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
         {power && routeName === 'intercity' && <Segmented<Kind> label="Supply" value={kind} onChange={setKind} segments={[{ value: 'dc', label: '3 kV DC' }, { value: 'ac25', label: '25 kV AC' }, { value: 'ac25at', label: '2 × 25 kV' }]} />}
         {power && range('Substations every', subKm, 1, 5, 1, `${routeName === 'metro' ? subKm : routeName === 'intercity' && kind !== 'dc' ? subKm * 20 : subKm * 7.5} km`, setSubKm)}
         {power && routeName === 'intercity' && kind !== 'dc' && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each substation feeds its own stretch out to the neutral sections midway to its neighbours (red: they’re on different phases, so trains coast through with their power off). The line’s reactance sags the voltage more than its resistance; {kind === 'ac25at' ? 'autotransformers feed at 50 kV, so trains see about a third of the drop' : 'the current returns through the rails'}. Under 17.5 kV trains trip; the grid takes back all braking.</p>}
-        {power && (routeName === 'metro' || kind === 'dc') && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each train draws from the substations (amber ticks) through the line’s resistance: far from them and with many trains pulling, the voltage sags and trains lose power; under {routeName === 'metro' ? '500' : '2,000'} V they trip. A braking train feeds the others; what nobody takes is burnt in its resistors.</p>}
+        {power && routeName === 'intercity' && kind !== 'dc' && range('A telephone cable beside it, at', cableM, 10, 300, 10, `${cableM} m`, setCableM)}
+        {power && routeName === 'intercity' && kind !== 'dc' && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">The line’s current, returning partly through the ground, induces a voltage along the cable ({kind === 'ac25at' ? 'autotransformers cancel about nine tenths of it' : 'the rails cancel about half'}). Allowed: 60 V while trains run, 430 V during a fault (shown for a short at the far end of a section).</p>}
+        {power && (routeName === 'metro' || kind === 'dc') && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={store} onChange={(e) => setStore(e.target.checked)} className="h-4 w-4 accent-violet-600" />Storage between substations ({routeName === 'metro' ? '1 MW, 10 kWh' : '3 MW, 50 kWh'})</label>}
+        {power && (routeName === 'metro' || kind === 'dc') && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each train draws from the substations (amber ticks) through the line’s resistance: far from them and with many trains pulling, the voltage sags and trains lose power; under {routeName === 'metro' ? '500' : '2,000'} V they trip. A braking train feeds the others; what nobody takes is burnt in its resistors{store ? ', unless the storage (green ticks) soaks it up to give back when a train pulls away' : ''}.</p>}
         {routeName === 'intercity' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={freightFirst} onChange={(e) => setFreightFirst(e.target.checked)} className="h-4 w-4 accent-violet-600" />A slow freight train first</label>}
         <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each line is a train: steep means fast, flat means stopped. Where lines crowd together, trains are waiting for the one ahead. In code: <span className="font-mono">railLine</span> with <span className="font-mono">{"'Supply'"}</span> (example: railways.m).</p>
       </aside>
