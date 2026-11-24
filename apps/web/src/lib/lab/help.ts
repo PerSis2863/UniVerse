@@ -168,6 +168,7 @@ rank | rank(A) | How many independent rows.
 trace | trace(A) | The sum of the diagonal.
 norm | norm(v), norm(A, p) | Length of a vector, size of a matrix (2, 1, Inf, 'fro').
 eig | eig(A), [V, D] = eig(A) | Eigenvalues (and eigenvectors).
+svd | [U, S, V] = svd(A), s = svd(A), svd(A, 'econ') | The singular value decomposition A = U·S·Vᵀ: S's diagonal holds how much A stretches along each of V's directions (largest first); its rank, condition and best low-rank copies come from it.
 lu | [L, U, P] = lu(A) | LU factorisation.
 cross | cross(a, b) | Cross product of 3-vectors.
 dot | dot(a, b) | Dot product.
@@ -272,6 +273,10 @@ nextpow2 | nextpow2(n) | The next power of 2's exponent.
 filter | filter(b, a, x) | Runs x through a digital filter.
 conv2 | conv2(A, K, 'same') | 2D convolution.
 xcorr | [r, lags] = xcorr(x, y) | Cross-correlation.
+findpeaks | [pks, locs, w, p] = findpeaks(y, x, 'MinPeakHeight', h, 'MinPeakDistance', d, 'MinPeakProminence', p, 'NPeaks', n, 'SortStr', 'descend') | The local tops of a signal: their heights, places and prominences (how far each stands above its surroundings). Without outputs, drawn.
+lowpass | y = lowpass(x, fpass, fs) | Keeps what is slower than fpass (Hz): a Butterworth run both ways. Without outputs, drawn.
+highpass | y = highpass(x, fpass, fs) | Keeps what is faster than fpass (Hz). Without outputs, drawn.
+bandpass | y = bandpass(x, [f1 f2], fs) | Keeps the band between f1 and f2 (Hz). Without outputs, drawn.
 hann | hann(n) | Hann window.
 hanning | hanning(n) | Hann window (older name).
 hamming | hamming(n) | Hamming window.
