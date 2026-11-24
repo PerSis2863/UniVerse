@@ -12899,3 +12899,23 @@ and a ramping level, fits recovering one and two compartments (the interval hold
 (mixed effects: a model of how parameters vary between people), fitting the effect model's parameters (use lsqcurvefit
 on `pkEffect`).
 
+## M512 (24 Nov): Hyperion DNA tools, the left-outs
+
+From M494's "Not built". `bio.ts` / `bio-lab.ts`. **Data:** NCBI's 27 genetic codes (ids 1–6, 9–16, 21–33: name, the
+64 amino acids in TCAG order, the start codons) and Dayhoff's PAM250 (same 24-letter order as BLOSUM62), both checked
+against Biopython 1.85's copies (its wheel read as text, nothing run; NCBI's FTP is blocked from this machine).
+`translate` / `codonToAA` take a code; `nt2aa(…, 'GeneticCode', n or a name)`; `geneticcode(n)` returns ID, Name,
+AminoAcids, Codons, Starts, Stops, and with nothing prints the list. `nwalign`, `swalign` and `multialign` take
+'ScoringMatrix' ('BLOSUM62', 'PAM250', 'NUC44' = the +5/−4 we had). **Files:** `fileText` / `writeFileText` are now
+exported from files.ts for toolbox readers. `fastaread(file or text starting with '>')`: one output a struct (text for
+one record, cells for several; no struct arrays in the engine), two outputs cells; ';' comment lines and a final '*'
+dropped. `fastawrite(file, headers, seqs | struct | seqs)` appends as MATLAB does, 70 letters a line. `genbankread`
+reads the first record: LOCUS (name, length, molecule), DEFINITION over several lines, ACCESSION, VERSION, ORGANISM,
+FEATURES as a table (type, location joined across lines, first /gene and /product), ORIGIN. **multialign**: distances
+1 − identity from pairwise global alignments, a UPGMA guide tree (`upgma`'s internal nodes come in merge order, so
+children always exist before their parent), then profile against profile by Gotoh's three states, a column pair scored
+as the average of its letters' pair scores (gaps 0); returns a cell of rows and the guide tree; without outputs prints
+blocks of 60 with '*' under columns identical in all. Up to 100 sequences, 60,000 letters. `seqconsensus` gives the
+commonest letter per column and the share agreeing. Not built: refinement after the progressive pass (MUSCLE-style),
+reading several GenBank records at once, BLAST-style database search, maximum-likelihood trees.
+

@@ -82,6 +82,13 @@ seqs = {'MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGA
 names = {'Human', 'Chimp', 'Mouse', 'Chicken', 'Frog'};
 D = seqpdist(seqs, 'Method', 'p-distance');
 seqneighjoin(D, 'equivar', names)
+% Sequences from a FASTA file (here written first; upload your own in Files), aligned all together
+fastawrite('globins.fasta', names, seqs);
+[h, q] = fastaread('globins.fasta');
+multialign({q{1}(1:40), q{4}(1:38), q{5}(5:44)}, 'ScoringMatrix', 'PAM250')
+% Mitochondria read some codons differently: AGA stops a human mitochondrial gene, TGA is tryptophan
+code = geneticcode(2); fprintf('%s: stops %s\\n', code.Name, strjoin(code.Stops, ' '))
+fprintf('Standard: %s   Mitochondrial: %s\\n', nt2aa('ATGTGAAGA'), nt2aa('ATGTGAAGA', 'GeneticCode', 2))
 ` },
   { name: 'reactors.m', code: `% Chemistry: a stiff mechanism, three reactors, temperature and equilibrium
 % 1. Robertson's reactions: one fast, one slow (stiff). ode15s takes it in its stride.

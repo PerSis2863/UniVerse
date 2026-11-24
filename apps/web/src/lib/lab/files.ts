@@ -74,6 +74,9 @@ const store = (lab: Lab): FileStore => {
   if (!(s instanceof FileStore)) throw new LabError('Files aren’t available here.');
   return s;
 };
+/** A file's text, and writing one, for the toolboxes' own readers and writers (M512: FASTA, GenBank). */
+export const fileText = (lab: Lab, name: string) => store(lab).text(name);
+export const writeFileText = (lab: Lab, name: string, text: string) => store(lab).putText(name, text);
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const ext = (name: string) => (/\.([^./]+)$/.exec(name)?.[1] ?? '').toLowerCase();
 /** Name–value options: opt(a, 'Sheet'). */

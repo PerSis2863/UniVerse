@@ -26,14 +26,20 @@ seqrcomplement | r = seqrcomplement(seq) | The reverse complement: the other str
 seqreverse | r = seqreverse(seq) | The sequence backwards.
 basecount | c = basecount(seq) | How many A, C, G, T (U counted as T) and other letters: a struct.
 gcContent | g = gcContent(seq) | The share of G and C among the bases (0 to 1).
-nt2aa | p = nt2aa(seq, 'Frame', 1) | Translates DNA or RNA to a protein by the standard genetic code ('*' a stop, 'X' unknown); 'Frame', 'all' gives the three frames in a cell.
+nt2aa | p = nt2aa(seq, 'Frame', 1, 'GeneticCode', 2) | Translates DNA or RNA to a protein by the standard genetic code or NCBI's 'GeneticCode' (a number or a name; '*' a stop, 'X' unknown); 'Frame', 'all' gives the three frames in a cell.
 findORFs | t = findORFs(seq, 'MinLength', 30) | Open reading frames (ATG to a stop) on both strands, longest first: a table of Strand, Frame, Start, Stop, Length and Protein. Printed without outputs.
-nwalign | [score, alignment, start, identity] = nwalign(a, b, 'GapOpen', 8, 'ExtendGap', 2, 'Alphabet', 'AA') | Global alignment (Needleman–Wunsch, affine gaps): BLOSUM62 for proteins, +5/−4 for DNA. The alignment is three lines ('|' same, ':' similar). Printed without outputs.
+nwalign | [score, alignment, start, identity] = nwalign(a, b, 'GapOpen', 8, 'ExtendGap', 2, 'Alphabet', 'AA', 'ScoringMatrix', 'PAM250') | Global alignment (Needleman–Wunsch, affine gaps): BLOSUM62 for proteins, +5/−4 for DNA. The alignment is three lines ('|' same, ':' similar). Printed without outputs.
 swalign | [score, alignment, start, identity] = swalign(a, b, …) | Local alignment (Smith–Waterman): the best-matching stretch of each and where it starts.
 seqpdist | D = seqpdist(seqs, 'Method', 'jukes-cantor', 'SquareForm', true) | Distances between the sequences in a cell ('jukes-cantor' or 'p-distance'; unequal lengths are aligned first): a row as pdist, or the square matrix.
 seqlinkage | tree = seqlinkage(D, 'average', names) | A UPGMA tree from distances: a struct with its Newick text. Drawn without outputs.
 seqneighjoin | tree = seqneighjoin(D, 'equivar', names) | A neighbour-joining tree from distances (unequal rates allowed). Drawn without outputs.
 plottree | plottree(tree) | Draws a tree from seqlinkage or seqneighjoin, the leaves named.
+geneticcode | c = geneticcode(2) | One of NCBI's genetic codes by number or name: its Name, the AminoAcids of the 64 Codons (TCAG order), the Starts and Stops. Without arguments, lists them.
+multialign | [aligned, tree] = multialign({s1, s2, s3}, 'ScoringMatrix', 'PAM250', 'GapOpen', 10, 'ExtendGap', 0.5) | Aligns several sequences together (progressive, as ClustalW: pairwise distances, a UPGMA guide tree, then groups aligned as profiles). Prints the alignment with '*' under identical columns without outputs; aligned is a cell of equal-length rows.
+seqconsensus | [s, share] = seqconsensus(aligned) | The most common letter in each column of aligned sequences, and the share that agrees.
+fastaread | [headers, seqs] = fastaread('file.fasta') | Reads a FASTA file kept in Files (or FASTA text starting with '>'): one output gives a struct of Header and Sequence, two the headers and sequences as cells.
+fastawrite | fastawrite('out.fasta', headers, seqs) | Writes sequences as FASTA (70 letters a line), adding to the file if it exists; also takes fastaread's struct.
+genbankread | g = genbankread('file.gb') | The first record of a GenBank file kept in Files: LocusName, Definition, Accession, Version, Organism, Sequence, and Features as a table (Type, Location, Gene, Product).
 # Chemistry and reactors
 odeset | opts = odeset('RelTol', 1e-6, 'AbsTol', 1e-10) | Tolerances for the ODE solvers (ode15s, ode23s).
 ode15s | [t, y] = ode15s(@(t, y) f, [t0 tEnd], y0, opts) | Solves a stiff ODE (fast and slow parts together, as in chemistry) by a Rosenbrock 2(3) method with error control; given more than two times, reports at those.

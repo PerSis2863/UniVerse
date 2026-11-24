@@ -13,13 +13,45 @@ export const counts = (s: string) => { const o: Record<string, number> = { A: 0,
 
 // The standard genetic code, codons in the order TCAG × TCAG × TCAG.
 const BASES = 'TCAG', AAS = 'FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG';
-export function codonToAA(codon: string): string {
+export function codonToAA(codon: string, code = AAS): string {
   const c = codon.toUpperCase().replace(/U/g, 'T');
   const i = BASES.indexOf(c[0]), j = BASES.indexOf(c[1]), k = BASES.indexOf(c[2]);
-  return i < 0 || j < 0 || k < 0 ? 'X' : AAS[16 * i + 4 * j + k];
+  return i < 0 || j < 0 || k < 0 ? 'X' : code[16 * i + 4 * j + k];
 }
-/** Translation from `frame` (1–3) to the end, stops as '*'. */
-export const translate = (s: string, frame = 1) => { const t = s.toUpperCase().replace(/U/g, 'T'); let out = ''; for (let i = frame - 1; i + 3 <= t.length; i += 3) out += codonToAA(t.slice(i, i + 3)); return out; };
+/** Translation from `frame` (1–3) to the end, stops as '*'; `code` a table's 64 letters (`geneticCode`, M512). */
+export const translate = (s: string, frame = 1, code = AAS) => { const t = s.toUpperCase().replace(/U/g, 'T'); let out = ''; for (let i = frame - 1; i + 3 <= t.length; i += 3) out += codonToAA(t.slice(i, i + 3), code); return out; };
+
+/** NCBI's genetic codes (M512; the translation tables of GenBank, checked against Biopython's copy): id | name | the
+ * amino acids of the 64 codons in TCAG order | the start codons. */
+const CODES = `1|Standard|FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|TTG CTG ATG
+2|Vertebrate Mitochondrial|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSS**VVVVAAAADDEEGGGG|ATT ATC ATA ATG GTG
+3|Yeast Mitochondrial|FFLLSSSSYY**CCWWTTTTPPPPHHQQRRRRIIMMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATA ATG GTG
+4|Mold, Protozoan and Coelenterate Mitochondrial; Mycoplasma; Spiroplasma|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|TTA TTG CTG ATT ATC ATA ATG GTG
+5|Invertebrate Mitochondrial|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSSSSVVVVAAAADDEEGGGG|TTG ATT ATC ATA ATG GTG
+6|Ciliate, Dasycladacean and Hexamita Nuclear|FFLLSSSSYYQQCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+9|Echinoderm and Flatworm Mitochondrial|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNNKSSSSVVVVAAAADDEEGGGG|ATG GTG
+10|Euplotid Nuclear|FFLLSSSSYY**CCCWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+11|Bacterial, Archaeal and Plant Plastid|FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|TTG CTG ATT ATC ATA ATG GTG
+12|Alternative Yeast Nuclear|FFLLSSSSYY**CC*WLLLSPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|CTG ATG
+13|Ascidian Mitochondrial|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSSGGVVVVAAAADDEEGGGG|TTG ATA ATG GTG
+14|Alternative Flatworm Mitochondrial|FFLLSSSSYYY*CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNNKSSSSVVVVAAAADDEEGGGG|ATG
+15|Blepharisma Macronuclear|FFLLSSSSYY*QCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+16|Chlorophycean Mitochondrial|FFLLSSSSYY*LCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+21|Trematode Mitochondrial|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNNKSSSSVVVVAAAADDEEGGGG|ATG GTG
+22|Scenedesmus obliquus Mitochondrial|FFLLSS*SYY*LCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+23|Thraustochytrium Mitochondrial|FF*LSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATT ATG GTG
+24|Pterobranchia Mitochondrial|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSSKVVVVAAAADDEEGGGG|TTG CTG ATG GTG
+25|Candidate Division SR1 and Gracilibacteria|FFLLSSSSYY**CCGWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|TTG ATG GTG
+26|Pachysolen tannophilus Nuclear|FFLLSSSSYY**CC*WLLLAPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|CTG ATG
+27|Karyorelict Nuclear|FFLLSSSSYYQQCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+28|Condylostoma Nuclear|FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+29|Mesodinium Nuclear|FFLLSSSSYYYYCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+30|Peritrich Nuclear|FFLLSSSSYYEECC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+31|Blastocrithidia Nuclear|FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|ATG
+32|Balanophoraceae Plastid|FFLLSSSSYY*WCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG|TTG CTG ATT ATC ATA ATG GTG
+33|Cephalodiscidae Mitochondrial|FFLLSSSSYYY*CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSSKVVVVAAAADDEEGGGG|TTG CTG ATG GTG`.split('\n').map((l) => { const [id, name, aas, starts] = l.split('|'); return { id: Number(id), name, aas, starts: starts.split(' ') }; });
+export const geneticCodes = () => CODES;
+export function geneticCode(id: number) { return CODES.find((c) => c.id === id); }
 
 export interface Orf { strand: 1 | -1; frame: number; start: number; stop: number; length: number; protein: string }
 /** Open reading frames (ATG … stop) of at least `minCodons` codons on both strands; positions are 1-based on the
@@ -74,7 +106,33 @@ const B62 = `4 -1 -2 -2 0 -1 -1 0 -2 -1 -1 -1 -1 -2 -1 1 0 -3 -2 0 -2 -1 0 -4
 -1 0 0 1 -3 3 4 -2 0 -3 -3 1 -1 -3 -1 0 -1 -3 -2 -2 1 4 -1 -4
 0 -1 -1 -1 -2 -1 -1 -1 -1 -1 -1 -1 -1 -1 -2 0 0 -2 -1 -1 -1 -1 -1 -4
 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 1`.split('\n').map((r) => r.trim().split(/\s+/).map(Number));
+/** Dayhoff's PAM250 (M512), the same 24 letters and order as BLOSUM62 (from the matrix file NCBI and Biopython ship). */
+const PAM = `2 -2  0  0 -2  0  0  1 -1 -1 -2 -1 -1 -3  1  1  1 -6 -3  0  0  0  0 -8
+-2  6  0 -1 -4  1 -1 -3  2 -2 -3  3  0 -4  0  0 -1  2 -4 -2 -1  0 -1 -8
+0  0  2  2 -4  1  1  0  2 -2 -3  1 -2 -3  0  1  0 -4 -2 -2  2  1  0 -8
+0 -1  2  4 -5  2  3  1  1 -2 -4  0 -3 -6 -1  0  0 -7 -4 -2  3  3 -1 -8
+-2 -4 -4 -5 12 -5 -5 -3 -3 -2 -6 -5 -5 -4 -3  0 -2 -8  0 -2 -4 -5 -3 -8
+0  1  1  2 -5  4  2 -1  3 -2 -2  1 -1 -5  0 -1 -1 -5 -4 -2  1  3 -1 -8
+0 -1  1  3 -5  2  4  0  1 -2 -3  0 -2 -5 -1  0  0 -7 -4 -2  3  3 -1 -8
+1 -3  0  1 -3 -1  0  5 -2 -3 -4 -2 -3 -5  0  1  0 -7 -5 -1  0  0 -1 -8
+-1  2  2  1 -3  3  1 -2  6 -2 -2  0 -2 -2  0 -1 -1 -3  0 -2  1  2 -1 -8
+-1 -2 -2 -2 -2 -2 -2 -3 -2  5  2 -2  2  1 -2 -1  0 -5 -1  4 -2 -2 -1 -8
+-2 -3 -3 -4 -6 -2 -3 -4 -2  2  6 -3  4  2 -3 -3 -2 -2 -1  2 -3 -3 -1 -8
+-1  3  1  0 -5  1  0 -2  0 -2 -3  5  0 -5 -1  0  0 -3 -4 -2  1  0 -1 -8
+-1  0 -2 -3 -5 -1 -2 -3 -2  2  4  0  6  0 -2 -2 -1 -4 -2  2 -2 -2 -1 -8
+-3 -4 -3 -6 -4 -5 -5 -5 -2  1  2 -5  0  9 -5 -3 -3  0  7 -1 -4 -5 -2 -8
+1  0  0 -1 -3  0 -1  0  0 -2 -3 -1 -2 -5  6  1  0 -6 -5 -1 -1  0 -1 -8
+1  0  1  0  0 -1  0  1 -1 -1 -3  0 -2 -3  1  2  1 -2 -3 -1  0  0  0 -8
+1 -1  0  0 -2 -1  0  0 -1  0 -2  0 -1 -3  0  1  3 -5 -3  0  0 -1  0 -8
+-6  2 -4 -7 -8 -5 -7 -7 -3 -5 -2 -3 -4  0 -6 -2 -5 17  0 -6 -5 -6 -4 -8
+-3 -4 -2 -4  0 -4 -4 -5  0 -1 -1 -4 -2  7 -5 -3 -3  0 10 -2 -3 -4 -2 -8
+0 -2 -2 -2 -2 -2 -2 -1 -2  4  2 -2  2 -1 -1 -1  0 -6 -2  4 -2 -2 -1 -8
+0 -1  2  3 -4  1  3  0  1 -2 -3  1 -2 -4 -1  0  0 -5 -3 -2  3  2 -1 -8
+0  0  1  3 -5  3  3  0  2 -2 -3  0 -2 -5  0  0 -1 -6 -4 -2  2  3 -1 -8
+0 -1  0 -1 -3 -1 -1 -1 -1 -1 -1 -1 -1 -2 -1  0  0 -4 -2 -1 -1 -1 -1 -8
+-8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8 -8  1`.split('\n').map((r) => r.trim().split(/\s+/).map(Number));
 export type Scorer = (a: string, b: string) => number;
+export const pam250: Scorer = (a, b) => { const i = B62_AAS.indexOf(a.toUpperCase()), j = B62_AAS.indexOf(b.toUpperCase()); return PAM[i < 0 ? 22 : i][j < 0 ? 22 : j]; };
 export const blosum62: Scorer = (a, b) => { const i = B62_AAS.indexOf(a.toUpperCase()), j = B62_AAS.indexOf(b.toUpperCase()); return B62[i < 0 ? 22 : i][j < 0 ? 22 : j]; };
 /** Nucleotides: +5 for a match, −4 for a mismatch (as NUC44 on A, C, G, T), −2 against N. */
 export const nucleotide: Scorer = (a, b) => { const x = a.toUpperCase().replace('U', 'T'), y = b.toUpperCase().replace('U', 'T'); return x === 'N' || y === 'N' ? -2 : x === y ? 5 : -4; };
@@ -190,4 +248,113 @@ export function treeLayout(t: Tree) {
   const lx: number[] = [], ly: number[] = [];
   for (let k = 0; k < N; k++) if (t.parent[k] >= 0) { const p = t.parent[k]; lx.push(x[p], x[p], x[k], NaN); ly.push(y[p], y[k], y[k], NaN); }
   return { x, y, order, lx, ly };
+}
+
+// ——— Files (M512) ———
+export interface FastaRecord { header: string; sequence: string }
+/** FASTA text: '>' starts a record's header line, the lines after it are its sequence (spaces, digits and '*' at the
+ * end dropped); ';' lines are old-style comments. */
+export function parseFasta(text: string): FastaRecord[] {
+  const out: FastaRecord[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith(';')) continue;
+    if (line.startsWith('>')) out.push({ header: line.slice(1).trim(), sequence: '' });
+    else if (out.length) out[out.length - 1].sequence += line.replace(/[\s\d]/g, '');
+  }
+  for (const r of out) r.sequence = r.sequence.replace(/\*$/, '');
+  return out;
+}
+export const writeFasta = (recs: FastaRecord[], width = 70) => recs.map((r) => `>${r.header}\n${r.sequence.match(new RegExp(`.{1,${width}}`, 'g'))?.join('\n') ?? ''}`).join('\n') + '\n';
+
+export interface GenBank { locus: string; length: number; molecule: string; definition: string; accession: string; version: string; organism: string; sequence: string; features: { type: string; location: string; gene: string; product: string }[] }
+/** The first record of a GenBank flat file: the LOCUS line, DEFINITION, ACCESSION, VERSION, ORGANISM, the FEATURES
+ * table (type, location and its /gene and /product) and the ORIGIN sequence. */
+export function parseGenBank(text: string): GenBank {
+  const lines = text.split(/\r?\n/), g: GenBank = { locus: '', length: NaN, molecule: '', definition: '', accession: '', version: '', organism: '', sequence: '', features: [] };
+  let section = '', seq = '';
+  const field = (l: string) => l.slice(12).trim();
+  for (const l of lines) {
+    if (l.startsWith('//')) break;
+    const key = /^([A-Z]+)\b/.exec(l)?.[1];
+    if (key) section = key;
+    if (key === 'LOCUS') { const w = field(l).split(/\s+/); g.locus = w[0] ?? ''; g.length = Number(w[1]); g.molecule = w.find((x) => /DNA|RNA|^AA$/i.test(x)) ?? (/aa\b/.test(l) ? 'AA' : ''); }
+    else if (key === 'DEFINITION' || (section === 'DEFINITION' && !key)) g.definition += (g.definition ? ' ' : '') + field(l);
+    else if (key === 'ACCESSION') g.accession = field(l).split(/\s+/)[0];
+    else if (key === 'VERSION') g.version = field(l).split(/\s+/)[0];
+    else if (/^ {2}ORGANISM/.test(l)) g.organism = field(l);
+    else if (section === 'FEATURES' && !key) {
+      const head = /^ {5}(\S+)\s+(\S.*)$/.exec(l), q = /^ {21}\/(\w+)=?"?([^"]*)"?/.exec(l), more = /^ {21}([^/].*)$/.exec(l);
+      const f = g.features[g.features.length - 1];
+      if (head) g.features.push({ type: head[1], location: head[2].trim(), gene: '', product: '' });
+      else if (q && f) { if (q[1] === 'gene' && !f.gene) f.gene = q[2]; if (q[1] === 'product' && !f.product) f.product = q[2]; }
+      else if (more && f && !f.gene && !f.product && /[\d.,()<>]$/.test(more[1].trim()) && /^[\w.,()<>]+$/.test(more[1].trim())) f.location += more[1].trim();
+    } else if (section === 'ORIGIN' && !key) seq += l.replace(/[\s\d]/g, '');
+  }
+  g.sequence = seq.toUpperCase();
+  if (!g.locus && !g.sequence) throw new Error('This doesn\'t look like a GenBank file (no LOCUS line or ORIGIN sequence).');
+  return g;
+}
+
+// ——— Multiple alignment (M512) ———
+/** Progressive multiple alignment, as ClustalW does in outline: every pair aligned globally for its distance (1 −
+ * identity), a UPGMA guide tree, then the two closest groups aligned as profiles, group by group up the tree. Two
+ * profiles' columns score the average of their letters' pair scores (gaps against letters 0); gaps by Gotoh's three
+ * states (open + (L − 1) × extend), so gaps once opened in a group stay in every member. */
+export function multialign(seqs: string[], score: Scorer, open = 10, extend = 0.5): { aligned: string[]; tree: Tree } {
+  const n = seqs.length, D = Array.from({ length: n }, () => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) D[i][j] = D[j][i] = 1 - align(seqs[i], seqs[j], score, open, extend).identity;
+  const tree = upgma(D, seqs.map((_, i) => `S${i + 1}`)), groups = new Map<number, { rows: number[]; cols: string[] }>();
+  seqs.forEach((s, i) => groups.set(i, { rows: [i], cols: [s.toUpperCase()] }));
+  for (let node = n; node < 2 * n - 1; node++) {
+    const [a, b] = tree.parent.map((p, k) => (p === node ? k : -1)).filter((k) => k >= 0);
+    const A = groups.get(a)!, B = groups.get(b)!;
+    groups.set(node, { rows: [...A.rows, ...B.rows], cols: alignProfiles(A.cols, B.cols, score, open, extend) });
+    groups.delete(a); groups.delete(b);
+  }
+  const root = groups.get(2 * n - 2) ?? groups.get(0)!, aligned: string[] = new Array(n);
+  root.rows.forEach((r, k) => { aligned[r] = root.cols[k]; });
+  return { aligned, tree };
+}
+function alignProfiles(A: string[], B: string[], score: Scorer, open: number, extend: number): string[] {
+  const m = A[0].length, n = B[0].length, NEG = -1e18;
+  const col = (P: string[], i: number) => P.map((s) => s[i]);
+  const ca = Array.from({ length: m }, (_, i) => col(A, i)), cb = Array.from({ length: n }, (_, j) => col(B, j));
+  const memo = new Map<string, number>(), pair = (x: string, y: string) => { const k = x + y; let v = memo.get(k); if (v === undefined) { v = x === '-' || y === '-' ? 0 : score(x, y); memo.set(k, v); } return v; };
+  const sc = (i: number, j: number) => { let s = 0; for (const x of ca[i]) for (const y of cb[j]) s += pair(x, y); return s / (ca[i].length * cb[j].length); };
+  // M: column i against column j; X: column i against a gap; Y: a gap against column j. Pointers: 0 from M, 1 X, 2 Y.
+  const W = n + 1, M = new Float64Array((m + 1) * W).fill(NEG), X = new Float64Array((m + 1) * W).fill(NEG), Y = new Float64Array((m + 1) * W).fill(NEG);
+  const PM = new Uint8Array((m + 1) * W), PX = new Uint8Array((m + 1) * W), PY = new Uint8Array((m + 1) * W);
+  M[0] = 0;
+  for (let i = 1; i <= m; i++) { X[i * W] = -open - (i - 1) * extend; PX[i * W] = i === 1 ? 0 : 1; }
+  for (let j = 1; j <= n; j++) { Y[j] = -open - (j - 1) * extend; PY[j] = j === 1 ? 0 : 2; }
+  const best3 = (a: number, b: number, c: number): [number, number] => (a >= b && a >= c ? [a, 0] : b >= c ? [b, 1] : [c, 2]);
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    const d = (i - 1) * W + (j - 1), u = (i - 1) * W + j, l = i * W + (j - 1), h = i * W + j;
+    const [vm, pm] = best3(M[d], X[d], Y[d]); M[h] = vm + sc(i - 1, j - 1); PM[h] = pm;
+    const [vx, px] = best3(M[u] - open, X[u] - extend, Y[u] - open); X[h] = vx; PX[h] = px;
+    const [vy, py] = best3(M[l] - open, X[l] - open, Y[l] - extend); Y[h] = vy; PY[h] = py;
+  }
+  const outA = A.map(() => [] as string[]), outB = B.map(() => [] as string[]);
+  let i = m, j = n, state = best3(M[m * W + n], X[m * W + n], Y[m * W + n])[1];
+  while (i > 0 || j > 0) {
+    const h = i * W + j;
+    if (state === 0 && i > 0 && j > 0) { A.forEach((s, k) => outA[k].push(s[i - 1])); B.forEach((s, k) => outB[k].push(s[j - 1])); state = PM[h]; i--; j--; }
+    else if (state === 1 && i > 0) { A.forEach((s, k) => outA[k].push(s[i - 1])); B.forEach((_, k) => outB[k].push('-')); state = PX[h]; i--; }
+    else { A.forEach((_, k) => outA[k].push('-')); B.forEach((s, k) => outB[k].push(s[j - 1])); state = j > 0 ? PY[h] : 1; j--; if (j < 0) break; }
+  }
+  return [...outA, ...outB].map((r) => r.reverse().join(''));
+}
+/** The most common letter of each aligned column (gaps count; ties to the earlier letter), and how many agree. */
+export function consensus(aligned: string[]): { seq: string; agree: number[] } {
+  let seq = '';
+  const agree: number[] = [];
+  for (let i = 0; i < (aligned[0]?.length ?? 0); i++) {
+    const c = new Map<string, number>();
+    for (const s of aligned) { const x = s[i].toUpperCase(); c.set(x, (c.get(x) ?? 0) + 1); }
+    let bx = '-', bn = 0;
+    for (const [x, k] of c) if (k > bn) { bx = x; bn = k; }
+    seq += bx; agree.push(bn);
+  }
+  return { seq, agree };
 }
