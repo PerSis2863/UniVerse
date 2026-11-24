@@ -532,4 +532,58 @@ int main(void) {
     const want = ['a', 'b', 'c'].flatMap((v) => [...toMat(l.vars.get(v)!).d]);
     expect(execFileSync(join(dir, 'run')).toString().trim().split(/\s+/).map(Number)).toEqual(want);
   });
+  it('M535: lsqminnorm gives the smallest answer, for fi exactly and for plain numbers through pinv', () => {
+    const l = new Lab({ out: () => {}, files: new FileStore() });
+    // x + y = 2: the basic answer is [2; 0], the smallest [1; 1]
+    l.run('A = fi([1 1], 1, 16, 8); b = fi(2, 1, 16, 8); x0 = A \\ b; x = lsqminnorm(A, b);');
+    expect(st(l, 'x')).toEqual([1, 1]); // the default answer type has 0 fraction bits (8 − 8)
+    expect(st(l, 'x0')).toEqual([2, 0]);
+    // a singular 3×3 against pinv(A) * b in double
+    l.run('A = [1 2 3; 2 4 6; 0.5 -1 2]; b = [1; 3; -2]; xd = pinv(A) * b; xf = lsqminnorm(fi(A, 1, 16, 8), fi(b, 1, 16, 8), numerictype(1, 32, 20)); xl = lsqminnorm(A, b);');
+    const xd = [...toMat(l.vars.get('xd')!).d], xl = [...toMat(l.vars.get('xl')!).d];
+    st(l, 'xf').forEach((v, i) => { expect(Math.abs(v / 2 ** 20 - xd[i])).toBeLessThan(2 ** -19); expect(xl[i]).toBeCloseTo(xd[i], 10); });
+    // pinv of a rank-1 matrix: A' / 25
+    l.run('P = pinv([1 2; 2 4]);');
+    [...toMat(l.vars.get('P')!).d].forEach((v, i) => expect(v).toBeCloseTo([1, 2, 2, 4][i] / 25, 12));
+  });
+  it.skipIf(!hasCc)('M535: lsqminnorm in C gives Hyperion’s stored integers (wide, singular, tall, all zero)', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    l.run('function x = mn(A, b)\n  x = lsqminnorm(A, b, numerictype(1, 32, 16));\nend');
+    const m = (rows: number[][]) => `[${rows.map((r) => r.join(' ')).join('; ')}]`;
+    const cases: [number[][], number[][], number][] = [
+      [[[1, 1, -0.5], [2, 0.25, 1]], [[1, 2], [-0.5, 3]], 8],
+      [[[1, 2, 3], [2, 4, 6], [0.5, -1, 2]], [[1], [3], [-2]], 16],
+      [[[1, 0], [1, 1], [1, 2], [1, 3.5]], [[1], [2.5], [3.5], [5]], 16],
+      [[[0, 0], [0, 0]], [[1], [2]], 8],
+    ];
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-fx535-'));
+    const mains: string[] = [], want: number[] = [];
+    cases.forEach(([A, B, w], c) => {
+      const a = `fi(${m(A)}, 1, ${w}, 4)`, b = `fi(${m(B)}, 1, ${w}, 4)`, name = `mn${c}`;
+      l.run(`codegen('mn', {${a}, ${b}});`);
+      const code = files.text('mn.c').replace(/\bmn\(/g, `${name}(`).replace(/"mn\.h"/g, `"${name}.h"`), h = files.text('mn.h').replace(/\bmn\(/g, `${name}(`).replace(/MN_H/g, `${name.toUpperCase()}_H`);
+      writeFileSync(join(dir, `${name}.c`), code);
+      writeFileSync(join(dir, `${name}.h`), h);
+      const got = st(l, `mn(${a}, ${b})`);
+      want.push(...got);
+      const ty = w > 8 ? 'int16_t' : 'int8_t';
+      mains.push(`  { ${ty} a[] = {${st(l, a).join(', ')}}, b[] = {${st(l, b).join(', ')}}; int32_t x[${got.length}]; ${name}(a, b, x); for (int i = 0; i < ${got.length}; i++) printf("%ld ", (long)x[i]); }`);
+    });
+    // the smallest answer of the wide system against double pinv
+    l.run(`xd = pinv(${m(cases[0][0])}) * ${m(cases[0][1])};`);
+    [...toMat(l.vars.get('xd')!).d].forEach((v, i) => expect(Math.abs(want[i] / 2 ** 16 - v)).toBeLessThan(2 ** -15));
+    expect(want.slice(-2)).toEqual([0, 0]);
+    for (const portable of [false, true]) {
+      const exe = join(dir, portable ? 'run-p' : 'run-n');
+      // each file compiled alone (their helpers are static), then linked with one main
+      const objs = cases.map((_, c) => {
+        const o = join(dir, `mn${c}${portable ? 'p' : 'n'}.o`);
+        execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-c', ...(portable ? ['-DHYPERION_FX_PORTABLE'] : []), '-o', o, join(dir, `mn${c}.c`)], { cwd: dir });
+        return o;
+      });
+      writeFileSync(join(dir, 'main.c'), `#include <stdio.h>\n${cases.map((_, c) => `#include "mn${c}.h"`).join('\n')}\nint main(void) {\n${mains.join('\n')}\n  return 0;\n}`);
+      execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', exe, join(dir, 'main.c'), ...objs, '-lm'], { cwd: dir });
+      expect(execFileSync(exe).toString().trim().split(/\s+/).map(Number)).toEqual(want);
+    }
+  });
 });

@@ -64,6 +64,16 @@ export function solveBits(a: Nt, b: Nt, R: number, N: number, s: number, ls: boo
   for (let k = 0; k < N; k++) need = Math.max(need, D(k) + D(k + 1));
   return Math.ceil(need) + 2;
 }
+/** M535: the bits lsqminnorm's working needs: G = AᵀA and C = AᵀB, H = G_PᵀG_P (P at most N columns), the minors of
+ * [H | C_P] (Hadamard), and each answer's numerator G_P·(det·z), scaled by the answer's extra fraction bits. */
+export function minNormBits(a: Nt, b: Nt, R: number, N: number, s: number): number {
+  const mag = (t: Nt) => (t.signed ? t.wl - 1 : t.wl), lr = Math.log2(Math.max(1, R)), ln = Math.log2(Math.max(1, N));
+  const lg = lr + 2 * mag(a), lc = lr + mag(a) + mag(b), lh = ln + 2 * lg;
+  const D = (k: number) => (k === 0 ? 0 : (k / 2) * Math.log2(k) + (k - 1) * lh + Math.max(lh, lc));
+  let need = Math.max(lh, lc, ln + lg + D(N) + Math.max(s, 0), D(N) + Math.max(-s, 0));
+  for (let k = 0; k < N; k++) need = Math.max(need, D(k) + D(k + 1));
+  return Math.ceil(need) + 2;
+}
 /** M527: a ./ b's own type: the larger word, the fraction a's minus b's (divide(T, a, b) chooses another). */
 export const quotientType = (a: Nt, b: Nt): Nt => ({ signed: a.signed || b.signed, wl: Math.max(a.wl, b.wl), fl: a.fl - b.fl, ...fmOf(a, b) });
 const scalar = (t: Ty) => t.r === 1 && t.c === 1;
@@ -244,13 +254,14 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
     }
     const isSolve = (e: Expr): boolean => {
       if (e.k === 'bin' && (e.op === '\\' || e.op === '/')) return (isFx(typeOf(e.a)) || isFx(typeOf(e.b))) && !scalar(typeOf(e.op === '\\' ? e.a : e.b));
+      if (e.k === 'index' && e.of.k === 'id' && e.of.name === 'lsqminnorm' && !vars.has(e.of.name) && !fns.has(e.of.name)) return isFx(typeOf(e));
       return e.k === 'index' && e.of.k === 'id' && (e.of.name === 'mldivide' || e.of.name === 'mrdivide') && !vars.has(e.of.name) && !fns.has(e.of.name) && e.args.length >= 2 && !scalar(typeOf(e.args[e.of.name === 'mldivide' ? 0 : 1])) && isFx(typeOf(e));
     };
-    /** [A, B, left] of A \ B, B / A, mldivide(A, B, T) or mrdivide(B, A, T). */
-    const solveArgs = (e: Expr): [Expr, Expr, boolean] => {
-      if (e.k === 'bin') return e.op === '\\' ? [e.a, e.b, true] : [e.b, e.a, false];
-      const x = e as Extract<Expr, { k: 'index' }>, left = (x.of as { name: string }).name === 'mldivide';
-      return left ? [x.args[0], x.args[1], true] : [x.args[1], x.args[0], false];
+    /** [A, B, left, smallest] of A \ B, B / A, mldivide(A, B, T), mrdivide(B, A, T) or lsqminnorm(A, B, T) (M535). */
+    const solveArgs = (e: Expr): [Expr, Expr, boolean, boolean] => {
+      if (e.k === 'bin') return e.op === '\\' ? [e.a, e.b, true, false] : [e.b, e.a, false, false];
+      const x = e as Extract<Expr, { k: 'index' }>, name = (x.of as { name: string }).name;
+      return name === 'mrdivide' ? [x.args[1], x.args[0], false, false] : [x.args[0], x.args[1], true, name === 'lsqminnorm'];
     };
     function fxTy(fx: Nt, r = 1, c = 1): Ty {
       if (!(fx.wl >= 2 && fx.wl <= MAX_FX && Number.isInteger(fx.wl) && Number.isInteger(fx.fl))) fail(`a fixed-point value of ${fx.wl} bits: C here works up to ${MAX_FX} bits (sums and products grow: give the accumulator a type with acc(:) = …).`);
@@ -321,19 +332,19 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * ./ \\ / and comparisons).`);
     }
     /** M530–M531: A \ B (left) or B / A: the answer's type and size; T chooses the type (mldivide / mrdivide's third input). */
-    function solveType(Ae: Expr, Be: Expr, left: boolean, T?: Nt): Ty {
+    function solveType(Ae: Expr, Be: Expr, left: boolean, T?: Nt, mn = false): Ty {
       const a = typeOf(Ae), b = typeOf(Be);
       if (!isFx(a) || !isFx(b)) fail('a matrix division of fixed-point values needs both fixed point (fi(…)).');
       // A \ B: A is R×N, B R×m, x N×m. B / A: A is r×c, B p×c, x p×r.
       if (left ? b.r !== a.r : b.c !== a.c) fail(`the sizes don’t agree: ${left ? `${sizeText(a)} \\ ${sizeText(b)}` : `${sizeText(b)} / ${sizeText(a)}`}.`);
       const nt = T ? { ...fmOf(b.fx!, a.fx!), ...T } : quotientType(b.fx!, a.fx!);
       const t = left ? fxTy(nt, a.c, b.c) : fxTy(nt, b.r, a.r);
-      solvePlan(a, b, left, nt);
+      solvePlan(a, b, left, nt, mn);
       return t;
     }
     /** M531: how each way of solving is worked: 'w' in fxw_t (64 bits, or 128 when the file is wide) or 'b' in fxb_t
      * (whole numbers of 32-bit pieces, past 128 bits), and the fraction bits the answers add. */
-    function solvePlan(a: Ty, b: Ty, left: boolean, to: Nt) {
+    function solvePlan(a: Ty, b: Ty, left: boolean, to: Nt, mn = false) {
       const R = left ? a.r : a.c, N = left ? a.c : a.r, s = to.fl - b.fx!.fl + a.fx!.fl;
       const pick = (need: number, mayWiden: boolean): 'w' | 'b' => {
         if (need > FXB_MAX) fail(`a ${R}×${N} fixed-point matrix division of ${Math.max(a.fx!.wl, b.fx!.wl)}-bit values needs ${need} bits of working (at most ${FXB_MAX} here): use shorter words.`);
@@ -342,14 +353,15 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         fxbK = Math.max(fxbK, Math.ceil(need / 32));
         return 'b';
       };
+      if (mn) return { s, R, N, direct: null, ls: pick(minNormBits(a.fx!, b.fx!, R, N, s), false) };
       const direct = R === N ? pick(solveBits(a.fx!, b.fx!, R, N, s, false), true) : null;
       return { s, R, N, direct, ls: pick(solveBits(a.fx!, b.fx!, R, N, s, true), false) };
     }
     /** M531: the C for target = A \ B (or B / A): a square A by exact fraction-free elimination on whole numbers, a
      * non-square or singular one through the normal equations (least squares); then each answer one division rounded
      * into its type. The engine's fiSolve does the same steps. */
-    function solveInto(target: string, Ae: Expr, Be: Expr, left: boolean, t: Ty) {
-      const at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be), { s, R, N, direct, ls } = solvePlan(at, bt, left, t.fx!), m = left ? bt.c : bt.r, w = N + m;
+    function solveInto(target: string, Ae: Expr, Be: Expr, left: boolean, t: Ty, mn = false) {
+      const at = typeOf(Ae), bt = typeOf(Be), A = arrayRef(Ae), B = arrayRef(Be), { s, R, N, direct, ls } = solvePlan(at, bt, left, t.fx!, mn), m = left ? bt.c : bt.r, w = N + m;
       // B / A is (A.' \ B.').': read A and B across, write the answer across.
       const aAt = (i: string, j: string) => (left ? `${A}[${i} + ${j} * ${R}]` : `${A}[${j} + ${i} * ${N}]`);
       const bAt = (i: string, j: string) => (left ? `${B}[${i} + ${j} * ${R}]` : `${B}[${j} + ${i} * ${m}]`);
@@ -366,6 +378,19 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         out(`${pad}for (int sj = 0; sj < ${m}; sj++) for (int sc = 0; sc < ${N}; sc++) ${xAt('sc', 'sj')} = ${E.to(`sv_piv[sc] < 0 ? ${E.zero} : ${q}`, t.fx!)};`);
       };
       helpers.add(`elim_${ls}`);
+      if (mn) {
+        // M535: lsqminnorm: the smallest least-squares answer, exact (the engine's minNormStored), each answer rounded once.
+        const q = ls === 'w' ? `fx_div(sv_x[sc + sj * ${N}], sv_det, ${s}, ${lo}, ${hi}, ${fmC(t.fx!)})` : `fxb_tow(fxb_divfit(sv_x[sc + sj * ${N}], sv_det, ${s}, fxb_ofw(${lo}), fxb_ofw(${hi}), ${fmC(t.fx!)}))`;
+        out(`{ /* lsqminnorm(A, B): the smallest least-squares answer, exact on whole numbers, then each answer rounded once */`);
+        out(`  int sv_piv[${N}], sv_p[${N}];`);
+        out(`  fx${ls}_t sv_a[${R * w}], sv_g[${N * w}], sv_h[${N * w}], sv_x[${N * m}], sv_det;`);
+        load(ls, 'sv_a');
+        out(`  fx${ls}_normal(sv_a, ${R}, ${N}, ${w}, sv_g);`);
+        out(`  fx${ls}_minnorm(sv_g, ${N}, ${m}, sv_h, sv_piv, sv_p, sv_x, &sv_det);`);
+        out(`  for (int sj = 0; sj < ${m}; sj++) for (int sc = 0; sc < ${N}; sc++) ${xAt('sc', 'sj')} = ${E.to(q, t.fx!)};`);
+        out('}');
+        return;
+      }
       out(`{ /* ${left ? 'A \\ B' : 'B / A'}: exact elimination on whole numbers, then each answer rounded once */`);
       out(`  int sv_piv[${N}], sv_done = 0;`);
       if (direct) {
@@ -484,6 +509,10 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         if (!isFx(at) || !isFx(bt)) fail(`${fname} of fixed-point values needs both fixed point here.`);
         return fxTy(T ? { ...fmOf(bt.fx!, at.fx!), ...T } : quotientType(bt.fx!, at.fx!), bt.r, bt.c);
       }
+      if (fname === 'lsqminnorm' && !fns.has(fname)) {
+        if (a.length < 2 || a.length > 3 || (a[2] && !(isFx(t[2]) && scalar(t[2])))) fail('lsqminnorm(A, B, T) of fixed-point values: T the answer\'s type (numerictype(s, w, f) or a fi value); plain numbers can\'t become C here.');
+        return solveType(a[0], a[1], true, a[2] ? t[2].fx! : undefined, true);
+      }
       if (fname === 'numerictype' && !fns.has(fname)) {
         if (a.length !== 3) fail('numerictype(signed, wordLength, fractionLength) here: all three, so the type is known.');
         return fxTy({ signed: !!constant(a[0]), wl: constant(a[1]), fl: constant(a[2]) });
@@ -587,6 +616,10 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       if (fname === 'fi') { const x = scal(a[0], scalar(typeOf(a[0])) ? null : k); return { code: toFx(t.fx!, x), t: { ...t, r: 1, c: 1 } }; }
       if (fname === 'numerictype' && !fns.has(fname)) return { code: E.to(E.zero, t.fx!), t };
       if ((fname === 'setfimath' || fname === 'removefimath') && !fns.has(fname)) return { code: scal(a[0], scalar(typeOf(a[0])) ? null : k).code, t: { ...t, r: 1, c: 1 } };
+      if (fname === 'lsqminnorm' && !fns.has(fname)) {
+        if (!k) fail('a matrix division where one number is needed.');
+        return { code: `${arrayRef({ k: 'index', of: { k: 'id', name: fname, at: 0 }, args: a, brace: false })}[${k}]`, t: { ...t, r: 1, c: 1 } };
+      }
       if ((fname === 'mldivide' || fname === 'mrdivide') && !fns.has(fname) && isFx(t)) {
         const e: Expr = { k: 'index', of: { k: 'id', name: fname, at: 0 }, args: a, brace: false };
         if (isSolve(e)) { if (!k) fail('a matrix division where one number is needed.'); return { code: `${arrayRef(e)}[${k}]`, t: { ...t, r: 1, c: 1 } }; }
@@ -666,8 +699,8 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       }
       if (isSolve(e)) {
         // M530: into a temporary first when the answer's type differs from the target's (it is then converted).
-        const st = typeOf(e), into = sameFx(st, t) ? target : fresh(st), [Ae, Be, left] = solveArgs(e);
-        solveInto(into, Ae, Be, left, st);
+        const st = typeOf(e), into = sameFx(st, t) ? target : fresh(st), [Ae, Be, left, mn] = solveArgs(e);
+        solveInto(into, Ae, Be, left, st, mn);
         if (into !== target) out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${cast(t, { code: `${into}[k]`, t: { ...st, r: 1, c: 1 } })};`);
         return;
       }
@@ -1034,6 +1067,29 @@ static inline void ${S}_normal(const ${S}_t *a, int R, int N, int w, ${S}_t *M) 
     ${S}_t s = ${S}_of(0);
     for (int r = 0; r < R; r++) s = ${S}_addw(s, ${S}_mulw(a[r + i * R], a[r + j * R]));
     M[i + j * N] = s;
+  }
+}
+/* M535: the smallest least-squares answer from g = [AᵀA | AᵀB] (N rows, N + m columns): P, the columns of AᵀA with a
+ * pivot; H = g_Pᵀ g_P with g's right part's rows P beside it (r rows, in h), solved fraction-free; x = g_P·(det·z), so
+ * each answer is x / det. */
+static inline void ${S}_minnorm(const ${S}_t *g, int N, int m, ${S}_t *h, int *piv, int *P, ${S}_t *x, ${S}_t *det) {
+  int r = 0;
+  for (int i = 0; i < N * (N + m); i++) h[i] = g[i];
+  (void)${S}_elim(h, N, N, N + m, piv, det);
+  for (int k = 0; k < N; k++) if (piv[k] >= 0) P[r++] = k;
+  for (int q = 0; q < r; q++) {
+    for (int p = 0; p < r; p++) {
+      ${S}_t s = ${S}_of(0);
+      for (int i = 0; i < N; i++) s = ${S}_addw(s, ${S}_mulw(g[i + P[q] * N], g[i + P[p] * N]));
+      h[q + p * r] = s;
+    }
+    for (int j = 0; j < m; j++) h[q + (r + j) * r] = g[P[q] + (N + j) * N];
+  }
+  (void)${S}_elim(h, r, r, r + m, piv, det);
+  for (int j = 0; j < m; j++) for (int i = 0; i < N; i++) {
+    ${S}_t s = ${S}_of(0);
+    for (int q = 0; q < r; q++) s = ${S}_addw(s, ${S}_mulw(g[i + P[q] * N], h[piv[q] + (r + j) * r]));
+    x[i + j * N] = s;
   }
 }`;
 /** M531: whole numbers of k 32-bit pieces (two's complement, lowest first) for matrix divisions past 128 bits: the

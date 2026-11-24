@@ -205,6 +205,38 @@ export function solveAny(A: bigint[], B: bigint[], R: number, N: number, m: numb
   for (let j = 0; j < N + m; j++) for (let i = 0; i < N; i++) { let s = zero; for (let r = 0; r < R; r++) s += aug[r + i * R] * aug[r + j * R]; M[i + j * N] = s; }
   return { M, ...elimStored(M, N, N, N + m) };
 }
+/** M535: the smallest least-squares answer of A x = B (MATLAB's lsqminnorm, pinv(A) * B), exact on the stored integers.
+ * G = AᵀA and C = AᵀB (normal); the columns P of G with a pivot span A's row space; the answer is G_P z with
+ * (G_Pᵀ G_P) z = C_P, solved fraction-free, so x = G_P·(det·z) / det: one division per answer, rounded once. The C
+ * (codegen's fx_minnorm) does exactly these steps. Returns the numerators (N×m) and det. */
+export function minNormStored(A: bigint[], B: bigint[], R: number, N: number, m: number): { X: bigint[]; det: bigint } {
+  const zero = BigInt(0), w = N + m, aug = [...A, ...B], G: bigint[] = Array.from({ length: N * w }, () => zero);
+  for (let j = 0; j < w; j++) for (let i = 0; i < N; i++) { let s = zero; for (let r = 0; r < R; r++) s += aug[r + i * R] * aug[r + j * R]; G[i + j * N] = s; }
+  const P = elimStored([...G], N, N, w).piv.flatMap((p, k) => (p < 0 ? [] : [k])), r = P.length;
+  const H: bigint[] = Array.from({ length: r * (r + m) }, () => zero);
+  for (let q = 0; q < r; q++) {
+    for (let p = 0; p < r; p++) { let s = zero; for (let i = 0; i < N; i++) s += G[i + P[q] * N] * G[i + P[p] * N]; H[q + p * r] = s; }
+    for (let j = 0; j < m; j++) H[q + (r + j) * r] = G[P[q] + (N + j) * N];
+  }
+  const e = elimStored(H, r, r, r + m), X: bigint[] = Array.from({ length: N * m }, () => zero);
+  for (let j = 0; j < m; j++) for (let i = 0; i < N; i++) { let s = zero; for (let q = 0; q < r; q++) s += G[i + P[q] * N] * H[e.piv[q] + (r + j) * r]; X[i + j * N] = s; }
+  return { X, det: e.det };
+}
+function fiMinNorm(a: Mat, na: X.Nt, b: Mat, nb: X.Nt, t: X.Nt): Struct {
+  if (b.r !== a.r) throw new LabError(`lsqminnorm(A, B): B needs ${a.r} rows (here ${b.r}).`);
+  const N = a.c, m = b.c, S = minNormStored(Array.from({ length: a.r * N }, (_, i) => BigInt(X.stored(a.d[i], na))), Array.from({ length: a.r * m }, (_, i) => BigInt(X.stored(b.d[i], nb))), a.r, N, m);
+  const s = t.fl - nb.fl + na.fl;
+  return make(mat(N, m, S.X.map((x) => Number(divBig(x, S.det, s, t)) / 2 ** t.fl)), t);
+}
+// M535: lsqminnorm(A, B[, T]): the smallest answer; plain numbers are pinv(A) * B (pinv through the SVD, dsp-lab).
+BUILTINS.lsqminnorm = (a, _n, lab) => {
+    if (!isFi(a[0]) && !isFi(a[1])) return [lab.binop('*', BUILTINS.pinv([a[0]], 1, lab)[0], a[1])];
+    if (!isFi(a[0]) || !isFi(a[1])) throw new LabError('lsqminnorm(A, B) of fixed-point values needs both fi (fi(…)).');
+    if (a[2] && !isFi(a[2])) throw new LabError("lsqminnorm(A, B, T): T is the answer's type, numerictype(s, w, f) or a fi value.");
+    const na = typeOf(a[0]), nb = typeOf(a[1]);
+    const qa = valuesOf(a[0]), qb = valuesOf(a[1]);
+    return [fiMinNorm(qa, na, qb, nb, isFi(a[2]) ? { ...X.fmOf(na, nb), ...typeOf(a[2]) } : quotientType(nb, na))];
+};
 def('divide', (a) => {
   if (!isFi(a[0])) throw new LabError('divide(T, a, b): T is the answer’s type, numerictype(s, w, f) or a fi value.');
   if (!isFi(a[1]) && !isFi(a[2])) throw new LabError('divide(T, a, b): a or b must be a fi value.');

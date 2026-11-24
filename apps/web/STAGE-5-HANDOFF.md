@@ -13101,3 +13101,20 @@ The owner pasted M531–M533's "left out" list and chose "build all of them"; th
   The header shows the new names (`double t1_`); the order of inputs and outputs is unchanged, so callers are unaffected.
 - **Checked:** `codegen.test.ts` M534: outputs `i`, `j`, `k` and variables `t1`, `int`, `abs` compiled with `-Wall -Werror`,
   equal to Hyperion. `smooth3`'s input `k` is now `k_` in its header.
+
+## M535 (24 Nov): Hyperion lsqminnorm, the smallest answer, exact for fi and in C
+
+- **Hyperion** (`codegen-lab.ts` `minNormStored`, `fiMinNorm`): `lsqminnorm(A, B[, T])` for fi values, exact on the stored
+  integers: G = AᵀA and C = AᵀB; P, the columns of G with a pivot (fraction-free elimination), span A's row space; the
+  smallest answer is G_P z with (G_Pᵀ G_P) z = C_P, solved fraction-free, so x = G_P·(det·z) / det, each answer rounded
+  once into its type (the default type is `\`'s). For plain numbers it is `pinv(A) * B`.
+- **pinv** (`builtins.ts`): now through the SVD (`dsp.ts` `svd`; σ below max(size)·eps(σ₁) is zero, or `pinv(A, tol)`):
+  the old one inverted AᵀA and failed on a rank-deficient A.
+- **C** (`codegen.ts`): `lsqminnorm(A, B, T)` of fi values (`isSolve`, `solveArgs` now gives a fourth "smallest" flag;
+  `solvePlan`'s `minNormBits`: AᵀA's and H's Hadamard bounds, the numerators G_P·(det·z)); `fx…_minnorm` writes the steps
+  (`static inline`, P passed in, no variable-length arrays). It always takes the H path (the answer is the same exact
+  number rounded once, whichever way it is found).
+- **Checked:** `codegen.test.ts` M535: x + y = 2 gives [1; 1] (`\` gives [2; 0]); a singular 3×3 within a step of
+  double `pinv(A) * b`; pinv of a rank-1 matrix; in C a wide, a singular, a tall and an all-zero system, native and
+  `-DHYPERION_FX_PORTABLE`, equal to Hyperion.
+- **Left out:** `lsqminnorm`'s tolerance and `'warn'` inputs; plain-number (double) lsqminnorm in C.

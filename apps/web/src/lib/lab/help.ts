@@ -164,6 +164,7 @@ isnan | isnan(x) | True for NaN.
 # Linear algebra
 inv | inv(A) | The inverse of a square matrix (A \\ b is better for solving).
 pinv | pinv(A) | The pseudo-inverse (least squares).
+lsqminnorm | x = lsqminnorm(A, B) | The smallest least-squares answer (pinv(A) * B); for fi values exact on the stored integers, rounded once (and in C).
 det | det(A) | The determinant.
 rank | rank(A) | How many independent rows.
 trace | trace(A) | The sum of the diagonal.
