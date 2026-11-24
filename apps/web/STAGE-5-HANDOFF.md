@@ -12724,6 +12724,25 @@ ahead slowing or stopping hard, ACC and AEB switches, time gap; from above, repl
 Example driving.m. Not built: model-predictive control, traffic with several cars, sensors (radar, camera) and their
 noise, lane changes decided by the car itself.
 
+## M488 (24 Nov): Hyperion toolbox, electric vehicles
+
+`src/lib/lab/ev.ts` (pure): `Ev` (car, one gear and its efficiency, motor limits and losses kc·T² + ki·|ω| + kw·|ω|³ + k0,
+pack series × parallel cells with Ah and Ω, regen share and power cap, accessories; `EV_DEFAULT` 1,800 kg, ~78 kWh
+(96s46p of 4.8 Ah), 150 kW through 9:1), `ocv` (a typical NMC curve 3.0–4.2 V), `packKwh` (3.7 V nominal), `torqueLimit`,
+`motorLoss`, `efficiency`, `packCurrent` (P = (Voc − IR)I), made-up profiles `CYCLES` (city, suburban, motorway,
+mixed: **not** the official WLTP/NEDC tables, said so in help and the window), `evSim` (backward-facing, 1 s steps:
+1.05 rotating-mass factor, gear efficiency each way, regen fading below ~7 km/h and capped at 60 kW, the friction
+brakes the rest; Wh/km at the battery terminals, range on 95 % of the pack), `evCharge` (CC at the charger's power
+solved with the pack's resistance, at most 2C, then CV at 4.2 V a cell until C/20). First numbers were too rosy (88
+Wh/km in town, regen over half the drive energy): the gearbox, larger standing and iron losses and the regen cap and
+fade brought it to ~113 town, ~167 motorway, ~150 mixed, ~490 km range; 10→80 % at 150 kW in ~22 min. Language in
+`ev-lab.ts`: `evModel`, `driveCycle` (or your own [s, km/h]), `evSim`, `evMotorMap` (contourf), `evCharge`. Window:
+Machines → **Electric car** (`EvBench.tsx`: drive, battery size (cells in parallel, its mass with it), people and
+luggage, heating, regen, charger; the drive's speed and battery power, the efficiency map with working points, the
+charge curve; static). The browser check finds a tab's control as a button or a checkbox. Tests in `ev.test.ts`.
+Example electric_car.m. Not built: battery temperature and ageing in the car (M433 has ageing), two motors, gears,
+heat pumps, the official cycles' tables.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -160,4 +160,19 @@ figure; accFollow(c, @(t) 25 - 16.7*min(1, max(0, (t - 10)/4)), 40, 'TimeGap', 1
 [f, info] = accFollow(c, @(t) max(0, 20 - 8*max(0, t - 5)), 15, 'ACC', 0, 'Gap', 40, 'InitialSpeed', 25);
 fprintf('Crashed: %d, closest: %.1f m\\n', info.Crashed, info.MinGap)
 ` },
+  { name: 'electric_car.m', code: `% Electric vehicles: how far a charge goes, where the energy goes, and how fast it charges
+e = evModel();                                % about 78 kWh, 150 kW
+fprintf('Pack: %.0f kWh at %.0f V\\n', e.BatteryKWh, e.NominalVoltage)
+for name = {'city', 'suburban', 'motorway', 'mixed'}
+  [~, info] = evSim(e, name{1});
+  fprintf('%-9s %4.0f Wh/km, range about %3.0f km\\n', name{1}, info.WhPerKm, info.Range)
+end
+figure; evSim(e, 'mixed')
+% Without regenerative braking, and in winter with 2.5 kW of heating
+[~, a] = evSim(evModel('Regen', 0), 'city');
+[~, b] = evSim(evModel('Accessories', 2500), 'city');
+fprintf('City without regen: %.0f Wh/km; with the heating on: %.0f Wh/km\\n', a.WhPerKm, b.WhPerKm)
+figure; evMotorMap(e)
+figure; evCharge(e, 150)
+` },
 ];
