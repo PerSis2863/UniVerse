@@ -318,7 +318,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                   placeholder="Spotlight search: pages, courses, people…"
                   aria-controls="palette-list"
                   aria-label="Search"
-                  className="flex-1 min-w-0 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none border-0 focus-visible:shadow-none! focus-visible:border-transparent! text-[22px] sm:text-[26px] font-normal tracking-tight selection:bg-[#0a84ff]/35"
+                  className="flex-1 min-w-0 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 hand outline-none border-0 focus-visible:shadow-none! focus-visible:border-transparent! text-[22px] sm:text-[26px] font-normal tracking-tight selection:bg-[#0a84ff]/35"
                 />
                 <button type="button" onClick={() => setOpen(false)} className="sm:hidden text-[15px] font-medium text-tint-text">Cancel</button>
               </div>
@@ -329,7 +329,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                     {[null, ...groups].map((g) => {
                       const on = chip === g;
                       return <button key={g ?? 'all'} type="button" aria-pressed={on} onClick={() => { pickChip(g); inputRef.current?.focus(); }}
-                        className={cn('shrink-0 rounded-[10px] px-3 py-1.5 text-[13px] font-medium transition-[background-color,color] duration-150', on ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-black/[0.06] text-zinc-700 hover:bg-black/[0.1] dark:bg-white/[0.1] dark:text-zinc-200 dark:hover:bg-white/[0.16]')}>{g ?? 'All'}</button>;
+                        className={cn('hand shrink-0 rounded-[10px] px-3 py-1.5 text-[13px] font-medium transition-[background-color,color] duration-150', on ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-black/[0.06] text-zinc-700 hover:bg-black/[0.1] dark:bg-white/[0.1] dark:text-zinc-200 dark:hover:bg-white/[0.16]')}>{g ?? 'All'}</button>;
                     })}
                   </div>
                 )}
@@ -343,7 +343,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                     const selected = i === index;
                     return (
                       <div key={`${item.group}-${item.id}`}>
-                        {header && <p className="px-3 pt-2.5 pb-1 text-[12px] font-semibold text-zinc-500 dark:text-zinc-400">{header}</p>}
+                        {header && <p className="hand px-3 pt-2.5 pb-1 text-[13px] font-semibold text-zinc-500 dark:text-zinc-400">{header}</p>}
                         <button
                           type="button"
                           data-idx={i}
@@ -358,7 +358,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                             <item.icon className="w-[18px] h-[18px]" aria-hidden />
                           </span>
                           <span className="relative flex-1 min-w-0">
-                            <span className="block text-[15px] font-medium truncate">{item.label}</span>
+                            <span className="hand block text-[15px] font-medium truncate">{item.label}</span>
                             {item.hint && <span className={cn('block text-[13px] text-zinc-500 dark:text-zinc-400', item.hint.includes('«') ? 'line-clamp-2' : 'truncate')}>{item.hint.includes('«') ? <Snippet text={item.hint} selected={false} /> : item.hint}</span>}
                           </span>
                           {selected

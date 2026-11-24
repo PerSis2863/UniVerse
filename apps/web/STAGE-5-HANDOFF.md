@@ -12573,3 +12573,12 @@ snapshot's `clip-path` / `opacity` animate (the page itself is frozen behind the
 has no transitions). Measured in a browser without a graphics chip, the circle and a plain fade drop the same frames,
 so the cost is that browser's software drawing, not the effect; the one long frame at the start is the page restyling
 to the new theme, before the animation begins.
+
+## M477: the handwritten face in more places (24 Nov)
+
+The owner, 24 Nov, with a picture of the search window: "the text does not match… the main headers… add it in more
+places". `globals.css` (after `.display-face`): `:is(.hand, .side-label, .ios-segment, [role="tab"], h4, h5, h6)` take
+`--font-display` (Shantell Sans); people's own documents keep Inter for h4–h6 too; the dyslexic font still overrides.
+`.hand` is put on the search window's field, chips, section names and result titles (`CommandPalette.tsx`) and on the
+top bar's entries, its menus' rows and group names (`TopNav.tsx`). Hints, body text, fields people fill, tables and
+numbers stay Inter (readability). For a new label that should look like a heading, add `hand`.
