@@ -1,3 +1,5 @@
+import { LabError } from './parse';
+
 // Hyperion's fixed-point numbers (M480): a value kept as a whole number of steps of 2^-fractionLength in a word of
 // wordLength bits, signed or not, as an embedded processor or an FPGA holds it. Rounding to the nearest step (halves
 // up, MATLAB's 'Nearest') and holding the range ('saturate'). Sums and products grow their words so nothing is lost,
@@ -9,7 +11,13 @@
 export type Rm = 'Nearest' | 'Floor' | 'Ceiling' | 'Zero' | 'Round' | 'Convergent';
 export type Om = 'Saturate' | 'Wrap';
 export const RMS: Rm[] = ['Nearest', 'Floor', 'Ceiling', 'Zero', 'Round', 'Convergent'];
-export interface Nt { signed: boolean; wl: number; fl: number; rm?: Rm; om?: Om }
+/** M532: fimath's ProductMode and SumMode with their lengths (MATLAB's defaults: 32-bit words, 30 fraction bits, cast
+ * before summing). Kept on a type only when set; left out, sums and products are full precision. */
+export type Mode = 'FullPrecision' | 'KeepLSB' | 'KeepMSB' | 'SpecifyPrecision';
+export const MODES: Mode[] = ['FullPrecision', 'KeepLSB', 'KeepMSB', 'SpecifyPrecision'];
+export interface PS { pm: Mode; pwl: number; pfl: number; pmax: number; sm: Mode; swl: number; sfl: number; smax: number; cbs: boolean }
+export const PS0: PS = { pm: 'FullPrecision', pwl: 32, pfl: 30, pmax: 128, sm: 'FullPrecision', swl: 32, sfl: 30, smax: 128, cbs: true };
+export interface Nt { signed: boolean; wl: number; fl: number; rm?: Rm; om?: Om; ps?: PS }
 export const limits = (t: Nt): [number, number] => (t.signed ? [-(2 ** (t.wl - 1)), 2 ** (t.wl - 1) - 1] : [0, 2 ** t.wl - 1]);
 /** M530: a number of steps rounded to a whole one by the type's method (the same arithmetic as the C's fx_from_double). */
 export function roundBy(y: number, rm: Rm = 'Nearest'): number {
@@ -35,10 +43,27 @@ export function stored(v: number, t: Nt): number {
   return Math.min(hi, Math.max(lo, q));
 }
 /** M530: the fimath a result keeps: the first operand's, else the second's. */
-export const fmOf = (a: Nt, b: Nt): Pick<Nt, 'rm' | 'om'> => {
-  const rm = a.rm ?? b.rm, om = a.om ?? b.om;
-  return { ...(rm ? { rm } : {}), ...(om ? { om } : {}) };
+export const fmOf = (a: Nt, b: Nt): Pick<Nt, 'rm' | 'om' | 'ps'> => {
+  const rm = a.rm ?? b.rm, om = a.om ?? b.om, ps = a.ps ?? b.ps;
+  return { ...(rm ? { rm } : {}), ...(om ? { om } : {}), ...(ps ? { ps } : {}) };
 };
+/** M532: a full-precision result type narrowed by a mode: KeepLSB keeps its fraction (the top may overflow), KeepMSB its
+ * integer bits (the bottom is rounded), SpecifyPrecision takes both lengths. */
+function byMode(full: Nt, mode: Mode, wl: number, fl: number, max: number, what: string): Nt {
+  if (mode === 'FullPrecision') { if (full.wl > max) throw new LabError(`A full-precision ${what} needs ${full.wl} bits, more than Max${what === 'sum' ? 'Sum' : 'Product'}WordLength (${max}).`); return full; }
+  if (mode === 'KeepLSB') return { ...full, wl };
+  if (mode === 'KeepMSB') return { ...full, wl, fl: full.fl - (full.wl - wl) };
+  return { ...full, wl, fl };
+}
+const sumBy = (full: Nt): Nt => (full.ps ? byMode(full, full.ps.sm, full.ps.swl, full.ps.sfl, full.ps.smax, 'sum') : full);
+/** M532: a running sum's type: the element type grown by ⌈log2 n⌉ bits, then the SumMode (sum of a vector, matrix products). */
+export const accType = (t: Nt, n: number): Nt => sumBy({ ...t, wl: Math.min(128, t.wl + Math.ceil(Math.log2(Math.max(2, n)))) });
+/** M532: one step of a running sum in doubles (as the C): the term cast to the sum type first (CastBeforeSum), then the
+ * sum put into the type; full precision needs neither. */
+export function accStep(acc: number, x: number, t: Nt): number {
+  if (!t.ps || t.ps.sm === 'FullPrecision') return acc + x;
+  return quantize(acc + (t.ps.cbs ? quantize(x, t) : x), t);
+}
 export const quantize = (v: number, t: Nt) => stored(v, t) / 2 ** t.fl;
 /** The most fraction bits that still hold the largest value (MATLAB's best precision). */
 export function bestFl(values: ArrayLike<number>, signed: boolean, wl: number): number {
@@ -54,9 +79,14 @@ export function bestFl(values: ArrayLike<number>, signed: boolean, wl: number): 
 /** Full-precision result types (MATLAB): a sum keeps the larger fraction and one more integer bit; a product adds both. */
 export function sumType(a: Nt, b: Nt): Nt {
   const fl = Math.max(a.fl, b.fl), signed = a.signed || b.signed, ib = Math.max(a.wl - a.fl - (a.signed ? 1 : 0), b.wl - b.fl - (b.signed ? 1 : 0)) + 1;
-  return { signed, fl, wl: Math.min(128, ib + fl + (signed ? 1 : 0)), ...fmOf(a, b) };
+  return sumBy({ signed, fl, wl: Math.min(128, ib + fl + (signed ? 1 : 0)), ...fmOf(a, b) });
 }
-export const productType = (a: Nt, b: Nt): Nt => ({ signed: a.signed || b.signed, wl: Math.min(128, a.wl + b.wl), fl: a.fl + b.fl, ...fmOf(a, b) });
+export function productType(a: Nt, b: Nt): Nt {
+  const full: Nt = { signed: a.signed || b.signed, wl: Math.min(128, a.wl + b.wl), fl: a.fl + b.fl, ...fmOf(a, b) };
+  return full.ps ? byMode(full, full.ps.pm, full.ps.pwl, full.ps.pfl, full.ps.pmax, 'product') : full;
+}
+/** M532: the same types without fimath's modes (the full-precision result before it is narrowed). */
+export const plain = (t: Nt): Nt => { const { ps: _ps, ...r } = t; void _ps; return r; };
 /** The stored integer's bits, most significant first (two's complement for negatives). */
 export function bits(v: number, t: Nt): string {
   const one = BigInt(1), zero = BigInt(0), s = BigInt(stored(v, t)), w = BigInt(t.wl), m = (one << w) - one;

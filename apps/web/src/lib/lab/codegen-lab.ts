@@ -39,9 +39,19 @@ def('codegen', (a, nout, lab) => {
 // ——— fi ———
 const isFi = (v: Value | undefined): v is Struct => v?.k === 'struct' && !!v.fi;
 const typeOf = (v: Struct): X.Nt => {
-  const rm = v.f.get('RoundingMethod'), om = v.f.get('OverflowAction');
-  return { signed: !!toMat(v.f.get('Signed')!).d[0], wl: toMat(v.f.get('WordLength')!).d[0], fl: toMat(v.f.get('FractionLength')!).d[0], ...(rm ? { rm: textOf(rm) as X.Rm } : {}), ...(om ? { om: textOf(om) as X.Om } : {}) };
+  const rm = v.f.get('RoundingMethod'), om = v.f.get('OverflowAction'), ps = psOf(v);
+  return { signed: !!toMat(v.f.get('Signed')!).d[0], wl: toMat(v.f.get('WordLength')!).d[0], fl: toMat(v.f.get('FractionLength')!).d[0], ...(rm ? { rm: textOf(rm) as X.Rm } : {}), ...(om ? { om: textOf(om) as X.Om } : {}), ...(ps ? { ps } : {}) };
 };
+// M532: ProductMode / SumMode and their lengths, as the fields MATLAB's fimath shows.
+const PSF: [keyof X.PS, string][] = [['pm', 'ProductMode'], ['pwl', 'ProductWordLength'], ['pfl', 'ProductFractionLength'], ['pmax', 'MaxProductWordLength'], ['sm', 'SumMode'], ['swl', 'SumWordLength'], ['sfl', 'SumFractionLength'], ['smax', 'MaxSumWordLength'], ['cbs', 'CastBeforeSum']];
+function psOf(v: Struct): X.PS | undefined {
+  if (!v.f.has('ProductMode')) return undefined;
+  const ps = { ...X.PS0 } as Record<keyof X.PS, unknown>;
+  for (const [k, name] of PSF) { const x = v.f.get(name); if (x) ps[k] = k === 'pm' || k === 'sm' ? textOf(x) : k === 'cbs' ? !!toMat(x).d[0] : toMat(x).d[0]; }
+  // the defaults are the same as none (full precision)
+  return PSF.every(([k]) => ps[k] === X.PS0[k]) ? undefined : (ps as unknown as X.PS);
+}
+const psFields = (ps: X.PS): [string, Value][] => PSF.map(([k, name]) => [name, k === 'pm' || k === 'sm' ? str(ps[k] as string) : k === 'cbs' ? { ...num(ps.cbs ? 1 : 0), logical: true } : num(ps[k] as number)]);
 const valuesOf = (v: Struct) => toMat(v.f.get('Value')!);
 function make(m: Mat, t: X.Nt): Struct {
   if (!(t.wl >= 2 && t.wl <= 128 && Number.isInteger(t.wl))) throw new LabError('The word length is a whole number of bits from 2 to 128.');
@@ -49,30 +59,41 @@ function make(m: Mat, t: X.Nt): Struct {
   const f = new Map<string, Value>([['Value', q], ['Signed', { ...num(t.signed ? 1 : 0), logical: true }], ['WordLength', num(t.wl)], ['FractionLength', num(t.fl)]]);
   // M530: a fimath other than the default is kept with the value (MATLAB shows it the same way).
   if (t.rm || t.om) { f.set('RoundingMethod', str(t.rm ?? 'Nearest')); f.set('OverflowAction', str(t.om ?? 'Saturate')); }
+  if (t.ps) for (const [k, v] of psFields(t.ps)) f.set(k, v);
   return { k: 'struct', fi: true, f };
 }
 // ——— M530: fimath (MATLAB's rounding method and overflow action; sums and products stay full precision) ———
-const FMV = { RoundingMethod: X.RMS as string[], OverflowAction: ['Saturate', 'Wrap'] };
+const FMV = { RoundingMethod: X.RMS as string[], OverflowAction: ['Saturate', 'Wrap'], ProductMode: X.MODES as string[], SumMode: X.MODES as string[] };
+const FMN: Record<string, keyof X.PS> = { productwordlength: 'pwl', productfractionlength: 'pfl', maxproductwordlength: 'pmax', sumwordlength: 'swl', sumfractionlength: 'sfl', maxsumwordlength: 'smax', castbeforesum: 'cbs' };
 const fmName = (k: string) => (Object.keys(FMV) as (keyof typeof FMV)[]).find((n) => n.toLowerCase() === k.toLowerCase());
 const isFimath = (v: Value | undefined): v is Struct => v?.k === 'struct' && !v.fi && v.f.has('RoundingMethod') && v.f.has('OverflowAction');
-/** Name–value pairs (or a fimath) read into a type's rounding and overflow. */
-function fmFrom(args: Value[], into: Pick<X.Nt, 'rm' | 'om'> = {}): Pick<X.Nt, 'rm' | 'om'> {
+/** Name–value pairs (or a fimath) read into a type's rounding, overflow and (M532) product and sum modes. */
+type Fm = Pick<X.Nt, 'rm' | 'om' | 'ps'>;
+function fmFrom(args: Value[], into: Fm = {}): Fm {
   const out = { ...into };
+  const ps = () => (out.ps = { ...(out.ps ?? X.PS0) });
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (isFimath(a)) { out.rm = textOf(a.f.get('RoundingMethod')!) as X.Rm; out.om = textOf(a.f.get('OverflowAction')!) as X.Om; continue; }
-    const k = a.k === 'str' ? fmName(textOf(a)) : undefined;
-    if (!k || !args[i + 1]) throw new LabError("fimath takes 'RoundingMethod' (Nearest, Floor, Ceiling, Zero, Round or Convergent) and 'OverflowAction' (Saturate or Wrap).");
-    const v = textOf(args[++i]), hit = FMV[k].find((x) => x.toLowerCase() === v.toLowerCase() || (k === 'RoundingMethod' && v.toLowerCase() === 'fix' && x === 'Zero'));
-    if (!hit) throw new LabError(`${k} is one of ${FMV[k].join(', ')} (here ${v}).`);
-    if (k === 'RoundingMethod') out.rm = hit as X.Rm; else out.om = hit as X.Om;
+    if (isFimath(a)) { out.rm = textOf(a.f.get('RoundingMethod')!) as X.Rm; out.om = textOf(a.f.get('OverflowAction')!) as X.Om; const p = psOf(a); if (p) out.ps = p; else delete out.ps; continue; }
+    const name = a.k === 'str' ? textOf(a) : '', k = fmName(name), n = FMN[name.toLowerCase()];
+    if ((!k && !n) || !args[i + 1]) throw new LabError("fimath takes 'RoundingMethod' (Nearest, Floor, Ceiling, Zero, Round or Convergent), 'OverflowAction' (Saturate or Wrap), 'ProductMode' and 'SumMode' (FullPrecision, KeepLSB, KeepMSB or SpecifyPrecision), their word and fraction lengths and 'CastBeforeSum'.");
+    const x = args[++i];
+    if (n) {
+      const v = toMat(x).d[0];
+      if (n !== 'cbs' && !(Number.isInteger(v) && (n.endsWith('fl') || (v >= 2 && v <= 128)))) throw new LabError(`${name} is a whole number${n.endsWith('fl') ? '' : ' of bits from 2 to 128'}.`);
+      (ps() as unknown as Record<string, unknown>)[n] = n === 'cbs' ? !!v : v;
+      continue;
+    }
+    const v = textOf(x), hit = FMV[k!].find((y) => y.toLowerCase() === v.toLowerCase() || (k === 'RoundingMethod' && v.toLowerCase() === 'fix' && y === 'Zero'));
+    if (!hit) throw new LabError(`${k} is one of ${FMV[k!].join(', ')} (here ${v}).`);
+    if (k === 'RoundingMethod') out.rm = hit as X.Rm; else if (k === 'OverflowAction') out.om = hit as X.Om; else if (k === 'ProductMode') ps().pm = hit as X.Mode; else ps().sm = hit as X.Mode;
   }
   return out;
 }
-const fimathOf = (t: Pick<X.Nt, 'rm' | 'om'>): Struct => ({ k: 'struct', f: new Map<string, Value>([['RoundingMethod', str(t.rm ?? 'Nearest')], ['OverflowAction', str(t.om ?? 'Saturate')], ['ProductMode', str('FullPrecision')], ['SumMode', str('FullPrecision')]]) });
+const fimathOf = (t: Fm): Struct => ({ k: 'struct', f: new Map<string, Value>([['RoundingMethod', str(t.rm ?? 'Nearest')], ['OverflowAction', str(t.om ?? 'Saturate')], ...psFields(t.ps ?? X.PS0)]) });
 def('fimath', (a) => [fimathOf(isFi(a[0]) ? typeOf(a[0]) : fmFrom(a))]);
-def('setfimath', (a) => { if (!isFi(a[0])) throw new LabError('setfimath(x, F): x is a fi value.'); return [make(valuesOf(a[0]), { ...typeOf(a[0]), ...fmFrom(a.slice(1)) })]; });
-def('removefimath', (a) => { if (!isFi(a[0])) throw new LabError('removefimath takes a fi value.'); const { rm: _r, om: _o, ...t } = typeOf(a[0]); void _r; void _o; return [make(valuesOf(a[0]), t)]; });
+def('setfimath', (a) => { if (!isFi(a[0])) throw new LabError('setfimath(x, F): x is a fi value.'); const { rm: _r, om: _o, ps: _p, ...t } = typeOf(a[0]); void _r; void _o; void _p; return [make(valuesOf(a[0]), { ...t, ...fmFrom(a.slice(1)) })]; });
+def('removefimath', (a) => { if (!isFi(a[0])) throw new LabError('removefimath takes a fi value.'); const { rm: _r, om: _o, ps: _p, ...t } = typeOf(a[0]); void _r; void _o; void _p; return [make(valuesOf(a[0]), t)]; });
 def('fi', (a) => {
   // fi(x, …) of a fi: its value in the new type (M524).
   const m = isFi(a[0]) ? valuesOf(a[0]) : toMat(a[0] ?? num(0), 'fi’s value');
@@ -83,8 +104,8 @@ def('fi', (a) => {
   const n = a.slice(1, k), fm = fmFrom(a.slice(k), isFi(a[0]) ? typeOf(a[0]) : {});
   const signed = n[0] ? !!toMat(n[0]).d[0] : true, wl = n[1] ? toMat(n[1]).d[0] : 16;
   const fl = n[2] ? toMat(n[2]).d[0] : X.bestFl(m.d, signed, wl);
-  const { rm, om } = fm;
-  return [make(m, { signed, wl, fl, ...(rm ? { rm } : {}), ...(om ? { om } : {}) })];
+  const { rm, om, ps } = fm;
+  return [make(m, { signed, wl, fl, ...(rm ? { rm } : {}), ...(om ? { om } : {}), ...(ps ? { ps } : {}) })];
 });
 const before = opHooks.binop;
 opHooks.binop = (op, a, b) => (!isFi(a) && !isFi(b) ? before?.(op, a, b) ?? null : fiOp(op, a, b));
@@ -97,9 +118,17 @@ function fiOp(op: string, a: Value, b: Value, T?: X.Nt): Value {
   const qa = mat(ma.r, ma.c, [...ma.d].map((x) => X.quantize(x, na))), qb = mat(mb.r, mb.c, [...mb.d].map((x) => X.quantize(x, nb)));
   const typed = (q: X.Nt): X.Nt => (T ? { ...X.fmOf(na, nb), ...T } : q);
   let t: X.Nt;
-  if (op === '+' || op === '-') t = X.sumType(na, nb);
-  else if (op === '.*' || (op === '*' && (qa.d.length === 1 || qb.d.length === 1))) t = X.productType(na, nb);
-  else if (op === '*') { const k = qa.c; t = X.productType(na, nb); t = { ...t, wl: Math.min(128, t.wl + Math.ceil(Math.log2(Math.max(2, k)))) }; }
+  if (op === '+' || op === '-') {
+    t = X.sumType(na, nb);
+    // M532: CastBeforeSum: each side is put into the sum's type first (then the sum is held or wrapped there).
+    if (t.ps && t.ps.sm !== 'FullPrecision' && t.ps.cbs) return make(toMat(fiArith(op, mat(qa.r, qa.c, [...qa.d].map((x) => X.quantize(x, t))), mat(qb.r, qb.c, [...qb.d].map((x) => X.quantize(x, t))))), t);
+  } else if (op === '.*' || (op === '*' && (qa.d.length === 1 || qb.d.length === 1))) t = X.productType(na, nb);
+  else if (op === '*') {
+    const p = X.productType(na, nb);
+    t = X.accType(p, qa.c);
+    // M532: with fimath's modes each product is put into the product type and summed step by step (as the C).
+    if (t.ps) return make(matProduct(qa, qb, p, t), t);
+  }
   else if (op === './' || (op === '/' && qb.d.length === 1)) return fiDiv(qa, na, qb, nb, typed(quotientType(na, nb)));
   // M530–M531: A \\ B and B / A by a fi matrix: solved exactly, each answer rounded once (fiSolve).
   else if (op === '\\' && qa.d.length > 1) return fiSolve(qa, na, qb, nb, typed(quotientType(nb, na)));
@@ -203,6 +232,13 @@ function compare(op: string, a: Mat, b: Mat): Value {
 opHooks.post = (a) => (isFi(a) ? transposeFi(a) : null);
 // −x keeps x's type (the most negative value held in range, as MATLAB's saturation).
 opHooks.neg = (a) => (isFi(a) ? make(mat(valuesOf(a).r, valuesOf(a).c, [...valuesOf(a).d].map((x) => -x)), typeOf(a)) : null);
+/** M532: a matrix product with fimath's modes: each product in type p, the running sum in type t (X.accStep). */
+function matProduct(a: Mat, b: Mat, p: X.Nt, t: X.Nt): Mat {
+  if (a.c !== b.r) throw new LabError(`The inner sizes must agree: ${a.r}×${a.c} * ${b.r}×${b.c}.`);
+  const out = mat(a.r, b.c);
+  for (let j = 0; j < b.c; j++) for (let i = 0; i < a.r; i++) { let s = 0; for (let k = 0; k < a.c; k++) s = X.accStep(s, X.quantize(a.d[i + k * a.r] * b.d[k + j * b.r], p), t); out.d[i + j * a.r] = s; }
+  return out;
+}
 /** The exact result of the quantised values (the fi type then holds it). */
 function fiArith(op: string, a: Mat, b: Mat): Mat {
   const n = Math.max(a.d.length, b.d.length), at = (m: Mat, i: number) => m.d[m.d.length === 1 ? 0 : i];
@@ -237,5 +273,16 @@ for (const name of ['double', 'single']) {
   const plain = BUILTINS[name];
   BUILTINS[name] = (a, n, lab) => (isFi(a[0]) ? plain([valuesOf(a[0])], n, lab) : plain(a, n, lab));
 }
+// M532: sum of a fi vector: the element type grown by ⌈log2 n⌉ bits, then the SumMode, summed step by step (as the C).
+const plainSum = BUILTINS.sum;
+BUILTINS.sum = (a, n, lab) => {
+  if (!isFi(a[0])) return plainSum(a, n, lab);
+  const m = valuesOf(a[0]), t0 = typeOf(a[0]);
+  if (a.length > 1 || (m.r !== 1 && m.c !== 1)) throw new LabError('sum of a fi vector only here.');
+  const t = X.accType(t0, m.d.length);
+  let s = 0;
+  for (const x of m.d) s = X.accStep(s, x, t);
+  return [make(mat(1, 1, [s]), t)];
+};
 const plainNumel = BUILTINS.numel;
 BUILTINS.numel = (a, n, lab) => (isFi(a[0]) ? [num(valuesOf(a[0]).d.length)] : plainNumel(a, n, lab));

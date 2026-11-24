@@ -440,4 +440,64 @@ ${fns.map(([f]) => `  { ${arr(ty(f), 'a', ins[f][0])} ${arr(ty(f), 'b', ins[f][1
       expect(execFileSync(exe).toString().trim().split(/\s+/).map(Number)).toEqual(all);
     }
   });
+  const MODES2 = `function [p, q, r, s, t, u, v] = modes2(a, b, M, x)
+  F1 = fimath('ProductMode', 'KeepMSB', 'ProductWordLength', 8);
+  p = setfimath(a, F1) .* b;
+  F2 = fimath('ProductMode', 'KeepLSB', 'ProductWordLength', 8, 'OverflowAction', 'Wrap');
+  q = setfimath(a, F2) .* b;
+  F3 = fimath('ProductMode', 'SpecifyPrecision', 'ProductWordLength', 12, 'ProductFractionLength', 6);
+  r = setfimath(a, F3) * b;
+  F4 = fimath('SumMode', 'SpecifyPrecision', 'SumWordLength', 8, 'SumFractionLength', 2, 'RoundingMethod', 'Floor');
+  s = setfimath(a, F4) + b;
+  F5 = fimath('SumMode', 'SpecifyPrecision', 'SumWordLength', 8, 'SumFractionLength', 2, 'RoundingMethod', 'Floor', 'CastBeforeSum', false);
+  t = setfimath(a, F5) + b;
+  F6 = fimath('ProductMode', 'KeepMSB', 'ProductWordLength', 10, 'SumMode', 'KeepMSB', 'SumWordLength', 12);
+  u = setfimath(M, F6) * x;
+  v = sum(setfimath(x, F5));
+end`;
+  it('M532: ProductMode and SumMode in Hyperion', () => {
+    const l = new Lab({ out: () => {} });
+    l.run(MODES2);
+    l.run('[p, q, r, s, t] = modes2(fi(1.5, 1, 8, 4), fi(2.25, 1, 8, 4), fi(zeros(2, 3), 1, 8, 4), fi(zeros(3, 1), 1, 8, 4));');
+    expect([st(l, 'p'), st(l, 'q'), st(l, 'r')]).toEqual([[3], [96], [216]]); // 3.375: KeepMSB to 8 bits, KeepLSB wrapped, 6 fraction bits
+    l.run('[~, ~, ~, s, t] = modes2(fi(0.1875, 1, 8, 4), fi(0.125, 1, 8, 4), fi(zeros(2, 3), 1, 8, 4), fi(zeros(3, 1), 1, 8, 4)); w = s.WordLength; pm = s.SumMode;');
+    expect([st(l, 's'), st(l, 't')]).toEqual([[0], [1]]); // cast first (Floor to 0.25): 0 + 0; else 0.3125 down to 0.25
+    expect(toMat(l.vars.get('w')!).d[0]).toBe(8);
+    expect((l.vars.get('pm') as { v: string }).v).toBe('SpecifyPrecision');
+    expect(() => l.run("a = setfimath(fi(1, 1, 8, 4), fimath('MaxProductWordLength', 12)); b = a .* a;")).toThrow(/needs 16 bits, more than MaxProductWordLength \(12\)/);
+  });
+  it.skipIf(!hasCc)('M532: the C gives Hyperion’s stored integers with every product and sum mode', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    l.run(MODES2);
+    l.run('codegen(\'modes2\', {fi(0, 1, 8, 4), fi(0, 1, 8, 4), fi(zeros(2, 3), 1, 8, 4), fi(zeros(3, 1), 1, 8, 4)});');
+    const rows: number[][] = [], want: number[] = [];
+    let seed = 3;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return ((seed % 256) - 128) / 16; };
+    for (let t = 0; t < 20; t++) {
+      const v = Array.from({ length: 2 + 6 + 3 }, rnd), m = (xs: number[], r: number) => `fi(reshape([${xs.join(' ')}], ${r}, []), 1, 8, 4)`;
+      l.run(`[p, q, r, s, t, u, v] = modes2(fi(${v[0]}, 1, 8, 4), fi(${v[1]}, 1, 8, 4), ${m(v.slice(2, 8), 2)}, ${m(v.slice(8), 3)});`);
+      rows.push([...st(l, `fi(${v[0]}, 1, 8, 4)`), ...st(l, `fi(${v[1]}, 1, 8, 4)`), ...st(l, m(v.slice(2, 8), 2)), ...st(l, m(v.slice(8), 3))]);
+      for (const k of 'pqrstuv') want.push(...st(l, k));
+    }
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-fx532-'));
+    writeFileSync(join(dir, 'modes2.c'), files.text('modes2.c'));
+    writeFileSync(join(dir, 'modes2.h'), files.text('modes2.h'));
+    const sig = files.text('modes2.h').match(/void modes2\(([^)]*)\)/)![1].split(',').map((x) => x.trim().split(/\s+/)[0]);
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+#include "modes2.h"
+int main(void) {
+  int8_t in[][11] = {${rows.map((r) => `{${r.join(', ')}}`).join(', ')}};
+  ${sig[4]} p; ${sig[5]} q; ${sig[6]} r; ${sig[7]} s; ${sig[8]} t; ${sig[9]} u[2]; ${sig[10]} v;
+  for (int i = 0; i < ${rows.length}; i++) {
+    modes2(in[i][0], in[i][1], &in[i][2], &in[i][8], &p, &q, &r, &s, &t, u, &v);
+    printf("%d %d %d %d %d %d %d %d ", (int)p, (int)q, (int)r, (int)s, (int)t, (int)u[0], (int)u[1], (int)v);
+  }
+  return 0;
+}`);
+    for (const portable of [false, true]) {
+      const exe = join(dir, portable ? 'run-p' : 'run-n');
+      execFileSync('cc', ['-std=c99', '-Wall', '-Werror', ...(portable ? ['-DHYPERION_FX_PORTABLE'] : []), '-o', exe, join(dir, 'main.c'), join(dir, 'modes2.c'), '-lm'], { cwd: dir });
+      expect(execFileSync(exe).toString().trim().split(/\s+/).map(Number)).toEqual(want);
+    }
+  });
 });

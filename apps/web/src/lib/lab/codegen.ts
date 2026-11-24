@@ -1,5 +1,5 @@
 import type { Expr, FnDef, Stmt } from './parse';
-import { bestFl, fmOf, limits, productType, RMS, stored, sumType, type Nt, type Om, type Rm } from './fixed';
+import { accType, bestFl, fmOf, limits, MODES, plain, productType, PS0, RMS, stored, sumType, type Mode, type Nt, type Om, type PS, type Rm } from './fixed';
 
 // Hyperion's C code generation (M480): a function written in Hyperion's language, with example inputs that fix every
 // size and type, becomes plain, readable C99 for embedded work: no memory allocated at run time, fixed-size arrays
@@ -139,7 +139,7 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
     if (from.includes(name)) throw new CodegenError(`${name} calls itself: recursion can’t become fixed-size C here.`);
     if (def.varargin || def.varargout) throw new CodegenError(`${name}: varargin and varargout can’t become C here.`);
     if (argTypes.length !== def.params.length) throw new CodegenError(`${name} takes ${def.params.length} inputs; ${argTypes.length} examples were given.`);
-    const key = `${name}(${argTypes.map((t) => `${t.cls}${t.fx ? `<${+t.fx.signed},${t.fx.wl},${t.fx.fl},${t.fx.rm ?? ''},${t.fx.om ?? ''}>` : ''}${sizeText(t)}`).join(',')})`;
+    const key = `${name}(${argTypes.map((t) => `${t.cls}${t.fx ? `<${+t.fx.signed},${t.fx.wl},${t.fx.fl},${t.fx.rm ?? ''},${t.fx.om ?? ''},${t.fx.ps ? Object.values(t.fx.ps).join('/') : ''}>` : ''}${sizeText(t)}`).join(',')})`;
     const have = made.get(key);
     if (have) return have;
     // The first version of each function keeps its name; another set of input types gets a number.
@@ -169,21 +169,32 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
 
     // ——— Fixed point (M524) ———
     // M530: fimath settings known when generating: F = fimath(…) is kept here (no C), fi(x, s, w, f, F) reads it.
-    const fmVars = new Map<string, Pick<Nt, 'rm' | 'om'>>();
+    const fmVars = new Map<string, Pick<Nt, 'rm' | 'om' | 'ps'>>();
     const isFimathCall = (e: Expr): e is Extract<Expr, { k: 'index' }> => e.k === 'index' && e.of.k === 'id' && e.of.name === 'fimath' && !vars.has('fimath') && !fns.has('fimath');
-    function fmArgs(args: Expr[]): Pick<Nt, 'rm' | 'om'> {
-      const out: Pick<Nt, 'rm' | 'om'> = {};
+    function fmArgs(args: Expr[]): Pick<Nt, 'rm' | 'om' | 'ps'> {
+      const out: Pick<Nt, 'rm' | 'om' | 'ps'> = {};
+      const ps = (): PS => (out.ps = { ...(out.ps ?? PS0) });
+      const LEN: Record<string, keyof PS> = { productwordlength: 'pwl', productfractionlength: 'pfl', maxproductwordlength: 'pmax', sumwordlength: 'swl', sumfractionlength: 'sfl', maxsumwordlength: 'smax' };
       for (let i = 0; i < args.length; i++) {
         const a = args[i];
         if (isFimathCall(a)) { Object.assign(out, fmArgs(a.args)); continue; }
         if (a.k === 'id' && fmVars.has(a.name)) { Object.assign(out, fmVars.get(a.name)); continue; }
         const v = args[i + 1];
-        if (a.k !== 'str' || v?.k !== 'str') fail("fimath here: 'RoundingMethod' (Nearest, Floor, Ceiling, Zero, Round or Convergent) and 'OverflowAction' (Saturate or Wrap), written in the code.");
-        const key = (a as { v: string }).v.toLowerCase(), val = (v as { v: string }).v.toLowerCase();
+        if (a.k !== 'str' || !v) fail("fimath here: 'RoundingMethod', 'OverflowAction', 'ProductMode', 'SumMode', their lengths and 'CastBeforeSum', written in the code.");
+        const key = (a as { v: string }).v.toLowerCase();
         i++;
+        if (LEN[key] || key === 'castbeforesum') {
+          const x = v.k === 'id' && (v.name === 'true' || v.name === 'false') ? +(v.name === 'true') : literal(v);
+          if (x === null) fail(`fimath’s ${(a as { v: string }).v} is a number written in the code.`);
+          (ps() as unknown as Record<string, unknown>)[LEN[key] ?? 'cbs'] = key === 'castbeforesum' ? !!x : x;
+          continue;
+        }
+        if (v.k !== 'str') fail(`fimath’s ${(a as { v: string }).v} is text written in the code.`);
+        const val = (v as { v: string }).v.toLowerCase();
         if (key === 'roundingmethod') { const rm = RMS.find((r) => r.toLowerCase() === val) ?? (val === 'fix' ? 'Zero' : undefined); if (!rm) fail(`RoundingMethod is one of ${RMS.join(', ')}.`); out.rm = rm; }
         else if (key === 'overflowaction') { if (val !== 'saturate' && val !== 'wrap') fail('OverflowAction is Saturate or Wrap.'); out.om = val === 'wrap' ? 'Wrap' : 'Saturate'; }
-        else fail(`fimath’s ${(a as { v: string }).v} can’t become C here (RoundingMethod and OverflowAction can; sums and products are full precision).`);
+        else if (key === 'productmode' || key === 'summode') { const m = MODES.find((x) => x.toLowerCase() === val); if (!m) fail(`${key === 'productmode' ? 'ProductMode' : 'SumMode'} is one of ${MODES.join(', ')}.`); if (key === 'productmode') ps().pm = m as Mode; else ps().sm = m as Mode; }
+        else fail(`fimath’s ${(a as { v: string }).v} can’t become C here.`);
       }
       return out;
     }
@@ -211,6 +222,18 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       const nt: Nt = { signed: like.signed, wl: like.wl, fl: bestFl([v!], like.signed, like.wl), ...fmOf(like, like) };
       return { nt, code: () => E.lit(stored(v!, nt), nt) };
     }
+    const fxOf = (side: { nt: Nt; code: (k: string | null) => string }, k: string | null) => ({ code: side.code(k), t: { cls: 'fixed' as Cls, r: 1, c: 1, fx: side.nt } });
+    /** M532: one step of a running sum (sum of a vector, a matrix product) in type acc, as X.accStep: acc is the working
+     * value, x a stored one of type xt; the new working value. */
+    function accStepC(acc: string, x: string, xt: Nt, at: Nt): string {
+      const d = at.fl - xt.fl, xw = E.w(x, xt);
+      if (!at.ps || at.ps.sm === 'FullPrecision') return E.add(acc, d > 0 ? E.shl(xw, d) : xw);
+      const [lo, hi] = E.lim(at);
+      if (at.ps.cbs) { helpers.add('fx_fit'); return `fx_fit(${E.add(acc, E.w(toFx(at, { code: x, t: fxTy(xt) }), at))}, ${lo}, ${hi}, ${OM_C[at.om ?? 'Saturate']})`; }
+      helpers.add('fx_shift');
+      const fl = Math.max(at.fl, xt.fl), up = (v: string, by: number) => (by ? E.shl(v, by) : v);
+      return `fx_shift(${E.add(up(acc, fl - at.fl), up(xw, fl - xt.fl))}, ${at.fl - fl}, ${lo}, ${hi}, ${fmC(at)})`;
+    }
     function fxBin(e: Extract<Expr, { k: 'bin' }>, a: Ty, b: Ty): { t: Ty; code: (k: string | null) => string } {
       const like = (isFx(a) ? a : b).fx!, A = fxSide(e.a, a, like), B = fxSide(e.b, b, like);
       const shape = scalar(a) ? b : a;
@@ -223,12 +246,18 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         return { t: { cls: 'logical', r: 1, c: 1 }, code: (k) => E.cmp(CMP[e.op], at(A, fl, k), at(B, fl, k)) };
       }
       if (e.op === '+' || e.op === '-') {
-        const nt = sumType(A.nt, B.nt), t = fxTy(nt, shape.r, shape.c);
-        return { t, code: (k) => E.to((e.op === '+' ? E.add : E.sub)(at(A, nt.fl, k), at(B, nt.fl, k)), nt) };
+        const nt = sumType(A.nt, B.nt), t = fxTy(nt, shape.r, shape.c), op = e.op === '+' ? E.add : E.sub;
+        if (!nt.ps || nt.ps.sm === 'FullPrecision') return { t, code: (k) => E.to(op(at(A, nt.fl, k), at(B, nt.fl, k)), nt) };
+        // M532: CastBeforeSum: each side into the sum's type, then the sum held or wrapped there; else the full sum put into it.
+        const full = sumType(plain(A.nt), plain(B.nt)), [lo, hi] = E.lim(nt);
+        if (nt.ps.cbs) { helpers.add('fx_fit'); return { t, code: (k) => E.to(`fx_fit(${op(E.w(toFx(nt, fxOf(A, k)), nt), E.w(toFx(nt, fxOf(B, k)), nt))}, ${lo}, ${hi}, ${OM_C[nt.om ?? 'Saturate']})`, nt) }; }
+        fxTy(full);
+        return { t, code: (k) => toFx(nt, { code: E.to(op(at(A, full.fl, k), at(B, full.fl, k)), full), t: fxTy(full) }) };
       }
       if (e.op === '.*' || (e.op === '*' && (scalar(a) || scalar(b)))) {
-        const nt = productType(A.nt, B.nt), t = fxTy(nt, shape.r, shape.c);
-        return { t, code: (k) => E.to(E.mul(E.w(A.code(k), A.nt), E.w(B.code(k), B.nt)), nt) };
+        const nt = productType(A.nt, B.nt), t = fxTy(nt, shape.r, shape.c), full = productType(plain(A.nt), plain(B.nt)), ft = fxTy(full);
+        // M532: a ProductMode other than full precision: the full product put into the narrower type.
+        return { t, code: (k) => toFx(nt, { code: E.to(E.mul(E.w(A.code(k), A.nt), E.w(B.code(k), B.nt)), full), t: ft }) };
       }
       if (e.op === './' || (e.op === '/' && scalar(b))) {
         const nt = quotientType(A.nt, B.nt);
@@ -242,7 +271,7 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       if (e.op === '*') {
         if (!isFx(a) || !isFx(b)) fail('a matrix product of fixed-point values needs both fixed point.');
         if (a.c !== b.r) fail(`the inner sizes don’t agree: ${sizeText(a)} * ${sizeText(b)}.`);
-        const p = productType(a.fx!, b.fx!), nt = { ...p, wl: p.wl + Math.ceil(Math.log2(Math.max(2, a.c))) };
+        const nt = accType(productType(a.fx!, b.fx!), a.c);
         return { t: fxTy(nt, a.r, b.c), code: () => fail('a matrix product where one number is needed.') };
       }
       return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * ./ \\ / and comparisons).`);
@@ -424,7 +453,7 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
       }
       if (t.some(isFx) && !fns.has(fname)) {
         if (fname === 'double' || fname === 'single') return { cls: fname, r: t[0].r, c: t[0].c };
-        if (fname === 'sum' && t.length === 1 && (t[0].r === 1 || t[0].c === 1)) return fxTy({ ...t[0].fx!, wl: t[0].fx!.wl + Math.ceil(Math.log2(Math.max(2, n(t[0])))) });
+        if (fname === 'sum' && t.length === 1 && (t[0].r === 1 || t[0].c === 1)) return fxTy(accType(t[0].fx!, n(t[0])));
         if (!['numel', 'length', 'size'].includes(fname)) fail(`${fname} of a fixed-point value can’t become C here (+ − .* * sum, fi, double).`);
       }
       if (FN1[fname]) { if (t.length !== 1) fail(`${fname} takes one input here.`); return { ...t[0], cls: isInt(t[0].cls) ? t[0].cls : t[0].cls === 'single' ? 'single' : 'double' }; }
@@ -539,7 +568,7 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
           // M530: a fixed-point sum in full precision (its type has room for every element).
           const st = typeOf(a[0]).fx!;
           out(`${v} = ${E.to(E.zero, t.fx!)};`);
-          out(`for (int i = 0; i < ${len}; i++) ${v} = ${E.to(E.add(E.w(v, t.fx!), E.w(`${src}[i]`, st)), t.fx!)};`);
+          out(`for (int i = 0; i < ${len}; i++) ${v} = ${E.to(accStepC(E.w(v, t.fx!), `${src}[i]`, st, t.fx!), t.fx!)};`);
           return { code: v, t };
         }
         const init = fname === 'prod' ? '1.0' : fname === 'min' || fname === 'max' ? `${src}[0]` : isFx(t) ? '0' : '0.0';
@@ -580,9 +609,12 @@ function emit(fns: Map<string, FnDef>, entry: string, args: Ty[], W: boolean): {
         const fx = isFx(t) ? typeOf(e) : null;
         out(`for (int j = 0; j < ${bt.c}; j++) {`);
         out(`  for (int i = 0; i < ${at.r}; i++) {`);
-        out(fx ? `    fxw_t s = ${E.zero};` : `    double s = 0.0;`);
-        out(fx ? `    for (int p = 0; p < ${at.c}; p++) s = ${E.add('s', E.mul(E.w(`${A}[i + p * ${at.r}]`, at.fx!), E.w(`${B}[p + j * ${bt.r}]`, bt.fx!)))};` : `    for (int p = 0; p < ${at.c}; p++) s += ${A}[i + p * ${at.r}] * ${B}[p + j * ${bt.r}];`);
-        out(`    ${into}[i + j * ${at.r}] = ${fx ? cast(t, { code: E.to('s', fx.fx!), t: fx }) : cast(t, { code: 's', t: { cls: 'double', r: 1, c: 1 } })};`);
+        out(fx ? `    fxw_t mp_s = ${E.zero};` : `    double mp_s = 0.0;`);
+        // M532: each product in its (ProductMode) type, the running sum in the result's (SumMode) type, step by step.
+        const pt = fx ? productType(at.fx!, bt.fx!) : null, full = fx ? productType(plain(at.fx!), plain(bt.fx!)) : null;
+        const prod = () => toFx(pt!, { code: E.to(E.mul(E.w(`${A}[i + mp_p * ${at.r}]`, at.fx!), E.w(`${B}[mp_p + j * ${bt.r}]`, bt.fx!)), full!), t: fxTy(full!) });
+        out(fx ? `    for (int mp_p = 0; mp_p < ${at.c}; mp_p++) mp_s = ${accStepC('mp_s', prod(), pt!, fx.fx!)};` : `    for (int mp_p = 0; mp_p < ${at.c}; mp_p++) mp_s += ${A}[i + mp_p * ${at.r}] * ${B}[mp_p + j * ${bt.r}];`);
+        out(`    ${into}[i + j * ${at.r}] = ${fx ? cast(t, { code: E.to('mp_s', fx.fx!), t: fx }) : cast(t, { code: 'mp_s', t: { cls: 'double', r: 1, c: 1 } })};`);
         out('  }');
         out('}');
         if (into !== target) out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${into}[k];`);

@@ -13036,3 +13036,28 @@ The owner pasted M530's "left out" list and chose "build all of them"; this is t
   `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers.
 - **Left out:** the minimum-norm answer for wide or rank-deficient systems (MATLAB's `\` doesn't give it either; `pinv`
   does), refusing past 4096 bits.
+
+## M532 (24 Nov): Hyperion fimath's ProductMode and SumMode
+
+The second part of M530's "left out" list (the owner: "build all of them").
+
+- **Types** (`fixed.ts`): `Nt.ps` (`PS`: `pm`, `pwl`, `pfl`, `pmax`, `sm`, `swl`, `sfl`, `smax`, `cbs`), kept only when it
+  differs from MATLAB's defaults (`PS0`: full precision, 32-bit words, 30 fraction bits, cast before sum; Max… 128 here,
+  Hyperion's limit). `productType` / `sumType` narrow the full-precision type by the mode (`byMode`: KeepLSB keeps the
+  fraction, KeepMSB the whole part, SpecifyPrecision both lengths); a full-precision result over Max…WordLength is a
+  `LabError` (never a `RangeError`: the interpreter reads those as runaway recursion). `accType(t, n)` is a running sum's
+  type (⌈log2 n⌉ more bits, then the SumMode); `accStep` one step (cast first if CastBeforeSum, then into the type);
+  `plain(t)` drops the modes (the full result before narrowing).
+- **Hyperion** (`codegen-lab.ts`): `fimath` / `setfimath` / `fi(…, F)` take the new names (fmFrom); a fi shows the fields
+  (`psFields`, read back by `psOf`); `setfimath` replaces the whole fimath, `removefimath` drops it. `+`/`−` with
+  CastBeforeSum put each side into the sum type first; a matrix product with modes (`matProduct`) and `sum` of a fi vector
+  (new: it wasn't there for fi) add step by step as the C does.
+- **C** (`codegen.ts`): `fmArgs` reads the modes (numbers or `true` / `false` written in the code); the function key
+  includes them; `.*` writes the full product then `toFx` into the narrower type; `+` with CastBeforeSum `fx_fit`s the
+  sum of the two cast sides, without it `toFx`s the full sum; `accStepC` is the C twin of `accStep` for matrix products
+  and `sum`. **Fixed on the way:** the matrix product's loop used C locals `s` and `p`, which an output of the same name
+  (a pointer, `(*p)`) rewrote: they are `mp_s`, `mp_p` now. (Other loops still use `i`, `j`, `k`: an output called that
+  would clash the same way.)
+- **Checked:** `codegen.test.ts` M532: each mode by hand (3.375 KeepMSB to 3, KeepLSB wrapped to 96, SpecifyPrecision
+  216; cast-before-sum 0 against 1), the field shown, the Max…WordLength error; then a function with all of them on 20
+  random inputs compiled native and portable, equal to Hyperion.
