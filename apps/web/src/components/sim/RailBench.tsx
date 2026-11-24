@@ -6,6 +6,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { ROUTES, TRAINS, headway, railRun, routeLength, sectionAt } from '@/lib/lab/rail';
 import { ui } from './bench-ui';
 import { LineBench } from './LineBench';
+import { SingleBench } from './SingleBench';
 
 // Hyperion Simulate → Machines → Railway (M491): a train (metro, intercity, freight) along a line (metro stops, an
 // intercity line with hills, a mountain line), driven the fastest way or to save energy (cruising under the limits and
@@ -16,12 +17,13 @@ type RouteName = 'metro' | 'intercity' | 'mountain';
 type TrainName = 'metro' | 'intercity' | 'freight';
 const MODE_COLOUR = { power: '#16a34a', cruise: '#2563eb', coast: '#f59e0b', brake: '#dc2626', stop: '#71717a' } as const;
 
-// One train (M491) or several sharing the line (M491b, LineBench): one switch at the top of either settings panel.
-type View = 'one' | 'many';
+// One train (M491), several sharing the line (M491b, LineBench) or both ways on a single track (M491e, SingleBench):
+// one switch at the top of each settings panel.
+type View = 'one' | 'many' | 'single';
 export function RailBench() {
   const [view, setView] = useState<View>('one');
-  const switcher = <Segmented<View> label="Trains" value={view} onChange={setView} segments={[{ value: 'one', label: 'One train' }, { value: 'many', label: 'Several trains' }]} />;
-  return view === 'one' ? <OneTrainBench switcher={switcher} /> : <LineBench switcher={switcher} />;
+  const switcher = <Segmented<View> label="Trains" value={view} onChange={setView} segments={[{ value: 'one', label: 'One train' }, { value: 'many', label: 'Several' }, { value: 'single', label: 'Single track' }]} />;
+  return view === 'one' ? <OneTrainBench switcher={switcher} /> : view === 'many' ? <LineBench switcher={switcher} /> : <SingleBench switcher={switcher} />;
 }
 
 function OneTrainBench({ switcher }: { switcher: ReactNode }) {

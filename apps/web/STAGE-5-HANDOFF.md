@@ -12947,6 +12947,29 @@ AC); `NeutralSeconds` in the supply struct. Window: Several trains → intercity
 to the grid". Example railways.m. Not built: rail-to-earth voltages and interference, the grid's unbalance from
 single-phase loads, harmonics, storage on the line.
 
+## M491e (24 Nov): Hyperion railways, single track both ways and timetables
+
+`rail.ts`: `reversed(route)` (sections reversed, slopes turned over: what a train going back sees), `railSingle(route,
+trains {train, dir 1 | −1, depart, late?}, {tracks, pad, dt})`. Every station is a passing loop with `tracks` tracks;
+the sections between are single track, held as an **absolute block** (one train either way). A train leaves a station
+no earlier than its timetable, into an empty section, and only when the next station has a free track (taken as it
+leaves, so two trains never meet between stations); the earliest timetable asks first. Each train always stops at
+every station; motion is railLine's (the limit held over its length and a braking curve to the next stop) by 0.5 s
+steps, the last half metre snapped (the square-root brake curve never quite reaches a stop). **The timetable** is the
+train's run alone × (1 + pad) plus the dwells (`plan`, arrivals at each of its own stations); `conflicts` lists pairs
+planned in the same section at overlapping times (`meet` when they face each other). `waits` (where, how long, meet or
+follow), `actual`, `delay` against the plan. **Deadlock**: nothing moved and nobody waiting on the clock for 10
+minutes stops the run (`deadlock` the time; one track per station with trains facing each other does it). Checked:
+both leaving their ends at once clash and one waits; never two trains in a section; a clean meet timetabled at a
+station has no waits; the first train 2 minutes late makes the other wait (the delay spreads), 2½ minutes late moves
+the meet to an earlier station and the late train waits there. Language: `railSingle(route, train or {trains}, dirs,
+departs, 'Tracks', 'Pad', 'Late')` → the table (Delay, Waited, Meets), the clashes, the deadlock minute; drawn: the
+train graph with the timetable dotted. Window: Railway → **Single track** (the switch now One train / Several / Single
+track; `SingleBench.tsx`): metro or intercity, 1–4 trains each way, minutes apart, the return trains' offset, the first
+train late, recovery %, tracks per station; outbound violet, back amber, the timetable dotted, a red line at a lock-up.
+Example railways.m. Not built: passing loops between stations, trains that don't stop everywhere, junctions, a
+dispatcher that reorders meets to cut the total delay (it's first come, first served).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

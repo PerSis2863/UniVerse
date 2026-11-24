@@ -97,6 +97,40 @@ describe('Hyperion railways (M491)', () => {
     const f = (n: string, k: string) => { const v = lab.vars.get(n); return v?.k === 'struct' ? toMat(v.f.get(k)!).d[0] : NaN; };
     expect(f('a', 'MinVoltage')).toBeGreaterThan(f('b', 'MinVoltage')); expect(f('a', 'NeutralSeconds')).toBeGreaterThan(0); expect(f('b', 'NeutralSeconds')).toBeGreaterThan(0);
   });
+  it('single track both ways (M491e): meets at stations, timetable conflicts, delays spreading, deadlock', () => {
+    const r = rl.ROUTES.metro(), t = rl.TRAINS.metro;
+    // The reversed route is the same line read backwards.
+    const b = rl.reversed(r);
+    expect(rl.routeLength(b)).toBe(rl.routeLength(r)); expect(b.sections[0].grade).toBe(-r.sections.at(-1)!.grade); expect(b.stations).toEqual([0, 900, 2200, 3100, 4300, 5200]);
+    // Both leave their ends at once: they're planned into the same section (a conflict), one waits for the other.
+    const both = rl.railSingle(r, [{ train: t, dir: 1, depart: 0 }, { train: t, dir: -1, depart: 0 }]);
+    expect(both.conflicts.some((c) => c.meet)).toBe(true); expect(Number.isNaN(both.deadlock)).toBe(true);
+    expect(both.trains.every((x) => Number.isFinite(x.arrive))).toBe(true);
+    expect(both.trains.flatMap((x) => x.waits).filter((w) => w.for === 'meet').length).toBeGreaterThan(0);
+    expect(Math.max(...both.trains.map((x) => x.delay))).toBeGreaterThan(20);
+    // Never two trains in one section: at no moment are they between the same two stations.
+    const st = both.stations, secOf = (s: number) => st.findIndex((x, j) => j < st.length - 1 && s > x + 1 && s < st[j + 1] - 1);
+    both.trains[0].s.forEach((s, i) => { const a = secOf(s); if (a >= 0) expect(secOf(both.trains[1].s[i])).not.toBe(a); });
+    // The second leaves after the first has arrived: no conflicts, nobody late (the padding keeps them early or on time).
+    const apart = rl.railSingle(r, [{ train: t, dir: 1, depart: 0 }, { train: t, dir: -1, depart: 900 }]);
+    expect(apart.conflicts.length).toBe(0); expect(apart.trains.every((x) => x.delay <= 0)).toBe(true);
+    // Timetabled to meet cleanly at a station. The first train 2 minutes late: the other waits for it (the delay
+    // spreads); 2½ minutes late: the meet moves to an earlier station and the late train waits there on top.
+    const first = rl.railSingle(r, [{ train: t, dir: 1, depart: 0 }]).trains[0], other = rl.railSingle(r, [{ train: t, dir: -1, depart: 0 }]).trains[0];
+    const dep = first.plan[3] + r.dwell - other.plan[2];
+    const go = (late: number) => rl.railSingle(r, [{ train: t, dir: 1, depart: 0, late }, { train: t, dir: -1, depart: dep }]).trains;
+    const clean = go(0), two = go(120), more = go(150);
+    expect(clean.every((x) => x.waits.length === 0 && x.delay <= 0)).toBe(true);
+    expect(two[1].delay).toBeGreaterThan(clean[1].delay + 30); expect(two[1].waits.some((w) => w.for === 'meet')).toBe(true);
+    expect(more[0].delay).toBeGreaterThan(150 + 10); expect(more[0].waits.some((w) => w.for === 'meet')).toBe(true);
+    // Stations with one track each can't pass trains: facing each other, they lock.
+    const lock = rl.railSingle(r, ([1, 1, -1, -1] as const).map((dir, k) => ({ train: t, dir, depart: (k % 2) * 60 })), { tracks: 1 });
+    expect(Number.isFinite(lock.deadlock)).toBe(true);    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[st, cl, dl] = railSingle('metro', trainModel('metro'), [1 -1], [0 0]); d = st.Delay; mt = sum(st.Meets); nc = numel(cl.Section); figure; railSingle('metro', trainModel('metro'), [1 -1 1], [0 60 300], 'Late', [0 0 60]); [~, ~, dl2] = railSingle('metro', trainModel('metro'), [1 1 -1 -1], [0 60 0 60], 'Tracks', 1);");
+    const v = (n: string) => [...toMat(lab.vars.get(n)!).d];
+    expect(v('mt')[0]).toBeGreaterThan(0); expect(v('nc')[0]).toBeGreaterThan(0); expect(Number.isNaN(v('dl')[0])).toBe(true); expect(v('dl2')[0]).toBeGreaterThan(0);
+    expect(Math.max(...v('d'))).toBeGreaterThan(0.3);
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     lab.run("t = trainModel('metro'); r = railRoute('metro'); [x, info] = trainRun(t, r, 'Coast', 0.1); m = info.Minutes; mine = railRoute([1000 0 0 80; 500 10 400 60], [0 1500]); [y, yi] = trainRun(t, mine); [h, n] = railHeadway(trainModel('intercity'), 200, 'Moving', 1); figure; trainRun(trainModel('intercity'), 'intercity'); vmax = t.MaxSpeed; [lt, lruns] = railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'fixed', 'Block', 400); dl = lt.Delay; nr = numel(lruns); figure; railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'moving'); lm = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0 300]); hm = lm.Held; [st, sr, sinfo] = railLine('metro', trainModel('metro'), [0 60 120], 'Supply', 'metro', 'SubstationSpacing', 2600); mv = sinfo.MinVoltage; figure; railLine('metro', trainModel('metro'), [0 60], 'Supply', struct('Vnom', 750, 'V0', 825, 'Vmin', 500, 'Vmax', 950, 'Rs', 0.02, 'Rline', 0.03, 'Substations', [0 5200]));");

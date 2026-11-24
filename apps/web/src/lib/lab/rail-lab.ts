@@ -142,3 +142,37 @@ def('railLine', (a, nout, lab) => {
   }
   return [];
 });
+// Single track both ways with a timetable (M491e): railSingle(route, train or {trains}, dirs (1 out, −1 back),
+// departures (s), 'Tracks', 2, 'Pad', 0.05, 'Late', seconds per train).
+def('railSingle', (a, nout, lab) => {
+  if (a.length < 4) throw new LabError("railSingle needs the route, the train (or a cell of trains), the directions (1 out, -1 back) and the departures in seconds: railSingle('metro', trainModel('metro'), [1 -1 1], [0 0 600]).");
+  const r = routeOf(a[0]), dirs = [...toMat(a[2], 'The directions').d], base = lineTrains([a[0], a[1], a[3]]), o = pairs(a, 4);
+  if (dirs.length !== base.length || dirs.some((d) => d !== 1 && d !== -1)) throw new LabError('One direction per departure: 1 out from the first station, -1 back from the last.');
+  // lineTrains sorts by departure: keep each direction with its own departure.
+  const deps = [...toMat(a[3]).d], order = deps.map((_, k) => k).sort((x, y) => deps[x] - deps[y]);
+  const late = o.get('late') ? [...toMat(o.get('late')!).d] : [];
+  if (late.length && late.length !== deps.length) throw new LabError("'Late' gives one number of seconds per train (0 for on time).");
+  if (late.some((x) => !(x >= 0 && x <= 7200))) throw new LabError("'Late' is 0 to 7200 seconds for each train.");
+  const pick = (k: string, lo: number, hi: number, what: string, d: number) => { if (!o.get(k)) return d; const x = toMat(o.get(k)!).d[0]; if (!(x >= lo && x <= hi)) throw new LabError(`${what} is ${lo} to ${hi}.`); return x; };
+  const list: rl.SingleTrain[] = base.map((x, i) => ({ ...x, dir: dirs[order[i]] as 1 | -1, late: late[order[i]] ?? 0 }));
+  const run = rl.railSingle(r, list, { tracks: Math.round(pick('tracks', 1, 4, "'Tracks'", 2)), pad: pick('pad', 0, 0.5, "'Pad'", 0.05) });
+  const N = run.stations.length, m = (x: number) => x / 60;
+  const tbl = table([['Name', { k: 'cell', r: run.trains.length, c: 1, d: run.trains.map((x) => str(x.name)) }], ['Direction', col(run.trains.map((x) => x.dir))], ['Depart', col(run.trains.map((x) => m(x.depart)))], ['Planned', col(run.trains.map((x) => m(x.plan[N - 1])))], ['Arrive', col(run.trains.map((x) => m(x.arrive)))], ['Delay', col(run.trains.map((x) => m(x.delay)))], ['Waited', col(run.trains.map((x) => m(x.waits.reduce((s, w) => s + w.seconds, 0))))], ['Meets', col(run.trains.map((x) => x.waits.filter((w) => w.for === 'meet').length))]]);
+  const conflicts = table([['Section', col(run.conflicts.map((c) => c.section + 1))], ['TrainA', col(run.conflicts.map((c) => order.indexOf(c.a) + 1))], ['TrainB', col(run.conflicts.map((c) => order.indexOf(c.b) + 1))], ['From', col(run.conflicts.map((c) => m(c.from)))], ['To', col(run.conflicts.map((c) => m(c.to)))], ['Meet', col(run.conflicts.map((c) => (c.meet ? 1 : 0)))]]);
+  if (nout > 0) return [tbl, conflicts, num(Number.isNaN(run.deadlock) ? NaN : m(run.deadlock))];
+  // The train graph: actual runs solid, the timetable dashed (straight between its stations), stations as lines.
+  call(lab, 'hold', str('on'));
+  for (const x of run.trains) call(lab, 'plot', row(x.t.map(m)), row(x.s.map((s) => s / 1000)), str('LineWidth'), num(1.5));
+  const L = rl.routeLength(r);
+  for (const x of run.trains) {
+    const at = (j: number) => (x.dir === 1 ? run.stations[j] : L - run.stations[N - 1 - j]) / 1000, tt: number[] = [], ss: number[] = [];
+    x.plan.forEach((p, j) => { tt.push(m(p)); ss.push(at(j)); if (j > 0 && j < N - 1) { tt.push(m(p + r.dwell)); ss.push(at(j)); } });
+    call(lab, 'plot', row(tt), row(ss), str(':'), str('Color'), row([0.5, 0.5, 0.5]));
+  }
+  const tEnd = Math.max(...run.trains.map((x) => m(x.t[x.t.length - 1])));
+  for (const s of run.stations) call(lab, 'plot', row([0, tEnd]), row([s / 1000, s / 1000]), str('--'), str('Color'), row([0.75, 0.75, 0.75]));
+  call(lab, 'hold', str('off')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('time (min)')); call(lab, 'ylabel', str('distance (km)'));
+  const worst = Math.max(...run.trains.map((x) => x.delay));
+  call(lab, 'title', str(Number.isFinite(run.deadlock) ? `Deadlocked at ${m(run.deadlock).toFixed(1)} min: trains face each other with nowhere to pass` : `Single track: ${run.conflicts.filter((c) => c.meet).length} timetable clashes, the latest ${m(Math.max(0, worst)).toFixed(1)} min late (dotted: the timetable)`));
+  return [];
+});

@@ -345,3 +345,95 @@ function solveAc(sup: Supply, s: number[], p: number[]) {
   // A substation's power from the grid: Re(E·conj(I)); negative while braking trains feed back more than others draw.
   return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given };
 }
+
+// ——— Single track both ways, with a timetable (M491e) ———
+// One track between stations; every station is a passing loop with `tracks` tracks (2: a train each way). A train may
+// leave a station only at or after its timetabled time, only into an empty section (no train either way in it: an
+// absolute block), and only when the next station has a free track for it (taken when it leaves, so two trains never
+// meet head-on between stations). First come, first served; when two ask at once the earlier timetable goes first.
+// The timetable is each train's run alone, padded by `pad` (5% recovery time is usual) plus the dwells.
+export interface SingleTrain { train: Train; dir: 1 | -1; depart: number; late?: number }
+export interface SingleTrace { name: string; dir: 1 | -1; depart: number; t: number[]; s: number[]; plan: number[]; actual: number[]; waits: { at: number; seconds: number; for: 'meet' | 'follow' }[]; arrive: number; delay: number }
+/** `actual` holds when it left its first station, then when it reached each next one (its own order), as `plan` does. */
+export interface Conflict { section: number; a: number; b: number; from: number; to: number; meet: boolean }
+export interface SingleRun { trains: SingleTrace[]; stations: number[]; conflicts: Conflict[]; deadlock: number }
+/** The route as a train running the other way sees it: sections reversed, slopes turned over. */
+export function reversed(r: Route): Route {
+  const L = routeLength(r);
+  return { ...r, sections: [...r.sections].reverse().map((x) => ({ ...x, grade: -x.grade })), stations: r.stations.map((s) => L - s).sort((a, b) => a - b) };
+}
+export function railSingle(r: Route, trains: SingleTrain[], o: { tracks?: number; pad?: number; dt?: number } = {}): SingleRun {
+  const dt = o.dt ?? 0.5, pad = o.pad ?? 0.05, tracks = Math.max(1, o.tracks ?? 2), ds = 5, L = routeLength(r), back = reversed(r);
+  const stations = [...r.stations].sort((a, b) => a - b), N = stations.length;
+  // Each train runs in its own direction's distance; station j forwards is N − 1 − j for a train going back.
+  const lines = trains.map((x) => lineFor(x.train, x.dir === 1 ? r : back, ds));
+  const own = (k: number, j: number) => (trains[k].dir === 1 ? j : N - 1 - j), mine = (k: number) => (trains[k].dir === 1 ? stations : stations.map((s) => L - s).reverse());
+  // One step of a train towards a stop at `to` (its own distance): the lower of the limit and the brake curve.
+  const step = (k: number, x: { s: number; v: number }, to: number) => {
+    const tr = trains[k].train, ln = lines[k], m = tr.mass * 1000, me = m * tr.rot, i = Math.min(ln.n - 1, Math.max(0, Math.round(x.s / ds)));
+    const a = (tractive(tr, x.v) - resistance(tr, x.v) - (m * G * ln.gradeOf[i]) / 1000) / me;
+    const nv = Math.max(0, Math.min(x.v + a * dt, ln.limTail[Math.min(ln.n - 1, i + 1)], Math.sqrt(2 * tr.brake * Math.max(0, to - x.s))), x.v - (tr.brake + 0.5) * dt);
+    x.s = Math.min(to, x.s + ((nv + x.v) / 2) * dt); x.v = nv;
+    // Crawls the last half metre (the brake curve's square root never quite reaches the stop).
+    if (to - x.s < 0.5 || (x.v < 0.05 && to - x.s < 5)) { x.s = to; x.v = 0; return true; }
+    return false;
+  };
+  // The timetable: each train alone, padded, with the dwells (planned times at each of its stations, its own order).
+  const plan = trains.map((x, k) => {
+    const st = mine(k), times = [x.depart], p = { s: 0, v: 0 };
+    let t = x.depart;
+    for (let j = 1; j < N; j++) { let run = 0; while (!step(k, p, st[j]) && run < 6 * 3600) run += dt; t += (run + dt) * (1 + pad) + (j > 1 ? r.dwell : 0); times.push(t); }
+    return times;
+  });
+  // Conflicts in the timetable: two trains planned in the same section at overlapping times.
+  const conflicts: Conflict[] = [];
+  const inSection = (k: number, sec: number): [number, number] => { const j = own(k, trains[k].dir === 1 ? sec : sec + 1); return [plan[k][j] + (j > 0 ? r.dwell : 0), plan[k][j + 1]]; };
+  // (Either way: the section holds one train at a time; `meet` when they face each other.)
+  for (let a = 0; a < trains.length; a++) for (let b = a + 1; b < trains.length; b++) {
+    for (let sec = 0; sec < N - 1; sec++) { const [a0, a1] = inSection(a, sec), [b0, b1] = inSection(b, sec); if (a0 < b1 && b0 < a1) conflicts.push({ section: sec, a, b, from: Math.max(a0, b0), to: Math.min(a1, b1), meet: trains[a].dir !== trains[b].dir }); }
+  }
+  // The run. `at` is the station (forward index) a train stands at, `sec` the section it's in (−1 none).
+  const st = trains.map((x) => ({ s: 0, v: 0, j: 0, sec: -1, ready: x.depart + (x.late ?? 0), done: false, waited: 0, why: 'meet' as 'meet' | 'follow' }));
+  const out: SingleTrace[] = trains.map((x, k) => ({ name: x.train.name, dir: x.dir, depart: x.depart, t: [], s: [], plan: plan[k], actual: [], waits: [], arrive: NaN, delay: NaN }));
+  const occupied = (sec: number) => st.findIndex((x) => x.sec === sec);
+  const holding = new Array<number>(N).fill(0);
+  trains.forEach((x) => { holding[x.dir === 1 ? 0 : N - 1]++; });
+  const order = trains.map((_, k) => k).sort((a, b) => plan[a][0] - plan[b][0]);
+  let stuckFor = 0, deadlock = NaN;
+  const until = Math.max(...plan.map((p) => p[N - 1])) * 3 + 7200;
+  for (let time = 0; time <= until; time += dt) {
+    if (st.every((x) => x.done)) break;
+    let moved = false;
+    // Who may leave a station now: the earliest timetable first.
+    for (const k of order) {
+      const x = st[k];
+      if (x.done || x.sec >= 0 || time < x.ready) continue;
+      const fwd = own(k, x.j), next = own(k, x.j + 1), sec = Math.min(fwd, next);
+      const want = Math.max(x.ready, plan[k][x.j] + (x.j > 0 ? r.dwell : 0));
+      if (time < want) continue;
+      const other = occupied(sec), terminal = next === 0 || next === N - 1, room = terminal || holding[next] < tracks;
+      if (other < 0 && room) {
+        x.sec = sec; holding[fwd]--; holding[next]++; moved = true;
+        if (x.waited > dt) out[k].waits.push({ at: stations[fwd], seconds: x.waited, for: x.why });
+        x.waited = 0;
+        if (x.j === 0) out[k].actual.push(time);
+      } else { x.waited += dt; x.why = other >= 0 ? (trains[other].dir === trains[k].dir ? 'follow' : 'meet') : 'meet'; }
+    }
+    for (let k = 0; k < trains.length; k++) {
+      const x = st[k];
+      if (x.sec >= 0) {
+        moved = true;
+        if (step(k, x, mine(k)[x.j + 1])) {
+          x.j++; x.sec = -1; out[k].actual.push(time);
+          if (x.j === N - 1) { x.done = true; out[k].arrive = time; out[k].delay = time - plan[k][N - 1]; holding[own(k, x.j)]--; } else x.ready = time + r.dwell;
+        }
+      }
+      const o2 = out[k]; o2.t.push(time); o2.s.push(trains[k].dir === 1 ? x.s : L - x.s);
+    }
+    // Nothing moving and nobody waiting on the clock: stuck for good.
+    const clock = st.some((x, k) => !x.done && x.sec < 0 && time < Math.max(x.ready, plan[k][x.j] + (x.j > 0 ? r.dwell : 0)));
+    stuckFor = moved || clock ? 0 : stuckFor + dt;
+    if (stuckFor > 600) { deadlock = time; break; }
+  }
+  return { trains: out, stations, conflicts, deadlock };
+}

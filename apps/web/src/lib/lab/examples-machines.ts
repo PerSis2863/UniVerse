@@ -258,6 +258,11 @@ mix = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0
 figure; railLine('metro', trainModel('metro'), (0:4)*60, 'Block', 400, 'Supply', 'metro', 'SubstationSpacing', 2600)
 [~, ~, sup] = railLine('metro', trainModel('metro'), (0:4)*60, 'Block', 400, 'Supply', 'metro', 'SubstationSpacing', 5200);
 fprintf('Substations only at the ends: down to %.0f V, trains tripped for %.0f s\\n', sup.MinVoltage, sup.TrippedSeconds)
+% Single track both ways: trains pass only at stations; one late train makes the other wait
+figure; railSingle('metro', trainModel('metro'), [1 -1 1 -1], [0 120 600 720])
+[t1, clashes] = railSingle('metro', trainModel('metro'), [1 -1], [0 125], 'Late', [150 0])
+[~, ~, stuck] = railSingle('metro', trainModel('metro'), [1 1 -1 -1], [0 60 0 60], 'Tracks', 1);
+fprintf('With one track at each station they lock up after %.1f minutes\\n', stuck)
 % 25 kV AC: rail return against autotransformers, three intercity trains five minutes apart
 for s = {'ac25', 'ac25at'}
   [~, ~, ac] = railLine('intercity', trainModel('intercity'), [0 300 600], 'Supply', s{1});
