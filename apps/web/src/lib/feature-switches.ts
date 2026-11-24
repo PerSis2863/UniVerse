@@ -40,6 +40,8 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   { id: 'trace-payments', label: 'Trace payments', hint: 'Brands buy Trace PRO (a monthly subscription at TRACE_PRO_PRICE_CENTS, US cents) and add money to their campaigns themselves, through your Stripe account. Off until you turn it on: set TRACE_PRO_PRICE_CENTS, and in Stripe send customer.subscription.* and checkout.session.completed to the webhook.', optIn: true },
   // Off until turned on (M280): companies pay for Green → Business through your Stripe account; while off, it's all free.
   { id: 'green-payments', label: 'Green Business plans', hint: 'Companies and consultancies on Green → Business choose Pro (GREEN_PRO_PRICE_CENTS a month, US cents) or Consultancy (GREEN_CONSULTANCY_PRICE_CENTS) through your Stripe account; a free company keeps 150 lines a year, 5 suppliers and 2 clients. While off, everything is free. Set both prices, and in Stripe send customer.subscription.* and checkout.session.completed to the webhook.', optIn: true },
+  // Off until turned on (M527): IoT alerts tell the owner in the app and by push; this adds an email (the owner's rule: no new emails unless asked).
+  { id: 'iot-email', label: 'Hyperion IoT alert emails', hint: 'When a reading on someone’s IoT channel breaks one of their alert rules, they also get an email (only people with email notifications on; at most one per rule per quiet time, inside the daily email allowance). Off until you turn it on: alerts still arrive in the app and as a push.', optIn: true },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
 ];
 

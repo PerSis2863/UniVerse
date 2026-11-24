@@ -6,6 +6,7 @@ import { strings, type Body } from './body';
 import { num, short } from './trace';
 import { publish } from './realtime';
 import { notify } from './email';
+import { featureOff } from './moderation';
 import { pushService } from './services/push.service';
 
 // Hyperion Signals → IoT (M475): a person's channels, each with up to 8 named fields, and the readings devices send
@@ -113,6 +114,7 @@ const alertView = (a: { id: string; field: number; op: string; value: number; no
 /** A reading's rules: each one it breaks tells the owner, claimed by a conditional update so two readings at once tell once. */
 async function checkAlerts(channelId: string, userId: string, fields: string[], vals: (number | null)[], now: Date) {
   const rules = await prisma.iotAlert.findMany({ where: { channelId } });
+  let email: boolean | undefined; // M527: the owner's "Hyperion IoT alert emails" switch, read once a reading
   for (const a of rules) {
     const x = vals[a.field - 1];
     if (x === null || x === undefined || !breaks(a.op, x, a.value)) continue;
@@ -120,7 +122,8 @@ async function checkAlerts(channelId: string, userId: string, fields: string[], 
     const claimed = await prisma.iotAlert.updateMany({ where: { id: a.id, OR: [{ lastFiredAt: null }, { lastFiredAt: { lt: quiet } }] }, data: { lastFiredAt: now, fired: { increment: 1 } } });
     if (!claimed.count) continue;
     const name = fields[a.field - 1] ?? `field ${a.field}`, title = `${name} is ${x} (${a.op} ${a.value})`, body = a.note || `A reading on your IoT channel broke the rule ${name} ${a.op} ${a.value}.`;
-    await notify(userId, { title, body, link: '/hyperion/signals?tab=iot', type: 'info', email: false });
+    email ??= !(await featureOff('iot-email'));
+    await notify(userId, { title, body, link: '/hyperion/signals?tab=iot', type: 'info', email });
     await pushService.sendToMany([userId], { title, body, url: '/hyperion/signals?tab=iot', tag: `iot-${a.id}` }).catch(() => 0);
   }
 }

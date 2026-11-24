@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // M475: IoT channels: owners only, keys kept as hashes, one reading a second, values checked.
 type Row = Record<string, unknown>;
+const sw = { emailOn: false };
 const db = { channels: [] as Row[], entries: [] as Row[], alerts: [] as Row[], published: [] as unknown[], told: [] as unknown[] };
 vi.mock('@/lib/db', () => ({
   default: {
@@ -40,6 +41,7 @@ vi.mock('@/lib/db', () => ({
 }));
 vi.mock('./realtime', () => ({ publish: (...a: unknown[]) => db.published.push(a) }));
 vi.mock('./email', () => ({ notify: async (...a: unknown[]) => { db.told.push(a); } }));
+vi.mock('./moderation', () => ({ featureOff: async (id: string) => id === 'iot-email' && !sw.emailOn }));
 vi.mock('./services/push.service', () => ({ pushService: { sendToMany: async () => 1 } }));
 
 const { createChannel, myChannels, writeEntry, channelEntries, renewKey, deleteChannel, addAlert, channelAlerts, deleteAlert } = await import('./iot');
@@ -95,5 +97,17 @@ describe('IoT channels (M475)', () => {
     await expect(deleteAlert(bob, alert.id)).rejects.toThrow(/isn’t yours/);
     await deleteAlert(alice, alert.id);
     expect(db.alerts).toHaveLength(0);
+  });
+  it('emails too only while the owner’s "Hyperion IoT alert emails" switch is on (M527)', async () => {
+    const { channel, writeKey } = await createChannel(alice, { name: 'Tank', fields: ['Level'] });
+    await addAlert(alice, channel.id, { field: 1, op: '<', value: 10, quietMinutes: 1 });
+    vi.useFakeTimers({ now: new Date('2026-11-24T10:00:00Z') });
+    sw.emailOn = true;
+    await writeEntry(writeKey, { field1: 5 });
+    expect((db.told[0] as [string, { email: boolean }])[1].email).toBe(true);
+    sw.emailOn = false;
+    vi.setSystemTime(new Date('2026-11-24T10:05:00Z'));
+    await writeEntry(writeKey, { field1: 4 });
+    expect((db.told[1] as [string, { email: boolean }])[1].email).toBe(false);
   });
 });
