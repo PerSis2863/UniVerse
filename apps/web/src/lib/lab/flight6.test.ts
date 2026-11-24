@@ -112,4 +112,12 @@ describe('Hyperion flight in six directions (M489c)', () => {
     const rms = (h0: number) => { const r = fl.flight6(ac, 60, { V0: 50, h0, wind: { turbulence: { sigma: 0, w20: 15, seed: 2 } }, holdHeight: () => h0, holdSpeed: 50, holdHeading: () => 0, yawDamper: true, points: 3000 }); return Math.sqrt(r.wind.reduce((q, x) => q + x[0] ** 2, 0) / r.wind.length); };
     expect(rms(60)).toBeGreaterThan(1.5 * rms(800));
   });
+  it('turning gusts (M489f)', { timeout: 60_000 }, () => {
+    const ac = fl.PLANE_DEFAULT, rms = (x: number[]) => Math.sqrt(x.reduce((q, v) => q + v * v, 0) / x.length);
+    const go = (rotational: boolean) => fl.flight6(ac, 60, { V0: 50, h0: 1000, wind: { turbulence: { sigma: 3, seed: 3, rotational } }, holdHeading: () => 0, holdHeight: () => 1000, holdSpeed: 50, yawDamper: true, points: 3000 });
+    const flat = go(false), turning = go(true);
+    // The air rolling and turning too: it rocks more, and the same seed flies the same.
+    expect(rms(turning.p)).toBeGreaterThan(1.1 * rms(flat.p)); expect(rms(turning.phi)).toBeGreaterThan(rms(flat.phi));
+    expect(go(true).p).toEqual(turning.p);
+  });
 });

@@ -239,7 +239,8 @@ export interface Wind {
   gust?: { at: number; length: number; up: number };
   /** Dryden turbulence: its strength (m/s rms in each direction; about 1.5 light, 3 moderate, 6 severe), the length
    * scale (m, 533 at medium heights) and a seed so a run repeats. */
-  turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number };
+  /** `rotational` (M489f): the gusts turn the air too (MIL-F-8785C's p, q, r gusts over the wing and tail). */
+  turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number; rotational?: boolean };
   /** Wind shear with height (M489d): the steady wind is what blows at `ref` metres (10, where it's measured) and grows
    * as (h / ref)^exponent (1/7 over open country, about 0.25 over towns) up to 500 m, steady above. */
   shear?: { exponent?: number; ref?: number };
@@ -326,14 +327,16 @@ export function quatOf(phi: number, theta: number, psi: number) {
   const [cf, sf, ct, st, cp, sp] = [Math.cos(phi / 2), Math.sin(phi / 2), Math.cos(theta / 2), Math.sin(theta / 2), Math.cos(psi / 2), Math.sin(psi / 2)];
   return { q0: cf * ct * cp + sf * st * sp, q1: sf * ct * cp - cf * st * sp, q2: cf * st * cp + sf * ct * sp, q3: cf * ct * sp - sf * st * cp };
 }
-interface Ctl { de: number; da: number; dr: number; thr: number }
+interface Ctl { de: number; da: number; dr: number; thr: number; gust?: Air }
 const NO_PW: Pw = { working: [1, 1], count: 1, arm: 0, feather: false };
 function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air, pw: Pw = NO_PW) {
   // The air's velocity in body axes, and the aeroplane's through it.
   const wb = toBody(s, windE), ur = s.u - wb[0], vr = s.v - wb[1], wr = s.w - wb[2], V = Math.hypot(ur, vr, wr) || 1e-6;
   const alpha = Math.atan2(wr, ur), beta = Math.asin(Math.max(-1, Math.min(1, vr / V))), rho = isa(s.h).rho, qS = 0.5 * rho * V * V * ac.S;
-  const cl = liftCoef(ac, alpha, c.de, (s.q * ac.c) / (2 * V)), L = qS * cl, D = qS * dragCoef(ac, cl, alpha), Tall = thrust(ac, V, s.h, c.thr);
-  const ph = (s.p * ac.b) / (2 * V), rh = (s.r * ac.b) / (2 * V);
+  // Turning gusts (M489f): the air itself rotating; the damping terms see the rates relative to it.
+  const gp = c.gust?.[0] ?? 0, gq = c.gust?.[1] ?? 0, gr = c.gust?.[2] ?? 0, qa = s.q - gq;
+  const cl = liftCoef(ac, alpha, c.de, (qa * ac.c) / (2 * V)), L = qS * cl, D = qS * dragCoef(ac, cl, alpha), Tall = thrust(ac, V, s.h, c.thr);
+  const ph = ((s.p - gp) * ac.b) / (2 * V), rh = ((s.r - gr) * ac.b) / (2 * V);
   // Each engine's thrust (left, right on a twin), a dead one's windmilling drag, and the yaw and roll they make.
   const share = Tall / pw.count, Te = [share * pw.working[0], pw.count === 2 ? share * pw.working[1] : 0], qbar = 0.5 * rho * V * V;
   const R = pw.prop?.radius ?? (pw.count === 2 ? 0.9 : 0.95), mill = (i: number) => (pw.feather || pw.working[i] > 0 || (i === 1 && pw.count === 1) ? 0 : 0.1 * qbar * Math.PI * R * R);
@@ -356,7 +359,7 @@ function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air, pw: 
   }
   const Y = qS * (lat.cyb * beta + lat.cydr * c.dr);
   const Lm = qS * ac.b * (lat.clb * beta + lat.clp * ph + lat.clr * rh + lat.clda * c.da + lat.cldr * c.dr) + Lp;
-  const Mm = qS * ac.c * (ac.cm0 + ac.cma * alpha + ac.cmq * ((s.q * ac.c) / (2 * V)) + ac.cmde * c.de) + gyM;
+  const Mm = qS * ac.c * (ac.cm0 + ac.cma * alpha + ac.cmq * ((qa * ac.c) / (2 * V)) + ac.cmde * c.de) + gyM;
   const Nm = qS * ac.b * (lat.cnb * beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * c.da + lat.cndr * c.dr) + Np + gyN;
   const g = toBody(s, [0, 0, G0]);
   const Fx = T + L * Math.sin(alpha) - D * Math.cos(alpha), Fz = -L * Math.cos(alpha) - D * Math.sin(alpha);
@@ -411,7 +414,8 @@ export function flight6(ac: Aircraft, T: number, o: {
   // Dryden turbulence, the MIL-F-8785C forms: each direction white noise through a first-order filter with time
   // constant L/V (the vertical one is near enough the same at this level of detail).
   const tb = W.turbulence, rnd = normals(tb?.seed ?? 1), Lt = tb?.scale ?? 533, turb: Air = [0, 0, 0];
-  let iv = 0, rLow = 0, stalled = false, crashed = false, gustStart = NaN;
+  let iv = 0, rLow = 0, stalled = false, crashed = false, gustStart = NaN, lastT: Air = [0, 0, 0];
+  const rotG: Air = [0, 0, 0];
   const out: Flight6Run = { t: [], n: [], e: [], h: [], V: [], ground: [], alpha: [], beta: [], phi: [], theta: [], psi: [], p: [], q: [], r: [], nz: [], wind: [], de: [], da: [], dr: [], thr: [], stalled: false, crashed: false };
   for (let k = 0; k <= n; k++) {
     const t = k * dt;
@@ -427,6 +431,18 @@ export function flight6(ac: Aircraft, T: number, o: {
       const th2 = turbulenceAt(s.h, tb.w20);
       for (let i = 0; i < 3; i++) { const a = Math.exp((-tr.V * dt) / th2.L[i]), b = th2.s[i] * Math.sqrt(1 - a * a); turb[i] = a * turb[i] + b * rnd(); }
     } else if (tb && tb.sigma > 0) { const a = Math.exp((-tr.V * dt) / Lt), b = tb.sigma * Math.sqrt(1 - a * a); for (let i = 0; i < 3; i++) turb[i] = a * turb[i] + b * rnd(); }
+    // Turning gusts (M489f, MIL-F-8785C): roll from its own noise over the span (σw·√(0.8/V)·(π/4b)^(1/6) / L^(1/3),
+    // corner πV/4b), pitch and yaw from how fast the vertical and side gusts change along the aeroplane (÷ V), each
+    // smoothed over the time it takes to fly its own span.
+    if (tb?.rotational) {
+      const Lw = tb.w20 ? turbulenceAt(s.h, tb.w20).L[2] : Lt, sw = tb.w20 ? turbulenceAt(s.h, tb.w20).s[2] : tb.sigma, b = ac.b, Vt = tr.V;
+      const ap = Math.exp((-Math.PI * Vt * dt) / (4 * b)), sp = (sw * Math.sqrt(0.8 / Vt) * (Math.PI / (4 * b)) ** (1 / 6)) / Lw ** (1 / 3);
+      rotG[0] = ap * rotG[0] + sp * Math.sqrt(1 - ap * ap) * rnd();
+      const aq = Math.exp((-Math.PI * Vt * dt) / (4 * b)), ar = Math.exp((-Math.PI * Vt * dt) / (3 * b));
+      rotG[1] = aq * rotG[1] + (1 - aq) * (-(turb[2] - lastT[2]) / dt / Vt);
+      rotG[2] = ar * rotG[2] + (1 - ar) * ((turb[1] - lastT[1]) / dt / Vt);
+      lastT = [turb[0], turb[1], turb[2]];
+    }
     const base = W.shear || W.microburst ? windField(W, s.n, s.e, s.h) : steady;
     const wind: Air = [base[0] + turb[0], base[1] + turb[1], base[2] + turb[2] - up];
     if (eng?.fail && t >= eng.fail.at) pw.working = eng.count === 2 ? ((eng.fail.which ?? 1) === 0 ? [0, 1] : [1, 0]) : [0, 0];
@@ -449,7 +465,7 @@ export function flight6(ac: Aircraft, T: number, o: {
     }
     if (o.yawDamper) dr += 1.2 * (s.r - rLow);
     de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
-    const c: Ctl = { de, da, dr, thr }, g = deriv6(ac, lat, s, c, wind, pw);
+    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational ? [rotG[0], rotG[1], rotG[2]] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
     if (g.alpha > ac.alphaStall) stalled = true;
     if (k % every === 0 || k === n) {
       const pos = toEarth(s, [s.u, s.v, s.w]);

@@ -13188,6 +13188,16 @@ returns `rail` and `stray` for DC too, the log `strayAs` (A·s); `IRON_KG_PER_AY
 Window: Several trains → power supply → DC "Rails to earth · stray current", AC "Rails bonded to earth at the
 substations". Not built: rails cross-bonded between tracks, drainage bonds, the earth's own resistance.
 
+## M489f (24 Nov): Hyperion aeroplanes, gusts that turn the air
+
+`flight.ts`: `Wind.turbulence.rotational` adds MIL-F-8785C's rotational gusts in `flight6`: roll gust p_g as its own
+filtered noise (σw·√(0.8/V)·(π/4b)^(1/6) / L^(1/3), corner πV/4b), pitch q_g = −ẇ_g/V smoothed over 4b/πV, yaw
+r_g = v̇_g/V over 3b/πV (the vertical and side gusts' change between steps). `deriv6` takes them as `Ctl.gust` and the
+damping terms (Clp, Cnp, Clr, Cnr, Cmq, CLq) use the rates relative to the air. Off by default (old runs unchanged).
+Checked: roll-rate rms >10% higher with them on, bank rms higher, the same seed repeats. Language
+'TurbulenceRotation'; window Rough → "Gusts that turn the air too". Not built: the gust's change along the span
+(a gust front hitting one wing first).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
