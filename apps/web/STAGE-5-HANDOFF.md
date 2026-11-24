@@ -12703,6 +12703,27 @@ Motion; the path, the car red once spun, steering and yaw rate below; facts). Th
 `vehicle.test.ts`. Example vehicles.m. Not built: four wheels with load transfer, roll, suspension, gears, stability
 control itself (M487 drives the car).
 
+## M487 (24 Nov): Hyperion toolbox, automated driving
+
+`src/lib/lab/driving.ts` (pure, on M486's car): `Road` (centreline every 0.5 m with heading and curvature, a lane
+width), `roadFrom(curvature(s), length)` (exact arcs), `ROADS` (straight; curve 150 m; scurve 100 m left then right;
+country, 1/120 m⁻¹ sine bends; lanechange, the ISO 3888 shape 3.5 m across and back, built from y(x)); curvature eased in
+by a raised cosine so steering needn't jump. `locate` (nearest point searched near the last, then **interpolated** to the
+next point: snapping to the half-metre points made the steering chatter on bends, seen in the browser), signed offset
+(left positive), heading error, curvature. Keepers every 10 ms: `stanley` (front axle, k 1.5), `purePursuitSteer`
+(look-ahead max(5, 0.5 v) from the rear axle), `lqrSteer` with `lqrGains` (Rajamani's lateral error model, Euler
+discretised at 10 ms, discrete Riccati iterated; **trap:** it must not stop on the first pass, where K is still 0
+because Q has zeros at the rates) plus curvature feed-forward (L·k + K_us·u²·k). `laneKeep` (speed held, max error, left
+the lane when the car's side passes the edge, time to line crossing). `followSim` (10 ms: ACC gap d0 + th·v with
+0.23·gap error + 0.74·speed difference, the lower of gap and speed control, −3.5…+2 m/s², power and grip; AEB full
+brakes under 1.6 s to collision; 'acc: false' is a driver who doesn't react). Roads that were too tight for the car's
+grip at 25 m/s (60 m country bends, 80 m S-bend) made every keeper fail: keep radius ≳ u²/(0.6 g). Language in
+`driving-lab.ts`: `roadPath` (a name or @(s) curvature, length, width), `laneKeep`, `lqrLateral`, `accFollow`. Window:
+Machines → **Driving** (`DrivingBench.tsx`: Lane keeping with road, keeper, speed, starting offset; Following with the car
+ahead slowing or stopping hard, ACC and AEB switches, time gap; from above, replayed). Tests in `driving.test.ts`.
+Example driving.m. Not built: model-predictive control, traffic with several cars, sensors (radar, camera) and their
+noise, lane changes decided by the car itself.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -5,3 +5,4 @@ import './robot-sense-lab';
 import './motor-lab';
 import './car-path-lab';
 import './vehicle-lab';
+import './driving-lab';

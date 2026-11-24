@@ -145,4 +145,19 @@ dSnow = brakingDistance(vehicle('Mu', 0.3), 27.78)
 a = linspace(-0.3, 0.3, 200);
 figure; plot(a*180/pi, magicFormula(a, 10, 1.3, 1, -0.6)); grid on; xlabel('slip angle (deg)'); ylabel('side force / load')
 ` },
+  { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead
+c = vehicle();
+r = roadPath('scurve');                       % 100 m left, then 100 m right
+% Three lane keepers at 90 km/h: LQR feeds the bend forward and stays closest to the centre
+for k = {'stanley', 'purepursuit', 'lqr'}
+  [~, info] = laneKeep(c, r, 'Controller', k{1}, 'Speed', 25);
+  fprintf('%-12s at most %.2f m off the centre\\n', k{1}, info.MaxError)
+end
+figure; laneKeep(c, 'lanechange', 'Controller', 'lqr', 'Speed', 20)
+% Adaptive cruise: the car ahead slows from 90 to 30 km/h
+figure; accFollow(c, @(t) 25 - 16.7*min(1, max(0, (t - 10)/4)), 40, 'TimeGap', 1.8, 'Gap', 70)
+% A driver who doesn't react when the car ahead brakes hard: the emergency brake steps in
+[f, info] = accFollow(c, @(t) max(0, 20 - 8*max(0, t - 5)), 15, 'ACC', 0, 'Gap', 40, 'InitialSpeed', 25);
+fprintf('Crashed: %d, closest: %.1f m\\n', info.Crashed, info.MinGap)
+` },
 ];
