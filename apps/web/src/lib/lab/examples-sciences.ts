@@ -115,6 +115,23 @@ figure; arrheniusFit(T, k)
 fprintf('%s: %.3f mol/L\\n', names{1}, c(1), names{2}, c(2), names{3}, c(3))
 fprintf('Vinegar (0.8 M acetic acid): pH %.2f\\n', acidPH(1.8e-5, 0.8))
 ` },
+  { name: 'solutions.m', code: `% Chemistry: formulas, balancing, acids and buffers, and reactors that heat up
+fprintf('Glucose C6H12O6: %.3f g/mol; blue vitriol CuSO4·5H2O: %.3f g/mol\\n', molarMass('C6H12O6'), molarMass('CuSO4·5H2O'))
+balanceEquation('C3H8 + O2 -> CO2 + H2O')
+balanceEquation('MnO4^- + Fe^2+ + H+ -> Mn^2+ + Fe^3+ + H2O')
+% Phosphoric acid gives up three protons, one after another
+Ka = [7.1e-3 6.3e-8 4.5e-13];
+fprintf('0.1 M H3PO4: pH %.2f\\n', polyproticPH(Ka, 0.1))
+acidSpecies(Ka)
+figure; titrationCurve(Ka, 0.1, 10, 0.1)          % 10 mL of 0.1 M acid with 0.1 M NaOH
+% A buffer, ideal and with real activities (Davies)
+fprintf('Acetate buffer 0.1/0.1 M: pH %.3f ideal, %.3f with activities\\n', bufferPH(1.8e-5, 0.1, 0.1), bufferPH(1.8e-5, 0.1, 0.1, 'Activity', true))
+% A reaction that gives heat: with too little cooling it runs away
+UA = 20;     % slider 0 200
+figure; heatedBatch('A -> B', 4e9, 75e3, -150e3, [2 0], 310, 600, 'UA', UA, 'Tcool', 300)
+% A cooled stirred tank can settle cold, or hot: three steady states
+figure; cstrSteadyStates('A -> B', 1e10, 7500*8.314, -209e3, [2 0], 300, 0.05*exp(25)/1e10)
+` },
   { name: 'neurons.m', code: `% Neuroscience: how a neuron fires, and how many of them talk
 % 1. Hodgkin and Huxley's squid axon: a current pulse from 10 to 90 ms
 I = 10;   % slider 0 30

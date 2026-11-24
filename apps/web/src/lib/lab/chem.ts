@@ -33,21 +33,25 @@ export function parseMechanism(text: string): Mechanism {
 /** How many rate constants the mechanism needs (a reversible reaction takes forward then backward). */
 export const rateCount = (m: Mechanism) => m.reactions.reduce((s, r) => s + (r.reversible ? 2 : 1), 0);
 
-/** The net rate of change of every species (mass action: each reaction's rate is k × Π c^ν of its reactants). */
-export function rates(m: Mechanism, k: number[]) {
+/** Each reaction's net rate (mass action: k × Π c^ν of its reactants, less the backward one for a reversible
+ * reaction), with the rate constants passed in each time so they may change with temperature. */
+export function reactionRates(m: Mechanism) {
   const idx = (s: string) => m.species.indexOf(s);
   const rx = m.reactions.map((r) => ({ re: r.reactants.map(([s, n]) => [idx(s), n] as [number, number]), pr: r.products.map(([s, n]) => [idx(s), n] as [number, number]), rev: r.reversible }));
-  return (c: number[]) => {
-    const d = new Array(m.species.length).fill(0);
-    let q = 0;
-    for (const r of rx) {
-      const pow = (side: [number, number][]) => side.reduce((p, [i, n]) => p * Math.max(0, c[i]) ** n, 1);
-      const net = k[q++] * pow(r.re) - (r.rev ? k[q++] * pow(r.pr) : 0);
-      for (const [i, n] of r.re) d[i] -= n * net;
-      for (const [i, n] of r.pr) d[i] += n * net;
-    }
-    return d;
-  };
+  const pow = (c: number[], side: [number, number][]) => side.reduce((p, [i, n]) => p * Math.max(0, c[i]) ** n, 1);
+  return (c: number[], k: number[]) => { let q = 0; return rx.map((r) => k[q++] * pow(c, r.re) - (r.rev ? k[q++] * pow(c, r.pr) : 0)); };
+}
+/** ν[r][i]: how much of species i reaction r makes (negative: uses). */
+export const stoichiometry = (m: Mechanism) => m.reactions.map((r) => {
+  const v = new Array(m.species.length).fill(0);
+  for (const [s, n] of r.reactants) v[m.species.indexOf(s)] -= n;
+  for (const [s, n] of r.products) v[m.species.indexOf(s)] += n;
+  return v;
+});
+/** The net rate of change of every species. */
+export function rates(m: Mechanism, k: number[]) {
+  const rr = reactionRates(m), nu = stoichiometry(m);
+  return (c: number[]) => { const r = rr(c, k), d = new Array(m.species.length).fill(0); r.forEach((x, j) => nu[j].forEach((v, i) => { if (v) d[i] += v * x; })); return d; };
 }
 
 /** A batch reactor (or a mechanism in a flask): concentrations over time, solved as a stiff system. */
@@ -87,8 +91,8 @@ export function arrheniusFit(T: number[], k: number[]) {
 /** Equilibrium of several reactions: the extents ξ with K_r = Π c_i^ν_ir (c = c0 + ν ξ), by damped Newton on
  * ln K, keeping every concentration positive. */
 export function equilibrium(m: Mechanism, K: number[], c0: number[]): { c: number[]; extent: number[]; iterations: number } {
-  const S = m.species.length, Rn = m.reactions.length;
-  const nu = m.reactions.map((r) => { const v = new Array(S).fill(0); for (const [s, n] of r.reactants) v[m.species.indexOf(s)] -= n; for (const [s, n] of r.products) v[m.species.indexOf(s)] += n; return v; });
+  const Rn = m.reactions.length;
+  const nu = stoichiometry(m);
   const conc = (x: number[]) => c0.map((c, i) => c + nu.reduce((s, v, r) => s + v[i] * x[r], 0));
   const scale = Math.max(...c0, 1e-12), floor = 1e-30 * scale;
   // Start where every species present is: a small extent each way does not matter; start from a tiny positive amount.

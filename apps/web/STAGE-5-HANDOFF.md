@@ -12919,3 +12919,31 @@ blocks of 60 with '*' under columns identical in all. Up to 100 sequences, 60,00
 commonest letter per column and the share agreeing. Not built: refinement after the progressive pass (MUSCLE-style),
 reading several GenBank records at once, BLAST-style database search, maximum-likelihood trees.
 
+
+## M513 (24 Nov): Hyperion chemistry, the left-outs
+
+From M495's "Not built". **Periodic table** (`elements.ts`): 118 elements, IUPAC 2021 standard weights (the conventional
+value where IUPAC gives an interval; mass numbers in brackets for those with no stable isotope, `bracketed`); checked
+against the NIST table in the periodictable package (read as text; only Zn differs, IUPAC revised it in 2007).
+`chem-plus.ts` (pure): `parseFormula` (brackets ( ) and [ ], hydrates after '·', '•', '*' or '.', a leading count per
+hydrate part; charges '^2-', '^{3+}', '{2-}' or bare trailing signs, each one charge, so 'Fe3+' reads as Fe₃⁺: write
+Fe^3+), `molarMass` (electrons ignored); `balance`: species split on ' + ' with spaces (so 'Na+ + Cl-' works), a row per
+element plus one for charge, the null space by elimination must be one-dimensional (else "can't, or two reactions in
+one"), scaled to the smallest whole numbers up to ×10,000. **Acids:** an `Acid` is Ka's from the most protonated form,
+total C, and that form's `charge` (0 for H3PO4, 1 for NH4⁺, so ammonia is NH4⁺'s Ka with charge 1); `solvePH` solves
+the charge balance on log h by `root` over [−20, 3] (it rises with h), strong cations (Na⁺) and anions (Cl⁻) given
+apart; with `activity`, Davies' γ (25 °C, A = 0.509) iterated with the ionic strength, concentration constants
+Kc = Ka γ(z_{j−1})/(γ₁ γ(z_j)), Kw/γ₁², the pH −log(γ₁h). `fractions` in logs (no overflow for H3PO4 at pH 14).
+`titration` dilutes analyte and titrant; equivalence volumes are one per proton the titrant can take or give.
+**Heat:** chem.ts now has `reactionRates(m)(c, k)` (per-reaction net rates, k passed each call) and `stoichiometry`;
+`rates` and `equilibrium` use them. `heatedBatch`: [c…, T] with ρCp dT/dt = Σ(−ΔH)r − UA(T − Tc) by `ros23`.
+`cstrSteadyStates`: the mass balance at each of 300 temperatures (Newton from the previous one, `cstr` as fallback),
+G(T) against R(T) = ρCp(T − Tin)/τ + UA(T − Tc), crossings refined by `root`, stable by the slope test (necessary only:
+said in the help). Units: mol/L, J/mol, J/(L·K), W/(L·K), K, s. Language: `molarMass`, `elementInfo`,
+`balanceEquation`, `polyproticPH`, `bufferPH`, `acidSpecies`, `titrationCurve`, `activityCoeff`, `ionicStrength`,
+`heatedBatch`, `cstrSteadyStates` (in chem-lab.ts). Example `solutions.m`. Tests: molar masses of glucose, the hydrate,
+ferrocyanide; three balances (one ionic); H3PO4 against the quadratic, ammonia, the buffer at pKa and its Davies shift,
+acetic acid's titration (pKa half way, 8.72 at equivalence); the adiabatic rise ΔH·c/ρCp; three CSTR states (cold,
+unstable middle, hot) each checked against c = cin/(1 + kτ) and the energy balance. Not built: reactors with pressure
+drop or changing volume, Langmuir–Hinshelwood and other non-mass-action rate laws, activity models past Davies
+(Pitzer), temperature-dependent Ka, a tank that oscillates (the slope test can't see it).

@@ -1889,6 +1889,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M510 | Hyperion epidemics, the left-outs (the owner: the toolbox gaps from the M492–M505 notes) | **Done** (on `claude/hyperion-sciences-industries`) | `sirGillespie` (random outbreaks, one event at a time; some die out by chance), `seihrd` (hospital beds and deaths, more deaths when beds run out), `fitEpidemic`'s 95% intervals (BetaCI, GammaCI, I0CI, R0CI) |
 | M511 | Hyperion pharmacokinetics, the left-outs | **Done** (on `claude/hyperion-sciences-industries`) | a lag time ('Lag'), three compartments ('Q3', 'V3'), `pkEffect` (Emax / Hill, an effect site with ke0), `pkFit` (a model fitted to measured levels after known doses, with 95% intervals) |
 | M512 | Hyperion DNA tools, the left-outs | **Done** (on `claude/hyperion-sciences-industries`) | `fastaread` / `fastawrite`, `genbankread`, NCBI's 27 genetic codes (`geneticcode`, nt2aa's 'GeneticCode'), PAM250 ('ScoringMatrix'), `multialign` (progressive, ClustalW-style) and `seqconsensus` |
+| M513 | Hyperion chemistry, the left-outs | **Done** (on `claude/hyperion-sciences-industries`) | the periodic table and `molarMass`, `balanceEquation`, acids with several protons, buffers and titrations (`polyproticPH`, `bufferPH`, `acidSpecies`, `titrationCurve`, Davies' activities), reactors that heat up (`heatedBatch`, `cstrSteadyStates`) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
