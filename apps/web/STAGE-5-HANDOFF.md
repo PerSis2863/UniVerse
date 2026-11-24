@@ -13061,3 +13061,28 @@ The second part of M530's "left out" list (the owner: "build all of them").
 - **Checked:** `codegen.test.ts` M532: each mode by hand (3.375 KeepMSB to 3, KeepLSB wrapped to 96, SpecifyPrecision
   216; cast-before-sum 0 against 1), the field shown, the Max…WordLength error; then a function with all of them on 20
   random inputs compiled native and portable, equal to Hyperion.
+
+## M533 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants wholly in whole numbers
+
+The last part of M530's "left out" list (the owner: "build all of them"): in 'int8' these three kept only their numbers
+in 8 bits and did the arithmetic in float; `'int8full'` now runs them wholly in whole numbers, as the networks' (M525).
+
+- **The plan** (`embedded-int.ts` `planInt`): each input gets a centre and a step from the model's training rows
+  (`X`; xq = round((x − centre) / step), the range in ±127). Every unit gives a whole number F on one shared scale S
+  (twice the largest unit value on the training rows, as 2^24): a discriminant's class score and a linear SVM are
+  **linear** units (the centre, the step and the learner's standardising folded into weights quantized per class or
+  learner, a bias); naive Bayes is a **distance** unit (8-bit means as steps from the centre, step / spread per class as
+  8-bit positive numbers, `BASE` from the spreads as held); a Gaussian SVM sums coef · `EXPQ[t]` (e^(−i/32) in 15 bits, 512
+  entries; t the distance to each support vector, worked the same way); a polynomial one (1 + t)^order in Q16, clamped
+  to twice the largest value seen in training (order ≤ 6). Multipliers are m · 2^−sh with m short enough that the sum
+  times m stays in 62 bits (`multiplier(M, accBits)`). Classes: the largest F (Bayes, discriminant), or the smallest
+  hinge sum per learner count, compared by cross-multiplying (ECOC; ONE = round(1 / S)).
+- **Twin and C:** `runInt` (BigInt) is the C's integer core exactly; `intModelC` writes `name_predict_q(xq, sums, n)`
+  (no floating point) and `name_predict(x, scores)` (the inputs made 8-bit and the optional scores are the only float).
+  `exportmodel(…, 'Precision', 'int8full')` and `embedreport`'s new 'int8full' row (sizes from `intBytes`). `num`, `list`,
+  `head`, `header`, `classNote` and `quantizePositive` in `embedded.ts` are exported for it.
+- **Checked:** `embedded.test.ts` M533: on iris, ECOC Gaussian (standardised), linear and polynomial (order 2), naive Bayes
+  and the discriminant compiled with `-Wall -Werror`: the integer core's class and sums equal the twin's on all 150 rows;
+  from float inputs at most two rows apart (input rounding); over 90% right; embedreport's int8full within 4 points of
+  double. A test bug on the way: C doesn't fix the order of a call's arguments, so read outputs after the call.
+- **Left out:** regression models (these three only classify), polynomial kernels past order 6, more than 256 inputs.

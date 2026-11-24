@@ -11,6 +11,7 @@ import './ml-lab';
 import './embedded-lab';
 import { classOf, eightOf, quantizeLayer, type BayesSpec, type DiscrSpec, type EcocSpec } from './embedded';
 import { specOf } from './embedded-lab';
+import { intInput, planInt, runInt } from './embedded-int';
 import type { Struct } from './values';
 
 let hasCc = true;
@@ -177,7 +178,7 @@ int main(void) {
       names = ec.ClassNames;`);
     expect(t.v('s8')[0]).toBeLessThan(t.v('s4')[0] / 2);
     const acc = (n: string) => [...toMat((t.l.vars.get(n) as unknown as { f: Map<string, never> }).f.get('Accuracy')!).d];
-    expect(acc('r')).toHaveLength(3); // double, single, int8
+    expect(acc('r')).toHaveLength(4); // double, single, int8, int8full (M533)
     expect(acc('r')[2]).toBeGreaterThan(acc('r')[0] - 3);
     expect(acc('rd')[2]).toBeGreaterThan(acc('rd')[0] - 3);
     expect(t.files.text('q_nb.c')).toContain('static const int8_t PREC[12]');
@@ -201,6 +202,49 @@ int main(void) {
       const want = rows.map((x) => classOf(twin, x));
       expect(got.filter((g, i) => g[k] === want[i]).length).toBeGreaterThanOrEqual(X.r - 1); // float against the twin's doubles: at most a near tie
       expect(got.filter((g, i) => g[k] === species[i]).length).toBeGreaterThan(0.9 * X.r);
+    });
+  });
+  it.skipIf(!hasCc)('M533: many-class SVMs, naive Bayes and discriminants wholly in whole numbers: C exactly as its twin', () => {
+    const t = make();
+    t.l.run(`rng(5); load fisheriris;
+      ec = fitcecoc(meas, species, 'Learners', templateSVM('KernelFunction', 'rbf', 'Standardize', true));
+      el = fitcecoc(meas, species); ep = fitcecoc(meas, species, 'Learners', templateSVM('KernelFunction', 'polynomial', 'PolynomialOrder', 2, 'Standardize', true));
+      nb = fitcnb(meas, species); da = fitcdiscr(meas, species);
+      exportmodel(ec, 'i_ecoc', 'Precision', 'int8full'); exportmodel(el, 'i_ecocl', 'Precision', 'int8full'); exportmodel(ep, 'i_ecocp', 'Precision', 'int8full');
+      exportmodel(nb, 'i_nb', 'Precision', 'int8full'); exportmodel(da, 'i_da', 'Precision', 'int8full');
+      r = embedreport(nb, meas, species); rd = embedreport(da, meas, species); re = embedreport(ec, meas, species);`);
+    const acc = (n: string) => [...toMat((t.l.vars.get(n) as unknown as { f: Map<string, never> }).f.get('Accuracy')!).d];
+    for (const n of ['r', 'rd', 're']) { expect(acc(n)).toHaveLength(4); expect(acc(n)[3]).toBeGreaterThan(acc(n)[0] - 4); } // double, single, int8, int8full
+    expect(t.files.text('i_nb.c')).not.toMatch(/float MU|float W\b|double/);
+    const X = toMat(t.l.vars.get('meas')!), rows = Array.from({ length: X.r }, (_, i) => [0, 1, 2, 3].map((j) => X.d[i + j * X.r]));
+    const models: [string, string][] = [['ec', 'i_ecoc'], ['el', 'i_ecocl'], ['ep', 'i_ecocp'], ['nb', 'i_nb'], ['da', 'i_da']];
+    const plans = models.map(([m]) => planInt(specOf(t.l.vars.get(m) as Struct) as EcocSpec | BayesSpec | DiscrSpec, rows));
+    const xq = rows.map((x) => intInput(plans[0], x));
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-m533-'));
+    for (const [, f] of models) { writeFileSync(join(dir, `${f}.c`), t.files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), t.files.text(`${f}.h`)); }
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+${models.map(([, f]) => `#include "${f}.h"`).join('\n')}
+static const int8_t XQ[${X.r}][4] = {${xq.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+static const float X[${X.r}][4] = {${rows.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+int main(void) {
+  int64_t s[3]; int n[3], c;
+  for (int i = 0; i < ${X.r}; i++) {
+${models.map(([, f]) => `    c = ${f}_predict_q(XQ[i], s, n); printf("%d %lld %lld %lld %d ", c, (long long)s[0], (long long)s[1], (long long)s[2], ${f}_predict(X[i], 0));`).join('\n')}
+    printf("\\n");
+  }
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), ...models.map(([, f]) => join(dir, `${f}.c`)), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split('\n').map((l) => l.trim().split(' '));
+    const names = (t.l.vars.get('species') as unknown as { d: { v: string }[] }).d.map((x) => x.v), classes = plans[0].classes, truth = names.map((c) => classes.indexOf(c));
+    plans.forEach((plan, k) => {
+      const want = xq.map((q) => runInt(plan, q)), at = (i: number, j: number) => got[i][k * 5 + j];
+      rows.forEach((_, i) => {
+        expect(Number(at(i, 0))).toBe(want[i].cls); // the integer core: exactly the twin's class and sums
+        expect([1, 2, 3].map((j) => BigInt(at(i, j)))).toEqual(want[i].sums);
+      });
+      expect(rows.filter((_, i) => Number(at(i, 4)) === want[i].cls).length).toBeGreaterThanOrEqual(X.r - 2); // from float inputs: rounding may move a row
+      expect(want.filter((w, i) => w.cls === truth[i]).length).toBeGreaterThan(0.9 * X.r);
     });
   });
 });

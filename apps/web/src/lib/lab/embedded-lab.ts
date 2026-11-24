@@ -5,6 +5,7 @@ import { FileStore } from './files';
 import { mat, num, str, toMat, type Cell, type Mat, type Struct, type Value } from './values';
 import { inverse } from './ml';
 import { bytes, classOf, eightOf, fullIntC, modelC, planFullInt, quantizeInput, roundTrip, runFullInt, type NetSpec, type Prec, type Spec } from './embedded';
+import { intBytes, intInput, intModelC, planInt, runInt } from './embedded-int';
 
 // Hyperion's embedded AI in the language (M481): quantizemodel, modelsize, embedreport and exportmodel, for the neural
 // networks (fitcnet, fitrnet) and decision trees (fitctree, fitrtree) of the machine-learning toolbox. MATLAB does this
@@ -28,7 +29,7 @@ function modelOf(v: Value | undefined): Struct {
   return v;
 }
 const namesOf = (v: Value | undefined): string[] | null => (!v ? null : v.k === 'cell' ? v.d.map((x) => textOf(x)) : [...toMat(v).d].map(String));
-const precOf = (v: Value | undefined): Prec => { const p = v ? textOf(v).toLowerCase() : 'int8'; if (p !== 'double' && p !== 'single' && p !== 'int8' && p !== 'int8full') throw new LabError("The precision is 'double', 'single', 'int8' (8-bit weights) or 'int8full' (a network wholly in 8 bits)."); return p; };
+const precOf = (v: Value | undefined): Prec => { const p = v ? textOf(v).toLowerCase() : 'int8'; if (p !== 'double' && p !== 'single' && p !== 'int8' && p !== 'int8full') throw new LabError("The precision is 'double', 'single', 'int8' (8-bit weights) or 'int8full' (wholly in whole numbers: networks, many-class SVMs, naive Bayes, discriminants)."); return p; };
 const rowsOf = (m: Mat): number[][] => Array.from({ length: m.r }, (_, i) => Array.from({ length: m.c }, (_, j) => m.d[i + j * m.r]));
 const treeAt = (t: Struct) => { const pred = [...toMat(fld(t, 'CutPredictorIndex')).d].map((p) => p - 1), ch = toMat(fld(t, 'Children')), n = pred.length; return { pred, cut: [...toMat(fld(t, 'CutPoint')).d], left: pred.map((_, i) => ch.d[i] - 1), right: pred.map((_, i) => ch.d[i + n] - 1) }; };
 const stdOf = (m: Struct) => { const on = m.f.get('Standardize') && toMat(m.f.get('Standardize')!).d[0] && toMat(fld(m, 'Mu')).d.length; return on ? { mu: [...toMat(fld(m, 'Mu')).d], sigma: [...toMat(fld(m, 'Sigma')).d] } : { mu: null, sigma: null }; };
@@ -126,6 +127,11 @@ def('embedreport', (a, nout, lab) => {
   if (spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr') {
     const e = eightOf(spec).spec, X = rowsOf(toMat(a[1])), Y = a[2], truth = Y.k === 'cell' ? Y.d.map((v) => spec.classes.indexOf(textOf(v))) : [...toMat(Y).d].map((v) => spec.classes.indexOf(String(v)));
     rows.push({ p: 'int8', size: bytes(spec, 'int8'), err: X.reduce((n, x, i) => n + (classOf(e, x) === truth[i] ? 0 : 1), 0) / X.length });
+    // M533: and wholly in whole numbers, run exactly as their C (runInt, the C's twin).
+    try {
+      const plan = planInt(spec, rowsOf(toMat(fld(m, 'X'))));
+      rows.push({ p: 'int8full', size: intBytes(plan), err: X.reduce((n, x, i) => n + (runInt(plan, intInput(plan, x)).cls === truth[i] ? 0 : 1), 0) / X.length });
+    } catch (e) { lab.host.out(`(int8full: ${(e as Error).message})\n`); }
   }
   const score = (e: number) => (classes ? 100 * (1 - e) : Math.sqrt(e));
   const col = (xs: number[]): Mat => mat(xs.length, 1, xs);
@@ -155,12 +161,16 @@ def('exportmodel', (a, nout, lab) => {
   for (let i = 2; i + 1 < a.length; i += 2) { if (textOf(a[i]).toLowerCase() !== 'precision') throw new LabError("exportmodel takes 'Precision' ('double', 'single' or 'int8')."); p = precOf(a[i + 1]); }
   const spec = specOf(m);
   const eight = spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr';
-  if (spec.kind !== 'net' && (p === 'int8full' || (p === 'int8' && !(eight && a.length > 2)))) { if (a.length > 2) throw new LabError(`This model is written with ${eight ? "'int8', " : ''}'single' or 'double' numbers.`); p = 'single'; }
-  let out: { c: string; h: string };
-  try { out = spec.kind === 'net' && p === 'int8full' ? fullIntC(planFullInt(spec, rowsOf(toMat(fld(m, 'X')))), name) : modelC(spec, name, p); } catch (e) { throw new LabError((e as Error).message); }
+  if (spec.kind !== 'net' && p.startsWith('int8') && !eight) throw new LabError("This model is written with 'single' or 'double' numbers.");
+  let out: { c: string; h: string }, size = 0;
+  try {
+    if (eight && p === 'int8full') { const plan = planInt(spec, rowsOf(toMat(fld(m, 'X')))); out = intModelC(plan, name); size = intBytes(plan); } // M533
+    else out = spec.kind === 'net' && p === 'int8full' ? fullIntC(planFullInt(spec, rowsOf(toMat(fld(m, 'X')))), name) : modelC(spec, name, p);
+  } catch (e) { throw new LabError((e as Error).message); }
+  size ||= bytes(spec, p);
   const fs = (lab.host as { files?: unknown }).files;
   if (fs instanceof FileStore) { fs.putText(`${name}.c`, out.c); fs.putText(`${name}.h`, out.h); }
-  if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['C', str(out.c)], ['H', str(out.h)], ['Bytes', num(bytes(spec, p))]]) } satisfies Struct];
-  lab.host.out(`Wrote ${name}.c and ${name}.h (${bytes(spec, p).toLocaleString()} bytes of ${p} numbers): call ${name}_predict(x${(spec.kind === 'net' && spec.classes && p !== 'int8full') || (spec.kind === 'ensemble' && spec.classes) || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' ? ', scores' : spec.kind === 'svm' ? ', &score' : ''}).\n`);
+  if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['C', str(out.c)], ['H', str(out.h)], ['Bytes', num(size)]]) } satisfies Struct];
+  lab.host.out(`Wrote ${name}.c and ${name}.h (${size.toLocaleString()} bytes of ${p} numbers): call ${name}_predict(x${(spec.kind === 'net' && spec.classes && p !== 'int8full') || (spec.kind === 'ensemble' && spec.classes) || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' ? ', scores' : spec.kind === 'svm' ? ', &score' : ''}).\n`);
   return [];
 });
