@@ -1,4 +1,5 @@
 import type { Expr, FnDef, Stmt } from './parse';
+import { bestFl, limits, productType, stored, sumType, type Nt } from './fixed';
 
 // Hyperion's C code generation (M480): a function written in Hyperion's language, with example inputs that fix every
 // size and type, becomes plain, readable C99 for embedded work: no memory allocated at run time, fixed-size arrays
@@ -6,13 +7,26 @@ import type { Expr, FnDef, Stmt } from './parse';
 // round as MATLAB's do), loops, branches, element-wise array maths, the matrix product, sums and the usual maths
 // functions, and calls to other functions of the script. What it can't turn into C it refuses with the reason and the
 // place. Our own generator (MATLAB Coder's output isn't copied).
+// M524: and fixed-point numbers (fi): each one is its stored whole number in the smallest C integer that holds its
+// word (up to 62 bits); sums and products grow exactly as the engine's fi does (a sum one bit and the finer fraction, a
+// product both words), worked in 64-bit integers, so C and Hyperion give the same bits; fi(x, s, w, f) and y(:) = …
+// round to the nearest step and hold the range, as MATLAB's do.
 
-export type Cls = 'double' | 'single' | 'logical' | 'int8' | 'uint8' | 'int16' | 'uint16' | 'int32' | 'uint32' | 'int64' | 'uint64';
-export interface Ty { cls: Cls; r: number; c: number }
+export type Cls = 'double' | 'single' | 'logical' | 'int8' | 'uint8' | 'int16' | 'uint16' | 'int32' | 'uint32' | 'int64' | 'uint64' | 'fixed';
+/** A value's type: its class and size; a fixed-point one (cls 'fixed') also its sign, word and fraction lengths. */
+export interface Ty { cls: Cls; r: number; c: number; fx?: Nt }
 export class CodegenError extends Error {}
 
-const CTYPE: Record<Cls, string> = { double: 'double', single: 'float', logical: 'bool', int8: 'int8_t', uint8: 'uint8_t', int16: 'int16_t', uint16: 'uint16_t', int32: 'int32_t', uint32: 'uint32_t', int64: 'int64_t', uint64: 'uint64_t' };
+const CTYPE: Record<Cls, string> = { double: 'double', single: 'float', logical: 'bool', int8: 'int8_t', uint8: 'uint8_t', int16: 'int16_t', uint16: 'uint16_t', int32: 'int32_t', uint32: 'uint32_t', int64: 'int64_t', uint64: 'uint64_t', fixed: 'int64_t' };
 const isInt = (c: Cls) => c.includes('int');
+const isFx = (t: Ty) => t.cls === 'fixed';
+const MAX_FX = 62;
+const fxC = (t: Nt) => `${t.signed ? '' : 'u'}int${t.wl <= 8 ? 8 : t.wl <= 16 ? 16 : t.wl <= 32 ? 32 : 64}_t`;
+const cty = (t: Ty) => (isFx(t) ? fxC(t.fx!) : CTYPE[t.cls]);
+const sameFx = (a: Ty, b: Ty) => !!a.fx && !!b.fx && a.fx.signed === b.fx.signed && a.fx.wl === b.fx.wl && a.fx.fl === b.fx.fl;
+const fxText = (t: Nt) => `fi(${t.signed ? 'signed' : 'unsigned'}, ${t.wl} bits, ${t.fl} fraction)`;
+const tyText = (t: Ty) => (isFx(t) ? fxText(t.fx!) : t.cls);
+const big = (v: number) => `INT64_C(${v})`;
 const scalar = (t: Ty) => t.r === 1 && t.c === 1;
 const n = (t: Ty) => t.r * t.c;
 const sizeText = (t: Ty) => `${t.r}×${t.c}`;
@@ -41,7 +55,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
     if (from.includes(name)) throw new CodegenError(`${name} calls itself: recursion can’t become fixed-size C here.`);
     if (def.varargin || def.varargout) throw new CodegenError(`${name}: varargin and varargout can’t become C here.`);
     if (argTypes.length !== def.params.length) throw new CodegenError(`${name} takes ${def.params.length} inputs; ${argTypes.length} examples were given.`);
-    const key = `${name}(${argTypes.map((t) => `${t.cls}${sizeText(t)}`).join(',')})`;
+    const key = `${name}(${argTypes.map((t) => `${t.cls}${t.fx ? `<${+t.fx.signed},${t.fx.wl},${t.fx.fl}>` : ''}${sizeText(t)}`).join(',')})`;
     const have = made.get(key);
     if (have) return have;
     // The first version of each function keeps its name; another set of input types gets a number.
@@ -56,6 +70,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
       const old = vars.get(v);
       if (def.params.includes(v) && !scalar(old ?? t)) fail(`the input ${v} is an array and is changed: copy it first (y = ${v};) and change the copy.`);
       if (old && (old.r !== t.r || old.c !== t.c)) fail(`${v} changes size (${sizeText(old)} → ${sizeText(t)}): in C every variable keeps one size.`);
+      if (old && (isFx(old) || isFx(t)) && !(isFx(old) && isFx(t) && sameFx(old, t))) fail(`${v} changes type (${tyText(old)} → ${tyText(t)}): keep its type with ${v}(:) = … (rounded and held in range, as MATLAB does).`);
       if (old && old.cls !== t.cls && !(def.params.includes(v))) {
         // MATLAB keeps the first class of a variable assigned a different one only for whole numbers; here: refuse.
         if (isInt(old.cls) !== isInt(t.cls)) fail(`${v} changes type (${old.cls} → ${t.cls}).`);
@@ -67,6 +82,57 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
     };
     const fresh = (t: Ty) => { const v = `t${++tmp}`; f.decls.set(v, t); return v; };
     const lit = (x: number) => (Number.isInteger(x) ? `${x}.0` : String(x));
+
+    // ——— Fixed point (M524) ———
+    function fxTy(fx: Nt, r = 1, c = 1): Ty {
+      if (!(fx.wl >= 2 && fx.wl <= MAX_FX && Number.isInteger(fx.wl) && Number.isInteger(fx.fl))) fail(`a fixed-point value of ${fx.wl} bits: C here works up to ${MAX_FX} bits (sums and products grow: give the accumulator a type with acc(:) = …).`);
+      return { cls: 'fixed', r, c, fx };
+    }
+    /** A number written in the code, met by a fixed-point value: it takes that value's word and sign, its own best fraction. */
+    const literal = (e: Expr): number | null => (e.k === 'num' && !e.imag ? e.v : e.k === 'un' && e.op === '-' && e.a.k === 'num' ? -e.a.v : null);
+    function fxSide(e: Expr, t: Ty, like: Nt): { nt: Nt; code: (k: string | null) => string } {
+      if (isFx(t)) return { nt: t.fx!, code: (k) => scal(e, scalar(t) ? null : k).code };
+      const v = literal(e);
+      if (v === null) fail('a fixed-point value meets a number that isn’t written in the code: make it fixed point too, with fi(x, s, w, f).');
+      const nt: Nt = { signed: like.signed, wl: like.wl, fl: bestFl([v!], like.signed, like.wl) };
+      return { nt, code: () => big(stored(v!, nt)) };
+    }
+    function fxBin(e: Extract<Expr, { k: 'bin' }>, a: Ty, b: Ty): { t: Ty; code: (k: string | null) => string } {
+      const like = (isFx(a) ? a : b).fx!, A = fxSide(e.a, a, like), B = fxSide(e.b, b, like);
+      const shape = scalar(a) ? b : a;
+      if (!scalar(a) && !scalar(b) && !(e.op === '*') && (a.r !== b.r || a.c !== b.c)) fail(`the sizes don’t agree: ${sizeText(a)} ${e.op} ${sizeText(b)}.`);
+      const at = (side: typeof A, fl: number, k: string | null) => { const d = fl - side.nt.fl; return d ? `(int64_t)${side.code(k)} * ${big(2 ** d)}` : `(int64_t)${side.code(k)}`; };
+      if (CMP[e.op]) {
+        if (!scalar(a) || !scalar(b)) fail(`compare single numbers in conditions (here ${sizeText(a)} ${e.op} ${sizeText(b)}).`);
+        const fl = Math.max(A.nt.fl, B.nt.fl);
+        return { t: { cls: 'logical', r: 1, c: 1 }, code: (k) => `(${at(A, fl, k)} ${CMP[e.op]} ${at(B, fl, k)})` };
+      }
+      if (e.op === '+' || e.op === '-') {
+        const nt = sumType(A.nt, B.nt), t = fxTy(nt, shape.r, shape.c);
+        return { t, code: (k) => `(${fxC(nt)})(${at(A, nt.fl, k)} ${e.op} ${at(B, nt.fl, k)})` };
+      }
+      if (e.op === '.*' || (e.op === '*' && (scalar(a) || scalar(b)))) {
+        const nt = productType(A.nt, B.nt), t = fxTy(nt, shape.r, shape.c);
+        return { t, code: (k) => `(${fxC(nt)})((int64_t)${A.code(k)} * (int64_t)${B.code(k)})` };
+      }
+      if (e.op === '*') {
+        if (!isFx(a) || !isFx(b)) fail('a matrix product of fixed-point values needs both fixed point.');
+        if (a.c !== b.r) fail(`the inner sizes don’t agree: ${sizeText(a)} * ${sizeText(b)}.`);
+        const p = productType(a.fx!, b.fx!), nt = { ...p, wl: p.wl + Math.ceil(Math.log2(Math.max(2, a.c))) };
+        return { t: fxTy(nt, a.r, b.c), code: () => fail('a matrix product where one number is needed.') };
+      }
+      return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * and comparisons).`);
+    }
+    /** A value converted to a fixed-point type: rounded to the nearest step (halves up) and held in range. */
+    function toFx(to: Nt, x: { code: string; t: Ty }): string {
+      const [lo, hi] = limits(to);
+      if (!isFx(x.t)) helpers.add('fx_from');
+      if (!isFx(x.t)) return `(${fxC(to)})fx_from_double((double)${x.code}, ${to.fl}, ${big(lo)}, ${big(hi)})`;
+      const from = x.t.fx!;
+      if (from.signed === to.signed && from.wl === to.wl && from.fl === to.fl) return x.code;
+      helpers.add('fx_shift'); helpers.add('fx_sat');
+      return `(${fxC(to)})fx_shift((int64_t)${x.code}, ${to.fl - from.fl}, ${big(lo)}, ${big(hi)})`;
+    }
 
     // ——— Types ———
     function typeOf(e: Expr): Ty {
@@ -81,6 +147,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         }
         case 'bin': {
           const a = typeOf(e.a), b = typeOf(e.b);
+          if (isFx(a) || isFx(b)) return fxBin(e, a, b).t;
           if (CMP[e.op]) { if (!scalar(a) || !scalar(b)) fail(`compare single numbers in conditions (here ${sizeText(a)} ${e.op} ${sizeText(b)}).`); return { cls: 'logical', r: 1, c: 1 }; }
           if (e.op === '*' && !scalar(a) && !scalar(b)) { if (a.c !== b.r) fail(`the inner sizes don’t agree: ${sizeText(a)} * ${sizeText(b)}.`); return { cls: mix(a.cls, b.cls), r: a.r, c: b.c }; }
           if (['+', '-', '.*', './', '*', '/', '.^', '^'].includes(e.op)) {
@@ -97,6 +164,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         case 'matrix': {
           if (e.cell) fail('cell arrays can’t become C here.');
           const rows = e.rows.map((r) => r.map(typeOf));
+          if (rows.flat().some(isFx)) fail('build fixed-point arrays with fi([…], s, w, f) here.');
           if (rows.some((r) => r.some((t) => !scalar(t)))) fail('build matrices from single numbers here ([a b; c d]).');
           const c = rows[0]?.length ?? 0;
           if (rows.some((r) => r.length !== c)) fail('every row of a matrix needs as many entries.');
@@ -109,13 +177,23 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
           if (e.args.some((a) => a.k === 'colon' || a.k === 'range')) fail(`${name}(…): take one element at a time (a(i) or a(i, j)); ranges and : can’t become C here.`);
           for (const a of e.args) if (a.k !== 'end' && !scalar(typeOf(a))) fail(`${name}(…): each index is one number.`);
           if (e.args.length > 2) fail('only 2D arrays here.');
-          return { cls: v.cls, r: 1, c: 1 };
+          return { ...v, r: 1, c: 1 };
         }
         default: return fail(`${e.k === 'str' ? 'text' : e.k === 'lambda' || e.k === 'handle' ? 'function handles' : e.k === 'range' ? 'a range outside a for loop' : e.k} can’t become C here.`);
       }
     }
     function callType(fname: string, a: Expr[]): Ty {
       const t = a.map(typeOf), d: Ty = { cls: 'double', r: 1, c: 1 };
+      if (fname === 'fi') {
+        if (a.length !== 4) fail('fi(x, signed, wordLength, fractionLength) here: all four, so the type is known.');
+        const fx: Nt = { signed: !!constant(a[1]), wl: constant(a[2]), fl: constant(a[3]) };
+        return fxTy(fx, t[0].r, t[0].c);
+      }
+      if (t.some(isFx) && !fns.has(fname)) {
+        if (fname === 'double' || fname === 'single') return { cls: fname, r: t[0].r, c: t[0].c };
+        if (fname === 'sum' && t.length === 1 && (t[0].r === 1 || t[0].c === 1)) return fxTy({ ...t[0].fx!, wl: t[0].fx!.wl + Math.ceil(Math.log2(Math.max(2, n(t[0])))) });
+        if (!['numel', 'length', 'size'].includes(fname)) fail(`${fname} of a fixed-point value can’t become C here (+ − .* * sum, fi, double).`);
+      }
       if (FN1[fname]) { if (t.length !== 1) fail(`${fname} takes one input here.`); return { ...t[0], cls: isInt(t[0].cls) ? t[0].cls : t[0].cls === 'single' ? 'single' : 'double' }; }
       if (FN2[fname] || fname === 'mod' || fname === 'rem') { if (t.length !== 2 || !t.every(scalar)) fail(`${fname} takes two single numbers here.`); return { ...d, cls: mix(t[0].cls, t[1].cls) }; }
       if (fname === 'min' || fname === 'max') { if (t.length === 2 && t.every(scalar)) return { ...d, cls: mix(t[0].cls, t[1].cls) }; if (t.length === 1 && (t[0].r === 1 || t[0].c === 1)) return { ...d, cls: t[0].cls }; fail(`${fname}: of two numbers, or of a vector.`); }
@@ -127,7 +205,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         const [r, c] = dims.length === 1 ? [dims[0], dims[0]] : [dims[0], dims[1]];
         return { cls: 'double', r, c };
       }
-      if (CTYPE[fname as Cls] && t.length === 1) return { ...t[0], cls: fname as Cls };
+      if (CTYPE[fname as Cls] && fname !== 'fixed' && t.length === 1) return { cls: fname as Cls, r: t[0].r, c: t[0].c };
       if (fns.has(fname)) { const g = make(fname, t, [...from, name]); if (g.outs.length < 1) fail(`${fname} gives no output.`); return g.outs[0]; }
       return fail(`${fname} can’t become C here.`);
     }
@@ -160,6 +238,10 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         }
         case 'bin': {
           const t = typeOf(e);
+          if (isFx(typeOf(e.a)) || isFx(typeOf(e.b))) {
+            if (e.op === '*' && !scalar(typeOf(e.a)) && !scalar(typeOf(e.b))) { if (!k) fail('a matrix product where one number is needed.'); return { code: `${arrayRef(e)}[${k}]`, t: { ...t, r: 1, c: 1 } }; }
+            return { code: fxBin(e, typeOf(e.a), typeOf(e.b)).code(k), t: { ...t, r: 1, c: 1 } };
+          }
           if (e.op === '*' && !scalar(typeOf(e.a)) && !scalar(typeOf(e.b))) { if (!k) fail('a matrix product where one number is needed.'); return { code: `${arrayRef(e)}[${k}]`, t: { ...t, r: 1, c: 1 } }; }
           const a = scal(e.a, scalar(typeOf(e.a)) ? null : k), b = scal(e.b, scalar(typeOf(e.b)) ? null : k);
           if (CMP[e.op]) return { code: `(${a.code} ${CMP[e.op]} ${b.code})`, t };
@@ -175,6 +257,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         }
         case 'un': {
           const a = scal(e.a, k);
+          if (e.op === '-' && isFx(a.t)) { helpers.add('fx_sat'); const [lo, hi] = limits(a.t.fx!); return { code: `(${fxC(a.t.fx!)})fx_sat(-(int64_t)${a.code}, ${big(lo)}, ${big(hi)})`, t: a.t }; }
           if (e.op === '-') return { code: isInt(a.t.cls) ? satCall(a.t.cls, `-(double)${a.code}`) : `(-${a.code})`, t: a.t };
           if (e.op === '~' || e.op === '!') return { code: `(!${a.code})`, t: { ...a.t, cls: 'logical' } };
           return a;
@@ -195,6 +278,8 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
     }
     function call(fname: string, a: Expr[], k: string | null): { code: string; t: Ty } {
       const t = callType(fname, a);
+      if (fname === 'fi') { const x = scal(a[0], scalar(typeOf(a[0])) ? null : k); return { code: toFx(t.fx!, x), t: { ...t, r: 1, c: 1 } }; }
+      if ((fname === 'double' || fname === 'single') && isFx(typeOf(a[0]))) { const x = scal(a[0], scalar(typeOf(a[0])) ? null : k); return { code: `${fname === 'single' ? '(float)' : ''}ldexp((double)${x.code}, ${-x.t.fx!.fl})`, t: { ...t, r: 1, c: 1 } }; }
       if (FN1[fname]) { const x = scal(a[0], scalar(typeOf(a[0])) ? null : k); return { code: isInt(t.cls) ? satCall(t.cls, `${FN1[fname]}((double)${x.code})`) : `${FN1[fname]}(${x.code})`, t }; }
       if (FN2[fname]) { const [x, y] = a.map((v) => scal(v)); return { code: `${FN2[fname]}(${x.code}, ${y.code})`, t }; }
       if (fname === 'mod' || fname === 'rem') { helpers.add(fname); const [x, y] = a.map((v) => scal(v)); return { code: satCall(t.cls, `${fname}_d((double)${x.code}, (double)${y.code})`), t }; }
@@ -204,7 +289,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
       if (['sum', 'prod', 'mean', 'min', 'max'].includes(fname)) {
         // A reduction of a vector: worked out just before the statement, into a temporary.
         const src = arrayRef(a[0]), v = fresh({ cls: t.cls, r: 1, c: 1 }), len = n(typeOf(a[0]));
-        const init = fname === 'prod' ? '1.0' : fname === 'min' || fname === 'max' ? `${src}[0]` : '0.0';
+        const init = fname === 'prod' ? '1.0' : fname === 'min' || fname === 'max' ? `${src}[0]` : isFx(t) ? '0' : '0.0';
         out(`${v} = ${init};`);
         out(`for (int i = ${fname === 'min' || fname === 'max' ? 1 : 0}; i < ${len}; i++) ${fname === 'prod' ? `${v} *= ${src}[i];` : fname === 'min' ? `if (${src}[i] < ${v}) ${v} = ${src}[i];` : fname === 'max' ? `if (${src}[i] > ${v}) ${v} = ${src}[i];` : `${v} += ${src}[i];`}`);
         if (fname === 'mean') out(`${v} /= ${len};`);
@@ -230,7 +315,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
     function assignArray(target: string, e: Expr, t: Ty) {
       const N = n(t);
       if (e.k === 'index' && e.of.k === 'id' && (e.of.name === 'zeros' || e.of.name === 'ones') && !vars.has(e.of.name)) { out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${e.of.name === 'ones' ? '1.0' : '0.0'};`); return; }
-      if (e.k === 'matrix') { e.rows.forEach((row, i) => row.forEach((x, j) => out(`${target}[${i + j * t.r}] = ${cast(t.cls, scal(x))};`))); return; }
+      if (e.k === 'matrix') { e.rows.forEach((row, i) => row.forEach((x, j) => out(`${target}[${i + j * t.r}] = ${cast(t, scal(x))};`))); return; }
       if (e.k === 'post' && (e.op === "'" || e.op === ".'")) {
         const src = arrayRef(e.a), s = typeOf(e.a);
         out(`for (int j = 0; j < ${s.c}; j++) for (int i = 0; i < ${s.r}; i++) ${target}[j + i * ${s.c}] = ${src}[i + j * ${s.r}];`);
@@ -239,11 +324,12 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
       if (e.k === 'bin' && e.op === '*' && !scalar(typeOf(e.a)) && !scalar(typeOf(e.b))) {
         const A = arrayRef(e.a), B = arrayRef(e.b), at = typeOf(e.a), bt = typeOf(e.b);
         const into = A === target || B === target ? fresh(t) : target;
+        const fx = isFx(t) ? typeOf(e) : null;
         out(`for (int j = 0; j < ${bt.c}; j++) {`);
         out(`  for (int i = 0; i < ${at.r}; i++) {`);
-        out(`    double s = 0.0;`);
-        out(`    for (int p = 0; p < ${at.c}; p++) s += ${A}[i + p * ${at.r}] * ${B}[p + j * ${bt.r}];`);
-        out(`    ${into}[i + j * ${at.r}] = ${cast(t.cls, { code: 's', t: { cls: 'double', r: 1, c: 1 } })};`);
+        out(fx ? '    int64_t s = 0;' : `    double s = 0.0;`);
+        out(`    for (int p = 0; p < ${at.c}; p++) s += ${fx ? '(int64_t)' : ''}${A}[i + p * ${at.r}] * ${fx ? '(int64_t)' : ''}${B}[p + j * ${bt.r}];`);
+        out(`    ${into}[i + j * ${at.r}] = ${fx ? cast(t, { code: 's', t: fx }) : cast(t, { code: 's', t: { cls: 'double', r: 1, c: 1 } })};`);
         out('  }');
         out('}');
         if (into !== target) out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${into}[k];`);
@@ -254,12 +340,17 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         out(`${g.cname}(${[...e.args.map((x) => arrayRef(x, true)), target, ...g.outs.slice(1).map((o) => (scalar(o) ? `&${fresh(o)}` : fresh(o)))].join(', ')});`);
         return;
       }
-      if (e.k === 'id' && vars.has(e.name)) { out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${cast(t.cls, scal(e, 'k'))};`); return; }
+      if (e.k === 'id' && vars.has(e.name)) { out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${cast(t, scal(e, 'k'))};`); return; }
       // Element-wise: one loop over the elements.
       const x = scal(e, 'k');
-      out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${cast(t.cls, x)};`);
+      out(`for (int k = 0; k < ${N}; k++) ${target}[k] = ${cast(t, x)};`);
     }
-    const cast = (cls: Cls, x: { code: string; t: Ty }) => (isInt(cls) && !isInt(x.t.cls) ? satCall(cls, x.code) : cls === x.t.cls || (cls === 'double' && x.t.cls !== 'single') ? x.code : `(${CTYPE[cls]})${x.code}`);
+    const cast = (to: Ty | Cls, x: { code: string; t: Ty }): string => {
+      if (typeof to !== 'string' && isFx(to)) return toFx(to.fx!, x);
+      const cls = typeof to === 'string' ? to : to.cls;
+      if (isFx(x.t)) return cast(cls, { code: `ldexp((double)${x.code}, ${-x.t.fx!.fl})`, t: { cls: 'double', r: 1, c: 1 } });
+      return isInt(cls) && !isInt(x.t.cls) ? satCall(cls, x.code) : cls === x.t.cls || (cls === 'double' && x.t.cls !== 'single') ? x.code : `(${CTYPE[cls]})${x.code}`;
+    };
 
     // ——— Statements ———
     function stmt(st: Stmt) {
@@ -277,15 +368,24 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
           const to = st.to[0];
           if (to.k === 'id') {
             const t = typeOf(st.e), keep = declare(to.name, t);
-            if (scalar(t)) out(`${to.name} = ${cast(keep.cls, scal(st.e))};`);
+            if (scalar(t)) out(`${to.name} = ${cast(keep, scal(st.e))};`);
             else assignArray(to.name, st.e, keep);
+            return;
+          }
+          if (to.k === 'index' && to.of.k === 'id' && to.args.length === 1 && to.args[0].k === 'colon' && !to.brace) {
+            // y(:) = …: y keeps its type and size (M524: how a fixed-point accumulator keeps its word).
+            const v = vars.get(to.of.name), t = typeOf(st.e);
+            if (!v) fail(`${to.of.name} must be made before ${to.of.name}(:) = … sets it.`);
+            if (!scalar(t) && n(t) !== n(v!)) fail(`${to.of.name}(:) = takes ${n(v!)} values or one (here ${sizeText(t)}).`);
+            if (scalar(v!)) out(`${to.of.name} = ${cast(v!, scal(st.e))};`);
+            else assignArray(to.of.name, st.e, v!);
             return;
           }
           if (to.k === 'index' && to.of.k === 'id') {
             const v = vars.get(to.of.name);
             if (!v) fail(`${to.of.name} must be made (with zeros or an example input) before its elements are set: arrays have a fixed size in C.`);
             if (!scalar(typeOf(st.e))) fail(`${to.of.name}(…) = takes one number here.`);
-            out(`${idx(to.of.name, to.args, v!, null)} = ${cast(v!.cls, scal(st.e))};`);
+            out(`${idx(to.of.name, to.args, v!, null)} = ${cast(v!, scal(st.e))};`);
             return;
           }
           return fail('only variables and their elements can be assigned here.');
@@ -346,16 +446,16 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
   const main = make(entry, args, []);
   const sig = (f: Fn, proto: boolean) => {
     const oneScalar = f.outs.length === 1 && scalar(f.outs[0]);
-    const ins = f.def.params.map((p, i) => (scalar(f.args[i]) ? `${CTYPE[f.args[i].cls]} ${p}` : `const ${CTYPE[f.args[i].cls]} ${p}[${n(f.args[i])}]`));
-    const outs = oneScalar ? [] : f.def.outs.map((o, i) => (scalar(f.outs[i]) ? `${CTYPE[f.outs[i].cls]} *${o}` : `${CTYPE[f.outs[i].cls]} ${o}[${n(f.outs[i])}]`));
-    return `${f === main || !proto ? '' : 'static '}${oneScalar ? CTYPE[f.outs[0].cls] : 'void'} ${f.cname}(${[...ins, ...outs].join(', ') || 'void'})`;
+    const ins = f.def.params.map((p, i) => (scalar(f.args[i]) ? `${cty(f.args[i])} ${p}` : `const ${cty(f.args[i])} ${p}[${n(f.args[i])}]`));
+    const outs = oneScalar ? [] : f.def.outs.map((o, i) => (scalar(f.outs[i]) ? `${cty(f.outs[i])} *${o}` : `${cty(f.outs[i])} ${o}[${n(f.outs[i])}]`));
+    return `${f === main || !proto ? '' : 'static '}${oneScalar ? cty(f.outs[0]) : 'void'} ${f.cname}(${[...ins, ...outs].join(', ') || 'void'})`;
   };
   const body = (f: Fn) => {
     const oneScalar = f.outs.length === 1 && scalar(f.outs[0]);
-    const lines = [`/* ${f.def.outs.length ? `[${f.def.outs.join(', ')}] = ` : ''}${f.def.name}(${f.def.params.map((p, i) => `${p}: ${f.args[i].cls} ${sizeText(f.args[i])}`).join(', ')}) */`, `${f === main ? '' : 'static '}${sig(f, false)} {`];
+    const lines = [`/* ${f.def.outs.length ? `[${f.def.outs.join(', ')}] = ` : ''}${f.def.name}(${f.def.params.map((p, i) => `${p}: ${tyText(f.args[i])} ${sizeText(f.args[i])}`).join(', ')}${f.outs.some(isFx) || f.args.some(isFx) ? ' (fixed point: each value is its stored whole number; the value is that × 2^-fraction)' : ''}${f.outs.map((o, i) => (isFx(o) ? `; ${f.def.outs[i]}: ${tyText(o)}` : '')).join('')}) */`, `${f === main ? '' : 'static '}${sig(f, false)} {`];
     for (const [v, t] of f.decls) {
       if (!oneScalar && f.def.outs.includes(v)) continue;
-      lines.push(`  ${CTYPE[t.cls]} ${v}${scalar(t) ? ' = 0' : `[${n(t)}]`};`);
+      lines.push(`  ${cty(t)} ${v}${scalar(t) ? ' = 0' : `[${n(t)}]`};`);
     }
     // Scalar outputs passed by pointer: worked on in a local of the same name, copied out at the end.
     const ptrOuts = oneScalar ? [] : f.def.outs.filter((_, i) => scalar(f.outs[i]));
@@ -369,6 +469,28 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
   const inc = ['#include <math.h>', '#include <stdbool.h>', '#include <stdint.h>', ...(helpers.has('stdio') ? ['#include <stdio.h>'] : [])];
   const help: string[] = [];
   for (const c of Object.keys(RANGE) as Cls[]) if (helpers.has(c)) { const [lo, hi] = RANGE[c]!; help.push(`/* ${c}: rounded to the nearest (halves away from zero) and held in range, as MATLAB does */\nstatic ${CTYPE[c]} sat_${c}(double v) {\n  if (isnan(v)) return 0;\n  v = round(v);\n  if (v <= ${lo}) return (${CTYPE[c]})${lo};\n  if (v >= ${hi}) return (${CTYPE[c]})${hi};\n  return (${CTYPE[c]})v;\n}`); }
+  const fxNote = `/* Fixed point: held in range, moved to another fraction length (rounded to the nearest step, halves up, as MATLAB's
+ * fi does), made from a double. Worked in 64-bit integers; every type here has at most ${MAX_FX} bits. */`;
+  if (helpers.has('fx_sat') || helpers.has('fx_from')) help.push(fxNote);
+  if (helpers.has('fx_sat')) help.push('static int64_t fx_sat(int64_t v, int64_t lo, int64_t hi) { return v < lo ? lo : v > hi ? hi : v; }');
+  if (helpers.has('fx_shift')) help.push(`static int64_t fx_shift(int64_t v, int d, int64_t lo, int64_t hi) {
+  if (d >= 0) {
+    int64_t m = (int64_t)1 << d;
+    if (v > hi / m) return hi;
+    if (v < lo / m) return lo;
+    return v * m;
+  }
+  int64_t m = (int64_t)1 << -d, t = v + m / 2, q = t / m;
+  if (t % m != 0 && t < 0) q -= 1;
+  return fx_sat(q, lo, hi);
+}`);
+  if (helpers.has('fx_from')) help.push(`static int64_t fx_from_double(double x, int fl, int64_t lo, int64_t hi) {
+  if (isnan(x)) return 0;
+  double s = floor(ldexp(x, fl) + 0.5);
+  if (s <= (double)lo) return lo;
+  if (s >= (double)hi) return hi;
+  return (int64_t)s;
+}`);
   if (helpers.has('mod')) help.push('/* mod: the remainder with the sign of the divisor */\nstatic double mod_d(double a, double b) {\n  if (b == 0.0) return a;\n  double r = fmod(a, b);\n  return (r != 0.0 && ((r < 0) != (b < 0))) ? r + b : r;\n}');
   if (helpers.has('rem')) help.push('/* rem: the remainder with the sign of the dividend */\nstatic double rem_d(double a, double b) { return b == 0.0 ? a : fmod(a, b); }');
   const others = order.filter((f) => f !== main);

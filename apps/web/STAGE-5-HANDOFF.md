@@ -12829,3 +12829,28 @@ with `classdef`) and `runtests('Name')` all work.
   editor's Run (the toolstrip from PR #156 has one too).
 - **Left out:** class-level attributes beyond the test kinds (TestTags, shared fixtures, `applyFixture`), `log`, and
   classes that aren't tests.
+
+## M524 (24 Nov): Hyperion fixed-point C code
+
+`codegen.ts` now takes fixed-point inputs (`Ty.cls === 'fixed'` with `fx: Nt` from `fixed.ts`): a value is its stored
+whole number in `int8_t` … `int64_t` (unsigned when the type is), chosen by word length (`fxC`); every fixed type in
+generated code has at most 62 bits (`MAX_FX`), so the 64-bit work below never overflows.
+
+- **Rules (the engine's fi, M480):** a sum keeps the finer fraction and one more integer bit (`sumType`), a product
+  adds both (`productType`), a matrix product adds log2 of the inner size; operands are aligned by multiplying by a
+  power of two (never `<<` on a signed value: undefined in C). A number written in the code that meets a fi takes the
+  fi's word and sign with its own best fraction (as the engine's `asFi`); a double variable meeting a fi is refused
+  (make it fi). `fi(x, s, w, f)` (all four, known when generating) and `y(:) = …`, `y(i) = …` convert with
+  `fx_shift` (towards fewer fraction bits: floor of (v + half) / 2^d, MATLAB's Nearest; more: multiply, saturating) or
+  `fx_from_double`; `−x` saturates with `fx_sat`; `double(x)` is `ldexp`. Helpers are emitted only when used
+  (`-Wall -Werror` refuses unused ones).
+- **A variable keeps one type:** `acc = acc + x(k)` in a loop changes its fixed type each time and is refused, naming
+  the fix (`acc(:) = …`), as MATLAB Coder does. The function's comment gives every fixed input's and output's type.
+- **The engine:** `interp.ts` gained `indexHooks` (get / set for values it doesn't know; `codegen-lab.ts` makes
+  `a(i)` keep a fi's type and `a(i) = v`, `a(:) = v` round and saturate into it) and `opHooks.neg`; fi comparisons give
+  logical arrays; `fi(b, …)` of a fi recasts it.
+- **Checked:** `codegen.test.ts` compiles a fixed-point FIR filter and a saturating function with `cc -std=c99 -Wall
+  -Werror` and gets exactly the engine's stored integers; the type-change refusal; `embedded.m` (examples test) runs
+  the filter in fixed point and writes `movavgfx.c`.
+- **Left out:** fixed types over 62 bits in C, rounding modes other than Nearest and overflow modes other than saturate
+  (`fimath`), fixed-point division.

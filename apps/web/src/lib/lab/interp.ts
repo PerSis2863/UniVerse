@@ -39,12 +39,14 @@ export interface Host {
 export class Flow { constructor(readonly kind: 'break' | 'continue' | 'return' | 'pause') {} }
 /** M477: a parfor at a script's top level may be run on other workers (parallel-lab.ts sets this). */
 /** M478: arithmetic for gpuArray values (gpu-lab.ts sets it); M480: and fixed-point fi values (fixed-lab.ts). */
-export const opHooks: { binop: ((op: string, a: Value, b: Value) => Value | null) | null } = { binop: null };
+export const opHooks: { binop: ((op: string, a: Value, b: Value) => Value | null) | null; neg?: (a: Value) => Value | null } = { binop: null };
 /** M523: obj.name(args) on a struct without that field: a method of a test case (verify-lab.ts), when it says so. */
 export const methodHook: { call: ((lab: Lab, obj: Struct, name: string, args: Value[], nout: number) => Value[] | null) | null } = { call: null };
+/** M524: indexing a value the engine doesn't know (a fi): x(i) and x(i) = v, given the plain operations on its numbers. */
+export const indexHooks: { get: ((v: Value, idx: Idx[], plain: (m: Value) => Value) => Value | null) | null; set: ((base: Value, idx: Idx[], v: Value, plain: (b: Value, v: Value) => Value) => Value | null) | null } = { get: null, set: null };
 export const parHook: { parfor: ((lab: Lab, st: Extract<Stmt, { s: 'for' }>, vars: Map<string, Value>) => boolean) | null } = { parfor: null };
 interface Frame { vars: Map<string, Value>; nargin: number; nargout: number; depth: number }
-type Idx = 'all' | number[]; // 0-based positions
+export type Idx = 'all' | number[]; // 0-based positions
 
 /** Values that may be held in two places: never changed in place (copied first). */
 const shared = new WeakSet<object>();
@@ -246,6 +248,7 @@ export class Lab {
         if (isLti(a) && e.op !== '~') return [e.op === '-' ? ltiNeg(a) : a];
         if (a.k === 'sym' && e.op !== '~') return [e.op === '-' ? symNeg(a) : a];
         if (e.op === '+') return [toMat(a)];
+        if (e.op === '-' && a.k === 'struct' && opHooks.neg) { const h = opHooks.neg(a); if (h) return [h]; } // M524: −fi
         if (e.op === '-') { const m = toMat(a); if (m.cls) return [cast({ ...m, d: m.d.map((x) => -x), im: m.im?.map((x) => -x) }, m.cls)]; return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
         return [{ ...map1(toMat(a), (x) => (x === 0 ? 1 : 0)), logical: true }];
       }
@@ -624,6 +627,7 @@ export function concat(rows: Value[][]): Value {
 const positions = (idx: Idx, n: number) => (idx === 'all' ? Array.from({ length: n }, (_, i) => i) : idx);
 
 export function getIndex(v: Value, idx: Idx[]): Value {
+  if (v.k === 'struct' && indexHooks.get) { const h = indexHooks.get(v, idx, (m) => getIndex(m, idx)); if (h) return h; }
   if (v.k === 'struct' && v.table) {
     if (idx.length !== 2) throw new LabError('Index a table with rows and columns: T(rows, :) or T(:, \'name\').');
     return pickTable(v, idx[0], idx[1]);
@@ -700,6 +704,7 @@ function getCell(v: Value, idx: Idx[]): Value[] {
 
 /** x(idx) = v: grows the matrix when needed (filled with 0), [] deletes, a scalar fills every position. */
 function setIndex(base: Value | undefined, idx: Idx[], v: Value, inPlace: boolean): Value {
+  if (base?.k === 'struct' && indexHooks.set) { const h = indexHooks.set(base, idx, v, (b, x) => setIndex(b, idx, x, false)); if (h) return h; }
   // A typed array keeps its type; a new or empty one takes the value's (M386).
   const cls = base?.k === 'mat' && base.d.length ? base.cls : v.k === 'mat' ? v.cls : undefined;
   if ((base?.k === 'mat' && base.cls) || (v.k === 'mat' && v.cls)) {
