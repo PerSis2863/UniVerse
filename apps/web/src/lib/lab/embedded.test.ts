@@ -9,7 +9,7 @@ import { Graphics } from './plot';
 import { toMat } from './values';
 import './ml-lab';
 import './embedded-lab';
-import { classOf, eightOf, quantizeLayer, type BayesSpec, type DiscrSpec, type EcocSpec } from './embedded';
+import { classOf, eightOf, quantizeLayer, type BayesSpec, type DiscrSpec, type EcocSpec, type LinSpec } from './embedded';
 import { specOf } from './embedded-lab';
 import { intInput, planInt, runInt } from './embedded-int';
 import type { Struct } from './values';
@@ -246,5 +246,58 @@ ${models.map(([, f]) => `    c = ${f}_predict_q(XQ[i], s, n); printf("%d %lld %l
       expect(rows.filter((_, i) => Number(at(i, 4)) === want[i].cls).length).toBeGreaterThanOrEqual(X.r - 2); // from float inputs: rounding may move a row
       expect(want.filter((w, i) => w.cls === truth[i]).length).toBeGreaterThan(0.9 * X.r);
     });
+  });
+  it.skipIf(!hasCc)('M537: linear models wholly in whole numbers, polynomial kernels of order 8, past 256 inputs', () => {
+    const t = make();
+    t.l.run(`rng(7); X = rand(80, 3) * 10; y = 2 + 0.5 * X(:, 1) - 1.5 * X(:, 2) + 3 * X(:, 3) + 0.5 * randn(80, 1);
+      lm = fitlm(X, y); exportmodel(lm, 'i_lm', 'Precision', 'int8full'); r = embedreport(lm, X, y);
+      load fisheriris; ep = fitcecoc(meas, species, 'Learners', templateSVM('KernelFunction', 'polynomial', 'PolynomialOrder', 8, 'Standardize', true));
+      exportmodel(ep, 'i_ep8', 'Precision', 'int8full'); r8 = embedreport(ep, meas, species);`);
+    const col = (n: string, f: string) => [...toMat((t.l.vars.get(n) as unknown as { f: Map<string, never> }).f.get(f)!).d];
+    const rmse = col('r', 'RMSE');
+    expect(rmse).toHaveLength(3); // double, single, int8full
+    expect(rmse[2]).toBeLessThan(rmse[0] + 0.15);
+    // order 8 magnifies 8-bit rounding: 'int8' (float arithmetic) falls too; the whole numbers stay as close as it
+    const a8 = col('r8', 'Accuracy');
+    expect(a8[3]).toBeGreaterThan(a8[2] - 4);
+    expect(a8[3]).toBeGreaterThan(75);
+    expect(t.files.text('i_lm.c')).not.toMatch(/double|float B\[/);
+    expect(() => t.l.run("exportmodel(lm, 'x', 'Precision', 'int8')")).toThrow(/int8full/);
+    // the C's integer core equals the twin on every row; the float answer is F · S
+    const Xm = toMat(t.l.vars.get('X')!), rows = Array.from({ length: Xm.r }, (_, i) => [0, 1, 2].map((j) => Xm.d[i + j * Xm.r]));
+    const plan = planInt(specOf(t.l.vars.get('lm') as Struct) as LinSpec, rows), xq = rows.map((x) => intInput(plan, x));
+    const M = toMat(t.l.vars.get('meas')!), irows = Array.from({ length: M.r }, (_, i) => [0, 1, 2, 3].map((j) => M.d[i + j * M.r]));
+    const p8 = planInt(specOf(t.l.vars.get('ep') as Struct) as EcocSpec, irows), iq = irows.map((x) => intInput(p8, x));
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-m537-'));
+    for (const f of ['i_lm', 'i_ep8']) { writeFileSync(join(dir, `${f}.c`), t.files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), t.files.text(`${f}.h`)); }
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+#include "i_lm.h"
+#include "i_ep8.h"
+static const int8_t XQ[${xq.length}][3] = {${xq.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+static const float X[${rows.length}][3] = {${rows.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+static const int8_t IQ[${iq.length}][4] = {${iq.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+int main(void) {
+  int64_t s[3]; int n[3];
+  for (int i = 0; i < ${xq.length}; i++) printf("%lld %.9g\\n", (long long)i_lm_predict_q(XQ[i]), i_lm_predict(X[i]));
+  for (int i = 0; i < ${iq.length}; i++) { int c = i_ep8_predict_q(IQ[i], s, n); printf("%d %lld %lld %lld\\n", c, (long long)s[0], (long long)s[1], (long long)s[2]); }
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), join(dir, 'i_lm.c'), join(dir, 'i_ep8.c'), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split('\n').map((l) => l.trim().split(' '));
+    xq.forEach((q, i) => {
+      const F = runInt(plan, q).F[0];
+      expect(BigInt(got[i][0])).toBe(F);
+      expect(Math.abs(Number(got[i][1]) - Number(F) * plan.S)).toBeLessThan(1e-4 * Math.max(1, Math.abs(Number(F) * plan.S)));
+    });
+    iq.forEach((q, i) => {
+      const w = runInt(p8, q), g = got[xq.length + i];
+      expect(Number(g[0])).toBe(w.cls);
+      expect(g.slice(1).map(BigInt)).toEqual(w.sums);
+    });
+    // more inputs than the old 256
+    const P = 300, wide: DiscrSpec = { kind: 'discr', w: [Array(P).fill(0.01), Array(P).fill(-0.01)], c: [0, 0], classes: ['a', 'b'] };
+    const wr = [Array(P).fill(1), Array(P).fill(-1)];
+    expect(runInt(planInt(wide, wr), intInput(planInt(wide, wr), wr[0])).cls).toBe(0);
+    expect(() => planInt({ ...wide, w: [Array(70000).fill(0)] }, [Array(70000).fill(0)])).toThrow(/65,536 inputs/);
   });
 });

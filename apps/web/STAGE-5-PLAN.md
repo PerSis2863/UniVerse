@@ -1894,6 +1894,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M534 | Hyperion: the C's own names (loop counters, temporaries, C's words) never clash with the script's | **Done** (branch `claude/hyperion-signals-capabilities`) | `codegen.ts` `cSafe`: the script's clashing variables get a `_` before writing; outputs `i`, `j`, `k` and variables `t1`, `int`, `abs` compile and equal Hyperion. |
 | M535 | Hyperion: lsqminnorm, the smallest least-squares answer, exact for fi and in C; pinv through the SVD | **Done** (branch `claude/hyperion-signals-capabilities`) | `codegen-lab.ts` `minNormStored`, `codegen.ts` `minNormBits` and `fx…_minnorm`; wide, singular, tall and zero systems equal in C. |
 | M536 | Hyperion: C matrix division past 4096 bits (long division on 32-bit pieces, to 65,536 bits, 16 MB) | **Done** (branch `claude/hyperion-signals-capabilities`) | `codegen.ts` `fxb_div` (algorithm D), `FXB_MAX`, `FXB_MEM`, static working past 64 KB; a 20×20 of 120 bits equal to Hyperion. |
+| M537 | Hyperion: 'int8full' for linear models, polynomial kernels of any order, up to 65,536 inputs | **Done** (branch `claude/hyperion-signals-capabilities`) | `embedded-int.ts`: fitlm as one linear unit (predict_q gives F, the answer F · S), polynomial powers as fractions in Q30, inputs to 65,536; C equal to the twin. |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

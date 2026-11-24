@@ -13130,3 +13130,21 @@ The owner pasted M531–M533's "left out" list and chose "build all of them"; th
 - **Checked:** `codegen.test.ts` M536: a 20×20 system of 120-bit values (about 4,700 bits of working, `static fxb_t`)
   native and portable, equal to Hyperion; a 60×60 of 126 bits refused for memory, a 300×300 for bits. M531's tests (the
   fxb_t paths) pass with the new division.
+
+## M537 (24 Nov): Hyperion 'int8full' for linear models, polynomial kernels of any order, 65,536 inputs
+
+The last part of M533's "left out" list (the owner: "build all of them").
+
+- **Linear models** (`embedded-int.ts`): a `LinSpec` (fitlm) is one linear unit (centre and step folded in, 8-bit weights,
+  a 32-bit sum, a multiplier); `intModelC` writes `int64_t name_predict_q(xq)` (the answer as F, the answer is F × S) and
+  `float name_predict(x)`. `exportmodel(lm, …, 'Precision', 'int8full')` and embedreport's int8full row (RMSE); `'int8'`
+  for a linear model is refused, naming `'int8full'`.
+- **Polynomial kernels:** the base (1 + t) is worked as a fraction of its largest value in Q30 (`ZQ`, its own multiplier
+  `mz`/`shz`), each power kept in Q30, and vmax^order goes into the unit's multiplier: no order grows past 62 bits, so the
+  order-6 limit is gone. An order-8 kernel loses accuracy in 8 bits ('int8' too, 100% → 86% on iris): the rounding of the
+  8-bit numbers, not the whole-number working.
+- **Inputs:** up to 65,536 (127 · 127 · 65,536 stays inside a 32-bit sum).
+- **Checked:** `embedded.test.ts` M537: fitlm on 80 rows, int8full RMSE within 0.15 of double, the C core equal to the
+  twin on every row and the float answer F · S; an order-8 ECOC equal to its twin, within 4 points of 'int8'; 300 inputs
+  planned, 70,000 refused.
+- **Left out:** trees and ensembles in whole numbers (they compare, they don't add), GLM links (as the single/double C).

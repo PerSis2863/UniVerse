@@ -29,7 +29,7 @@ function modelOf(v: Value | undefined): Struct {
   return v;
 }
 const namesOf = (v: Value | undefined): string[] | null => (!v ? null : v.k === 'cell' ? v.d.map((x) => textOf(x)) : [...toMat(v).d].map(String));
-const precOf = (v: Value | undefined): Prec => { const p = v ? textOf(v).toLowerCase() : 'int8'; if (p !== 'double' && p !== 'single' && p !== 'int8' && p !== 'int8full') throw new LabError("The precision is 'double', 'single', 'int8' (8-bit weights) or 'int8full' (wholly in whole numbers: networks, many-class SVMs, naive Bayes, discriminants)."); return p; };
+const precOf = (v: Value | undefined): Prec => { const p = v ? textOf(v).toLowerCase() : 'int8'; if (p !== 'double' && p !== 'single' && p !== 'int8' && p !== 'int8full') throw new LabError("The precision is 'double', 'single', 'int8' (8-bit weights) or 'int8full' (wholly in whole numbers: networks, many-class SVMs, naive Bayes, discriminants, linear models)."); return p; };
 const rowsOf = (m: Mat): number[][] => Array.from({ length: m.r }, (_, i) => Array.from({ length: m.c }, (_, j) => m.d[i + j * m.r]));
 const treeAt = (t: Struct) => { const pred = [...toMat(fld(t, 'CutPredictorIndex')).d].map((p) => p - 1), ch = toMat(fld(t, 'Children')), n = pred.length; return { pred, cut: [...toMat(fld(t, 'CutPoint')).d], left: pred.map((_, i) => ch.d[i] - 1), right: pred.map((_, i) => ch.d[i + n] - 1) }; };
 const stdOf = (m: Struct) => { const on = m.f.get('Standardize') && toMat(m.f.get('Standardize')!).d[0] && toMat(fld(m, 'Mu')).d.length; return on ? { mu: [...toMat(fld(m, 'Mu')).d], sigma: [...toMat(fld(m, 'Sigma')).d] } : { mu: null, sigma: null }; };
@@ -133,6 +133,11 @@ def('embedreport', (a, nout, lab) => {
       rows.push({ p: 'int8full', size: intBytes(plan), err: X.reduce((n, x, i) => n + (runInt(plan, intInput(plan, x)).cls === truth[i] ? 0 : 1), 0) / X.length });
     } catch (e) { lab.host.out(`(int8full: ${(e as Error).message})\n`); }
   }
+  // M537: a linear model wholly in whole numbers: its answer F · S, run as its C.
+  if (spec.kind === 'linear') {
+    const plan = planInt(spec, rowsOf(toMat(fld(m, 'X')))), X = rowsOf(toMat(a[1])), t = toMat(a[2]).d;
+    rows.push({ p: 'int8full', size: intBytes(plan), err: X.reduce((n, x, i) => n + (Number(runInt(plan, intInput(plan, x)).F[0]) * plan.S - t[i]) ** 2, 0) / X.length });
+  }
   const score = (e: number) => (classes ? 100 * (1 - e) : Math.sqrt(e));
   const col = (xs: number[]): Mat => mat(xs.length, 1, xs);
   const T: Struct = { k: 'struct', table: true, f: new Map<string, Value>([['Precision', { k: 'cell', r: rows.length, c: 1, d: rows.map((r) => str(r.p)) }], ['Bytes', col(rows.map((r) => r.size))], [classes ? 'Accuracy' : 'RMSE', col(rows.map((r) => score(r.err)))]]) };
@@ -161,10 +166,11 @@ def('exportmodel', (a, nout, lab) => {
   for (let i = 2; i + 1 < a.length; i += 2) { if (textOf(a[i]).toLowerCase() !== 'precision') throw new LabError("exportmodel takes 'Precision' ('double', 'single' or 'int8')."); p = precOf(a[i + 1]); }
   const spec = specOf(m);
   const eight = spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr';
-  if (spec.kind !== 'net' && p.startsWith('int8') && !eight) throw new LabError("This model is written with 'single' or 'double' numbers.");
+  if (spec.kind === 'linear' && p === 'int8') throw new LabError("A linear model is written with 'single', 'double' or 'int8full' (wholly in whole numbers) numbers.");
+  if (spec.kind !== 'net' && spec.kind !== 'linear' && p.startsWith('int8') && !eight) throw new LabError("This model is written with 'single' or 'double' numbers.");
   let out: { c: string; h: string }, size = 0;
   try {
-    if (eight && p === 'int8full') { const plan = planInt(spec, rowsOf(toMat(fld(m, 'X')))); out = intModelC(plan, name); size = intBytes(plan); } // M533
+    if ((eight || spec.kind === 'linear') && p === 'int8full') { const plan = planInt(spec as Parameters<typeof planInt>[0], rowsOf(toMat(fld(m, 'X')))); out = intModelC(plan, name); size = intBytes(plan); } // M533
     else out = spec.kind === 'net' && p === 'int8full' ? fullIntC(planFullInt(spec, rowsOf(toMat(fld(m, 'X')))), name) : modelC(spec, name, p);
   } catch (e) { throw new LabError((e as Error).message); }
   size ||= bytes(spec, p);
