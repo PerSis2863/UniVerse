@@ -20,6 +20,7 @@ import '@/lib/lab/audio-lab';
 import { serialFeed, type SerialOut } from '@/lib/lab/serial-lab';
 import { reportText, runScriptTests, testReports, type TestReport } from '@/lib/lab/verify-lab';
 import '@/lib/lab/sciences';
+import '@/lib/lab/machines-lab';
 import '@/lib/lab/help-commands';
 import { parallel, runResumable, type Pool, type Task, type TaskResult } from '@/lib/lab/parallel-lab';
 import '@/lib/lab/gpu-lab';

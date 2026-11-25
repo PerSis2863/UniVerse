@@ -12605,6 +12605,966 @@ full-precision word growth for sums and products, bits and hex by BigInt) and `f
 `fi: true` (Value, Signed, WordLength, FractionLength; `kind` embedded.fi, its own display and `sizeOf`); arithmetic
 through `opHooks.binop`, now a chain (gpu-lab and codegen-lab each pass on what isn't theirs). Not built: fixed-point C
 (generate on intN types from `storedInteger` instead), fimath settings (other rounding and overflow modes), HDL / VHDL.
+
+## M482 (23 Nov): Hyperion toolbox, robot arms
+
+The owner's list, group 6 (machines and vehicles), first item. `src/lib/lab/robot.ts` (pure, no imports): arms as
+standard DH tables (`Link`: a, alpha, d, theta, 'R' or 'P', mass, centre of mass in the link's own frame, principal
+inertias, limits), `frames` / `fkine` (4 × 4 row-major), `jacobian` (6 × n, [ω; v] in the base frame, as MATLAB's
+geometricJacobian), `ikine` (damped least squares, Levenberg–Marquardt with an adaptive λ, joints clamped to their
+limits, up to 6 random restarts; weights orientation first), `rne` (recursive Newton–Euler worked entirely in the base
+frame: forward pass for ω, α and each link's origin and centre accelerations, gravity as a base acceleration of −g;
+backward pass for forces and moments about each joint's origin), `massMatrix` (columns from unit accelerations),
+`gravityTorque`, `velocityProduct`, `forwardDynamics` (M \ (τ − bias)), `manipulability`, the rotations (eul2rotm
+'ZYX' / 'XYZ' / 'ZYZ', axis–angle) and four ready arms (`ARMS`: twolink with 1 kg at each tip in a vertical plane,
+gravity −y; planar3; sixaxis with the PUMA 560's published DH table on a 0.67 m pedestal and rounded masses; scara with
+a sliding quill). Language in `robot-lab.ts`: an arm is a plain struct (Type 'robot', DH, Joints 'RRP', Mass, CoM,
+Inertia, Limits, Gravity) where MATLAB has a rigidBodyTree object; `loadrobot`, `robotDH`, `getTransform`,
+`geometricJacobian`, `robotIK` (our name: MATLAB's inverseKinematics is a System object), `massMatrix`, `gravityTorque`,
+`velocityProduct`, `inverseDynamics`, `forwardDynamics`, `manipulability`, `show`, `robotWorkspace`, and
+eul2rotm / rotm2eul / eul2tform / tform2eul / trvec2tform / tform2trvec / rotm2tform / tform2rotm / axang2rotm /
+rotm2axang / rotx / roty / rotz (degrees). Tests in `robot.test.ts` against the textbook two-link arm (M, g and the
+Coriolis terms by hand), the Jacobian by finite differences, forward dynamics undoing inverse dynamics, IK round trips.
+
+How the branch is laid out (for M483–M491 and for merging): the shared files only gained one line each. Help for the
+whole group is in `help-machines.ts` (appended to help.ts's TEXT), the example scripts in `examples-machines.ts`
+(spread at the end of LabApp's EXAMPLES; `machines.test.ts` runs every one), the registrations in `machines-lab.ts`
+(imported by lab.worker.ts and help.test.ts). The window is Simulate → **Machines** (`MachinesBench.tsx`, one tab per
+toolbox, sessionStorage `uv-sim-machine`); its first tab **Robot arm** (`ArmBench.tsx`, `ArmView.tsx`: three.js set up
+as Sim3DView, z up, planar arms turned so gravity points down): sliders per joint, "Reach a point" (robotIK, the arm
+glides there in 0.5 s, at once with Reduce Motion), tool pose, manipulability and the gravity torques as `<Fill>` bars.
+Browser check `scripts/checks/hyperion-machines-ui.mjs` (axe at 1280, light and dark). Example robot_arm.m. Not built:
+trees with branches (only serial chains), collision checking, joint friction and motor inertia, modified DH, URDF files.
+
+## M483 (23 Nov): Hyperion toolbox, robot motion
+
+`src/lib/lab/robot-motion.ts` (pure): `polyTraj` (cubic or quintic pieces per segment from positions, speeds and for
+quintic accelerations at each waypoint; 0 by default as MATLAB's), `trapTraj` (each segment speeds up, cruises, slows
+and stops; with a peak speed and an acceleration the slowest axis sets the segment's time, a triangle when it can't
+reach the peak; without them 1 s with thirds), maps (`Grid`: rows from the top, metres from the bottom-left corner,
+`res` cells a metre; `sampleMap` 'warehouse', 'rooms' (doors 7 cells wide and furniture different in each room, so
+M484's localisation can tell them apart), 'maze' (seeded recursive backtracker, corridors 1 m)), `inflate` (a disc),
+`lineFree` (quarter-cell steps), `astar` (binary heap, octile heuristic, no cutting blocked corners; returns the cells
+looked at), `rrt` (seeded; RRT stops at the first way, RRT* chooses the cheapest parent within 2 steps and rewires,
+pushing the saving down to descendants), `shortcut`, `driveStep` (exact arcs), `purePursuit` (the circle–segment
+intersection ahead of the closest point; turns on the spot when the target is behind), `followPath`. Language in
+`robot-motion-lab.ts`: `cubicpolytraj`, `quinticpolytraj`, `trapveltraj` (MATLAB's names and shapes), and our own
+names where MATLAB uses objects: a map is a logical matrix with its resolution (binaryOccupancyMap), `robotMap`,
+`inflateMap`, `astarGrid` (plannerAStarGrid), `rrtPlan` (plannerRRT / plannerRRTStar), `shortenPath`, `diffdriveStep`
+(differentialDriveKinematics), `purePursuit` (controllerPurePursuit), `followPath`; `show(map, res)` draws a map (the
+arm's `show` is kept for structs). Window: Machines → **Path planner** (`PlannerBench.tsx`, planning in
+`machines.worker.ts`): draw walls or erase with the mouse (a 2 × 2 brush), place the start and goal, A* / RRT / RRT*,
+the robot's radius (the light band), the cells looked at or the tree, the cut path, Drive it (pure pursuit, 4 × real
+time). Tests in `robot-motion.test.ts`. Example robot_motion.m. Not built: Hybrid A* and car-like (Reeds–Shepp) paths,
+3D maps, dynamic obstacles, model-predictive control, trajectory time-scaling under torque limits.
+
+## M484 (23 Nov): Hyperion toolbox, robot sensing
+
+`src/lib/lab/robot-sense.ts` (pure): `castRay` (Amanatides–Woo through the cells; the map's edge counts as a wall),
+`scan`, `beams`, `distanceField` (two-pass 3–4 chamfer), `simulateRun` (pure pursuit with a 0.5 m look-ahead; odometry
+from each step's turn–drive–turn with a few % slip and a steady heading drift; a step that would enter a wall is held),
+`mcl` (odometry motion model; a likelihood field with a 10 % uniform part; the scan's log-likelihood **tempered** to
+count as about 2 beams, otherwise one scan makes the filter certain at once, often wrongly; resampling only when the
+effective number falls under N/2 (low variance); augmented MCL: a short and a long average of the fit, and when the
+short falls below the long, up to 25 % of the particles thrown anywhere free), occupancy mapping (`addScan` log-odds
++0.85 / −0.4, capped at ±6; the beam's end marked half a cell past it, so a wall met from either side marks the same
+cell: without that the map was a cell off for beams going left or down and SLAM drifted), `buildMap`, `slam` (each
+pose: the odometry's step from the last corrected pose, then a coarse-to-fine search in x, y and heading scoring the
+scan against a distance field of the map so far (−0.5 for an end in space already seen empty) minus a pull towards the
+odometry; no matching when under 60 % of the scan lands on mapped walls, i.e. in a new room). Traps found by the tests:
+a simulated robot clipping a door frame teleports and ruins SLAM (plan with a 0.7 m margin), and a turn on the spot
+gives a meaningless "direction of travel" (under 1 cm of travel it is all second turn). Results on the rooms map (8 %
+slip): the filter finds the robot from nowhere in 6 of 6 seeds with 5,000 particles; SLAM ends ~0.25 m off where
+odometry is 2–3 m off. Language in `robot-sense-lab.ts` (our names; MATLAB uses objects): `lidarSim`, `robotRun`
+(struct True, Odometry, Scans, Angles, MaxRange), `mclLocalize`, `slamGrid`, `buildMap` (MATLAB's name; ranges as rows
+not lidarScan objects). Window: Machines → **Sensing** (`SensingBench.tsx`, the run worked out in machines.worker.ts,
+then replayed 3 × real time): particles closing in on the known map, and the SLAM map growing with its path against
+the odometry's. Tests in `robot-sense.test.ts`. Example robot_sensing.m. Not built: loop closure and pose-graph
+optimisation, landmark (EKF) SLAM, 3D lidar, KLD-adaptive particle counts, the warehouse map's symmetry is left as a
+lesson (the filter can settle in the wrong aisle).
+
+## M485 (23 Nov): Hyperion toolbox, mechatronics
+
+`src/lib/lab/motor.ts` (pure): a DC motor (`DC_DEFAULT` a small 24 V motor; `dcSpeedTf` K / ((Ls + R)(Js + b) + K²);
+`dcSimulate` RK4 with steps a twentieth of the faster time constant, voltage and load as functions of time), the Clarke
+and Park transforms (amplitude-invariant), a PMSM in the rotor's dq frame (`PMSM_DEFAULT` a 1 kW-class servo: 4 pole
+pairs, 0.3 N·m/A, 48 V, 20 A), `focTune` (current PIs Kp = Lω, Ki = Rω cancelling the winding's pole; speed PI
+Kp = Jω/Kt, Ki = Kpω/4), `focSimulate` (a 50 kHz controller: speed PI with the torque current held within Imax and its
+integrator stopped while held, current PIs with the cross terms fed forward, the voltage kept inside the hexagon's
+circle Vdc/√3; semi-implicit Euler; id* = 0, no field weakening), `gearReflect`, `encoder` (4 counts a line, speed by the
+M method over a window). Language in `motor-lab.ts` (motors are structs where MATLAB uses Simscape and Motor Control
+Blockset blocks): `dcmotor`, `dcmotorTF` ('speed', 'position', 'current': a transfer function from the control toolbox,
+M414, so `step`, `bode`, `pid`, `feedback` work on it), `dcmotorSim`, `pmsm`, `focTune`, `focSim` (a table; numbers or
+@(t) handles sampled every 0.1 ms), `clarke`, `invclarke`, `park`, `invpark`, `gearReflect`, `encoderSim`. The DC
+motor's parameters are the same as Circuits' motor (M432: r, l, k, j, fric) so a motor drawn there can be studied here.
+Tests in `motor.test.ts` (steady speed and current by hand, dq of balanced phases, FOC holding speed with
+i_q = T/Kt). Example motors.m. No window of its own: the control toolbox and Circuits (M432) already give the
+point-and-click side. Not built: field weakening and MTPA for salient motors, six-step (trapezoidal) BLDC commutation,
+space-vector PWM inside the motor model, stepper motors, motor heating.
+
+## M482b (23 Nov): Hyperion robot arms, arms that branch and collision checking
+
+The owner, 23 Nov ("please do all the left out work"), M482's left-outs. `robot.ts`: a `Link` may name its `parent`
+(an earlier link, −1 the base; the one before when absent), `parentOf`, `frames` builds each frame on its parent's,
+`chain(arm, tip)`; `fkine`, `jacobian`, `manipulability` and `ikine` (option `tip`) take any link as the tool (joints off
+the tool's chain give zero columns); `rne` runs on trees (each link starts from its parent's ω, α and acceleration; the
+backward pass adds every child's force and moment, all acting at the parent's far end). Collisions: each link a capsule
+round the segment from its parent's end to its own; `segDist` (Ericson's closest points), `boxDist`, a segment–box
+distance (33 samples then a ternary search near the best), `checkCollision` (pairs that share a joint point are skipped,
+so zero-length wrist links don't always "touch"; distances between surfaces). New arm `dualarm` (a turning waist, two
+three-joint arms: links 2–4 and 5–7). Language: `robotDH(..., 'Parent', [0 1 1])`, robot structs carry `Parent` (1-based,
+0 the base), `geometricJacobian(r, q, tool)`, `robotIK(..., 'EndEffector', k)`, `show` draws every branch and each tip's
+axes, `checkCollision(r, q, 'Spheres', …, 'Boxes', …, 'Radius', …)` → [hit, gap, selfPairs, obstacleHits]. Window:
+the arm is chosen from a list (five no longer fit as segments), Two arms with Left / Right hand, "A ball in the way"
+(12 cm, movable), the touching links red and a line naming them. Tests in `robot.test.ts` (each tip's Jacobian by finite
+differences and zero on the other arm, forward/inverse dynamics on the tree, mirrored gravity torques, capsule
+distances). Not built: meshes as collision shapes (capsules only), planning around obstacles in joint space, URDF files.
+
+## M483b (23 Nov): Hyperion car-style route planning (Dubins paths and Hybrid A*)
+
+M483's left-out. `src/lib/lab/car-path.ts` (pure): `dubins` (the six words in the normalised α, β, d form; every
+candidate is driven out with `drive` and kept only if it really ends at the goal, which guards the formulas' branches;
+the shortest wins), `arc` (exact arcs), `clearance` (robot-sense's chamfer distance field with a blocked border, so the
+map's edge is a wall), `carFree` (three discs of half the width + 10 cm along the car from the rear axle, each a look-up
+in the clearance), `hybridAstar` (poses keyed on a ≥ 0.5 m grid and 36 headings; moves of 1 m on five curvatures
+(±1/R, ±0.5/R, 0) forwards and, by default, backwards, reversing costing 2× and each change of direction 3 m; guided
+by the distance to the goal round the walls (Dijkstra on the map with the car's half-width kept clear), plus the Dubins
+length when it may not reverse; a Dubins shot tried every 8 nodes and near the goal; ends within a key cell and a
+heading bin), `parkingMap` (30 × 20 m, two rows of ten 2.6 m bays, bay 7 at the bottom empty). Speed trap: checking the
+car cell by cell made 30 s searches; the clearance look-up and the coarser key grid brought parking to ~2–3 s (in the
+worker). Language in `car-path-lab.ts`: `dubinsPath` (MATLAB has dubinsConnection), `hybridAstar` (plannerHybridAStar;
+rows [x y heading direction], −1 reversing; outlines every 3 m when drawn), `robotMap('parking')`. Window: Path planner
+→ Car (Hybrid A*), Map is a list now with Car park, start and goal headings, the car's outlines, forwards violet and
+backwards orange, Drive it moves the car. The canvas takes the map's shape. Tests in `car-path.test.ts`. Not built:
+Reeds–Shepp curves as the final shot (it uses forward-only Dubins), trailers, smoothing the route afterwards.
+
+## M484b (24 Nov): Hyperion SLAM that closes loops (pose-graph optimisation)
+
+M484's left-out. `src/lib/lab/pose-graph.ts` (pure): `relative`, `compose`, `graphError`, `optimise` (Gauss–Newton on
+SE(2) edges; H kept as one 3 × 3 block per node and per edge, solved by preconditioned conjugate gradients with the
+inverted diagonal blocks; the first pose held by a stiff prior; a 40-pose square with a biased heading goes from 2.7 m
+to 0.13 m off). `robot-sense.ts` `slam`: every step adds an edge (the move as scan matching saw it, info 2500/2500/
+40000); option `recent` matches each scan to a map of the last n scans only (lidar odometry: drifts slowly) instead
+of the whole map; loop closure (on with `recent` unless told otherwise): every 5 steps, at least 15 after the last
+closure, the nearest earlier pose ≥ 60 steps back within 2.5 m; the scan matched (`matchWide`: ±1 m and ±0.3 rad on a
+map of that place's 17 scans, refined on a map twice as fine) and accepted only if ≥ 85 % of its beams land on walls,
+5 % more than where the robot thought it was, and the correction is no bigger than the drift could be (long walls let
+a scan slide along them); the edge (info 150/150/2500: its real error is ~5–10 cm, 1°), the graph re-solved and the
+map redrawn from the new poses. Traps found: (1) `purePursuit` searched the whole path for the closest point, so on a
+path that crosses itself it jumped back and circled for 600 s; it now looks only a little way on from the segment
+reached (always at least the next one) and heads for the next corner when off the path; `followPath` stops only on the
+last segment. (2) With the whole-map front end SLAM barely drifts here, so a closure has little to fix and its own 5–10
+cm error can even add a little: closures pay off with `recent` (4 rooms runs: mean error 0.28 → 0.17 m in the test; in
+runs that hardly drift it can be slightly worse, as expected). Language: `slamGrid(run, 'Recent', 10, 'LoopClosure',
+true)` → a 4th output of closures [from to]; `optimizePoseGraph(poses, edges)` (MATLAB's takes a poseGraph object;
+ours rows [i j dx dy dθ (wx wy wθ)]). Window: Sensing → "Drive round a loop and close it" (the robot drives a loop and
+on past the start; closures as green dashes; "Loops closed: n of m"). Tests in `pose-graph.test.ts`. Not built: robust
+kernels or switchable constraints for wrong closures, place recognition by scan descriptors (it searches near the
+estimate only), 3D pose graphs.
+
+## M485b (24 Nov): Hyperion motors, field weakening, MTPA and stepper motors
+
+M485's left-outs. `motor.ts`: `mtpaId` (the d current for the most torque per amp, (ψ − √(ψ² + 8ΔL²I²)) / 4ΔL, 0 when
+Ld = Lq), `fieldWeakeningId` (the i_d that keeps the steady voltage inside the limit at this speed:
+((√((V/ω)² − (Lq i_q)²) − ψ) / Ld), `focSimulate(..., g, { fieldWeakening, mtpa })` (both on by default: i_d* the lower
+of MTPA and field weakening with 8 % voltage margin, held above −0.95 Imax; i_q's limit shrinks to √(Imax² − i_d²); the
+default servo goes from 138 rad/s (base speed) to 160 rad/s with i_d ≈ −19 A); stepper motors: `STEPPER_DEFAULT` (a
+two-phase hybrid, 50 teeth = 200 full steps, 1.5 Ω, 3 mH, 0.3 N·m/A, a little detent torque, 1.5 A from 24 V),
+`stepperSimulate` (10 µs steps; microstepping by the electrical angle in whole microsteps; each phase's current set by an
+ideal chopper (gain held to ± the supply) against its back-EMF; torque −Km iA sin(Nθ) + Km iB cos(Nθ) − detent; a load
+that only resists motion; `lost` = the gap between commanded and real angle in steps), `pullOut` (the biggest load kept
+without losing steps at each rate after a 0.2 s ramp, by halving). The pull-out curve isn't perfectly smooth (mid-band
+resonance shows as a dip, as in real steppers). Language in `motor-lab.ts`: `focSim(..., 'FieldWeakening', 0/1,
+'MTPA', 0/1)`, `stepper`, `stepperSim` (a table and the steps lost), `stepperPullout`. Tests in `motor.test.ts`.
+Example motors.m. Not built: six-step (trapezoidal) BLDC commutation with Hall sensors, space-vector PWM inside the
+motor model, motor heating, closed-loop steppers.
+## M482c (24 Nov): Hyperion robot arms, cylinders and convex meshes as obstacles
+
+M482b's left-out ("meshes as collision shapes"). `robot.ts`: `convexDist(P, Q)` (GJK on the Minkowski difference of two
+point sets' hulls; the nearest point of each simplex by Ericson's triangle routine, a tetrahedron holding the origin
+means overlap; 64 steps at most; a link is the hull of its segment's two ends), `cylinderPoints` (an upright cylinder
+[x y z1 z2 r] as the 24-sided prism round it, so never smaller), `checkCollision(..., { cylinders, meshes })`: obstacles
+numbered spheres, boxes, cylinders, meshes. A capsule whose core is inside a hull counts as −radius (the depth isn't
+measured: EPA is not built). Language: `checkCollision(r, q, 'Cylinders', [x y z1 z2 r], 'Meshes', {N×3 corners, …})`
+(one matrix or a cell array). Tests in `robot.test.ts` (point–cube distances, GJK against `segDist`, a segment through
+a tetrahedron, cylinder clearance). Example robot_arm.m. Not built: the overlap's depth (EPA), concave meshes split
+into convex parts, STL files, shapes in the Robot arm window (it keeps its ball).
+
+## M483c (24 Nov): Hyperion car routes, Reeds–Shepp curves
+
+M483b's left-out. `car-path.ts`: `reedsShepp(a, b, R)` (Reeds and Shepp's 1990 formulas in OMPL's arrangement: the
+CSC, CCC, CCCC, CCSC and CCSCC families, each base solver run as is, time-flipped (lengths negated), reflected (L ↔ R)
+and both; CCC and CCSC also on the "backwards" pose; candidates sorted by length and the first that `driveRS` really
+brings to b wins, as `dubins` guards its branches), `driveRS` (poses and a reversing flag per pose). `hybridAstar` takes
+a Reeds–Shepp shot when reversing is allowed (Dubins when not), the tail's reversing flags kept: the car-park search
+fell from ~2–3 s to ~0.25 s. Language: `reedsSheppPath(start, goal, R)` → [poses with a ±1 column, length, word,
+signed lengths] or drawn (MATLAB: reedsSheppConnection); `drawCarPath` can skip the outlines. Tests in
+`car-path.test.ts` (300 random pairs: never longer than Dubins, at least the straight distance, the same both ways;
+straight back is a 3 m reverse; a sideways shuffle reverses). Over 2,000 random pairs every one joined. Not built:
+trailers, smoothing the route afterwards, the guide (heuristic) using Reeds–Shepp lengths (each costs a verify drive).
+
+## M484c (24 Nov): Hyperion SLAM guarded against a wrong loop match
+
+M484b's left-out. `pose-graph.ts`: an `Edge` may be `robust`; `dcsWeights` (dynamic covariance scaling: weight
+min(1, 2Φ/(Φ + χ²))²); `optimise(..., { phi })` re-weighs robust edges each step and **anneals** Φ from 10⁴ times its
+value down to it (halving each step, 40 steps when any edge is robust): plain DCS trusts the starting poses, so with a
+2.7 m drift it dismissed the good closure as well (found by the test). `robot-sense.ts` `slam`: closures are robust
+(`CLOSURE_PHI` = 10: a right closure's χ² is ~2), and one left under 0.1 of its weight is dropped (`rejected`).
+Language: `optimizePoseGraph(P, E, 'Robust', true, 'Phi', 1)` (edges between non-neighbours are the robust ones) → [Q, w]
+with each edge's final weight; `slamGrid`'s 5th output the rejected closures. Tests in `pose-graph.test.ts` (a square
+with a true and a 3 m-wrong closure: plain 0.8 m+ off, robust under 0.3 m, the wrong edge's weight under 0.05; the SLAM
+loop test still passes). Example robot_sensing.m. Not built: switchable constraints, place recognition by scan
+descriptors, 3D pose graphs.
+
+## M485c (24 Nov): Hyperion six-step brushless motors and motor heating
+
+M485's left-outs. `motor.ts`: `Bldc` (per-phase r, l, ke, pole pairs, j, b, vdc; `BLDC_DEFAULT` a small 24 V motor,
+0.06 N·m/A, ~400 rad/s free), `trapezoid` (flat ±1 for 120°), `hallSector` (with a sensor offset), `SIX_STEP` (each
+sector's high and low phase, worked out from the back-EMFs at the sector's middle: A+B−, A+C−, B+C−, B+A−, C+A−, C+B−),
+`bldcSimulate` (2 µs steps; the high phase at the PWM average, the low at 0 V; the floating phase carries on through its
+diode, clamped to the opposite rail, with the star point at the terminals' average, until its current crosses zero; a
+fixed duty or a speed PI on the duty with the integrator held at 0 and 1). Motor heating: `Thermal` (winding and housing,
+K/W and J/K, class F 155 °C), `heatSimulate` (copper's 0.393 %/K, a loss factor `k`, extra losses), `heatSteady` (the
+steady winding temperature solved with the resistance's rise, runaway as Infinity, and the continuous current rating).
+Language in `motor-lab.ts`: `bldc` (struct with TorqueConstant, NoLoadSpeed, StallCurrent), `bldcSim` ('Duty' or
+'Speed', 'Load', 'HallOffset' in electrical degrees; table with Sector 1–6), `motorHeat(R, I, T, …)` → table and info
+(Continuous, SteadyWinding, OverLimitAt). Tests in `motor.test.ts` (the commutation table, free speed under Vdc/2Ke,
+torque meets the load, currents sum to 0, misplaced Halls ripple more, the speed loop; the steady temperature by hand,
+the rating gives the limit, the simulation settles there). Example motors.m. Not built: sensorless (back-EMF zero
+crossing) starting, real PWM switching inside the motor model, iron losses from speed, a window of its own.
+
+## M482d and M485d (24 Nov): overlap depth (EPA) and real inverter switching
+
+The owner, 24 Nov, asked for the two left-outs of M482c and M485c. **M482d**, `robot.ts`: `convexDepth(P, Q)` (EPA on
+the Minkowski difference: the start is the four of eight support points that span the most volume, faces turned
+outwards from its centre, the horizon found by edges seen once; 0 for flat shapes); `checkCollision` reports a capsule
+inside a box (its 8 corners), a cylinder or a mesh as −(depth + radius). **M485d**, `motor.ts`: `focSimulate(..., { pwm })`
+runs the controller once a switching period and the motor in 100 steps a period with the legs really switched
+(min–max injection, the same as space-vector PWM; a triangle carrier; phase voltages about the star point through
+clarke/park); `bldcSimulate(..., { pwm })` switches the high side against a sawtooth carrier, its current freewheeling
+through the other leg's diode while off. Language: `focSim(..., 'PWM', f)` (1–50 kHz, up to 1 s), `bldcSim(..., 'PWM',
+f)`. Tests: depths of a point and a segment in a cube, a link 0.1 m into a box; FOC with 10 kHz switching holds speed with
+the same mean i_q and more ripple; six-step with 20 kHz PWM ends within 5 % of the averaged speed. Not built: dead
+time, switching losses, the overlap's direction.
+
+## M486 (24 Nov): Hyperion toolbox, vehicle dynamics
+
+Group 6's vehicles, first item. `src/lib/lab/vehicle.ts` (pure): `Vehicle` (mass, yaw inertia, lf, lr, CG height, each
+axle's cornering stiffness, μ, drag, area, rolling, power, driven axle, 'linear' or 'magic' tyres, steering limit;
+`CAR_DEFAULT` a 1.5 t rear-driven saloon, K ≈ 0.0034 rad/(m/s²) ≈ 1.9°/g), `magic` (Pacejka; C = 1.3, E = −0.6, B set so
+the slope at zero is the cornering stiffness, which scales with the axle's load), `sideForce` (the friction ellipse:
+the peak shrinks to √((μFz)² − Fx²)), the single-track model in the body frame (forward and side speed, yaw rate, where
+it is) by RK4 at 1 ms with the axle loads shifted by last step's acceleration, driving limited by power and the driven
+axle's grip, braking shared by load and capped at grip (ideal ABS), drag, rolling, slope; `vehicleSim` (a speed held by
+a firm P controller on the force, or a force; `spun` when the body slip passes 15°), `handling` (K, yaw gain
+u / (L + K u²), characteristic or critical speed), `steerForCircle`, `accelRun` (0–100 and top speed by bisection),
+`brakingDistance`, the tests `stepSteer`, `rampSteer`, `sineWithDwell` (FMVSS 126 / UN R140 shape). **Trap:** the sine
+with dwell must be run coasting (`force: () => 0`): holding the speed with a rear-driven car spends the rear tyres' grip
+and spins even the understeering car. Lateral load transfer and roll are not modelled (one tyre per axle). Language in
+`vehicle-lab.ts` (MATLAB has Vehicle Dynamics Blockset blocks): `vehicle` (struct, with UndersteerGradient,
+CharacteristicSpeed, CriticalSpeed), `vehicleSim(c, steer, T, …)` (steer a number, @(t) or 'step' / 'ramp' /
+'sinedwell' with 'Amplitude'; 'Speed' or 'Force', 'Grade', 'InitialSpeed') → table and info (Spun, PeakSideSlip,
+PeakLateralAccel), `vehicleHandling`, `magicFormula`, `accelRun`, `brakingDistance`. Window: Machines → **Vehicle**
+(`VehicleBench.tsx`: Sine / Step / Ramp / Circle, Dry / Wet / Snow, Understeer / Neutral / Oversteer by the rear
+stiffness, speed and steering sliders; worked out at once on the page, replayed in real time, at its end with Reduce
+Motion; the path, the car red once spun, steering and yaw rate below; facts). The browser check
+`hyperion-machines-ui.mjs` has the vehicle tab and now waits for a tab's button to load before clicking it. Tests in
+`vehicle.test.ts`. Example vehicles.m. Not built: four wheels with load transfer, roll, suspension, gears, stability
+control itself (M487 drives the car).
+
+## M487 (24 Nov): Hyperion toolbox, automated driving
+
+`src/lib/lab/driving.ts` (pure, on M486's car): `Road` (centreline every 0.5 m with heading and curvature, a lane
+width), `roadFrom(curvature(s), length)` (exact arcs), `ROADS` (straight; curve 150 m; scurve 100 m left then right;
+country, 1/120 m⁻¹ sine bends; lanechange, the ISO 3888 shape 3.5 m across and back, built from y(x)); curvature eased in
+by a raised cosine so steering needn't jump. `locate` (nearest point searched near the last, then **interpolated** to the
+next point: snapping to the half-metre points made the steering chatter on bends, seen in the browser), signed offset
+(left positive), heading error, curvature. Keepers every 10 ms: `stanley` (front axle, k 1.5), `purePursuitSteer`
+(look-ahead max(5, 0.5 v) from the rear axle), `lqrSteer` with `lqrGains` (Rajamani's lateral error model, Euler
+discretised at 10 ms, discrete Riccati iterated; **trap:** it must not stop on the first pass, where K is still 0
+because Q has zeros at the rates) plus curvature feed-forward (L·k + K_us·u²·k). `laneKeep` (speed held, max error, left
+the lane when the car's side passes the edge, time to line crossing). `followSim` (10 ms: ACC gap d0 + th·v with
+0.23·gap error + 0.74·speed difference, the lower of gap and speed control, −3.5…+2 m/s², power and grip; AEB full
+brakes under 1.6 s to collision; 'acc: false' is a driver who doesn't react). Roads that were too tight for the car's
+grip at 25 m/s (60 m country bends, 80 m S-bend) made every keeper fail: keep radius ≳ u²/(0.6 g). Language in
+`driving-lab.ts`: `roadPath` (a name or @(s) curvature, length, width), `laneKeep`, `lqrLateral`, `accFollow`. Window:
+Machines → **Driving** (`DrivingBench.tsx`: Lane keeping with road, keeper, speed, starting offset; Following with the car
+ahead slowing or stopping hard, ACC and AEB switches, time gap; from above, replayed). Tests in `driving.test.ts`.
+Example driving.m. Not built: model-predictive control, traffic with several cars, sensors (radar, camera) and their
+noise, lane changes decided by the car itself.
+
+## M488 (24 Nov): Hyperion toolbox, electric vehicles
+
+`src/lib/lab/ev.ts` (pure): `Ev` (car, one gear and its efficiency, motor limits and losses kc·T² + ki·|ω| + kw·|ω|³ + k0,
+pack series × parallel cells with Ah and Ω, regen share and power cap, accessories; `EV_DEFAULT` 1,800 kg, ~78 kWh
+(96s46p of 4.8 Ah), 150 kW through 9:1), `ocv` (a typical NMC curve 3.0–4.2 V), `packKwh` (3.7 V nominal), `torqueLimit`,
+`motorLoss`, `efficiency`, `packCurrent` (P = (Voc − IR)I), made-up profiles `CYCLES` (city, suburban, motorway,
+mixed: **not** the official WLTP/NEDC tables, said so in help and the window), `evSim` (backward-facing, 1 s steps:
+1.05 rotating-mass factor, gear efficiency each way, regen fading below ~7 km/h and capped at 60 kW, the friction
+brakes the rest; Wh/km at the battery terminals, range on 95 % of the pack), `evCharge` (CC at the charger's power
+solved with the pack's resistance, at most 2C, then CV at 4.2 V a cell until C/20). First numbers were too rosy (88
+Wh/km in town, regen over half the drive energy): the gearbox, larger standing and iron losses and the regen cap and
+fade brought it to ~113 town, ~167 motorway, ~150 mixed, ~490 km range; 10→80 % at 150 kW in ~22 min. Language in
+`ev-lab.ts`: `evModel`, `driveCycle` (or your own [s, km/h]), `evSim`, `evMotorMap` (contourf), `evCharge`. Window:
+Machines → **Electric car** (`EvBench.tsx`: drive, battery size (cells in parallel, its mass with it), people and
+luggage, heating, regen, charger; the drive's speed and battery power, the efficiency map with working points, the
+charge curve; static). The browser check finds a tab's control as a button or a checkbox. Tests in `ev.test.ts`.
+Example electric_car.m. Not built: battery temperature and ageing in the car (M433 has ageing), two motors, gears,
+heat pumps, the official cycles' tables.
+
+## M489 (24 Nov): Hyperion toolbox, flight dynamics
+
+`src/lib/lab/flight.ts`: `isa` (ISA to 32 km: troposphere lapse, isothermal to 20 km, +1 K/km above; matches the
+tables to 4 figures), `Aircraft` (mass, wing, chord, Iyy, lift CL0/CLα/CLδe/CLq with a stall angle past which CL falls
+3/rad to at most 45 % less, drag polar CD0 + k·CL² plus separated drag past the stall, Cm0/Cmα/Cmq/Cmδe, power with
+Gagg–Ferrar lapse, propeller efficiency, static thrust cap; `PLANE_DEFAULT` a light four-seater with textbook-typical
+coefficients, not a maker's data, said so in help and the window), the longitudinal equations in body axes (u, w, q, θ,
+x, h) by RK4 at 10 ms, `trim` (moment zero and lift balance solved for α and δe, thrust from the X balance, iterated;
+`ok` false below the stall, past the throttle or the elevator), `modes` (central-difference Jacobian of [u w q θ],
+`eigvals` from complex.ts; pairs sorted by size: short period ~1.6 s ζ 0.57, phugoid ~27 s ζ 0.1 at 50 m/s, close to
+√2·π·V/g), `flightSim` (elevator and throttle added to the trim, or an autopilot: height → climb rate → pitch → elevator,
+speed by a PI on throttle; `stalled` when α passes the stall), `performance` (stall speed, best glide speed and L/D max,
+best climb by sweeping speed, top speed where climb reaches 0, service ceiling at 0.5 m/s), `turn`. Language in
+`flight-lab.ts` (MATLAB keeps aeroplanes in Aerospace Blockset): `atmosisa` (MATLAB's name and outputs), `aircraft`
+(refuses Cmα ≥ 0), `aircraftTrim`, `aircraftModes` (a table), `aircraftSim`, `aircraftPerformance`, `levelTurn`.
+Window: Machines → **Aeroplane** (`FlightBench.tsx`: Nudge / Power / Climb / Stall, speed and height; a side view
+with heights stretched so metres show, the plane drawn at its real pitch, red while stalled; speed and angle of attack
+below; replayed 4× real time). Tests in `flight.test.ts`. Example flight.m. Not built: the lateral motion (roll, yaw,
+Dutch roll, spiral), wind and gusts, flaps, landing gear and the take-off run.
+
+## M490 (24 Nov): Hyperion toolbox, space flight
+
+`src/lib/lab/space.ts` (pure, km and s; μ, Re, J2, ωE as WGS-84 / EGM): `toState` / `toElements` (classical elements ↔
+ECI; circular or equatorial orbits put the undefined angles at 0), `keplerE` (Newton), `period`, `nuAfter`, `gravity`
+(two-body plus J2), `propagate` (RK4; **the step is shrunk so the last lands exactly at T**: with a whole number of
+steps past T a closed orbit missed by ~4 km in the test; ground track with Greenwich turning at ωE from `gst0`;
+`crashed` below Re), `nodalDrift` and `sunSyncInclination` (98.19° at 700 km), `hohmann` (LEO 300 km → GEO 3.89 km/s),
+`biElliptic`, `planeChange`, `lambert` (universal variables, bisection on z; Vallado's example to 4 figures, and flying
+its answer arrives within 1 km), `rocket` (staged Tsiolkovsky). Language in `space-lab.ts` **in MATLAB's units**
+(metres, m/s, degrees), so `keplerian2ijk(a, ecc, incl, RAAN, argp, nu)` and `ijk2keplerian` (MATLAB's names and order)
+behave as people expect: also `orbitPropagate` (table or drawn: plot3 with a mesh Earth, the ground track with breaks
+at ±180°), `hohmannTransfer`, `biEllipticTransfer`, `lambertSolve` ('LongWay'), `rocketDeltaV`, `sunSyncInclination`,
+`nodalPrecession`. Window: Machines → **Orbit** (`OrbitBench.tsx`: Station / Sun-sync / Molniya / GEO, turns, J2;
+from space, 15° off the north pole turned 50°, the far half faint and the dot faint behind the Earth; the ground track
+over `/geo/earth-2048.jpg` (the landing globe's flat map); facts: height, period, Hohmann cost from 300 km, node drift).
+Tests in `space.test.ts`. Example orbits.m. Not built: the Moon and Sun's pull, drag, eclipses, launch trajectories,
+porkchop plots, the Earth's real rotation angle by date.
+
+## M491 (24 Nov): Hyperion toolbox, railways (group 6 complete)
+
+`src/lib/lab/rail.ts` (pure): `Train` (t, rotating-mass factor, length, Davis A + Bv + Cv², max tractive effort and
+power, top speed, service braking, efficiency, regen share; `TRAINS` metro 200 t / intercity 400 t / freight 2,000 t),
+`curveRes` (Röckl, ‰), `Route` (sections: length, gradient ‰, curve radius, limit; stations; dwell; `ROUTES` metro,
+intercity 100 km, mountain 25 ‰), `railRun` on a 5 m grid: a lower limit holds over the train's length (its tail),
+backward braking curves from every stop and the next point's ceiling (the slope helping), forward full power to the
+lowest of cap and brake; energy-saving style `coast` (0–0.3): cruise at (1 − coast)·limit and coast into each brake,
+the coast curve seeded only where the brake curve is above (1 − 2·coast)·cruise, and **only once the train has
+cruised since the last stop** (first try coasted from standstill: the metro run took twice as long); **stall
+detection** (the freight train can't climb 25 ‰: 490 kN of slope against 400 kN of pull; first try counted the stall
+as zero time) gives `stalled` (m) and time Infinity; energy at the line (traction / η, braking × η × regen). Results:
+metro +4 % time for −23 % energy at coast 0.1; intercity +14 % for −28 %. `headway` (fixed blocks: the larger of n blocks
+and braking + one block, plus overlap and the train, over speed plus reaction; moving block: braking + margin).
+Language in `rail-lab.ts` (our names; MATLAB has no railway toolbox; speeds in km/h and gradients in ‰ as railways
+write them): `trainModel`, `railRoute` (a name or sections and stations), `trainRun` (table or drawn: speed with limits,
+the line's height), `railHeadway`. Window: Machines → **Railway** (`RailBench.tsx`: line, train, driving style; speed
+along the line coloured by power / cruise / coast / brake over the dashed limits, height with curves marked; facts with
+the change against the fastest run; static). Tests in `rail.test.ts`. Example railways.m. Not built: several trains
+on one line, timetables and their conflicts, the power supply (substations, voltage drop), adhesion and wheel slip.
+
+Group 6 is done: M482–M491 and their left-outs (b, c, d). The Machines window has ten tabs (Robot arm, Path planner,
+Sensing, Vehicle, Driving, Electric car, Aeroplane, Orbit, Railway); `hyperion-machines-ui.mjs` checks every one.
+
+
+## M486b (24 Nov): Hyperion vehicles, body roll and load transfer
+
+The owner pasted M491's left-outs (24 Nov), read as "build these". `vehicle.ts`: an optional `roll` (`Roll`: track,
+roll stiffness front and rear, damping, roll inertia, roll-axis height, tyre load sensitivity; `ROLL_DEFAULT`, about
+2.4°/g on the saloon). With it each axle is two tyres (`sideForce(…, share 0.5)`), loads `Fz/2 ± ΔF`, ΔF through the
+springs and damper as the body leans (`kf·φ + c·p` split by stiffness) plus straight through the roll centres
+(`m·lr/L·ay·hr`), divided by the track; φ and p are two more states (`VState.phi`, `p`, optional so `driving.ts` is
+untouched) with `Ix·p' = m·ay·(h − hr) + m·g·(h − hr)·sin φ − (kf + kr)·φ − c·p`. **Load sensitivity is what makes it
+matter:** with grip and stiffness linear in load the two tyres add up to one and roll changes nothing; `sens` makes grip
+and stiffness per newton fall as load rises (clamped at 0.3 of nominal). Without `roll`, `sens` is 0 and every old
+result is unchanged. `vehicleSim` gives `roll[]` and `lift` (an inner tyre's load reached 0; it's held at 0, the car
+doesn't roll over). `rollGradient` (steady lean per m/s², the run matches it to 3 figures) and the rigid lift limit
+t/2h. Checked: stiff front 0.85 g and stays straight in the sine with dwell; stiff rear spins; a 1.1 m-high centre of
+mass lifts a wheel on a 25 m/s step. Language: `vehicle('Roll', true, 'Track', …, 'RollStiffFront', 'RollStiffRear',
+'RollDamping', 'RollInertia', 'RollCentre', 'LoadSensitivity')` (NaN in the struct when off; `RollGradient`),
+`vehicleSim`'s Roll column, `info.PeakRoll`, `info.WheelLift`, roll drawn with the side g. Window: Vehicle → Body roll
+(Off / Saloon / Tall van) and the front's share of roll stiffness. Example vehicles.m. Not built: suspension travel and
+geometry (camber, bump steer), pitch on braking, rollover itself.
+
+
+## M489b (24 Nov): Hyperion aeroplanes, rolling and yawing
+
+`flight.ts`: `Lateral` (Ixx, Izz, Ixz; CYβ, Clβ, Cnβ, Clp, Cnp, Clr, Cnr, Clδa, Cnδa, CYδr, Clδr, Cnδr; aileron and
+rudder travel; `LAT_DEFAULT` textbook-typical for a light high-wing aeroplane, said so in help and the window), the
+small-disturbance sideways equations in stability axes (β, p, r, φ) with gravity's `g/V·sin φ` kept whole so steep
+banks work, the moments through `[Ixx −Ixz; −Ixz Izz]`. `lateralModes` (finite-difference A, `eigvals`: the complex pair
+is the Dutch roll, the fastest real root the roll, the slowest the spiral; at 50 m/s: 2.4 s ζ 0.21, roll 100 ms, spiral
+half in 49 s). `lateralSim` (RK4 at 10 ms): ailerons and rudder (+ aileron rolls right, + rudder yaws left), or an
+autopilot (bank error and roll rate on the ailerons; heading → bank, capped at `maxBank`; −1.5·β on the rudder keeps the
+turn coordinated), and a yaw damper on the yaw rate **washed out over 2 s** (without it the damper fights every turn);
+heading by `r / cos φ` (a level turn's r = ψ̇ cos φ), ground track along heading minus sideslip. Checked: a held 30° bank
+turns at g·tan φ / V to 2 figures, a 90° heading change ends within 0.01 rad, the aileron's roll rate reaches 0.6–1 of
+−(2V/b)·Clδa·δa/Clp (dihedral and the bank take the rest), the damper cuts the rudder kick's leftover sideslip by more
+than half. **Not coupled to the up-and-down motion:** height and speed stay at the trim's (the extra lift and drag of a
+turn aren't modelled). Language (`flight-lab.ts`): `aircraftLateralModes(ac, V, h, 'Lateral', struct(...))`,
+`aircraftLateralSim` (bank and heading in degrees as pilots say them, the controls in radians as `aircraftSim`; a table
+or drawn from above with bank and sideslip). Window: Aeroplane → a Motion switch (Up and down / Turning) at the top of
+the settings: `FlightBench` now wraps `PitchBench` (the old view) and `TurnBench.tsx` (Turn, Rudder kick, Aileron only;
+yaw damper; speed and most bank; from above, the wings drawn shorter as it banks; bank and sideslip below; replayed 2×).
+`hyperion-machines-ui.mjs` takes a third entry per tab, a choice pressed first (`roll`: Tall van, `turning`).
+Example flight.m. Not built: the full six-degree-of-freedom aeroplane, wind and gusts, engine-out yaw.
+
+
+## M490b (24 Nov): Hyperion orbits, the Sun's and Moon's pull
+
+`space.ts`: `julianDate` (Meeus, Gregorian; 1 Jan 2000 12:00 = 2451545), `gmst` (the Earth's rotation angle by date: a
+date given to `propagate` as `jd0` now also places the ground track at real longitudes, unless `gst0` is given),
+`sunPosition` (the Astronomical Almanac's short formula, ~0.01°), `moonPosition` (Montenbruck and Gill's
+low-precision series; Meeus' example 47.a to 0.1° and ~50 km), both rotated from the ecliptic by the obliquity of
+date; `thirdBody` (the pull on the satellite less the pull on the Earth: μ((s − r)/|s − r|³ − s/|s|³)). `propagate`
+takes `sun`, `moon` and `jd0`; their positions are found once at a step's start, middle and end (RK4 needs no more:
+they move ~0.5° an hour). Checked: a geostationary satellite from 1 Jan 2026 tips 0.08–0.18° in 60 days against the
+same run without them (~0.7°/yr; the textbook 0.75–0.95°/yr depends on where the Moon's node is). Language:
+`orbitPropagate(..., 'Sun', 1, 'Moon', 1, 'Epoch', [Y M D h m s] or a Julian date)`, now up to 400 days (the 2-million
+step limit still holds); `juliandate` (MATLAB's name, a vector or separate numbers), `sunPosition`, `moonPosition`
+(metres). Window: Orbit → "The Sun's and Moon's pull (from 1 Jan 2026)" (a fixed date, so a choice always gives the same
+run); with it the last fact is how fast they tip the orbit, from 30 days with and without them scaled to a year (~150
+ms in a LEO, step period/40). Example orbits.m. Not built: air drag, solar radiation pressure, eclipses, the Earth's
+higher gravity terms, precession and nutation (the frame is the equator of date, near enough for these).
+
+
+## M491b (24 Nov): Hyperion railways, several trains on one line
+
+`rail.ts`: `lineFor` (the line as a train sees it every 5 m, taken out of `railRun`, which now uses it), `railLine(route,
+trains, o)`: time steps of 0.5 s; trains in departure order on one track (no passing, so the train ahead is the one
+before in the list); each may run up to its **authority**, the nearer of the next station and the signals: fixed blocks
+(`blocks` every `block` m; up to the entrance of the last block the tail of the train ahead, less the overlap, has
+cleared) or moving block (the tail of the train ahead less `margin`); its speed is the lower of the limit held over its
+length, a service-braking curve to the authority, and what traction (`tractive · volt`, the volt share being M491c's)
+allows; it never brakes harder than service + 0.5 m/s² (a signal it can't stop for is passed only up to the authority).
+Stations: stop, dwell, go. `held` counts the time the signals' curve was the tighter one; `alone` is the same train on an
+empty line **by the same steps** (memoised per train; `railRun`'s 5 m grid differs ~2%, which showed early arrivals as
+negative delays). `power` per step: traction / η, braking × η × regen as negative (for M491c). Checked: 3 minutes apart
+no one waits; a minute apart with 400 m blocks the 4th metro loses >30 s, with moving block less than half that; moving
+block never closer than the margin; an intercity 5 minutes behind a freight train is held >20 minutes. Language
+`railLine(route, train or {trains}, departs, 'Signals', 'Block', 'Margin')` → a table (Delay, Held in minutes) and a cell
+of runs, or the train graph. Window: Railway → a Trains switch (One train / Several trains) wrapping `OneTrainBench`
+(the old view) and `LineBench.tsx` (metro or intercity, signals, 2–8 trains, minutes apart, block length, a slow freight
+train first; the train graph with blocks and stations; static). Browser check tab `line`. Example railways.m. Not built:
+timetables and their conflicts at junctions, two directions on single track with passing loops, the train ahead's own
+delays spreading (each train leaves on time).
+
+
+## M491c (24 Nov): Hyperion railways, the power supply
+
+`rail.ts`: `Supply` (nominal, no-load, lowest and highest voltage, a substation's resistance, the line's Ω/km there and
+back, substation positions), `SUPPLIES` (metro 750 V: 825 no-load, 500–950, 0.02 Ω, 0.03 Ω/km, every 2 km;
+intercity 3 kV: 3,400, 2,000–3,900, 0.08 Ω, 0.04 Ω/km, every 15 km), `spaced`. `solveSupply(sup, s, p)`: nodes
+(substations and trains) sorted by position, Kirchhoff at each, a tridiagonal solve (Thomas) iterated 40 times at most
+with half-step damping: a train's current is `P / max(V, vmin)` (**its current limit: without it, loads past what the
+line can carry have no answer and the voltage collapses to ~0**, seen with substations only at the ends);
+substations through diodes (off while the line is above their no-load voltage, never negative); a braking train's
+**chopper** as a stiff 1,000 S path to vmax when it would lift the line past it (first try scaled the braking power
+down by 0.9 per pass: with nobody to take it the voltage went to 3 MV). Results: volts at each train, each
+substation's power, line loss, the braking actually given. Checked by hand: 1 MW midway between two substations 2 km
+apart, V = 825 − 0.025·P/V (793.5 V). `supplyFor(sup, dt)` gives `railLine`'s `supply` callback (called each step
+with positions and last step's powers; returns each train's share of traction, V/vnom up to 1, 0 under vmin, which
+counts as tripped) and its log (lowest train voltage, substation kW, loss, kWh from substations, lost, braking reused
+and burnt). Checked: closer substations hold the voltage higher with less loss; alone, under 5% of a train's braking
+is reused, with five trains about 40%; substations only at a 5.2 km metro's ends trip trains and make them late.
+Language: `railLine(..., 'Supply', 'metro' | 'intercity' | struct, 'SubstationSpacing', m)` with a third output struct;
+drawn with the lowest voltage under the train graph. Window: Several trains → "The power supply (750 V / 3 kV DC)" and
+"Substations every"; the substations as amber ticks; a voltage chart with the trip line; facts become delay, lowest
+voltage, kWh from substations and lost, braking reused and burnt. Browser check tab `supply`. Example railways.m. Not
+built: AC (25 kV) lines with their reactance and booster transformers, rail-to-earth voltages, storage on the line.
+
+## M490c (24 Nov): Hyperion orbits, air drag
+
+The owner pasted M491c's left-outs (24 Nov), read as "build these" (all five, one commit each). `space.ts`: Vallado's
+exponential atmosphere (table 8-4, 0–1,000 km, average solar activity: the real density swings several times over the
+Sun's cycle, said in help) as `airDensity(h km)`; `dragAccel(r, v, bc)` with the air turning with the Earth (w = v − ω×r)
+and bc = Cd·A/m in m²/kg (units: ½ρ·bc·|w|·w with w in m/s, back in km/s², so the factor is 1000); `propagate`'s
+`drag` (a run with drag ends as crashed at 100 km, where it burns up); `decayTime(h, bc)`: the circular orbit's a
+shrinking by ρ·bc·√(μa) a second, stepped to 120 km. Checked: the numerical run's mean a falls at that rate within
+25% over two days at 400 km; 160 km falls within days; the station (bc 0.008) lasts ~390 days; 800 km decades.
+Language: `orbitPropagate(..., 'Drag', 0.01)`, `airDensity(h m)`, `orbitDecay(h m, bc)` (days). Window: Orbit → "Air
+drag (a small satellite, average Sun)", a fifth orbit **Skimming** (175 km, turns drag on), the fact "Air drag brings it
+down in" in place of "Round in", "burnt up" at the end. Example orbits.m. Not built: the Sun's cycle (F10.7) and
+NRLMSISE-00, a satellite's attitude changing its area, solar radiation pressure.
+
+## M491d (24 Nov): Hyperion railways, 25 kV AC lines
+
+`rail.ts`: `Supply.ac` (`xs` the transformer's reactance, `xline` Ω/km, the trains' power factor, the neutral
+section's length); `SUPPLIES.ac25` (rail return, 0.17 + j0.42 Ω/km), `ac25bt` (booster transformers, 0.21 + j0.6),
+`ac25at` (2 × 25 kV autotransformers, about a third: 0.06 + j0.15), all 27.5 kV no-load, 17.5–29 kV (EN 50163), feeder
+stations every 50 km with a 20 MVA, 10% transformer (0.3 + j3.1 Ω), pf 0.95. These impedances are typical round
+figures, said so in help. `solveSupply` sends AC to `solveAc`: **each substation feeds only its own stretch** out to
+the neutral sections midway to its neighbours (different phases, never paralleled), so each stretch is a radial tree:
+backward sweep (a span carries the currents of every train beyond it), forward sweep (V drops by Z·I span by span),
+`I = conj(S/V)` with S = P + jP·tanφ drawing and unity braking, the current capped at |S|/vmin as in DC, 60 damped
+passes. The grid takes all braking back (negative substation power); braking is cut by 0.9 a pass only past vmax.
+`supplyFor`: trains get no power inside a neutral section (`neutralAt`, logged as `neutral` seconds); **a train stopped
+in one would be stuck**, so after 30 s it's let through and counted in `stuck`. Checked: the resistive drop by hand
+(V = 27.5 kV − 1.7·P/V at 10 km), the far substation gives nothing, reactance more than doubles the drop, pf 0.8 lower
+still, AT above plain above BT, three intercity trains coast through the 50 km neutral section with nothing tripped or
+burnt. Language: `'Supply', 'ac25' | 'ac25bt' | 'ac25at'`, or a struct with Xs, Xline, PowerFactor or Neutral (then
+AC); `NeutralSeconds` in the supply struct. Window: Several trains → intercity → the power supply → 3 kV DC / 25 kV AC
+/ 2 × 25 kV, substations every 20–100 km, neutral sections as red bands on the train graph, kV in the facts, "Braking
+to the grid". Example railways.m. Not built: rail-to-earth voltages and interference, the grid's unbalance from
+single-phase loads, harmonics, storage on the line.
+
+## M491e (24 Nov): Hyperion railways, single track both ways and timetables
+
+`rail.ts`: `reversed(route)` (sections reversed, slopes turned over: what a train going back sees), `railSingle(route,
+trains {train, dir 1 | −1, depart, late?}, {tracks, pad, dt})`. Every station is a passing loop with `tracks` tracks;
+the sections between are single track, held as an **absolute block** (one train either way). A train leaves a station
+no earlier than its timetable, into an empty section, and only when the next station has a free track (taken as it
+leaves, so two trains never meet between stations); the earliest timetable asks first. Each train always stops at
+every station; motion is railLine's (the limit held over its length and a braking curve to the next stop) by 0.5 s
+steps, the last half metre snapped (the square-root brake curve never quite reaches a stop). **The timetable** is the
+train's run alone × (1 + pad) plus the dwells (`plan`, arrivals at each of its own stations); `conflicts` lists pairs
+planned in the same section at overlapping times (`meet` when they face each other). `waits` (where, how long, meet or
+follow), `actual`, `delay` against the plan. **Deadlock**: nothing moved and nobody waiting on the clock for 10
+minutes stops the run (`deadlock` the time; one track per station with trains facing each other does it). Checked:
+both leaving their ends at once clash and one waits; never two trains in a section; a clean meet timetabled at a
+station has no waits; the first train 2 minutes late makes the other wait (the delay spreads), 2½ minutes late moves
+the meet to an earlier station and the late train waits there. Language: `railSingle(route, train or {trains}, dirs,
+departs, 'Tracks', 'Pad', 'Late')` → the table (Delay, Waited, Meets), the clashes, the deadlock minute; drawn: the
+train graph with the timetable dotted. Window: Railway → **Single track** (the switch now One train / Several / Single
+track; `SingleBench.tsx`): metro or intercity, 1–4 trains each way, minutes apart, the return trains' offset, the first
+train late, recovery %, tracks per station; outbound violet, back amber, the timetable dotted, a red line at a lock-up.
+Example railways.m. Not built: passing loops between stations, trains that don't stop everywhere, junctions, a
+dispatcher that reorders meets to cut the total delay (it's first come, first served).
+
+## M486c (24 Nov): Hyperion vehicles, suspension geometry and rollover
+
+`vehicle.ts`: `Roll` gains optional `camber` [f, r] (how far the wheels lean with the body against the road per radian
+of roll), `camberStiff` (camber stiffness as a share of cornering stiffness) and `rollSteer` [f, r] (radians an axle
+steers per radian of roll, **positive = understeer**: the front's sign is flipped inside). Both enter as slip angles:
+`α_f += −sf·φ − cs·camber_f·φ`, `α_r += sr·φ − cs·camber_r·φ` (a wheel leaning out of the turn pushes outwards; going
+through the slip angle keeps the grip limit and the Magic Formula). Without them every result is M486b's exactly
+(tested). **Rollover**: a tip angle θ about the outer wheels' contact line, outside the RK4 (semi-implicit Euler at
+the 1 ms step): `I_o·θ'' = m·|ay|·H − m·g·D` with H = (t/2)·sinθ + h·cosθ, D = (t/2)·cosθ − h·sinθ − (h − hr)·sin(lean)
+(the body's own lean moves the centre outwards), I_o = Ix + m((t/2)² + h²); it starts when that moment turns positive,
+lands back at θ ≤ 0, and **rolls over** once D < 0 while still tipping (the run stops there: `rolled`, the time;
+`tip[]`). While tipped the outer tyres carry the whole load (`forces(…, tip)`). `fishhook(amp)` (NHTSA: 0.8 rad/s at
+the wheels, 0.25 s hold, over to −amp, 3 s). Checked: roll understeer and front camber cut the yaw rate, rear camber
+and roll oversteer raise it; a van (1.2 m on a 1.6 m track, 0.67 g) rolls in the fishhook at 22 m/s, the saloon doesn't
+tip at all, the van on grip 0.55 slides instead. Language: `vehicle(..., 'CamberRoll', [f r], 'CamberStiffness',
+'RollSteer', [f r])`, `vehicleSim(car, 'fishhook', …)` with `info.RolledOver`, `RolledAt`, `PeakTip` and a Tip column.
+Window: Vehicle → a fifth test **Hook**, Body roll → Suspension (Plain / Struts / Wishbones), the Tall van now 1.2 m on
+1.6 m, the lean (green) on the chart, "Up on two wheels" / "Rolled over at …". Example vehicles.m. Not built: pitch and
+dive, the car tumbling after it rolls, kerb trips (only tyre forces tip it), anti-dive and anti-squat.
+
+## M489c (24 Nov): Hyperion aeroplanes, all six directions at once, and wind
+
+`flight.ts`: `flight6(ac, T, o)`, a rigid body in body axes (u, v, w; p, q, r), the attitude as a **quaternion**
+(renormalised each step; `eulerOf`, `quatOf` ZYX), position north, east, height; RK4 at 5 ms. Euler's equations with
+Ixz (Stevens & Lewis); gravity rotated into the body. Aerodynamics from the velocity **relative to the air**: lift, drag
+and Cm as `flightSim` (same `liftCoef`, `dragCoef`, `thrust`), side force, Cl and Cn from `Lateral` (stability-axis
+derivatives used in body axes: fine at a light aeroplane's small α, said so). It starts in trim relative to the air
+(the ground velocity is the trim's plus the steady wind). `Wind`: steady [N E D] (the air's velocity), a vertical
+'1 − cos' gust (flown through at the trim airspeed, `up` + up so the wind's down part is −up), Dryden-like turbulence
+(each direction a first-order filter, time constant L/V, σ, seeded mulberry32 + Box–Muller: repeatable). Autopilots as
+the two separate runs, the height hold's pitch target raised by the turn's extra lift (α_trim·(1/cos φ − 1)). Checked:
+level trim holds 60 s within 2 m; an elevator doublet matches `flightSim` (h to 1 m, V to 0.1 m/s); an aileron pulse's
+bank within 15% of `lateralSim`; a held 90° turn ends within 3° and 30 m, pulls > 1.1 g; hands off it sinks > 20 m; a
+10 m/s crosswind carries it 600 m east in a minute with the airspeed unchanged; a headwind's ground speed; a 1 − cos
+gust's Δn between 0.1 and the sharp-edged formula; turbulence rms near σ and the same seed gives the same flight.
+Language: `aircraftSim6DOF(ac, T, …)` (headings in degrees, controls in radians; 'Wind', 'Gust', 'Turbulence',
+'TurbulenceScale', 'Seed') → a table and info (Stalled, Crashed, Min/MaxHeight, Max/MinLoadFactor), drawn in 3D.
+Window: Aeroplane → a third Motion **All six, wind** (`SixBench.tsx`): Turn (Autopilot holds / Hands off), Crosswind
+(the nose stays north, the track drifts; wind arrows), Gust, Rough (light, moderate, severe); from above, with bank,
+height change and extra g below. Vehicle's Test row now wraps (`className="flex-wrap"`, five choices didn't fit 22 rem).
+Browser check tabs `hook`, `drag`, `single`, `six` (and `Several` for the renamed switch). Example flight.m. Not built:
+engine-out yaw, the propeller's torque and slipstream, wind shear with height, landing gear on the ground.
+
+## M490d (24 Nov): Hyperion orbits, the Sun's cycle in the air's thickness
+
+The owner pasted M489c's left-outs (24 Nov), then: "Build them all and push it". `space.ts`: the air's density now takes the Sun's
+10.7 cm radio flux, `airDensity(h, F)` (150 = the old table exactly). Jacchia's exospheric temperature
+T∞ ≈ 1.15·(379 + 3.24·F); above 150 km each layer's scale height is stretched by √(T∞(F)/T∞(150)) (a fit to MSIS's swing,
+not NRLMSISE-00: at 400 km 0.29× at F 70, 2.2× at F 230; the swing grows with height); below 150 km nothing changes.
+**Trap:** the table's layer bases aren't exactly continuous, so the stretched bases are the table's own moved by what the
+stretched layers below change (`baseDensities`, cached per flux), never chained from the bottom (that moved 100 km's
+density). `solarFlux(year)`: an 11-year sin² cycle from 70 to 180 anchored on Dec 2019. `decayTime(h, bc, flux)`: a fixed
+flux, or a year above 1900 to follow the cycle as it falls (the station at 400 km: ~1,130 days at a quiet Sun, ~390
+average, ~200 active; launched 2025 ~300, 2030 ~1,010). `propagate`'s `flux`. Language: `airDensity(h, F107)`,
+`orbitDecay(h, bc, F107 or year)`, `solarFlux(year)`, `orbitPropagate(..., 'SolarFlux', F)`. Window: Orbit → Air drag →
+The Sun (Quiet / Average / Active) with a line each. Browser check tab `sunact`. Example orbits.m. Not built: the
+day–night bulge, magnetic storms (Ap), a satellite's attitude changing its area, solar radiation pressure.
+
+## M491f (24 Nov): Hyperion railways, passing loops, non-stop trains, junctions and a dispatcher
+
+The owner, 24 Nov: "Build them all and push it" (M489c's left-outs). `rail.ts`: `railSingle` now runs on **places**
+(`nodes`: the stations plus `loops`, positions in metres); a section is the track between two neighbouring places, still
+one train at a time. Each train has a path (forward node indices from `from` to `to`, station indices, default the line's
+ends) and `stops` (its ends and stations not in `skip`); loops and skipped stations are run through. **How a train runs
+through:** its holding ("reservation") is a run of sections; within braking distance + 200 m of a place it needn't stop
+at it asks for the section beyond (`take`: free, room at the far place unless that's a terminal or its own end, and the
+dispatcher's yes); refused, it brakes to stop there and waits like at a station (no dwell; it leaves no earlier than its
+planned passing time). A section is freed when the front passes its far end (**shortcut:** the train's length is left
+out). The timetable (`plan`, one time per place on its path) is its run alone through the non-stops, padded, with dwells
+only at stops. Branch trains (`from` mid-line) appear at their junction when due and a track is free; trains ending
+mid-line (`to`) leave the line there. **The dispatcher** (`dispatch`): 'fcfs' is M491e's rule exactly (old tests and
+results unchanged); with ranks (`singleRun(…, rank)`), a train about to take a section yields when a better-ranked train
+facing it reaches that section (its plan there + its lateness so far) before this one would be through (`yields`, waits
+`for: 'dispatch'`); 'priority' ranks by `priority` then departure, 'best' tries every swap of two ranks (≤ 4 rounds) and
+keeps what cuts Σ priority × lateness (a lock-up costs 1e9). Both fall back to first come when that is no worse ('best')
+or when holding back locked the line up ('priority'); `firstCome` is first come's weighted delay. Checked: intercity, the
+return train 20 min behind is ~17 min late with no loops and ~3 with loops at 21 and 71 km; by priority it's on time and
+the weighted delay drops; an express through four metro stations is >150 s sooner; branch trains start and end at
+station 3. Language: `railSingle(…, 'Loops', m, 'Skip', {…}, 'From', n, 'To', n, 'Priority', w, 'Dispatch', 'fcfs' |
+'priority' | 'best')`, the table's Held and Priority columns, loops dotted on the graph. Window: Single track → Passing
+loops midway between stations, the second train out an express, a branch train joining at the middle station, Who goes
+first (First come / Priority / Best order) with the weighted delay against first come. Browser check tab `loops`.
+Example railways.m. Not built: trains overtaking each other at loops (same direction), a junction's own crossing moves
+(the branch is off the model), the train's length in freeing sections.
+
+## M491g (24 Nov): Hyperion railways, storage on the line and interference from AC lines
+
+`rail.ts`. **Storage** (DC only): `Supply.storage` (`Storage`: positions, power W, energy J, vcharge, vsupport, eta;
+`storageFor(sup, at, W, kWh)`: v0 + 2% of nominal to charge, v0 − 4% to give back, 95% each way). In `solveSupply` each
+unit is a node in the tridiagonal solve: a conductance GS = 20 S to vcharge (charging, not full) or to vsupport (giving,
+not empty), or a fixed current at its power past that; its `mode` is picked from the last pass's voltage like the diodes
+and the chopper. **Traps:** first tried as a damped current outside the solve: it oscillated (stored energy in the
+millions of kWh); the power cap divides by max(V, ½·nominal), never V itself; with storage the solve runs up to 200
+passes (40 was too few for the chopper and the storage to settle: `given` came out 0 for a braking train). `soc` per
+unit (`supplyFor`, starts half full) clamps 0–1; the log gains `soc[]`, `storedKwh`, `returnedKwh`. Checked: by hand a
+unit midway holds a 3 MW train's voltage 50+ V higher and soaks up 1 MW of a 2 MW brake; full it takes nothing, empty it
+gives nothing; on the 5.2 km metro fed only at its ends, two trains take >10% less from the substations and reuse more
+than twice the braking. **Interference** (AC): Carson's mutual impedance `mutualZ({sep, rho})` (0.049 + j0.216 Ω/km at
+30 m, 100 Ω·m), screening `ac.screen` (rail return 0.5, BT 0.15, AT 0.1: typical figures, said so), the EMF in a cable
+along each side of each feeding section = |Zm·k·Σ I·distance from its substation| (`solveAc` now gives `emf`, the
+largest; `supplyFor(sup, dt, cable)` logs `emf[]`, `maxEmf`); `faultEmf` (a short at each section's far end: V0 /
+|Zs + Zline·len|); limits `EMF_LIMIT` 60 V, `EMF_FAULT_LIMIT` 430 V (ITU-T). Checked: the fault by hand; two intercity
+trains induce ~1 kV with rail return at 30 m, BT and AT far less, 300 m less. Language: `railLine(…, 'Storage', m or
+struct(At, Power, Energy, VCharge, VSupport))` → StoredKWh, ReturnedKWh, Charge; `railLine(…, 'Cable', [sep rho])` →
+MaxInducedVolts, FaultInducedVolts, InducedVolts; `inducedVoltage(I, len, sep, rho, k)`. Window: Several trains → the
+power supply → (DC) "Storage between substations" (green ticks; braking reused · burnt · stored), (AC) "A telephone
+cable beside it, at" 10–300 m (running · fault volts, flagged over 60 / 430). Browser check tab `storage`. Example
+railways.m. Not built: rail-to-earth (touch) voltages and stray current, the grid's unbalance and harmonics, storage
+on AC lines, a storage unit's own losses and ageing.
+
+## M489d (24 Nov): Hyperion aeroplanes, engines failing, the propeller and wind shear
+
+`flight.ts` (`flight6`). **Engines** (`Engines`: one on the nose or two `arm` m out, each half the thrust; `fail` at a
+time, which; `feather`): a dead engine's thrust goes, its windmilling propeller drags 0.1·q·πR² unless feathered; on a
+twin the yaw is arm·(T_L − T_R) + arm·(D_R − D_L), towards the dead engine. A single engine stopping just glides (~7–8 to
+one at its trim speed, windmilling). `vmc(ac, lat, arm, h, feather)`: where full rudder balances one engine at full
+power (wings level), by bisection (~31 m/s on the default airframe made a twin, stall 25). **The propeller** (`Prop`:
+dir 1 = clockwise from behind): torque roll −dir·shaft/ω, slipstream on the fin −dir·0.015·T·4.5 m, P-factor
+−dir·T·0.25 m·α; **rigged** by default: the same at the trimmed power is subtracted (aeroplanes are built to cancel it at
+cruise), so only more power or less speed swings it. **The heading autopilot**, when engines or a propeller are given,
+adds an integral of sideslip on the rudder (−0.3·∫β; "dead foot, dead engine"); **trap:** without the yaw damper the
+heading autopilot oscillates and diverges at 35 m/s even with no propeller (an old weakness, unseen at 50 m/s): use
+`yawDamper` with these (the window does). **Wind shear** (`Wind.shear`: the steady wind is what blows at 10 m, ×
+(h/10)^exponent to 500 m) and a **microburst** (`Wind.microburst`: outflow growing with distance to the radius then
+dying, fading over 500 m of height; a bell-shaped downdraught to nothing at the ground; a simple shape, said so, not
+Oseguera–Bowles), both through `windField(W, n, e, h)` taken at the aeroplane each step. Checked: a twin's right engine
+out yaws and rolls right (left mirrors it exactly); held within 5° on left rudder, banked left, sinking, less
+feathered; Vmc's balance by hand; the propeller swings left at climb power (mirror for −1), nothing at trim power; the
+autopilot holds it within 3°; shear's 16^(1/7); the microburst's directions; flying through it: faster then slower,
+>100 m lost hands off, far less with the autopilot. Language: `aircraftSim6DOF(…, 'Engines', 2, 'EngineArm',
+'EngineFail', [t which], 'Feather', 'Propeller', ±1, 'Shear', exp, 'Microburst', [n e R out down])` → info.Vmc,
+MinAirspeed, MaxAirspeed; `aircraftVmc(ac, 'EngineArm', 'Height', 'Feather')`. Window: Aeroplane → All six, wind → three
+more flights (the row wraps): Engine out (autopilot or hands off, Feather), Propeller (on or off), Microburst (its ring
+drawn; the outflow slider; airspeed change in the chart). Example flight.m. Not built: a propeller's gyroscopic
+precession, an engine's own lag, turbulence that changes with height, landing gear on the ground.
+
+## M486d (24 Nov): Hyperion vehicles, tumbling after a rollover and kerb trips
+
+`vehicle.ts`: after `vehicleSim` rolls over it hands on to `tumble` (the car's cross-section: wheels and roof edges,
+`shape`; penalty contact 4e6 N/m with damping, friction per corner, `GROUNDS` tarmac/grass/soil) until it rests:
+`run.tumble` (quarters, rests wheels/side/roof, slid, time). `kerbTrip(car, vlat, kerb, ground)`: angular momentum about
+the kerb's edge kept, a pivot phase about the edge (falls back or passes over), then `tumble` with the pavement kerb high
+past the edge; `tripSpeed` by energy (saloon ~30 km/h sideways over 15 cm, van ~12). Soft soil trips it with no kerb.
+Language: vehicleSim info Rolls, RestsOn, TumbleDistance, TumbleTime; `vehicleTrip(car, v, 'Kerb', 'Ground')`. Window:
+Vehicle → Kerb (`KerbView.tsx`, seen from behind). Not built: the roof crushing, yaw while tumbling. **Full `pnpm check`
+not run** (stopped at the owner's request; types, lint of changed files, the lab tests and lean passed).
+
+## M491h (24 Nov): Hyperion railways, overtaking and the train's length
+
+The owner, 24 Nov: "build them all and push" (M486d's left-outs). `railSingle`'s dispatcher (`yields`) now also holds a
+train for a better-ranked one **behind it going the same way** that would reach the section before it is through: it
+waits in the loop or station and is overtaken (a train standing at the same place counts as behind). Sections are freed
+once the **tail** has left them (`tails`: [section, head position + length]) or when the train stops in the next place
+(a loop or platform holds the whole train). First come is unchanged except for the length. Checked: a freight train
+leaving 20 min ahead of an intercity (priority 3) makes it ~21 min late first come; by priority the freight waits at
+42 km and the intercity is on time and arrives first; a 400 m metro train delays its follower more than a 0 m one.
+Window: Single track → "The first train out is a slow freight train". Not built: loops too short for a long train.
+
+## M491i (24 Nov): Hyperion railways, rail-to-earth voltage and storage on AC lines
+
+`rail.ts`: `railVolts` (the rails' voltage to earth at each train on an AC line: the ground-returning share, the same
+screening factor, of each train's current, through rails as a leaky line, Z0 = √(|z|·r_e) with z 0.15 + j0.55 Ω/km and
+r_e 5 Ω·km, I·Z0/2 decaying as e^(−d·√(|z|/r_e)); typical figures; `RAIL_LIMIT` 60 V, EN 50122-1), returned by
+`solveAc` as `rail` and logged as `maxRail` (~200 V with rail return, far less with BT and AT). **Storage on AC**
+(`acWithStorage`): the units are extra loads at their places (at unity power factor; `solveAc`'s `trainsOnly` keeps
+their Q at 0), each giving below 92% of nominal and refilling (up to 30% of its power) above v0 − 2%, solved 8 times with
+half steps; `storageFor` picks those thresholds for an AC supply. Checked: rail volts by hand, BT and AT lower; fed only
+from the ends, two 4 MW / 200 kWh units hold the lowest voltage >1 kV higher and cut the tripped time. Language:
+'Storage' works on AC; info MaxRailVolts. Window: Several trains → the power supply → Storage on AC too, "Rails to
+earth, most". Not built: the rails' bonding to earth at substations, stray currents on DC lines.
+
+## M489e (24 Nov): Hyperion aeroplanes, the propeller's gyroscopic pull and turbulence by height
+
+`flight.ts`: in `deriv6` a working propeller's angular momentum H = dir·Ip·ω (`Prop.inertia`, 1.6 kg·m²) adds −(ω × H):
+pitch moment −r·H, yaw moment q·H (nose down with a clockwise propeller from behind yaws left). `turbulenceAt(h, w20)`:
+MIL-F-8785C's low-altitude model (feet inside: scales h and h/(0.177 + 0.000823h)^1.2, σw 0.1·W20, σu,v σw /
+(…)^0.4), medium values above 610 m (533 m, 0.1·W20), blended between; `Wind.turbulence.w20` makes `flight6` filter each
+direction with its own σ and L at the current height. Checked: the gyroscopic yaw's sign both ways (against inertia 0),
+the formula at 30 m, the medium values, gustier along the way at 60 m than 800 m. Language: 'PropInertia',
+'TurbulenceWind20'. Window: All six → Rough → "Near the ground (60 m)". Not built: the propeller's gyroscopic load on
+the engine mount, turbulence's rotational parts (p, q, r gusts).
+
+## M486e (24 Nov): Hyperion vehicles, the roof crushing and the car turning as it tumbles
+
+`vehicle.ts` (`tumble`): each roof edge holds at most `swr` × the car's weight (3, FMVSS 216), stiffening as it folds
+(doubling every 10 cm); past that the edge moves in for good (`crushed[side]`, capped at 0.6 of the roof's height) and
+the force is capped there, so the energy goes into crush. **Trap:** first the crush grew by (N − strength)/K with N
+including the damper: at impact speeds it collapsed by centimetres a step; then with a flat strength all vertical energy
+went into the roof (vans to the cap): now only the spring part counts and the roof stiffens. Yaw: the yaw rate goes on
+(`st.r`; from `vehicleSim` the car's own, in the tumble's frame), slowed by body friction × total load × a quarter of the
+car's length over `iz`, and turning the axes (vf += r·vy, vy −= r·vf). `Tumble` gains `psi[]`, `crush`, `spin`.
+Checked: crush falls as the roof gets stronger, none when it rocks back; a yawing trip turns (0.1–1 rad), a still one
+doesn't; the fishhook van turns and its roof edge gives. Language: vehicleTrip 'RoofStrength', 'YawRate',
+'ForwardSpeed'; info RoofCrush, Spin (also in vehicleSim's). Window: Kerb shows "roof crushed"; Hook's result says how
+far. Not built: drawing the crushed roof, the windows breaking, people inside.
+
+## M491j (24 Nov): Hyperion railways, loops too short for a long train
+
+The owner, 24 Nov: "please work on it" (M486e's left-outs). `railSingle(…, { loopLength })`: a train longer than that
+can't stop in a passing loop (stations hold any train). `take` now returns how many sections it took: for a loop the
+train doesn't fit (and doesn't stop at) it must take the section beyond in the same moment (`free` checks each:
+empty, room, the dispatcher), holding the far place's track, or wait where it is. Checked: a 600 m freight meeting an
+intercity with 400 m loops never waits in one and the meet moves to the 42 km station; 1,000 m loops change nothing.
+Language 'LoopLength'; window Single track → "Loops only 400 m long". Shortcut: the dispatcher is asked only about the
+first of the two sections.
+
+## M491k (24 Nov): Hyperion railways, rails bonded to earth, and DC stray currents
+
+`rail.ts`. AC: `Supply.ac.bonded` ties the rails to earth at each substation: `railVolts` subtracts an image current at
+the bond nearest each train (the feeding one), so the rails are at 0 there and lower within a few km (far from the bond
+almost unchanged: e.g. 208 → 207 V for trains tens of km out; 500 m out × (1 − e^(−2g·0.5))). DC: `dcStray` (each
+train's current I = power / its volts, braking left out (shortcut), to its nearest substation d km away; rails 0.4 of
+rline; `Supply.leak` Ω·km, 10 by default): rails at I·r·d/2 under the train, stray current I·r·d²/(8·R); `solveSupply`
+returns `rail` and `stray` for DC too, the log `strayAs` (A·s); `IRON_KG_PER_AYEAR` 9.13. Checked by hand both ways; 2
+Ω·km leaks five times 10. Language 'Leakage', 'Bonded'; info StrayCurrent, IronLossKgPerYear, MaxRailVolts (DC).
+Window: Several trains → power supply → DC "Rails to earth · stray current", AC "Rails bonded to earth at the
+substations". Not built: rails cross-bonded between tracks, drainage bonds, the earth's own resistance.
+
+## M489f (24 Nov): Hyperion aeroplanes, gusts that turn the air
+
+`flight.ts`: `Wind.turbulence.rotational` adds MIL-F-8785C's rotational gusts in `flight6`: roll gust p_g as its own
+filtered noise (σw·√(0.8/V)·(π/4b)^(1/6) / L^(1/3), corner πV/4b), pitch q_g = −ẇ_g/V smoothed over 4b/πV, yaw
+r_g = v̇_g/V over 3b/πV (the vertical and side gusts' change between steps). `deriv6` takes them as `Ctl.gust` and the
+damping terms (Clp, Cnp, Clr, Cnr, Cmq, CLq) use the rates relative to the air. Off by default (old runs unchanged).
+Checked: roll-rate rms >10% higher with them on, bank rms higher, the same seed repeats. Language
+'TurbulenceRotation'; window Rough → "Gusts that turn the air too". Not built: the gust's change along the span
+(a gust front hitting one wing first).
+
+## M486f (24 Nov): Hyperion vehicles, the crushed roof drawn, windows breaking, the people inside
+
+`vehicle.ts` (`tumble`, `kerbTrip`): `crushes[]` (each roof edge's crush per sample, outer then inner), `windows`
+(when each side's glass broke: its roof edge taking over `GLASS_N` 15 kN or folding over `GLASS_CRUSH` 4 cm; a wheel
+corner's contact counts for its side), `peakG` (the ground's push on the body ÷ m·g, without gravity's own 1 g; at a
+kerb the blow is the centre's speed change over ~50 ms), `headroom` (`HEADROOM` 10 cm less the most crush; below 0 the
+roof reached the people). Rough figures, said so in help. Checked: rocking back breaks nothing and keeps the headroom;
+a hard 18 m/s trip breaks both sides and the roof reaches them; crush only grows and ends at the most. Language: info
+WindowsBroken, PeakG, Headroom. Window: Kerb draws the roof sinking in and the side windows (blue, yellow dashed once
+broken); facts "Roof in · windows broken" and "People inside: most g · headroom". Not built: belts and airbags,
+people thrown out, the windscreen.
+
+## M486g (25 Nov): Hyperion vehicles, belts, curtain airbags, people thrown out, the windscreen
+
+The owner, 25 Nov (M486f's left-outs). `vehicle.ts` `inside(v, tumble, { belt, curtains })`, after the tumble (rough
+figures, said so in help): heads ~`r` from the roll axis keep their speed when a landing changes the roll rate (|Δω|
+over 50 ms · r; ×0.6 belted) into the side; upside down an unbelted person falls headroom + 15 cm onto the roof, a
+belted one is hit only by the crushing roof (crush spread over its 0.1 s on the ground); stopped in 2 cm (glass,
+pillar), 3 cm (lining), 10 cm (curtain): `headG`. Thrown out: unbelted, through a broken side window not covered by a
+curtain (`CURTAIN_HOLD` 6 s) or a windscreen out of its frame (only if it also turned over 90°), while ω²·r > g; belted:
+`partly` (head and arms). Windscreen: cracked past 3 cm of crush, out past 15 cm. `risk` bands. Frontal airbags left
+out (they don't fire in a rollover). Checked: unbelted at 18 m/s thrown out after the first window broke, belted only
+partly, curtains keep both in; head g falls with belts and again with curtains; rocking back at 6 m/s is 'low'.
+Language: vehicleTrip 'Belts', 'Curtains'; info HeadG, ThrownOutAt, PartlyOut, WindscreenCracked, WindscreenOut,
+Injury. Window: Kerb → "People inside" (No belts / Belts / Belts + curtains), a red dot leaving when thrown out, the
+screen's state; facts "Heads · thrown out", "Windscreen · injury (rough)". Not built: the same for vehicleSim's
+rollovers (only vehicleTrip), people's own size and seating place.
+
+## M491l (25 Nov): Hyperion railways, tracks cross-bonded and the ground's own resistance
+
+The owner, 25 Nov (M491k's left-outs). `rail.ts`: `Supply.crossBond` puts both tracks' rails in parallel (half the
+resistance and half the leakage resistance): DC rail voltage halves, stray current unchanged; AC `railVolts` halves (Z0
+halves, the decay is the same). `Supply.earth` (Ω/km, DC): rails and ground solved as two conductors joined by the
+leakage, u'' = γ²u, γ = √((r + r_g)/R), all of I in the rails at both ends: rails I·r·tanh(γd/2)/γ under the train,
+stray r·I/(r + r_g)·(1 − sech(γd/2)), which never passes r/(r + r_g) of I. Unset keeps M491k's short-section forms
+(they agree within ~1% under 10 km; old runs unchanged). Checked by hand, and through the language. Language
+'CrossBonded', 'EarthResistance' (0–10). Window: Several trains → power supply → "Both tracks' rails tied together"
+and, on DC, "The ground's own resistance" (Not counted / Wet clay 0.01 / Dry rock 0.1, rough). Not built: drainage
+bonds, the ground's resistance on AC lines (its return is in the rails' impedance already), the earth's resistance
+under each substation.
+
+## M489g (25 Nov): Hyperion aeroplanes, a gust front reaching one wing first
+
+The owner, 25 Nov (M489f's left-outs). `flight.ts`: `Wind.gust.skew` (rad, + the right wing first): each wing tip
+meets the '1 − cos' gust (b/2)·tan(skew) earlier or later than the middle (the gust starts that much before `at`);
+the middle gets the tips' mean and the difference (up_left − up_right)/b goes in as a roll gust (p_g = ∂w/∂y, added to
+M489f's channel in `Ctl.gust`). Square on is unchanged (old runs the same). Checked: square on never rolls; 30° from
+the right rolls left first, mirrored exactly from the left; 60° rolls harder; the push upwards much the same.
+Language: aircraftSim6DOF 'Gust' takes a fourth number, the front's angle in degrees (up to 80). Window: Aeroplane →
+All six → Gust → "The gust's front" (Square on / 30° / 60°). Not built: a front at an angle for turbulence (that is
+M489f's roll gust already), the gust reaching the tail later than the wing (pitch).
+
+## M486h (25 Nov): Hyperion vehicles, a person's size and seat, front airbags, people in steering rollovers
+
+The owner, 25 Nov (M486g's left-outs). `vehicle.ts`: `inside(…, { size, seat })`: `SIZES` small +6 cm, tall −6 cm over
+the head (and the head that much nearer or further from the roll axis); `seat` 'near' (side 0, the way it tips: that
+roof edge's crush and that window) or 'far' (side 1: the other edge's crush, the head swinging across, ×1.3 side
+speed); no seat keeps M486g's worse-of-both (old runs the same). Belted people partly out only through their own
+side's window; unbelted through either. `Inside.headroom` is now per person. Front airbags: `tumble` smooths the blow
+along the car (friction on the forward slide, 30 ms, as a crash sensor) into `frontG` and `frontAt` (past `FRONT_G`
+11 g); `kerbTrip` carries `frontAt` on. Checked: rolling gives ~0–5 g along the car, so they don't fire (as in real
+rollovers). Language: a shared `peopleOf` / `peopleFields` in `vehicle-lab.ts`: vehicleTrip and now vehicleSim (after
+a rollover) take 'Belts', 'Curtains', 'Occupant', 'Seat' and give HeadG, ThrownOutAt, PartlyOut, WindscreenCracked,
+WindscreenOut, FrontAirbags, Injury. Window: Kerb → "Who" (Small / Average / Tall) and "Seat" (Side it tips to /
+Other side), fact "Front airbags"; Vehicle → Hook's result adds the belted people's head g and injury. Not built:
+front and rear rows apart, two people at once, a frontal crash (the only way front airbags would fire).
+
+## M491m (25 Nov): Hyperion railways, the ground's own resistance on 25 kV lines
+
+The owner, 25 Nov (M491l's left-outs). `rail.ts` `railVolts`: with `Supply.earth` the rails and the ground are two
+conductors joined by the leakage, as on DC (M491l): Z0 = |z_r|·√(r_e / |z_r + r_g|), decay √(|z_r + r_g| / r_e)
+(magnitudes, as the rest of the model). `CARSON_50HZ` 0.0493 Ω/km is the ground's resistance at 50 Hz (Carson: it
+depends on the frequency, not the soil). Unset or 0 is unchanged. Checked by hand: ~3% lower under the train and dying
+away sooner. Language: 'EarthResistance' now acts on AC lines too. Window: Several trains → 25 kV → "Count the
+ground's own resistance (0.05 Ω/km at 50 Hz)". Not built: the soil's depth of return (Carson's reactance is already in
+the rails' 0.55 Ω/km).
+
+## M489h (25 Nov): Hyperion aeroplanes, the tail meeting a gust after the wing
+
+The owner, 25 Nov (M489g's left-outs). `flight.ts`: `Aircraft.lt` (the tail's distance behind the wing, 3 chords when
+not given) and `Wind.gust.tail`: the tail meets the '1 − cos' gust lt / V after the wing, and the difference
+(up_wing − up_tail) / lt goes into the pitch-gust channel (`Ctl.gust[1]`, MIL-F-8785C's q_g, through Cmq and CLq): nose
+up while only the wing is in the rising air, nose down as the tail goes through. Off by default (old runs the same).
+Checked: off unchanged; on, more pitch rate just after the wing enters; much the same climb once through. Language
+'GustTail', 1. Window: All six → Gust → "The tail meets it later (the nose pitches)". Not built: the tail's own lag
+for turbulence (M489f's q gust already smooths over the length), the downwash's lag behind the wing.
+
+## M486i (25 Nov): Hyperion vehicles, front and back seats, everyone at once
+
+The owner, 25 Nov (M486h's left-outs). `vehicle.ts`: `inside(…, { row })`: 'rear' has 3 cm less room (the roof slopes)
+and `REAR_CRUSH` 0.7 of the crush (the roof gives most near the windscreen pillars), no front airbags; `everyone()`
+runs the four outer seats (`SEATS`: front/rear × near/far) at once. Language: 'Row'; info PersonHeadroom (that
+person's own) and Seats (a table: Row, Side, HeadG, Headroom, ThrownOutAt, PartlyOut). Window: Kerb → fact "Four
+seats: head g (thrown out ✕)". Rough figures. Not built: the middle seats, people hitting each other.
+
+## M486j (25 Nov): Hyperion vehicles, a head-on crash with belts, knees and front airbags
+
+The owner, 25 Nov (M486h's left-out "no head-on crash"). `vehicle.ts` `frontalCrash(v, speed, { into, other, belt,
+bags })`: the front a spring tuned to `NCAP_CRUSH` 0.65 m at 56 km/h, unloading on k/e² (e 0.1); into a car head on,
+the wall-equivalent 2v·m₂/(m + m₂). The front person, 75 kg as one body: belt slack 2 cm (pretensioner, when the airbag
+fires) or 6 cm, then lap + shoulder 200 kN/m up to 12 kN; knees on the dashboard after 12 cm up to 9 kN; the airbag
+fired by the same sensor as M486h (`FRONT_G` on the 30 ms-smoothed deceleration), full 30 ms later, 6 kN from 20 cm
+over 30 cm; the wheel at 55 cm (1 MN/m). Chest g is the 3 ms average (60 allowed); `headHit` when there is no
+airbag and the chest came within 15 cm; late firing after 12.5 cm; `risk` bands. Tuned by eye to NCAP-like results:
+at 56 km/h belt + airbag ~37 g and 40 cm, belt only the head reaches the wheel, nothing hits the wheel at ~150 g; 10
+km/h doesn't fire the airbag. Language `vehicleCrash` (help, an example). Window: Vehicle → Crash (`CrashView.tsx`:
+speed, a wall or a car like it, Nothing / Belt / Airbag / Belt + airbag; the car's and the person's deceleration over
+150 ms with the 60 g line and the firing). Rough figures. Not built: offset and side crashes, the back seats, the
+head's own HIC, the steering column collapsing.
+
+## M491n (25 Nov): Hyperion railways, how deep the return current runs in the soil
+
+The owner, 25 Nov (M491m's left-out). `rail.ts`: `Supply.soil` (Ω·m, AC): `carsonDepth` 658·√(ρ/f) m and
+`railReactance` 0.0628·ln(depth / `RAIL_GMR`) Ω/km, the radius set so 100 Ω·m gives the rails' usual 0.55 exactly
+(unset or 100 is unchanged). `railVolts` uses it for both the rails' and the loop's impedance. Checked: ~930 m at 100
+Ω·m; dry rock (2,000) raises the rail voltage, wet clay (20) lowers it. Language 'Soil' (1–100,000). Window: Several
+trains → 25 kV → "The soil" (Wet clay / Normal / Dry rock), which also sets the telephone cable's soil. Not built:
+the soil in the AC line's own feeding impedance (`solveAc` keeps its fixed reactance), layered soils.
+
+## M489i (25 Nov): Hyperion aeroplanes, the tail lagging the wing in turbulence
+
+The owner, 25 Nov (M489h's left-out). `flight.ts`: `Wind.turbulence.tailLag`: the vertical gusts the wing meets are
+kept in a ring buffer lt / V long (`Aircraft.lt`, 3 chords by default), and the tail's delayed one makes a pitch gust
+(w_tail − w_wing) / lt in `Ctl.gust[1]`; it takes the place of M489f's smoothed −ẇ/V pitch gust when both are on.
+Off by default. Checked: more pitch rate in the same turbulence, the same seed the same, roll untouched. Language
+'TurbulenceTail', 1. Window: All six → Rough → "The tail meets each gust after the wing (pitching)". Not built: the
+fin's lag for side gusts (yaw), the downwash's own lag.
+
+## M489j (25 Nov): Hyperion aeroplanes, the fin meeting side gusts after the wing
+
+The owner, 25 Nov (M489i's left-out). `flight.ts`: `Wind.turbulence.finLag`: the side gusts the wing meets are kept in a
+ring buffer lt / V long (the fin sits about where the tailplane does, `Aircraft.lt`), and the difference makes a yaw
+gust r_g = (v_wing − v_fin) / lt in `Ctl.gust[2]` (the same sign as M489f's smoothed +v̇/V, which it replaces when
+both are on). Off by default (old runs the same). Checked: a different yaw of much the same size (with the real delay
+the nose follows each gust's front and back, not a smoothed rate), the same seed the same, pitch untouched. Language
+'TurbulenceFin', 1. Window: All six → Rough → "The fin meets each side gust after the wing (yawing)". Not built: the
+downwash's own lag, the fin's height above the wing (side gusts rolling it).
+
+## M491o (25 Nov): Hyperion railways, the soil in the 25 kV line's own feed
+
+The owner, 25 Nov (M491n's left-out). `rail.ts` `feedZ(sup)`: the AC line's feeding impedance per km. The share of the
+current coming back through the ground (the screening factor k) runs at Carson's depth, so `Supply.soil` adds
+k·0.0628·ln(depth(ρ) / depth(100)) Ω/km to the line's reactance (the presets stand for 100 Ω·m), and `Supply.earth`
+adds k times the ground's resistance to its resistance. `solveAc` (voltages, losses) and `faultEmf` (fault current)
+use it; unset or 100 Ω·m is unchanged. Checked: dry rock (2,000 Ω·m) adds ~0.047 Ω/km on rail return (by hand), a
+train 20 km out sags a little more, wet clay a little less, a far-end fault draws less current. Language: 'Soil' and
+'EarthResistance' now reach the feed (help says so). Window: Several trains → 25 kV → "The soil" moves the line
+voltage too. Not built: layered soils, the booster and autotransformer feeds' own return wires as separate
+conductors (they stay in the screening factor).
+
+## M486k (25 Nov): Hyperion vehicles, offset crashes, the back seat and someone unbelted behind
+
+The owner, 25 Nov (M486j's left-outs). `vehicle.ts` `frontalCrash(…, { overlap, seat, behind })`: only `overlap` of
+the front hits (`overlapShare`: with a main rail in it, 30% or more, half the stiffness or more; below, the rail is
+missed). The front has `FRONT_ROOM` 0.8 m; past it the footwell and dashboard come in 2.5× as stiff (`intrusion`,
+taking the knees' room and half of it the wheel's). The car swings round, so the person also moves 0.7·(1 − overlap)²
+of their forward travel sideways; past 12 cm the head slides off the airbag's edge (`slidOff`: half its push, the head
+may meet the pillar). `seat: 'rear'`: no airbag, 6 cm slack and a 16 kN belt (no limiter), knees and chest into the
+front seat's back (`SEATBACK_MAX` 12 kN, where it folds), `hitSeat` for the head. `behind: 'unbelted'`: a second
+person thrown into the front seat's back pushes the front person forward (`backLoad`). Rigid barrier (harsher than
+Euro NCAP's soft one). Checked: full front unchanged; 64 km/h 40% ~16 cm in, 25% ~29 cm in and slides off the bag; the
+back seat belted reaches the seat in front, unbelted goes over it; pushed from behind, the driver reaches the wheel.
+Language: vehicleCrash 'Overlap', 'Seat', 'Behind'; info Intrusion, SlidOffAirbag, HitFrontSeat, BackLoad; an example.
+Window: Vehicle → Crash → "How much of the front hits" (All / 40% / 25%) and "Who" (The driver / Driver, unbelted
+behind / Back seat). Rough figures. Not built: the head's HIC, a soft deformable barrier, the car's own spin drawn.
+
+## M486l (25 Nov): Hyperion vehicles, a side crash: a car or a pole, both sides, the person beside
+
+The owner, 25 Nov (M486j's left-out). `vehicle.ts` `sideCrash(v, speed, { into, other, belt, bags, seat, beside })`:
+another car (a car like it by default) drives square into the side of this one standing still, or `into: 'pole'` (an
+endless mass, the same as sliding into it). The side crushes like one spring (`SIDE_K` 0.35 m at 50 km/h from a car
+like it, `POLE_K` 0.4 m at 32 km/h), 0.1 spring-back; the door's panel moves with the striker. Near seat: 15 cm to the
+door, its trim 200 kN/m, a thorax airbag (5 g on the car over 3 ms, as a door's pressure sensor; full 8 ms later; 10
+cm, 80 kN/m up to 8 kN, and the trim's push spread to 0.6). The head is 20 cm from the window and leans 1.3× the
+chest: no curtain, stopped in 2 cm (curtain 15 cm). Far seat: thrown across 60 cm, the lap belt (60 kN/m after 10 cm,
+up to 5 kN), into the console and door or, with `beside`, the near person (a body's width, 100 kN/m; heads 10 cm
+after the shoulders, stopped in 5 cm: `hitPerson`). Chest g the 3 ms average; `headHit` only for something hard.
+Checked: 50 km/h car ~0.35 m, airbags lower chest and head g; pole without airbags severe, with them low; far side
+alone milder, beside someone severe (heads). Language `vehicleSideCrash` (help, an example). Window: Vehicle → Crash →
+"Crash" (Head on / Into the side), "Hit by" (A car like it / Sliding into a pole), "Who" (On the struck side / The
+other side / Other side, someone beside). Rough figures. Not built: the car spinning after the blow, a crash at an
+angle, the back seats in a side crash, rib deflection (Euro NCAP's real measure; g here).
+
+## M486m (25 Nov): Hyperion vehicles, the middle seat and people knocking into each other in a rollover
+
+The owner, 25 Nov (M486i's left-outs). `vehicle.ts` `inside(…, { seat: 'middle' })`: between both roof edges, so their
+mean crush, `MIDDLE_ROOM` 2 cm more room (the roof is highest there), the head swinging 1.15× (between near 1 and far
+1.3); no window of its own (belted, never partly out; unbelted, either side's). `everyone(…, { middle })` adds the
+back's middle seat, and people knock into each other: along a row each head swings across into the next person on
+the side it tips to; the nearer one is stopped first, so they meet at the swinging one's speed, stopped in 5 cm
+(`HEADS_STOP`; unbelted 1.5× for the body behind), both feel it (`knock`, counted in `headG` and the risk). Note:
+`everyone` now counts the knocks for the four outer seats too (everyone sits there at once). Checked: the middle's
+room and swing between the outer seats', knocks on all three in the back, harder unbelted. The model's head swing
+speeds in a rollover are a few m/s, so knocks are a few g belted, up to ~15 unbelted. Language: vehicleTrip 'Seat'
+'middle', 'Middle', 1 (info.Seats with five rows and a Knock column). Window: Kerb → Seat → "Back middle", the facts
+"Five seats" and "Heads knocking together". Rough figures. Not built: a front middle seat drawn in the window (the
+language takes 'Seat', 'middle', 'Row', 'front'), bodies (not only heads) loading each other in a rollover.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

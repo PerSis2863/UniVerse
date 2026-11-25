@@ -23,6 +23,7 @@ import './embedded-lab';
 import './iot-lab';
 import './wireless-lab';
 import './sciences';
+import './machines-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';
