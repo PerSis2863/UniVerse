@@ -5,7 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
-import { FRONT_G, GROUNDS, ROLL_DEFAULT, inside, kerbTrip, shape, tripSpeed, type Vehicle } from '@/lib/lab/vehicle';
+import { FRONT_G, GROUNDS, ROLL_DEFAULT, everyone, inside, kerbTrip, shape, tripSpeed, type Vehicle } from '@/lib/lab/vehicle';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Vehicle → Kerb (M486d): the car sliding sideways into a kerb (or across the ground),
@@ -34,6 +34,8 @@ export function KerbView({ car }: { car: Vehicle }) {
   const v = useMemo(() => (car.roll ? car : { ...car, roll: ROLL_DEFAULT }), [car]), hk = Number(kerb) / 100;
   const tb = useMemo(() => kerbTrip(v, kmh / 3.6, hk, GROUNDS[ground]), [v, kmh, hk, ground]);
   const ins = useMemo(() => inside(v, tb, { belt: guard !== 'none', curtains: guard === 'both', size, seat }), [v, tb, guard, size, seat]);
+  // M486i: all four outer seats at once (the seat chosen above shows in detail).
+  const all = useMemo(() => everyone(v, tb, { belt: guard !== 'none', curtains: guard === 'both', size }), [v, tb, guard, size]);
   const n = tb.t.length, sh = shape(v);
 
   const kNow = useRef(0);
@@ -114,6 +116,7 @@ export function KerbView({ car }: { car: Vehicle }) {
     ['Roof in · windows broken', `${(tb.crush * 100).toFixed(0)} cm · ${tb.windows.filter((x) => !Number.isNaN(x)).length} side${tb.windows.filter((x) => !Number.isNaN(x)).length === 1 ? '' : 's'}`],
     ['People inside: most g · headroom', `${tb.peakG.toFixed(0)} g · ${ins.headroom >= 0 ? `${(ins.headroom * 100).toFixed(0)} cm left` : 'the roof reached them'}`],
     ['Heads · thrown out', `${ins.headG.toFixed(0)} g · ${!Number.isNaN(ins.thrownOut) ? `at ${ins.thrownOut.toFixed(2)} s` : ins.partly ? 'head and arms out' : 'kept inside'}`],
+    ['Four seats: head g (thrown out ✕)', `front ${all.slice(0, 2).map((x) => `${x.headG.toFixed(0)}${Number.isNaN(x.thrownOut) ? '' : '✕'}`).join(' · ')}, back ${all.slice(2).map((x) => `${x.headG.toFixed(0)}${Number.isNaN(x.thrownOut) ? '' : '✕'}`).join(' · ')}`],
     ['Front airbags', Number.isNaN(ins.frontBags) ? `didn’t fire (blow along the car ${tb.frontG.toFixed(1)} g; they need ${FRONT_G})` : `fired at ${ins.frontBags.toFixed(2)} s`],
     ['Windscreen · injury (rough)', `${!Number.isNaN(ins.screenOut) ? 'out of its frame' : !Number.isNaN(ins.screenCracked) ? 'cracked' : 'whole'} · ${ins.risk}`],
   ];

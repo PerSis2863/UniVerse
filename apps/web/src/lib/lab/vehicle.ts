@@ -314,10 +314,13 @@ export interface Inside { headSide: number; headRoof: number; headG: number; thr
 // one ~6 cm less) and their seat: 'near', the side the car tips towards (its roof edge and windows take the first
 // blows), or 'far' (the head swings across the car before anything stops it); no seat given takes the worse of the two
 // sides. Front airbags fire if the blow along the car passes FRONT_G (rare in a rollover; the tumble records it).
-export const SIZES = { small: 0.06, average: 0, tall: -0.06 } as const;
-export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; seat?: 'near' | 'far' } = {}): Inside {
-  const belt = o.belt ?? true, curt = o.curtains ?? false, sh = shape(v), room = HEADROOM + SIZES[o.size ?? 'average'];
-  const side = o.seat === 'near' ? 0 : o.seat === 'far' ? 1 : -1, crushAt = (c: [number, number] | undefined) => (c ? (side >= 0 ? c[side as 0 | 1] : Math.max(...c)) : 0);
+export const SIZES = { small: 0.06, average: 0, tall: -0.06 } as const, REAR_CRUSH = 0.7;
+export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; seat?: 'near' | 'far'; row?: 'front' | 'rear' } = {}): Inside {
+  // M486i: the back row sits ~3 cm nearer the roof (it slopes down) but further from the windscreen pillars, where the
+  // roof gives most: about 0.7 of the crush reaches it; no front airbags there.
+  const rear = o.row === 'rear', share = rear ? REAR_CRUSH : 1;
+  const belt = o.belt ?? true, curt = o.curtains ?? false, sh = shape(v), room = HEADROOM + SIZES[o.size ?? 'average'] - (rear ? 0.03 : 0);
+  const side = o.seat === 'near' ? 0 : o.seat === 'far' ? 1 : -1, crushAt = (c: [number, number] | undefined) => share * (c ? (side >= 0 ? c[side as 0 | 1] : Math.max(...c)) : 0);
   const r = Math.max(0.3, sh.roof - v.h - room - 0.1);
   let dw = 0, crushRate = 0, inverted = false, screenCracked = NaN, screenOut = NaN;
   for (let i = 0; i < tb.t.length; i++) {
@@ -330,7 +333,7 @@ export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: b
     if (Number.isNaN(screenCracked) && c > SCREEN_CRACK) screenCracked = tb.t[i];
     if (Number.isNaN(screenOut) && c > SCREEN_OUT) screenOut = tb.t[i];
   }
-  const crush = side >= 0 ? (tb.crushes.at(-1)?.[side as 0 | 1] ?? 0) : tb.crush, headroom = room - crush;
+  const crush = share * (side >= 0 ? (tb.crushes.at(-1)?.[side as 0 | 1] ?? 0) : tb.crush), headroom = room - crush;
   // The far side's head swings across the car first: more speed when it's stopped.
   const headSide = dw * r * (belt ? 0.6 : 1) * (side === 1 ? 1.3 : 1);
   const reached = headroom < (belt ? 0.05 : room);
@@ -348,7 +351,12 @@ export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: b
   const thrownOut = belt ? NaN : out, partly = belt && !Number.isNaN(out);
   // Rough bands: thrown out, a head over 150 g, or upside down with the roof 5 cm into their heads is severe.
   const risk = !Number.isNaN(thrownOut) || headG > 150 || (inverted && headroom < -0.05) ? 'severe' : headG > 80 || partly || headroom < 0 ? 'serious' : 'low';
-  return { headSide, headRoof, headG, thrownOut, partly, screenCracked, screenOut, frontBags: tb.frontAt, headroom, risk };
+  return { headSide, headRoof, headG, thrownOut, partly, screenCracked, screenOut, frontBags: rear ? NaN : tb.frontAt, headroom, risk };
+}
+/** M486i: everyone at once: the four outer seats (front and back, the side it tips to and the other). */
+export const SEATS = [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['rear', 'far']] as const;
+export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES } = {}) {
+  return SEATS.map(([row, seat]) => ({ row, seat, ...inside(v, tb, { ...o, row, seat }) }));
 }
 
 // ——— Steady state ———

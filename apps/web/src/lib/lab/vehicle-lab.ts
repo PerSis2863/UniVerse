@@ -115,9 +115,12 @@ const peopleOf = (o: Map<string, Value>) => {
   const size = o.get('occupant') ? textOf(o.get('occupant')!).toLowerCase() : 'average', seat = o.get('seat') ? textOf(o.get('seat')!).toLowerCase() : undefined;
   if (!(size in vd.SIZES)) throw new LabError("'Occupant' is 'small', 'average' or 'tall'.");
   if (seat !== undefined && seat !== 'near' && seat !== 'far') throw new LabError("'Seat' is 'near' (the side it tips towards) or 'far'.");
-  return { belt: flag('belts') !== 0, curtains: flag('curtains') === 1, size: size as keyof typeof vd.SIZES, seat: seat as 'near' | 'far' | undefined };
+  // M486i: 'Row' 'front' (default) or 'rear'.
+  const rowName = o.get('row') ? textOf(o.get('row')!).toLowerCase() : 'front';
+  if (rowName !== 'front' && rowName !== 'rear') throw new LabError("'Row' is 'front' or 'rear'.");
+  return { belt: flag('belts') !== 0, curtains: flag('curtains') === 1, size: size as keyof typeof vd.SIZES, seat: seat as 'near' | 'far' | undefined, row: rowName as 'front' | 'rear' };
 };
-const peopleFields = (ins: vd.Inside | null): [string, Value][] => [['HeadG', num(ins?.headG ?? 0)], ['ThrownOutAt', num(ins?.thrownOut ?? NaN)], ['PartlyOut', num(ins?.partly ? 1 : 0)], ['WindscreenCracked', num(ins?.screenCracked ?? NaN)], ['WindscreenOut', num(ins?.screenOut ?? NaN)], ['FrontAirbags', num(ins?.frontBags ?? NaN)], ['Injury', str(ins?.risk ?? 'low')]];
+const peopleFields = (ins: vd.Inside | null): [string, Value][] => [['HeadG', num(ins?.headG ?? 0)], ['ThrownOutAt', num(ins?.thrownOut ?? NaN)], ['PartlyOut', num(ins?.partly ? 1 : 0)], ['WindscreenCracked', num(ins?.screenCracked ?? NaN)], ['WindscreenOut', num(ins?.screenOut ?? NaN)], ['FrontAirbags', num(ins?.frontBags ?? NaN)], ['PersonHeadroom', num(ins?.headroom ?? vd.HEADROOM)], ['Injury', str(ins?.risk ?? 'low')]];
 // After a rollover (M486d): how many quarter turns, what it rests on, how far it slid sideways, how long.
 const tumbleFields = (tb: vd.Tumble): [string, Value][] => [['Rolls', num(tb.quarters)], ['RestsOn', str(tb.rests)], ['TumbleDistance', num(tb.slid)], ['TumbleTime', num(tb.time)], ['RoofCrush', num(tb.crush)], ['Spin', num((tb.spin * 180) / Math.PI)], ['WindowsBroken', num(tb.windows.filter((x) => !Number.isNaN(x)).length)], ['PeakG', num(tb.peakG)], ['Headroom', num(tb.headroom)]];
 /** The car's cross-section (wheels and roof) at a tumble's moment, for drawing from behind. */
@@ -138,7 +141,10 @@ def('vehicleTrip', (a, nout, lab) => {
   const opt = (k: string) => (o.get(k) ? toMat(o.get(k)!).d[0] : undefined), swr = opt('roofstrength'), yr = opt('yawrate'), vf = opt('forwardspeed');
   if (swr !== undefined && !(swr >= 0.5 && swr <= 10)) throw new LabError("'RoofStrength' is the roof's strength-to-weight ratio, 0.5 to 10 (3 by the US rule).");
   if ((yr !== undefined && !(Math.abs(yr) <= 5)) || (vf !== undefined && !(Math.abs(vf) <= 60))) throw new LabError("'YawRate' is up to 5 rad/s and 'ForwardSpeed' up to 60 m/s.");
-  const tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf }), people = peopleFields(vd.inside(v, tb, peopleOf(o)));
+  const who = peopleOf(o), tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf }), people = peopleFields(vd.inside(v, tb, who));
+  // M486i: all four outer seats at once (info.Seats: a table).
+  const all = vd.everyone(v, tb, who);
+  people.push(['Seats', table([['Row', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.row)) } as Value], ['Side', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.seat)) } as Value], ['HeadG', col(all.map((x) => x.headG))], ['Headroom', col(all.map((x) => x.headroom))], ['ThrownOutAt', col(all.map((x) => x.thrownOut))], ['PartlyOut', col(all.map((x) => (x.partly ? 1 : 0)))]])]);
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ...people, ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
   if (nout > 0) return [table([['Time', col(tb.t)], ['Across', col(tb.y)], ['Height', col(tb.z)], ['Roll', col(tb.th)], ['RollRate', col(tb.w)]]), info];
   call(lab, 'hold', str('on'));

@@ -183,4 +183,19 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(f('b', 'HeadG')).toBeCloseTo(tall.headG, 9);
     expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'Seat', 'middle')")).toThrow(/near/);
   });
+  it('front and back rows, and everyone at once (M486i)', { timeout: 60_000 }, () => {
+    const saloon = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, hard = vd.kerbTrip(saloon, 18);
+    const front = vd.inside(saloon, hard, { seat: 'near' }), back = vd.inside(saloon, hard, { seat: 'near', row: 'rear' });
+    // The back: 3 cm less room, 0.7 of the crush; no front airbags.
+    expect(back.headroom).toBeCloseTo(vd.HEADROOM - 0.03 - vd.REAR_CRUSH * hard.crushes.at(-1)![0], 9); expect(back.headroom).toBeGreaterThan(front.headroom);
+    expect(Number.isNaN(back.frontBags)).toBe(true);
+    const all = vd.everyone(saloon, hard, { belt: false });
+    expect(all.map((x) => `${x.row} ${x.seat}`)).toEqual(['front near', 'front far', 'rear near', 'rear far']);
+    expect(all[0].headG).toBeCloseTo(vd.inside(saloon, hard, { belt: false, seat: 'near' }).headG, 9);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, a] = vehicleTrip(vehicle('Roll', true), 18, 'Row', 'rear', 'Seat', 'near'); s = a.Seats; h = s.HeadG;");
+    expect(toMat(lab.vars.get('h')!).d.length).toBe(4);
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('a', 'PersonHeadroom')).toBeCloseTo(back.headroom, 9);
+  });
 });

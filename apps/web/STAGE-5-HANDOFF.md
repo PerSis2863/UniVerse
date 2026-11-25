@@ -13285,6 +13285,14 @@ Checked: off unchanged; on, more pitch rate just after the wing enters; much the
 'GustTail', 1. Window: All six → Gust → "The tail meets it later (the nose pitches)". Not built: the tail's own lag
 for turbulence (M489f's q gust already smooths over the length), the downwash's lag behind the wing.
 
+## M486i (25 Nov): Hyperion vehicles, front and back seats, everyone at once
+
+The owner, 25 Nov (M486h's left-outs). `vehicle.ts`: `inside(…, { row })`: 'rear' has 3 cm less room (the roof slopes)
+and `REAR_CRUSH` 0.7 of the crush (the roof gives most near the windscreen pillars), no front airbags; `everyone()`
+runs the four outer seats (`SEATS`: front/rear × near/far) at once. Language: 'Row'; info PersonHeadroom (that
+person's own) and Seats (a table: Row, Side, HeadG, Headroom, ThrownOutAt, PartlyOut). Window: Kerb → fact "Four
+seats: head g (thrown out ✕)". Rough figures. Not built: the middle seats, people hitting each other.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
