@@ -184,7 +184,7 @@ export const GROUNDS: Record<string, Ground> = {
 };
 /** M486f: the roof's crush on each side over time (outer, inner), when each side's windows broke (NaN if not), the
  * most g the people inside felt, and the headroom left above their heads (m; below 0 the roof reached them). */
-export interface Tumble { t: number[]; y: number[]; z: number[]; th: number[]; w: number[]; psi: number[]; crush: number; spin: number; crushes: [number, number][]; windows: [number, number]; peakG: number; headroom: number; quarters: number; rests: 'wheels' | 'side' | 'roof'; slid: number; time: number; peakRate: number; tripped: boolean }
+export interface Tumble { t: number[]; y: number[]; z: number[]; th: number[]; w: number[]; psi: number[]; crush: number; spin: number; crushes: [number, number][]; windows: [number, number]; peakG: number; headroom: number; frontG: number; frontAt: number; quarters: number; rests: 'wheels' | 'side' | 'roof'; slid: number; time: number; peakRate: number; tripped: boolean }
 /** The outline across the car: track, roof height and width (m). */
 export function shape(v: Vehicle) {
   const R = v.roll ?? ROLL_DEFAULT;
@@ -202,6 +202,8 @@ export function shape(v: Vehicle) {
 // than 4 cm (the frame twists); the people inside sit with about 10 cm over their heads, and feel the body's
 // acceleration from the ground's push (in g, without gravity's own 1 g).
 export const HEADROOM = 0.1, GLASS_N = 15000, GLASS_CRUSH = 0.04;
+/** M486h: front airbags fire on a blow along the car of about 20 km/h within 50 ms (~11 g). */
+export const FRONT_G = 11;
 export function tumble(v: Vehicle, st: { th: number; w: number; vy: number; vf: number; pivot: [number, number]; vz?: number; r?: number }, o: { ground?: Ground; kerb?: number; T?: number; swr?: number } = {}): Tumble {
   const sh = shape(v), gr = o.ground ?? GROUNDS.tarmac, kerb = o.kerb ?? 0, m = v.m, I = sh.ix, dt = 1e-4, T = o.T ?? 12;
   const Fy0 = (o.swr ?? 3) * m * G, arm = (v.lf + v.lr + 1.8) / 4, crushed = [0, 0];
@@ -216,8 +218,9 @@ export function tumble(v: Vehicle, st: { th: number; w: number; vy: number; vf: 
   let y = -pv[0], z = kerb - pv[1], th = st.th, w = st.w, vy = st.vy + w * -pv[1], vz = (st.vz ?? 0) - w * -pv[0], vf = st.vf, still = 0;
   const kerbAt = kerb ? -0.05 : -Infinity, groundAt = (py: number) => (py >= kerbAt ? kerb : 0);
   const K = 4e6, C = 2 * 0.45 * Math.sqrt(K * m / 4);
-  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], psi: [], crush: 0, spin: 0, crushes: [], windows: [NaN, NaN], peakG: 0, headroom: HEADROOM, quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: 0, tripped: false };
+  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], psi: [], crush: 0, spin: 0, crushes: [], windows: [NaN, NaN], peakG: 0, headroom: HEADROOM, frontG: 0, frontAt: NaN, quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: 0, tripped: false };
   const y0 = y;
+  let fwd = 0;
   for (let k = 0; k * dt <= T; k++) {
     let Fy = 0, Fz = -m * G, tq = 0, Ff = 0, Ntot = 0;
     for (const [a, b0, wheel, side] of pts) {
@@ -242,6 +245,11 @@ export function tumble(v: Vehicle, st: { th: number; w: number; vy: number; vf: 
     }
     if (k % 100 === 0) { out.t.push(k * dt); out.y.push(y - y0); out.z.push(z); out.th.push(th); out.w.push(w); out.psi.push(psi); out.crushes.push([crushed[0], crushed[1]]); }
     out.peakG = Math.max(out.peakG, Math.hypot(Fy, Fz + m * G, Ff) / (m * G));
+    // M486h: the blow along the car (friction slowing its forward slide), smoothed over 30 ms as a crash sensor
+    // sees it; front airbags fire past FRONT_G.
+    fwd += ((-(Ff * Math.sign(vf)) / (m * G) - fwd) * dt) / 0.03;
+    if (fwd > out.frontG) out.frontG = fwd;
+    if (Number.isNaN(out.frontAt) && fwd > FRONT_G) out.frontAt = k * dt;
     out.peakRate = Math.max(out.peakRate, Math.abs(w));
     // Yaw: friction across the car's length slows it; the axes turning swap forward and sideways speed.
     const tz = (-gr.body * Ntot * arm * r) / Math.max(Math.abs(r), 0.05);
@@ -267,7 +275,7 @@ export function kerbTrip(v: Vehicle, vlat: number, kerb = 0.15, ground: Ground =
   let phi = 0, w = (v.m * vlat * hh) / Ie, t = 0;
   // The blow at the kerb: the centre's speed changes from (v, 0) to ω·(h − kerb, track/2), over about 50 ms.
   const hitG = Math.hypot(vlat - w * hh, w * (sh.t / 2)) / 0.05 / G;
-  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], psi: [], crush: 0, spin: 0, crushes: [], windows: [NaN, NaN], peakG: 0, headroom: HEADROOM, quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: Math.abs(w), tripped: false };
+  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], psi: [], crush: 0, spin: 0, crushes: [], windows: [NaN, NaN], peakG: 0, headroom: HEADROOM, frontG: 0, frontAt: NaN, quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: Math.abs(w), tripped: false };
   for (let k = 0; t < 10; k++, t += dt) {
     const ry = -(sh.t / 2) * Math.cos(phi) + hh * Math.sin(phi), rz = (sh.t / 2) * Math.sin(phi) + hh * Math.cos(phi);
     if (k % 100 === 0) { out.t.push(t); out.y.push(ry); out.z.push(kerb + rz); out.th.push(phi); out.w.push(w); out.psi.push(0); out.crushes.push([0, 0]); }
@@ -275,7 +283,7 @@ export function kerbTrip(v: Vehicle, vlat: number, kerb = 0.15, ground: Ground =
       // Over the edge: it tumbles on, from the kerb.
       const rest = tumble(v, { th: phi, w, vy: 0, vf: o.vf ?? 0, r: o.r, pivot: [sh.t / 2, -v.h] }, { ground, kerb, swr: o.swr });
       // y is the centre's place across, the kerb's edge at 0 (it started at −track/2).
-      return { ...rest, t: [...out.t, ...rest.t.map((x) => x + t)], y: [...out.y, ...rest.y.map((x) => x + ry)], z: [...out.z, ...rest.z], th: [...out.th, ...rest.th], w: [...out.w, ...rest.w], psi: [...out.psi, ...rest.psi], crushes: [...out.crushes, ...rest.crushes], windows: [rest.windows[0] + t, rest.windows[1] + t], peakG: Math.max(rest.peakG, hitG), time: rest.time + t, slid: rest.slid + ry + sh.t / 2, peakRate: Math.max(out.peakRate, rest.peakRate), tripped: true };
+      return { ...rest, t: [...out.t, ...rest.t.map((x) => x + t)], y: [...out.y, ...rest.y.map((x) => x + ry)], z: [...out.z, ...rest.z], th: [...out.th, ...rest.th], w: [...out.w, ...rest.w], psi: [...out.psi, ...rest.psi], crushes: [...out.crushes, ...rest.crushes], windows: [rest.windows[0] + t, rest.windows[1] + t], frontAt: rest.frontAt + t, peakG: Math.max(rest.peakG, hitG), time: rest.time + t, slid: rest.slid + ry + sh.t / 2, peakRate: Math.max(out.peakRate, rest.peakRate), tripped: true };
     }
     if (phi < 0) break;
     w += ((v.m * G * ry) / Ie) * dt; phi += w * dt;
@@ -299,37 +307,48 @@ export function tripSpeed(v: Vehicle, kerb = 0.15) {
 // windscreen pulled from its frame, while still rolling fast enough (ω²·r over 1 g) to fling them; belted, only head and
 // arms. The windscreen is laminated: it cracks as the pillars bend (3 cm of roof crush) and comes out of its frame past
 // 15 cm; rolling flings people sideways, so it lets them out only when the car also turned over 90° as it tumbled. The
-// roof's crush is taken as spread over its 0.1 s on the ground (the model's own crush is at once). Frontal airbags don't fire in a rollover (no frontal blow), so they're left out.
+// roof's crush is taken as spread over its 0.1 s on the ground (the model's own crush is at once). Front airbags: see M486h below.
 export const CURTAIN_HOLD = 6, SCREEN_CRACK = 0.03, SCREEN_OUT = 0.15;
-export interface Inside { headSide: number; headRoof: number; headG: number; thrownOut: number; partly: boolean; screenCracked: number; screenOut: number; risk: 'low' | 'serious' | 'severe' }
-export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean } = {}): Inside {
-  const belt = o.belt ?? true, curt = o.curtains ?? false, sh = shape(v), r = Math.max(0.3, sh.roof - v.h - HEADROOM - 0.1);
+export interface Inside { headSide: number; headRoof: number; headG: number; thrownOut: number; partly: boolean; screenCracked: number; screenOut: number; frontBags: number; headroom: number; risk: 'low' | 'serious' | 'severe' }
+// M486h: a person's size (a small adult has ~6 cm more over their head and sits a little nearer the roll axis, a tall
+// one ~6 cm less) and their seat: 'near', the side the car tips towards (its roof edge and windows take the first
+// blows), or 'far' (the head swings across the car before anything stops it); no seat given takes the worse of the two
+// sides. Front airbags fire if the blow along the car passes FRONT_G (rare in a rollover; the tumble records it).
+export const SIZES = { small: 0.06, average: 0, tall: -0.06 } as const;
+export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; seat?: 'near' | 'far' } = {}): Inside {
+  const belt = o.belt ?? true, curt = o.curtains ?? false, sh = shape(v), room = HEADROOM + SIZES[o.size ?? 'average'];
+  const side = o.seat === 'near' ? 0 : o.seat === 'far' ? 1 : -1, crushAt = (c: [number, number] | undefined) => (c ? (side >= 0 ? c[side as 0 | 1] : Math.max(...c)) : 0);
+  const r = Math.max(0.3, sh.roof - v.h - room - 0.1);
   let dw = 0, crushRate = 0, inverted = false, screenCracked = NaN, screenOut = NaN;
   for (let i = 0; i < tb.t.length; i++) {
-    const c = Math.max(...(tb.crushes[i] ?? [0, 0])), dt = i ? tb.t[i] - tb.t[i - 1] : 0;
+    const c = Math.max(...(tb.crushes[i] ?? [0, 0])), own = crushAt(tb.crushes[i]), dt = i ? tb.t[i] - tb.t[i - 1] : 0;
     // A landing's change in roll rate over 50 ms; the roof's crush spread over its 0.1 s on the ground.
     let j = i; while (j > 0 && tb.t[i] - tb.t[j - 1] <= 0.05) j--;
     dw = Math.max(dw, Math.abs(tb.w[i] - tb.w[j]));
-    if (i && dt > 0) crushRate = Math.max(crushRate, (c - Math.max(...(tb.crushes[i - 1] ?? [0, 0]))) / Math.max(dt, 0.1));
+    if (i && dt > 0) crushRate = Math.max(crushRate, (own - crushAt(tb.crushes[i - 1])) / Math.max(dt, 0.1));
     if (Math.cos(tb.th[i]) < -0.5) inverted = true;
     if (Number.isNaN(screenCracked) && c > SCREEN_CRACK) screenCracked = tb.t[i];
     if (Number.isNaN(screenOut) && c > SCREEN_OUT) screenOut = tb.t[i];
   }
-  const headSide = dw * r * (belt ? 0.6 : 1);
-  const reached = tb.headroom < (belt ? 0.05 : HEADROOM);
-  const headRoof = !inverted ? 0 : belt ? (reached ? crushRate : 0) : Math.sqrt(2 * G * (Math.max(0, HEADROOM - tb.crush) + 0.15)) + crushRate;
+  const crush = side >= 0 ? (tb.crushes.at(-1)?.[side as 0 | 1] ?? 0) : tb.crush, headroom = room - crush;
+  // The far side's head swings across the car first: more speed when it's stopped.
+  const headSide = dw * r * (belt ? 0.6 : 1) * (side === 1 ? 1.3 : 1);
+  const reached = headroom < (belt ? 0.05 : room);
+  const headRoof = !inverted ? 0 : belt ? (reached ? crushRate : 0) : Math.sqrt(2 * G * (Math.max(0, room - crush) + 0.15)) + crushRate;
   const g = (sp: number, stop: number) => (sp * sp) / (2 * stop) / G;
   const headG = Math.max(g(headSide, curt ? 0.1 : 0.02), g(headRoof, 0.03));
   // An opening that is open at time t: a broken side window not covered by a curtain (or after it has gone down), or the
-  // windscreen out of its frame; flung if the car still rolls fast enough then.
-  const open = (t: number) => tb.windows.some((x) => !Number.isNaN(x) && x <= t && (!curt || t > CURTAIN_HOLD)) || (!Number.isNaN(screenOut) && screenOut <= t && Math.abs(tb.spin) > Math.PI / 2);
+  // windscreen out of its frame; flung if the car still rolls fast enough then. Unbelted, either side's window; belted,
+  // only their own side's (head and arms).
+  const glass = (t: number, own: boolean) => tb.windows.some((x, k) => (!own || side < 0 || k === side) && !Number.isNaN(x) && x <= t && (!curt || t > CURTAIN_HOLD));
+  const screen = (t: number) => !Number.isNaN(screenOut) && screenOut <= t && Math.abs(tb.spin) > Math.PI / 2;
   const fling = Math.sqrt(G / r);
   let out = NaN;
-  for (let i = 0; i < tb.t.length && Number.isNaN(out); i++) if (open(tb.t[i]) && Math.abs(tb.w[i]) > fling) out = tb.t[i];
+  for (let i = 0; i < tb.t.length && Number.isNaN(out); i++) if ((glass(tb.t[i], belt) || screen(tb.t[i])) && Math.abs(tb.w[i]) > fling) out = tb.t[i];
   const thrownOut = belt ? NaN : out, partly = belt && !Number.isNaN(out);
   // Rough bands: thrown out, a head over 150 g, or upside down with the roof 5 cm into their heads is severe.
-  const risk = !Number.isNaN(thrownOut) || headG > 150 || (inverted && tb.headroom < -0.05) ? 'severe' : headG > 80 || partly || tb.headroom < 0 ? 'serious' : 'low';
-  return { headSide, headRoof, headG, thrownOut, partly, screenCracked, screenOut, risk };
+  const risk = !Number.isNaN(thrownOut) || headG > 150 || (inverted && headroom < -0.05) ? 'severe' : headG > 80 || partly || headroom < 0 ? 'serious' : 'low';
+  return { headSide, headRoof, headG, thrownOut, partly, screenCracked, screenOut, frontBags: tb.frontAt, headroom, risk };
 }
 
 // ——— Steady state ———

@@ -108,6 +108,16 @@ const outline = (x: number, y: number, psi: number, v: vd.Vehicle) => {
   const c = Math.cos(psi), s = Math.sin(psi), f = v.lf + 0.9, b = -(v.lr + 0.9), w = 0.9;
   return [[b, -w], [f, -w], [f, w], [b, w], [b, -w]].map(([u, q]) => [x + u * c - q * s, y + u * s + q * c]);
 };
+// The people inside after a tumble (M486g; size, seat and front airbags M486h): 'Belts' 1/0, 'Curtains' 1/0,
+// 'Occupant' 'small' | 'average' | 'tall', 'Seat' 'near' | 'far'.
+const peopleOf = (o: Map<string, Value>) => {
+  const flag = (k: string) => { const x = o.get(k) ? toMat(o.get(k)!).d[0] : undefined; if (x !== undefined && x !== 0 && x !== 1) throw new LabError("'Belts' and 'Curtains' are 1 or 0."); return x; };
+  const size = o.get('occupant') ? textOf(o.get('occupant')!).toLowerCase() : 'average', seat = o.get('seat') ? textOf(o.get('seat')!).toLowerCase() : undefined;
+  if (!(size in vd.SIZES)) throw new LabError("'Occupant' is 'small', 'average' or 'tall'.");
+  if (seat !== undefined && seat !== 'near' && seat !== 'far') throw new LabError("'Seat' is 'near' (the side it tips towards) or 'far'.");
+  return { belt: flag('belts') !== 0, curtains: flag('curtains') === 1, size: size as keyof typeof vd.SIZES, seat: seat as 'near' | 'far' | undefined };
+};
+const peopleFields = (ins: vd.Inside | null): [string, Value][] => [['HeadG', num(ins?.headG ?? 0)], ['ThrownOutAt', num(ins?.thrownOut ?? NaN)], ['PartlyOut', num(ins?.partly ? 1 : 0)], ['WindscreenCracked', num(ins?.screenCracked ?? NaN)], ['WindscreenOut', num(ins?.screenOut ?? NaN)], ['FrontAirbags', num(ins?.frontBags ?? NaN)], ['Injury', str(ins?.risk ?? 'low')]];
 // After a rollover (M486d): how many quarter turns, what it rests on, how far it slid sideways, how long.
 const tumbleFields = (tb: vd.Tumble): [string, Value][] => [['Rolls', num(tb.quarters)], ['RestsOn', str(tb.rests)], ['TumbleDistance', num(tb.slid)], ['TumbleTime', num(tb.time)], ['RoofCrush', num(tb.crush)], ['Spin', num((tb.spin * 180) / Math.PI)], ['WindowsBroken', num(tb.windows.filter((x) => !Number.isNaN(x)).length)], ['PeakG', num(tb.peakG)], ['Headroom', num(tb.headroom)]];
 /** The car's cross-section (wheels and roof) at a tumble's moment, for drawing from behind. */
@@ -128,11 +138,7 @@ def('vehicleTrip', (a, nout, lab) => {
   const opt = (k: string) => (o.get(k) ? toMat(o.get(k)!).d[0] : undefined), swr = opt('roofstrength'), yr = opt('yawrate'), vf = opt('forwardspeed');
   if (swr !== undefined && !(swr >= 0.5 && swr <= 10)) throw new LabError("'RoofStrength' is the roof's strength-to-weight ratio, 0.5 to 10 (3 by the US rule).");
   if ((yr !== undefined && !(Math.abs(yr) <= 5)) || (vf !== undefined && !(Math.abs(vf) <= 60))) throw new LabError("'YawRate' is up to 5 rad/s and 'ForwardSpeed' up to 60 m/s.");
-  // M486g: 'Belts' (1 belted, the default; 0 not) and 'Curtains' (1: side curtain airbags).
-  const belts = opt('belts'), curtains = opt('curtains');
-  if ((belts !== undefined && belts !== 0 && belts !== 1) || (curtains !== undefined && curtains !== 0 && curtains !== 1)) throw new LabError("'Belts' and 'Curtains' are 1 or 0.");
-  const tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf }), ins = vd.inside(v, tb, { belt: belts !== 0, curtains: curtains === 1 });
-  const people: [string, Value][] = [['HeadG', num(ins.headG)], ['ThrownOutAt', num(ins.thrownOut)], ['PartlyOut', num(ins.partly ? 1 : 0)], ['WindscreenCracked', num(ins.screenCracked)], ['WindscreenOut', num(ins.screenOut)], ['Injury', str(ins.risk)]];
+  const tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf }), people = peopleFields(vd.inside(v, tb, peopleOf(o)));
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ...people, ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
   if (nout > 0) return [table([['Time', col(tb.t)], ['Across', col(tb.y)], ['Height', col(tb.z)], ['Roll', col(tb.th)], ['RollRate', col(tb.w)]]), info];
   call(lab, 'hold', str('on'));
@@ -157,9 +163,9 @@ def('vehicleSim', (a, nout, lab) => {
   const speed = timeFn(lab, o.get('speed'), 'The speed'), force = timeFn(lab, o.get('force'), 'The force'), grade = timeFn(lab, o.get('grade'), 'The slope');
   if (speed && force) throw new LabError("Give 'Speed' (held by the driver) or 'Force' (N, negative brakes), not both.");
   const v0 = o.get('initialspeed') ? toMat(o.get('initialspeed')!).d[0] : speed ? speed(0) : 0;
-  const r = vd.vehicleSim(v, steerOf(lab, a[1], amp), T, { speed, force, grade, v0 });
+  const r = vd.vehicleSim(v, steerOf(lab, a[1], amp), T, { speed, force, grade, v0 }), who = peopleOf(o);
   if (nout > 0) {
-    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))], ['PeakRoll', num(Math.max(...r.roll.map(Math.abs)))], ['WheelLift', num(r.lift ? 1 : 0)], ['RolledOver', num(Number.isFinite(r.rolled) ? 1 : 0)], ['RolledAt', num(r.rolled)], ['PeakTip', num(Math.max(0, ...r.tip.map(Math.abs)))], ...(r.tumble ? tumbleFields(r.tumble) : [['Rolls', num(0)], ['RestsOn', str('wheels')], ['TumbleDistance', num(0)], ['TumbleTime', num(0)], ['RoofCrush', num(0)], ['Spin', num(0)], ['WindowsBroken', num(0)], ['PeakG', num(0)], ['Headroom', num(vd.HEADROOM)]] as [string, Value][])]) };
+    const info: Struct = { k: 'struct', f: new Map<string, Value>([['Spun', num(r.spun ? 1 : 0)], ['PeakSideSlip', num(Math.max(...r.beta.map(Math.abs)))], ['PeakLateralAccel', num(Math.max(...r.ay.map(Math.abs)))], ['PeakRoll', num(Math.max(...r.roll.map(Math.abs)))], ['WheelLift', num(r.lift ? 1 : 0)], ['RolledOver', num(Number.isFinite(r.rolled) ? 1 : 0)], ['RolledAt', num(r.rolled)], ['PeakTip', num(Math.max(0, ...r.tip.map(Math.abs)))], ...(r.tumble ? tumbleFields(r.tumble) : [['Rolls', num(0)], ['RestsOn', str('wheels')], ['TumbleDistance', num(0)], ['TumbleTime', num(0)], ['RoofCrush', num(0)], ['Spin', num(0)], ['WindowsBroken', num(0)], ['PeakG', num(0)], ['Headroom', num(vd.HEADROOM)]] as [string, Value][]), ...peopleFields(r.tumble ? vd.inside(v, r.tumble, who) : null)]) };
     return [table([['Time', col(r.t)], ['X', col(r.x)], ['Y', col(r.y)], ['Yaw', col(r.psi)], ['Vx', col(r.vx)], ['Vy', col(r.vy)], ['YawRate', col(r.r)], ['Ay', col(r.ay)], ['Ax', col(r.ax)], ['SideSlip', col(r.beta)], ['Steer', col(r.steer)], ['SlipFront', col(r.af)], ['SlipRear', col(r.ar)], ['Roll', col(r.roll)], ['Tip', col(r.tip)]]), info];
   }
   call(lab, 'subplot', num(2), num(2), num(1)); call(lab, 'plot', row(r.x), row(r.y), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));

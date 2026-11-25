@@ -13250,6 +13250,21 @@ Language: aircraftSim6DOF 'Gust' takes a fourth number, the front's angle in deg
 All six → Gust → "The gust's front" (Square on / 30° / 60°). Not built: a front at an angle for turbulence (that is
 M489f's roll gust already), the gust reaching the tail later than the wing (pitch).
 
+## M486h (25 Nov): Hyperion vehicles, a person's size and seat, front airbags, people in steering rollovers
+
+The owner, 25 Nov (M486g's left-outs). `vehicle.ts`: `inside(…, { size, seat })`: `SIZES` small +6 cm, tall −6 cm over
+the head (and the head that much nearer or further from the roll axis); `seat` 'near' (side 0, the way it tips: that
+roof edge's crush and that window) or 'far' (side 1: the other edge's crush, the head swinging across, ×1.3 side
+speed); no seat keeps M486g's worse-of-both (old runs the same). Belted people partly out only through their own
+side's window; unbelted through either. `Inside.headroom` is now per person. Front airbags: `tumble` smooths the blow
+along the car (friction on the forward slide, 30 ms, as a crash sensor) into `frontG` and `frontAt` (past `FRONT_G`
+11 g); `kerbTrip` carries `frontAt` on. Checked: rolling gives ~0–5 g along the car, so they don't fire (as in real
+rollovers). Language: a shared `peopleOf` / `peopleFields` in `vehicle-lab.ts`: vehicleTrip and now vehicleSim (after
+a rollover) take 'Belts', 'Curtains', 'Occupant', 'Seat' and give HeadG, ThrownOutAt, PartlyOut, WindscreenCracked,
+WindscreenOut, FrontAirbags, Injury. Window: Kerb → "Who" (Small / Average / Tall) and "Seat" (Side it tips to /
+Other side), fact "Front airbags"; Vehicle → Hook's result adds the belted people's head g and injury. Not built:
+front and rear rows apart, two people at once, a frontal crash (the only way front airbags would fire).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

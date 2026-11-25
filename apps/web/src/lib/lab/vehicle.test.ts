@@ -165,4 +165,22 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('a', 'ThrownOutAt')).toBeCloseTo(loose.thrownOut, 9); expect(f('b', 'HeadG')).toBeCloseTo(both.headG, 9);
   });
+  it('a person\'s size and seat, front airbags, and the people in a steering rollover (M486h)', { timeout: 60_000 }, () => {
+    const saloon = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, hard = vd.kerbTrip(saloon, 18);
+    const small = vd.inside(saloon, hard, { size: 'small', seat: 'far' }), tall = vd.inside(saloon, hard, { size: 'tall', seat: 'far' });
+    // A tall person has 12 cm less over their head than a small one; the side it tips to is crushed more than the other.
+    expect(small.headroom - tall.headroom).toBeCloseTo(0.12, 9);
+    const near = vd.inside(saloon, hard, { seat: 'near' }), far = vd.inside(saloon, hard, { seat: 'far' });
+    expect(near.headroom).toBeLessThan(far.headroom); expect(vd.inside(saloon, hard).headroom).toBeCloseTo(near.headroom, 9);
+    // The far side's head swings across first: a harder side blow.
+    expect(far.headSide).toBeGreaterThan(near.headSide);
+    // Front airbags need a blow along the car; rolling over gives too little.
+    expect(hard.frontG).toBeLessThan(vd.FRONT_G); expect(Number.isNaN(near.frontBags)).toBe(true);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("van = vehicle('Mass', 2500, 'Inertia', 4500, 'CgHeight', 1.2, 'Cf', 110000, 'Cr', 140000, 'Track', 1.6, 'RollInertia', 1400, 'CamberRoll', [0.8 0.8], 'CamberStiffness', 0.1, 'RollSteer', [0.05 0.05]); [~, a] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'InitialSpeed', 22, 'Force', 0, 'Belts', 0); [~, b] = vehicleTrip(vehicle('Roll', true), 18, 'Occupant', 'tall', 'Seat', 'far');");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('a', 'Rolls')).toBeGreaterThan(0); expect(f('a', 'HeadG')).toBeGreaterThan(0); expect(Number.isNaN(f('a', 'FrontAirbags'))).toBe(true);
+    expect(f('b', 'HeadG')).toBeCloseTo(tall.headG, 9);
+    expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'Seat', 'middle')")).toThrow(/near/);
+  });
 });

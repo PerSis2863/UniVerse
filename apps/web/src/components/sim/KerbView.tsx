@@ -5,7 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
-import { GROUNDS, ROLL_DEFAULT, inside, kerbTrip, shape, tripSpeed, type Vehicle } from '@/lib/lab/vehicle';
+import { FRONT_G, GROUNDS, ROLL_DEFAULT, inside, kerbTrip, shape, tripSpeed, type Vehicle } from '@/lib/lab/vehicle';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Vehicle → Kerb (M486d): the car sliding sideways into a kerb (or across the ground),
@@ -15,6 +15,8 @@ import { ui } from './bench-ui';
 type Kerb = '0' | '10' | '15' | '25';
 type GroundName = 'tarmac' | 'grass' | 'soil';
 type Guard = 'none' | 'belts' | 'both';
+type Size = 'small' | 'average' | 'tall';
+type Seat = 'near' | 'far';
 
 export function KerbView({ car }: { car: Vehicle }) {
   const dark = useDarkMode(), still = useMedia('(prefers-reduced-motion: reduce)');
@@ -22,13 +24,16 @@ export function KerbView({ car }: { car: Vehicle }) {
   const [kerb, setKerb] = useState<Kerb>('15');
   const [ground, setGround] = useState<GroundName>('tarmac');
   const [guard, setGuard] = useState<Guard>('belts');
+  // M486h: the person's size and seat (near: the side it tips towards).
+  const [size, setSize] = useState<Size>('average');
+  const [seat, setSeat] = useState<Seat>('near');
   const [k, setK] = useState(0);
   const [playing, setPlaying] = useState(false);
   const cv = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
   // Without body roll chosen, the saloon's.
   const v = useMemo(() => (car.roll ? car : { ...car, roll: ROLL_DEFAULT }), [car]), hk = Number(kerb) / 100;
   const tb = useMemo(() => kerbTrip(v, kmh / 3.6, hk, GROUNDS[ground]), [v, kmh, hk, ground]);
-  const ins = useMemo(() => inside(v, tb, { belt: guard !== 'none', curtains: guard === 'both' }), [v, tb, guard]);
+  const ins = useMemo(() => inside(v, tb, { belt: guard !== 'none', curtains: guard === 'both', size, seat }), [v, tb, guard, size, seat]);
   const n = tb.t.length, sh = shape(v);
 
   const kNow = useRef(0);
@@ -107,8 +112,9 @@ export function KerbView({ car }: { car: Vehicle }) {
     ['Result', tb.tripped ? `Tripped: ${tb.quarters} quarter turn${tb.quarters === 1 ? '' : 's'}, on its ${tb.rests}` : 'Fell back onto its wheels'],
     ['Trips over this kerb from', Number.isFinite(v0) ? `${v0.toFixed(0)} km/h sideways` : 'no kerb'],
     ['Roof in · windows broken', `${(tb.crush * 100).toFixed(0)} cm · ${tb.windows.filter((x) => !Number.isNaN(x)).length} side${tb.windows.filter((x) => !Number.isNaN(x)).length === 1 ? '' : 's'}`],
-    ['People inside: most g · headroom', `${tb.peakG.toFixed(0)} g · ${tb.headroom >= 0 ? `${(tb.headroom * 100).toFixed(0)} cm left` : 'the roof reached them'}`],
+    ['People inside: most g · headroom', `${tb.peakG.toFixed(0)} g · ${ins.headroom >= 0 ? `${(ins.headroom * 100).toFixed(0)} cm left` : 'the roof reached them'}`],
     ['Heads · thrown out', `${ins.headG.toFixed(0)} g · ${!Number.isNaN(ins.thrownOut) ? `at ${ins.thrownOut.toFixed(2)} s` : ins.partly ? 'head and arms out' : 'kept inside'}`],
+    ['Front airbags', Number.isNaN(ins.frontBags) ? `didn’t fire (blow along the car ${tb.frontG.toFixed(1)} g; they need ${FRONT_G})` : `fired at ${ins.frontBags.toFixed(2)} s`],
     ['Windscreen · injury (rough)', `${!Number.isNaN(ins.screenOut) ? 'out of its frame' : !Number.isNaN(ins.screenCracked) ? 'cracked' : 'whole'} · ${ins.risk}`],
   ];
   return (
@@ -125,6 +131,12 @@ export function KerbView({ car }: { car: Vehicle }) {
         </div>
         <div className="space-y-1"><span className={label}>People inside</span>
           <Segmented<Guard> label="People inside" value={guard} onChange={setGuard} segments={[{ value: 'none', label: 'No belts' }, { value: 'belts', label: 'Belts' }, { value: 'both', label: 'Belts + curtains' }]} />
+        </div>
+        <div className="space-y-1"><span className={label}>Who</span>
+          <Segmented<Size> label="Who" value={size} onChange={setSize} segments={[{ value: 'small', label: 'Small' }, { value: 'average', label: 'Average' }, { value: 'tall', label: 'Tall' }]} />
+        </div>
+        <div className="space-y-1"><span className={label}>Seat</span>
+          <Segmented<Seat> label="Seat" value={seat} onChange={setSeat} segments={[{ value: 'near', label: 'Side it tips to' }, { value: 'far', label: 'Other side' }]} />
         </div>
         <button type="button" className={small} onClick={() => { if (k >= n - 1) setK(0); setPlaying((q) => !q); }}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Pause' : 'Replay'}</button>
       </div>
