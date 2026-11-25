@@ -13234,3 +13234,35 @@ see-through about the opacity, the thicker disc's far side shadowed, inner wall 
 rim edge-on, 'Parts' 32 and its limit. Not built: lengths in the disc's gas are coordinate lengths (not the gas's own
 frame), the gas absorbs the same at every colour, and convexSplit's cuts are still only planes from the mesh's folds (no
 free search for the best plane, as V-HACD does).
+
+## M545 (25 Nov): Hyperion physics, M544's left-outs (free planes for convexSplit, the disc's gas in its own frame and by colour)
+
+The owner sent M544's "left out on purpose" list back. **`convexSplit`** (`rigid3d.ts`): measuring the free search
+showed two older faults first. (1) A real corner of a **thin wedge-shaped part** was dropped: none of the 26 probe
+directions (M544) lands inside a wedge narrower than their spacing, so a cube with a pyramid pushed into its top came
+out at 89% of its volume. `PROBES` now adds 256 directions on a Fibonacci sphere (cheap: most fail the cell's planes
+before the mesh test). (2) A cut whose one side failed to judge was taken with that side dropped (and its empty space
+uncounted, so it looked good): `scoreIn` now needs both sides. With the corners right the dented cube hit a
+**plateau** (each diagonal cut leaves the same total empty space), so when the best cut saves under 1% and 4 parts
+remain in the budget, the 6 best cuts are judged **one cut ahead** (each side then cut by its best of 6 fold cuts):
+the dented cube is 4 exact parts. **`'Search', true`** (`search` in `convexSplit`) adds free planes where the fold
+cuts leave over half the empty space: across the part's three axes at ¼, ½ and ¾, then the best plane tilted (±0.3
+rad, halving) and slid, 4 rounds. A free plane must beat the best fold cut by a fifth (the 12³ grid's count of empty
+space is noisy; a fold cut is exact). Measured on 10 meshes it rarely wins (a peanut 1.0029 → 1.0004 of its volume, at
+4× the time; once it led to a part over 64 corners), so it is **off by default**. A 24-step half ring now makes 14
+parts (13 before) within 0.7%. **The disc** (`kerr.ts`): lengths through the gas are **the gas's own**,
+ds = (−p·u) dλ = Σ dλ_Mino / g (Σ = r² + a² cos²θ, E = 1), and κ is set by the proper height 2 r asin(h/r) (across
+the gas's motion, the same for it as for a still observer). With **`tK`** (kelvin of the hottest gas) each pixel gets a
+**spectrum** `S` at `LAM` (17 wavelengths, 380–780 nm): each bit of gas a black body at g·T as we see it (I_ν/ν³ is
+invariant), taking light by colour with κ_ν = κ (ν/ν_peak)^−`absorb` in its own frame (ν_peak its own temperature's,
+where `opacity` holds). Faces take 1 − (1 − opacity)^f, the slab exp(−κ f ds), walls all; a ray goes on while any colour
+gets through. `I`, `g`, `r`, `T` are still the grey ones. `kerrDisc`'s 'temperature' colour is now each pixel's spectrum
+through `sampledRGB` (`spectrumRGB` is the CIE fit for any spectrum; `blackbodyRGB` uses it), and **`'Absorption'`**
+p (−4 to 4) sets the power. Note for whoever builds on it: by Kirchhoff the gas also **glows** most at the colours it
+takes most, and in a see-through disc that glow outweighs the light from behind, so p = 2 (free–free) makes the
+picture redder and −1 (dust) bluer (the light from behind does pass bluer for p = 2). Example `physics9.m` (the dented
+cube, two discs). Tests (`physics-m545.test.ts`): the dented cube 4 exact parts, 'Search' on an L, a sampled black
+body's colour, free–free redder and dust bluer with the brightness unchanged (within 0.2%) and a solid disc unchanged,
+face-on still about the opacity, both options in the language. Not built: `'Search'` stays a local search (no
+V-HACD-style voxel or hierarchical search), the one-cut look-ahead only on a plateau, and scattering (light turned
+aside rather than taken) is not modelled; the spectrum is not one of `kerrDisc`'s outputs.

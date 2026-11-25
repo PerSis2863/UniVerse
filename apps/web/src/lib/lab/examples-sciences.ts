@@ -346,6 +346,17 @@ figure; rigidShapes3D({parts}, [5 5 3 40 0 0], [], 'Time', 2)
 figure; kerrDisc(0.5, 60, 'Pixels', 80, 'Thickness', 0.2)
 figure; kerrDisc(0, 85, 'Pixels', 80, 'Thickness', 0.2, 'Opacity', 0.3)
 ` },
+  { name: 'physics9.m', code: `% Physics: a pyramid pushed into a cube, cut into parts by itself; a disc's gas taking light by colour
+% 1. No single cut helps this one (each diagonal cut leaves the same empty space), so it looks one cut ahead
+V = [0 0 0; 1 0 0; 1 1 0; 0 1 0; 0 0 1; 1 0 1; 1 1 1; 0 1 1; 0.5 0.5 0.2];
+F = [4 3 2 1; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8; 5 6 9 NaN; 6 7 9 NaN; 7 8 9 NaN; 8 5 9 NaN];   % NaN pads the triangles
+parts = convexSplit(V, F);
+fprintf('The dented cube in %d convex parts\\n', numel(parts))
+% 2. A see-through thick disc nearly edge-on, coloured by the light that reaches us. Gas glows most at the colours it
+%    takes most: hot gas (free-free, p = 2) glows redder, the far side coming through it bluer; dust (p = -1) the other way
+figure; kerrDisc(0.9, 82, 'Pixels', 70, 'Thickness', 0.15, 'Opacity', 0.5, 'Colour', 'temperature', 'Absorption', 2)
+figure; kerrDisc(0.9, 82, 'Pixels', 70, 'Thickness', 0.15, 'Opacity', 0.5, 'Colour', 'temperature', 'Absorption', -1)
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north
