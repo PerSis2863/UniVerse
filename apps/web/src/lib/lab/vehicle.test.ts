@@ -304,4 +304,23 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect((lab.vars.get('i') as unknown as { f: Map<string, unknown> }).f.get('Seats')).toBeTruthy();
     expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'FrontMiddle', 3)")).toThrow(/FrontMiddle/);
   });
+  it('a side crash: spin, an angle, the back seat and ribs (M486p)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, go = (o: Parameters<typeof vd.sideCrash>[2], sp = 50) => vd.sideCrash(car, sp / 3.6, o);
+    const sq = go({}), none = go({ bags: false });
+    // Ribs: the airbag squeezes them less; a blow at the centre of mass doesn't spin the car, off it does.
+    expect(sq.ribs).toBeLessThan(none.ribs); expect(none.ribs).toBeGreaterThan(0.05);
+    expect(go({ hitAt: 0 }).spin).toBeCloseTo(0, 9); expect(sq.spin).toBeGreaterThan(30);
+    // At 30°: only the square part crushes (less), the car shoved along and spinning more.
+    const ang = go({ angle: 30 });
+    expect(ang.intrusion).toBeLessThan(sq.intrusion); expect(ang.along).toBeGreaterThan(1); expect(ang.spin).toBeGreaterThan(sq.spin); expect(sq.along).toBe(0);
+    // The back seat: less of the striker reaches its door, no thorax airbag (only the curtain).
+    const back = go({ row: 'rear' });
+    expect(back.reach).toBeLessThan(1); expect(back.intrusion).toBeLessThan(sq.intrusion);
+    expect(go({ into: 'pole', row: 'rear' }, 32).reach).toBe(0);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleSideCrash(vehicle(), 50/3.6, 'Angle', 30, 'Row', 'rear');");
+    const f = (k: string) => toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('Spin')).toBeCloseTo(go({ angle: 30, row: 'rear' }).spin, 6); expect(f('Ribs')).toBeGreaterThan(0);
+    expect(() => lab.run("vehicleSideCrash(vehicle(), 10, 'Angle', 80)")).toThrow(/Angle/);
+  });
 });

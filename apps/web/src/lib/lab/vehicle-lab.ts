@@ -163,8 +163,13 @@ def('vehicleSideCrash', (a, nout, lab) => {
   if (other !== undefined && !(other >= 100 && other <= 60000)) throw new LabError("'OtherMass' is the other vehicle's mass, 100 to 60,000 kg.");
   if (seat !== 'near' && seat !== 'far') throw new LabError("'Seat' is 'near' (the struck side) or 'far'.");
   const flag = (k: string, d: number) => { const x = o.get(k) ? toMat(o.get(k)!).d[0] : d; if (x !== 0 && x !== 1) throw new LabError("'Belts', 'Airbags' and 'Beside' are 1 or 0."); return x === 1; };
-  const c = vd.sideCrash(v, sp, { into, other, belt: flag('belts', 1), bags: flag('airbags', 1), seat, beside: flag('beside', 0) });
-  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Intrusion', num(c.intrusion)], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['ChestG', num(c.chestG)], ['HeadG', num(c.headG)], ['HeadHit', num(c.headHit ? 1 : 0)], ['PersonForce', num(c.hitPerson)], ['Injury', str(c.risk)]]) };
+  // M486p: 'Angle' (degrees from square), 'HitAt' (m ahead of the centre of mass), 'Row' 'front' or 'rear'.
+  const angle = o.get('angle') ? toMat(o.get('angle')!).d[0] : 0, hitAt = o.get('hitat') ? toMat(o.get('hitat')!).d[0] : undefined, seatRow = o.get('row') ? textOf(o.get('row')!).toLowerCase() : 'front';
+  if (!(angle >= 0 && angle <= 60)) throw new LabError("'Angle' is degrees from square on, 0 to 60.");
+  if (hitAt !== undefined && !(Math.abs(hitAt) <= 3)) throw new LabError("'HitAt' is where the blow lands, metres ahead of the centre of mass (behind: negative), up to 3.");
+  if (seatRow !== 'front' && seatRow !== 'rear') throw new LabError("'Row' is 'front' or 'rear'.");
+  const c = vd.sideCrash(v, sp, { into, other, belt: flag('belts', 1), bags: flag('airbags', 1), seat, beside: flag('beside', 0), angle, hitAt, row: seatRow });
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Intrusion', num(c.intrusion)], ['SpeedChange', num(c.dv)], ['AlongSpeedChange', num(c.along)], ['Spin', num(c.spin)], ['Ribs', num(c.ribs)], ['AirbagAt', num(c.bagAt)], ['ChestG', num(c.chestG)], ['HeadG', num(c.headG)], ['HeadHit', num(c.headHit ? 1 : 0)], ['PersonForce', num(c.hitPerson)], ['Injury', str(c.risk)]]) };
   if (nout > 0) return [table([['Time', col(c.t)], ['CarG', col(c.carG)], ['PersonG', col(c.personG)], ['Gap', col(c.gap)]]), info];
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.carG), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.personG), str('LineWidth'), num(2)); call(lab, 'hold', str('off'));

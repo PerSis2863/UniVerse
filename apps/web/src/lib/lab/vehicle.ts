@@ -497,14 +497,28 @@ export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'ca
 // (the shoulder belt slips off: 60 kN/m after 10 cm, up to 5 kN), into the person beside them (`beside`, 35 cm away,
 // shoulder to shoulder 100 kN/m; heads 10 cm after the shoulders, stopped in 5 cm) or the console and the struck door. Chest g is the 3 ms average. Rough figures.
 export const SIDE_K = 1.1e6, POLE_K = 7.4e5, DOOR_GAP = 0.15, SIDE_BAG = 0.1, SIDE_BAG_N = 8000, SIDE_BAG_K = 8e4, TRIM_K = 2e5, SIDE_FIRE = 5, HEAD_GAP = 0.2, FAR_GAP = 0.6, BESIDE_GAP = 0.35, BODY_K = 1e5;
-export interface SideCrash { t: number[]; carG: number[]; personG: number[]; gap: number[]; intrusion: number; dv: number; bagAt: number; chestG: number; headG: number; headHit: boolean; hitPerson: number; risk: 'low' | 'serious' | 'severe' }
-export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole'; other?: number; belt?: boolean; bags?: boolean; seat?: 'near' | 'far'; beside?: boolean } = {}): SideCrash {
+// M486p: the car spinning, crashes at an angle, the back seats and rib squeeze. The blow lands `hitAt` metres ahead of
+// the centre of mass (Euro NCAP aims at the front seat: 0.3 m), so its impulse J spins the car, ω = J·hitAt / Iz; at an
+// `angle` (degrees from square) only the square part v·cos(angle) crushes, and the sliding part is rubbed off by
+// friction (0.5·J at most, the reduced mass times v·sin(angle) at most), shoving the car along and spinning it about its
+// 0.9 m half-width too. `row: 'rear'` sits 0.6 m behind the centre: the door there comes in by how much of the striker
+// reaches it (a car's front is ~1.7 m wide: all within 0.5 m of where it aims, nothing 1.5 m past that; a pole only
+// within 15 cm, nothing 60 cm past), and the back has curtains but no thorax airbag. Ribs: 0.2 of the push on the door's
+// side squeezes the ribs (the arm, shoulder and pelvis take the rest), a thorax airbag's push spread out, 0.3 as hard,
+// the chest 150 kN/m (`RIB_K`); Euro NCAP's dummy is good under 28 mm, poor past 50 (here serious past 35, severe 50).
+export const RIB_K = 1.5e5, SEAT_X = { front: 0.3, rear: -0.6 } as const;
+export interface SideCrash { ribs: number; spin: number; along: number; reach: number; t: number[]; carG: number[]; personG: number[]; gap: number[]; intrusion: number; dv: number; bagAt: number; chestG: number; headG: number; headHit: boolean; hitPerson: number; risk: 'low' | 'serious' | 'severe' }
+export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole'; other?: number; belt?: boolean; bags?: boolean; seat?: 'near' | 'far'; beside?: boolean; angle?: number; hitAt?: number; row?: 'front' | 'rear' } = {}): SideCrash {
   const pole = o.into === 'pole', m = v.m, m2 = pole ? 1e9 : (o.other ?? m), belt = o.belt ?? true, bags = o.bags ?? true, far = o.seat === 'far', mo = 75, dt = 1e-5, T = 0.15, e = 0.1;
-  const k = pole ? POLE_K : SIDE_K;
+  const k = pole ? POLE_K : SIDE_K, ang = ((o.angle ?? 0) * Math.PI) / 180, hitAt = o.hitAt ?? SEAT_X.front, rear = o.row === 'rear';
+  // How much of the striker's push reaches this row's door, and the thorax airbag (front only).
+  const dx = Math.abs((rear ? SEAT_X.rear : SEAT_X.front) - hitAt), reach = pole ? Math.max(0, Math.min(1, 1 - Math.max(0, dx - 0.15) / 0.6)) : Math.max(0, Math.min(1, 1 - Math.max(0, dx - 0.5) / 1.5));
+  const thorax = bags && !rear;
+  let J = 0, ribs = 0;
   // Ground positions along the blow: the striker's face, the car, the near person's chest (its side towards the door),
   // the far person's (both measured from the door's inner panel at the start).
-  let xs = 0, vs = speed, xc = 0, vc = 0, xn = DOOR_GAP, vn = 0, xf = DOOR_GAP + FAR_GAP, vf = 0, most = 0, sens = 0, bagAt = NaN, headG = 0, hitPerson = 0, minHead = Infinity;
-  const nearIn = !far || !!o.beside, farIn = far || !!o.beside, out: SideCrash = { t: [], carG: [], personG: [], gap: [], intrusion: 0, dv: 0, bagAt: NaN, chestG: 0, headG: 0, headHit: false, hitPerson: 0, risk: 'low' };
+  let xs = 0, vs = speed * Math.cos(ang), xc = 0, vc = 0, xn = DOOR_GAP, vn = 0, xf = DOOR_GAP + FAR_GAP, vf = 0, most = 0, sens = 0, bagAt = NaN, headG = 0, hitPerson = 0, minHead = Infinity;
+  const nearIn = !far || !!o.beside, farIn = far || !!o.beside, out: SideCrash = { ribs: 0, spin: 0, along: 0, reach, t: [], carG: [], personG: [], gap: [], intrusion: 0, dv: 0, bagAt: NaN, chestG: 0, headG: 0, headHit: false, hitPerson: 0, risk: 'low' };
   const win = Math.round(0.003 / dt), recent: number[] = [];
   let sum = 0;
   for (let i = 0; i * dt <= T; i++) {
@@ -514,9 +528,10 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
     const ac = F / m;
     sens += ((ac / G - sens) * dt) / 0.003;
     if (bags && Number.isNaN(bagAt) && sens > SIDE_FIRE) bagAt = t;
-    const full = !Number.isNaN(bagAt) && t > bagAt + 0.008, door = xs;
-    // The door's panel (or the thorax airbag in front of it) on whoever is nearest it.
-    const onDoor = (x: number) => { const pen = door - x; return (pen > 0 ? TRIM_K * (full ? 0.6 : 1) * pen : 0) + (full && pen > -SIDE_BAG ? Math.min(SIDE_BAG_N, SIDE_BAG_K * (pen + SIDE_BAG)) : 0); };
+    const full = thorax && !Number.isNaN(bagAt) && t > bagAt + 0.008, door = xc + reach * (xs - xc);
+    // The door's panel (or the thorax airbag in front of it) on whoever is nearest it: [trim, airbag].
+    const parts = (x: number): [number, number] => { const pen = door - x; return [pen > 0 ? TRIM_K * (full ? 0.6 : 1) * pen : 0, full && pen > -SIDE_BAG ? Math.min(SIDE_BAG_N, SIDE_BAG_K * (pen + SIDE_BAG)) : 0]; };
+    const onDoor = (x: number) => { const [a, b] = parts(x); return a + b; };
     let Fn = 0, Fc = 0;
     if (nearIn) Fn = onDoor(xn);
     // The far person: the lap belt (pulling them back towards their seat, against the blow they lag), then the near
@@ -527,6 +542,10 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
     if (nearIn && farIn && xf - xn < body) Fc = BODY_K * (body - (xf - xn));
     const Ff = lap + Fc + (nearIn ? 0 : onDoor(xf));
     hitPerson = Math.max(hitPerson, Fc);
+    // The ribs of the person asked about: the door's side (trim, the airbag half as hard), or the other person's shoulder.
+    const pr = far ? (nearIn ? [Fc, 0] : parts(xf)) : parts(xn);
+    ribs = Math.max(ribs, (0.2 * (pr[0] + 0.3 * pr[1])) / RIB_K);
+    J += F * dt;
     const an = (Fn - Fc) / mo, af = Ff / mo, me = far ? af : an;
     // The head leans 1.3× as far as the chest (relative to the car). Near: 20 cm from the window; far: past the other
     // person's head (10 cm after the shoulders meet) or, with nobody there, the window across the car. The speed it
@@ -534,7 +553,7 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
     const who = far ? xf : xn, lean = far ? leanF : leanN;
     const toHead = far && nearIn ? xf - xn - body + 0.1 - 0.3 * (leanF - leanN) : who - door + HEAD_GAP - DOOR_GAP - 0.3 * lean;
     if (toHead <= 0 && minHead > 0) {
-      const closing = far && nearIn ? Math.max(0, vn - vf) : Math.max(0, vs - (far ? vf : vn)), stop = far && nearIn ? 0.05 : bags ? 0.15 : 0.02;
+      const closing = far && nearIn ? Math.max(0, vn - vf) : Math.max(0, vc + reach * (vs - vc) - (far ? vf : vn)), stop = far && nearIn ? 0.05 : bags ? 0.15 : 0.02;
       headG = Math.max(headG, (closing * closing) / (2 * stop) / G);
     }
     minHead = Math.min(minHead, toHead);
@@ -545,8 +564,11 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
   }
   // Hit something hard: the head reached the window side with no curtain, or another person's head.
   const headHit = minHead <= 0 && (!bags || (far && nearIn));
-  const risk = out.chestG > 60 || headG > 80 ? 'severe' : out.chestG > 40 || headHit || hitPerson > 4000 ? 'serious' : 'low';
-  return { ...out, intrusion: most, dv: vc, bagAt, headG, headHit, hitPerson, risk };
+  // At an angle: friction rubs off the sliding part (at most 0.5·J, at most what stops the sliding).
+  const mr = pole ? m : (m * m2) / (m + m2), Ja = Math.min(0.5 * J, mr * speed * Math.abs(Math.sin(ang)));
+  const iz = v.iz, spin = ((J * Math.abs(hitAt) + Ja * (CAR_WIDTH / 2)) / iz) * (180 / Math.PI);
+  const risk = out.chestG > 60 || headG > 80 || ribs > 0.05 ? 'severe' : out.chestG > 40 || headHit || hitPerson > 4000 || ribs > 0.035 ? 'serious' : 'low';
+  return { ...out, ribs, spin, along: Ja / m, intrusion: most * reach, dv: vc, bagAt: thorax || bags ? bagAt : NaN, headG, headHit, hitPerson, risk };
 }
 
 // ——— Steady state ———

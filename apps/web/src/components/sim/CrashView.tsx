@@ -19,6 +19,8 @@ type Seat = 'front' | 'rear' | 'pushed';
 type Kind = 'front' | 'side';
 type SideInto = 'car' | 'pole';
 type SideSeat = 'near' | 'far' | 'beside';
+type SideRow = 'front' | 'rear';
+type SideAngle = '0' | '15' | '30';
 
 export function CrashView({ car }: { car: Vehicle }) {
   const dark = useDarkMode();
@@ -30,9 +32,12 @@ export function CrashView({ car }: { car: Vehicle }) {
   const [kind, setKind] = useState<Kind>('front');
   const [sideInto, setSideInto] = useState<SideInto>('car');
   const [sideSeat, setSideSeat] = useState<SideSeat>('near');
+  // M486p: the back seat and a blow at an angle.
+  const [sideRow, setSideRow] = useState<SideRow>('front');
+  const [sideAngle, setSideAngle] = useState<SideAngle>('0');
   const cv = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
   const c = useMemo(() => frontalCrash(car, kmh / 3.6, { into, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', overlap: Number(overlap), seat: seat === 'rear' ? 'rear' : 'front', behind: seat === 'pushed' ? 'unbelted' : 'none' }), [car, kmh, into, guard, overlap, seat]);
-  const sc = useMemo(() => sideCrash(car, kmh / 3.6, { into: sideInto, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', seat: sideSeat === 'near' ? 'near' : 'far', beside: sideSeat === 'beside' }), [car, kmh, sideInto, guard, sideSeat]);
+  const sc = useMemo(() => sideCrash(car, kmh / 3.6, { into: sideInto, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', seat: sideSeat === 'near' ? 'near' : 'far', beside: sideSeat === 'beside', row: sideRow, angle: Number(sideAngle) }), [car, kmh, sideInto, guard, sideSeat, sideRow, sideAngle]);
   const rear = seat === 'rear', side = kind === 'side', d = side ? sc : c;
 
   const draw = useEffectEvent(() => {
@@ -70,9 +75,10 @@ export function CrashView({ car }: { car: Vehicle }) {
   const sideFacts: [string, string][] = [
     ['Result', `${sc.risk === 'low' ? 'Likely to walk away' : sc.risk === 'serious' ? 'Serious injury likely' : 'Severe injury likely'} (rough)`],
     ['The side crushed · the car shoved', `${(sc.intrusion * 100).toFixed(0)} cm · ${(sc.dv * 3.6).toFixed(0)} km/h sideways`],
-    ['Chest (3 ms)', `${sc.chestG.toFixed(0)} g`],
+    ['Chest (3 ms) · ribs squeezed', `${sc.chestG.toFixed(0)} g · ${(sc.ribs * 1000).toFixed(0)} mm (good under 28, poor past 50)`],
+    ['The car after the blow', `spinning ${sc.spin.toFixed(0)}°/s${sc.along > 0.05 ? `, shoved ${(sc.along * 3.6).toFixed(0)} km/h along` : ''}`],
     ['Head', sc.headG > 0.5 ? `${sc.headG.toFixed(0)} g${sc.headHit ? (sideSeat === 'beside' ? ', against the other person’s head' : ', against the window side') : ', on the curtain airbag'}` : 'nothing hit'],
-    ['Side airbags', Number.isNaN(sc.bagAt) ? (guard === 'none' || guard === 'belt' ? 'none fitted' : 'didn’t fire') : `fired at ${(sc.bagAt * 1000).toFixed(0)} ms`],
+    ['Side airbags', Number.isNaN(sc.bagAt) ? (guard === 'none' || guard === 'belt' ? 'none fitted' : 'didn’t fire') : `fired at ${(sc.bagAt * 1000).toFixed(0)} ms${sideRow === 'rear' ? ' (curtain only in the back)' : ''}`],
     ['Into the person beside', sideSeat === 'beside' ? `${(sc.hitPerson / 1000).toFixed(1)} kN shoulder to shoulder` : 'nobody beside'],
   ];
   const frontFacts: [string, string][] = [
@@ -103,6 +109,12 @@ export function CrashView({ car }: { car: Vehicle }) {
         </div>
         {side ? <div className="space-y-1"><span className={label}>Who</span>
           <Segmented<SideSeat> label="Who" value={sideSeat} onChange={setSideSeat} segments={[{ value: 'near', label: 'On the struck side' }, { value: 'far', label: 'The other side' }, { value: 'beside', label: 'Other side, someone beside' }]} />
+        </div> : null}
+        {side ? <div className="space-y-1"><span className={label}>Row</span>
+          <Segmented<SideRow> label="Row" value={sideRow} onChange={setSideRow} segments={[{ value: 'front', label: 'Front' }, { value: 'rear', label: 'Back' }]} />
+        </div> : null}
+        {side ? <div className="space-y-1"><span className={label}>Angle</span>
+          <Segmented<SideAngle> label="Angle" value={sideAngle} onChange={setSideAngle} segments={[{ value: '0', label: 'Square on' }, { value: '15', label: '15°' }, { value: '30', label: '30°' }]} />
         </div> : <>
         <div className="space-y-1"><span className={label}>How much of the front hits</span>
           <Segmented<Overlap> label="How much of the front hits" value={overlap} onChange={setOverlap} segments={[{ value: '1', label: 'All of it' }, { value: '0.4', label: '40%' }, { value: '0.25', label: '25%' }]} />

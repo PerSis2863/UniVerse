@@ -13438,6 +13438,21 @@ Language: vehicleTrip 'FrontMiddle', 1; info.Seats gains BodyLoad. Window: Kerb 
 seats then), the fact "Bodies landing on each other". Rough figures. Not built: people's arms and legs, a person
 landing on the roof lining with others on top.
 
+## M486p (25 Nov): Hyperion vehicles, a side crash's spin, angle, back seats and ribs
+
+The owner, 25 Nov (M486l's left-outs). `vehicle.ts` `sideCrash(…, { angle, hitAt, row })`: the blow lands `hitAt` m ahead
+of the centre of mass (0.3, `SEAT_X.front`, where Euro NCAP aims), so its impulse J spins the car, ω = J·hitAt / Iz;
+at an `angle` only v·cos(angle) crushes, and friction rubs off the sliding part (at most 0.5·J and the reduced mass
+times v·sin(angle)), shoving the car along (`along`) and adding its spin about the 0.9 m half-width. `row: 'rear'`
+sits 0.6 m behind the centre: its door comes in by `reach` (a car's front reaches fully within 0.5 m of its aim and
+not 1.5 m past that; a pole within 15 cm and not 60 cm past); curtains but no thorax airbag there. `ribs`: 0.2 of the
+door's push (a thorax airbag's 0.3 as hard) over `RIB_K` 150 kN/m; serious past 35 mm, severe past 50 in the risk.
+Checked: ~36 mm with airbags, ~53 without at 50 km/h; no spin when hit at the centre; 30° crushes less, shoves and
+spins more; the back's door comes in less, none from a pole aimed at the front seat. Language: vehicleSideCrash
+'Angle', 'HitAt', 'Row'; info AlongSpeedChange, Spin, Ribs. Window: Crash → Into the side → "Row" (Front / Back),
+"Angle" (Square on / 15° / 30°), facts for ribs and the car's spin. Rough figures. Not built: the car's path after the
+blow drawn, a pole aimed at the back seat in the window (the language takes 'HitAt').
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
