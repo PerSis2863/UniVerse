@@ -140,7 +140,7 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   // strength (m/s rms) with 'TurbulenceScale' (m) and 'Seed'.
   const wind: fl.Wind = {};
   if (o.get('wind')) { const w = toMat(o.get('wind')!).d; if (w.length !== 3 || ![...w].every((x) => Math.abs(x) <= 60)) throw new LabError("'Wind' is [north east down] in m/s (the way the air moves), each up to 60."); wind.steady = [w[0], w[1], w[2]]; }
-  if (o.get('gust')) { const g = toMat(o.get('gust')!).d; if (g.length !== 3 || !(g[0] >= 0 && g[1] > 0 && Math.abs(g[2]) <= 30)) throw new LabError("'Gust' is [start (s) length (m) up (m/s)]: a '1 − cos' gust, up to 30 m/s."); wind.gust = { at: g[0], length: g[1], up: g[2] }; }
+  if (o.get('gust')) { const g = toMat(o.get('gust')!).d; if ((g.length !== 3 && g.length !== 4) || !(g[0] >= 0 && g[1] > 0 && Math.abs(g[2]) <= 30) || !(Math.abs(g[3] ?? 0) <= 80)) throw new LabError("'Gust' is [start (s) length (m) up (m/s)] or with the front's angle (degrees, up to 80): a '1 − cos' gust, up to 30 m/s."); wind.gust = { at: g[0], length: g[1], up: g[2], ...(g[3] ? { skew: (g[3] * Math.PI) / 180 } : {}) }; }
   // By height (M489e): 'TurbulenceWind20', the wind 6 m up (m/s), sets strength and scale from the height each moment.
   const w20 = num1('turbulencewind20');
   if (w20 !== undefined) { if (!(w20 >= 0 && w20 <= 40)) throw new LabError("'TurbulenceWind20' is the wind 6 m up, 0 to 40 m/s."); wind.turbulence = { sigma: 0, w20, seed: num1('seed') }; }

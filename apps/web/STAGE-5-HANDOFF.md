@@ -13239,6 +13239,17 @@ and, on DC, "The ground's own resistance" (Not counted / Wet clay 0.01 / Dry roc
 bonds, the ground's resistance on AC lines (its return is in the rails' impedance already), the earth's resistance
 under each substation.
 
+## M489g (25 Nov): Hyperion aeroplanes, a gust front reaching one wing first
+
+The owner, 25 Nov (M489f's left-outs). `flight.ts`: `Wind.gust.skew` (rad, + the right wing first): each wing tip
+meets the '1 − cos' gust (b/2)·tan(skew) earlier or later than the middle (the gust starts that much before `at`);
+the middle gets the tips' mean and the difference (up_left − up_right)/b goes in as a roll gust (p_g = ∂w/∂y, added to
+M489f's channel in `Ctl.gust`). Square on is unchanged (old runs the same). Checked: square on never rolls; 30° from
+the right rolls left first, mirrored exactly from the left; 60° rolls harder; the push upwards much the same.
+Language: aircraftSim6DOF 'Gust' takes a fourth number, the front's angle in degrees (up to 80). Window: Aeroplane →
+All six → Gust → "The gust's front" (Square on / 30° / 60°). Not built: a front at an angle for turbulence (that is
+M489f's roll gust already), the gust reaching the tail later than the wing (pitch).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

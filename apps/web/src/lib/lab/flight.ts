@@ -236,7 +236,8 @@ export interface Wind {
   steady?: [number, number, number];
   /** A '1 − cos' vertical gust: starting at `at` seconds, `length` metres long (flown through at the airspeed), up to
    * `up` m/s (+ up). */
-  gust?: { at: number; length: number; up: number };
+  /** `skew` (M489g, rad): the gust's front at an angle to square across the path, + reaching the right wing first. */
+  gust?: { at: number; length: number; up: number; skew?: number };
   /** Dryden turbulence: its strength (m/s rms in each direction; about 1.5 light, 3 moderate, 6 severe), the length
    * scale (m, 533 at medium heights) and a seed so a run repeats. */
   /** `rotational` (M489f): the gusts turn the air too (MIL-F-8785C's p, q, r gusts over the wing and tail). */
@@ -420,11 +421,15 @@ export function flight6(ac: Aircraft, T: number, o: {
   for (let k = 0; k <= n; k++) {
     const t = k * dt;
     // The wind now: steady, plus the gust (flown through at the airspeed), plus turbulence.
-    let up = 0;
-    if (W.gust && t >= W.gust.at) {
-      if (Number.isNaN(gustStart)) gustStart = t;
-      const into = (t - gustStart) * tr.V;
-      if (into < W.gust.length) up = (W.gust.up / 2) * (1 - Math.cos((2 * Math.PI * into) / W.gust.length));
+    // A front at an angle (M489g): each wing tip meets it (b/2)·tan(skew) earlier or later than the middle, so the air
+    // rises more under one wing: the difference over the span is a roll gust (MIL-F-8785C's p_g = ∂w/∂y).
+    let up = 0, upRoll = 0;
+    const ahead = W.gust?.skew ? (ac.b / 2) * Math.tan(W.gust.skew) : 0;
+    if (W.gust && t >= W.gust.at - Math.abs(ahead) / tr.V) {
+      if (Number.isNaN(gustStart)) gustStart = ahead ? W.gust.at : t;
+      const into = (t - gustStart) * tr.V, gs = W.gust, at = (x: number) => (x >= 0 && x < gs.length ? (gs.up / 2) * (1 - Math.cos((2 * Math.PI * x) / gs.length)) : 0);
+      const r = at(into + ahead), l = at(into - ahead);
+      up = ahead ? (r + l) / 2 : at(into); upRoll = ahead ? (l - r) / ac.b : 0;
     }
     if (tb && tb.w20) {
       // By height (M489e): each direction its own strength and scale where the aeroplane is now.
@@ -465,7 +470,7 @@ export function flight6(ac: Aircraft, T: number, o: {
     }
     if (o.yawDamper) dr += 1.2 * (s.r - rLow);
     de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
-    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational ? [rotG[0], rotG[1], rotG[2]] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
+    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll ? [rotG[0] + upRoll, rotG[1], rotG[2]] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
     if (g.alpha > ac.alphaStall) stalled = true;
     if (k % every === 0 || k === n) {
       const pos = toEarth(s, [s.u, s.v, s.w]);

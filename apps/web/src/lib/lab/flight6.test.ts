@@ -120,4 +120,18 @@ describe('Hyperion flight in six directions (M489c)', () => {
     expect(rms(turning.p)).toBeGreaterThan(1.1 * rms(flat.p)); expect(rms(turning.phi)).toBeGreaterThan(rms(flat.phi));
     expect(go(true).p).toEqual(turning.p);
   });
+  it('a gust front reaching one wing first (M489g)', { timeout: 60_000 }, () => {
+    const go = (deg: number) => fl.flight6(ac, 12, { V0: 50, h0: 1000, wind: { gust: { at: 2, length: 60, up: 5, skew: deg * D } }, points: 1200 });
+    const sq = go(0), right = go(30), left = go(-30), steep = go(60), most = (x: number[]) => Math.max(...x.map(Math.abs));
+    // Square on: no roll. At an angle the right wing lifts first (rolls left), mirrored from the left; steeper, more.
+    expect(most(sq.phi)).toBeLessThan(1e-9);
+    expect(Math.min(...right.phi)).toBeLessThan(-0.2 * D); expect(right.phi.findIndex((x) => x < -0.1 * D)).toBeLessThan(right.phi.findIndex((x) => x > 0.1 * D) >>> 0);
+    right.phi.forEach((x, i) => expect(x).toBeCloseTo(-left.phi[i], 9));
+    expect(most(steep.p)).toBeGreaterThan(most(right.p));
+    // Much the same push upwards.
+    expect(Math.max(...right.h)).toBeCloseTo(Math.max(...sq.h), 0);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 12, 'Gust', [2 60 5 30]);");
+    expect(lab.vars.get('tr')).toBeTruthy();
+  });
 });

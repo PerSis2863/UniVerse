@@ -31,6 +31,8 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
   const [propOn, setPropOn] = useState(true);
   const [low, setLow] = useState(false);
   const [turning, setTurning] = useState(false);
+  // M489g: the gust's front at an angle (degrees), reaching the right wing first.
+  const [front, setFront] = useState<'0' | '30' | '60'>('0');
   const [k, setK] = useState(0);
   const [playing, setPlaying] = useState(false);
   const top = useRef<HTMLCanvasElement>(null), chart = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
@@ -41,7 +43,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
     if (move === 'turn') return flight6(ac, 50, { V0: V, h0, holdHeading: () => Math.PI * 0.999, maxBank: (35 * Math.PI) / 180, ...(hold === 'hold' ? pilot : {}), points: 700 });
     // A wind from the west (blowing east) while the autopilot keeps the nose north.
     if (move === 'cross') return flight6(ac, 60, { V0: V, h0, wind: { steady: [0, wind, 0] }, holdHeading: () => 0, ...pilot, points: 700 });
-    if (move === 'gust') return flight6(ac, 12, { V0: V, h0, wind: { gust: { at: 2, length: 60, up: wind / 2 } }, points: 1200 });
+    if (move === 'gust') return flight6(ac, 12, { V0: V, h0, wind: { gust: { at: 2, length: 60, up: wind / 2, skew: (Number(front) * Math.PI) / 180 } }, points: 1200 });
     // A twin's right engine stops 5 s in.
     if (move === 'engine') return flight6(ac, 40, { V0: V, h0, engines: { count: 2, fail: { at: 5, which: 1 }, feather }, ...(hold === 'hold' ? { holdHeading: () => 0, yawDamper: true } : {}), points: 800 });
     // Full power at 35 m/s, climbing: the propeller swings the nose left.
@@ -51,7 +53,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
     // Near the ground (M489e): at 60 m, the turbulence of a wind 6 m up ten times its rms (MIL-F-8785C, by height).
     if (low) return flight6(ac, 60, { V0: V, h0: 60, wind: { turbulence: { sigma: 0, w20: ROUGH[rough] * 10, seed: 3, rotational: turning } }, holdHeading: () => 0, holdHeight: () => 60, holdSpeed: V, yawDamper: true, points: 1200 });
     return flight6(ac, 60, { V0: V, h0, wind: { turbulence: { sigma: ROUGH[rough], seed: 3, rotational: turning } }, holdHeading: () => 0, ...pilot, points: 1200 });
-  }, [ac, move, hold, wind, rough, feather, propOn, low, turning]);
+  }, [ac, move, hold, wind, rough, feather, propOn, low, turning, front]);
   const n = run.t.length;
 
   const kNow = useRef(0);
@@ -133,7 +135,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
   const explain: Record<Move, string> = {
     turn: hold === 'hold' ? 'The autopilot turns it round to the south, banking up to 35°. Banked, the wing’s lift tilts, so it must pull harder (more g) and add power to keep its height and speed.' : 'The same half turn with nobody on the elevator or throttle: banked, the tilted lift no longer holds the weight up, so the nose drops and it sinks.',
     cross: 'Flying north with a wind from the left. The autopilot keeps the nose pointing north; the air carries the aeroplane east, so its track drifts while its heading doesn’t.',
-    gust: 'Level flight into a rising gust (a smooth bump of air, 60 m long): the wing meets the air at a steeper angle, lift jumps and it is pushed up, then the nose settles.',
+    gust: 'Level flight into a rising gust (a smooth bump of air, 60 m long): the wing meets the air at a steeper angle, lift jumps and it is pushed up, then the nose settles. A front at an angle reaches the right wing first: it lifts first, and the wings rock.',
     engine: hold === 'hold' ? `A twin’s right engine stops 5 s in. The other, out on the left wing, now pushes alone and yaws the nose right; the autopilot holds the heading with left rudder, banked a little towards the good engine, and it sinks${feather ? ' (the dead propeller feathered, edge-on, so it drags less)' : ' (the dead propeller windmilling, dragging)'}. Below ${vmc(ac, undefined, 1.8, h0, feather).toFixed(0)} m/s (Vmc) full rudder couldn’t hold it.` : 'A twin’s right engine stops 5 s in, hands off: it yaws and rolls towards the dead engine and spirals down.',
     prop: propOn ? (hold === 'hold' ? 'Full power at 35 m/s, climbing: the propeller (clockwise seen from behind) rolls the aeroplane left by its torque, its spiralling slipstream hits the fin and the descending blade pulls harder (P-factor), swinging the nose left; the autopilot holds the heading with right rudder.' : 'Full power at 35 m/s, climbing, hands off: the propeller’s torque, slipstream and P-factor swing the nose left and roll it left. (It is rigged so they cancel at cruise power.)') : 'Full power at 35 m/s with the propeller’s side effects left out: it climbs straight.',
     burst: hold === 'hold' ? 'Flying into a microburst at 300 m: a headwind first (the airspeed jumps), then air falling down its middle, then a tailwind (the airspeed drops). The autopilot pulls up and adds power, and still loses height.' : 'The same microburst hands off: the headwind lifts it, then the falling air and the tailwind take away airspeed and height: the kind of wind shear that brings aeroplanes down on approach.',
@@ -164,6 +166,9 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
         {(move === 'cross' || move === 'gust' || move === 'burst') && <label className={label}>{move === 'cross' ? 'Wind' : move === 'gust' ? 'Gust' : 'Outflow'} <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{move === 'cross' ? wind : move === 'gust' ? wind / 2 : wind * 1.5} m/s</span>
           <input type="range" min={2} max={20} step={1} value={wind} onChange={(e) => setWind(Number(e.target.value))} className="mt-1 w-full accent-violet-600" />
         </label>}
+        {move === 'gust' && <div className="space-y-1"><span className={label}>The gust’s front</span>
+          <Segmented<'0' | '30' | '60'> label="The gust’s front" value={front} onChange={setFront} segments={[{ value: '0', label: 'Square on' }, { value: '30', label: 'At 30°' }, { value: '60', label: 'At 60°' }]} />
+        </div>}
         {move === 'rough' && <div className="space-y-2">
           <span className={label}>Turbulence</span>
           <Segmented<Rough> label="Turbulence" value={rough} onChange={setRough} segments={[{ value: 'light', label: 'Light' }, { value: 'moderate', label: 'Moderate' }, { value: 'severe', label: 'Severe' }]} />
