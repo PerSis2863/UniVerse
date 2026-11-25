@@ -175,4 +175,19 @@ describe('Hyperion flight in six directions (M489c)', () => {
     lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'TurbulenceFin', 1);");
     expect(lab.vars.get('tr')).toBeTruthy();
   });
+  it('M489k: the fin above the roll axis rolls it in side gusts', { timeout: 60_000 }, () => {
+    const ac = fl.PLANE_DEFAULT;
+    const go = (finRoll: boolean, zf?: number) => fl.flight6({ ...ac, zf }, 40, { V0: 50, h0: 1000, wind: { turbulence: { sigma: 3, seed: 5, finLag: true, finRoll } }, holdHeading: () => 0, holdHeight: () => 1000, holdSpeed: 50, points: 2000 });
+    const off = go(false), on = go(true), high = go(true, 2);
+    // Off unchanged from M489j; on, the roll changes (more the higher the fin); the yaw much the same.
+    expect(on.p.some((x, k) => Math.abs(x - off.p[k]) > 1e-4)).toBe(true);
+    const diff = (a: number[]) => Math.sqrt(a.reduce((q, x, k) => q + (x - off.p[k]) ** 2, 0) / a.length);
+    expect(diff(high.p)).toBeGreaterThan(diff(on.p));
+    const rms = (x: number[]) => Math.sqrt(x.reduce((q, v) => q + v * v, 0) / x.length);
+    expect(rms(on.r) / rms(off.r)).toBeGreaterThan(0.8); expect(rms(on.r) / rms(off.r)).toBeLessThan(1.25);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'FinHeight', 0.9);");
+    expect(lab.vars.get('tr')).toBeTruthy();
+    expect(() => lab.run("aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'FinHeight', 9)")).toThrow(/FinHeight/);
+  });
 });

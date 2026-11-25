@@ -32,6 +32,8 @@ export interface Aircraft {
   power: number; eta: number; t0: number; deMax: number;
   /** The tail's distance behind the wing (m, M489h); about 3 chords when not given. */
   lt?: number;
+  /** The fin's centre of pressure above the roll axis (m, M489k); 0.9 when not given (a light aeroplane's). */
+  zf?: number;
 }
 /** A light four-seat aeroplane with textbook-typical coefficients (not any one maker's data). */
 export const PLANE_DEFAULT: Aircraft = { m: 1100, S: 16.2, c: 1.49, b: 11, iyy: 1825, cl0: 0.31, cla: 5.14, clde: 0.43, clq: 3.9, alphaStall: (16 * Math.PI) / 180, cd0: 0.031, k: 0.054, cm0: -0.015, cma: -0.89, cmq: -12.4, cmde: -1.28, power: 120e3, eta: 0.8, t0: 3000, deMax: (25 * Math.PI) / 180 };
@@ -248,7 +250,9 @@ export interface Wind {
    * MIL-F-8785C's smoothed pitch gust): the difference over lt pitches the aeroplane. */
   /** `finLag` (M489j): the fin meets the same side gusts lt / V after the wing, so the difference yaws the nose left
    * and right (in place of MIL-F-8785C's smoothed yaw gust). */
-  turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number; rotational?: boolean; tailLag?: boolean; finLag?: boolean };
+  /** `finRoll` (M489k, with `finLag`): the fin sits zf above the roll axis, so the side push that swings the nose also
+   * rolls the aeroplane: L = −(zf / lt)·N from the fin. */
+  turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number; rotational?: boolean; tailLag?: boolean; finLag?: boolean; finRoll?: boolean };
   /** Wind shear with height (M489d): the steady wind is what blows at `ref` metres (10, where it's measured) and grows
    * as (h / ref)^exponent (1/7 over open country, about 0.25 over towns) up to 500 m, steady above. */
   shear?: { exponent?: number; ref?: number };
@@ -335,7 +339,7 @@ export function quatOf(phi: number, theta: number, psi: number) {
   const [cf, sf, ct, st, cp, sp] = [Math.cos(phi / 2), Math.sin(phi / 2), Math.cos(theta / 2), Math.sin(theta / 2), Math.cos(psi / 2), Math.sin(psi / 2)];
   return { q0: cf * ct * cp + sf * st * sp, q1: sf * ct * cp - cf * st * sp, q2: cf * st * cp + sf * ct * sp, q3: cf * ct * sp - sf * st * cp };
 }
-interface Ctl { de: number; da: number; dr: number; thr: number; gust?: Air }
+interface Ctl { de: number; da: number; dr: number; thr: number; gust?: Air; fin?: { gr: number; ratio: number } }
 const NO_PW: Pw = { working: [1, 1], count: 1, arm: 0, feather: false };
 function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air, pw: Pw = NO_PW) {
   // The air's velocity in body axes, and the aeroplane's through it.
@@ -366,7 +370,10 @@ function deriv6(ac: Aircraft, lat: Lateral, s: F6State, c: Ctl, windE: Air, pw: 
     if (pw.ref) { Lp -= pw.ref[0]; Np -= pw.ref[1]; }
   }
   const Y = qS * (lat.cyb * beta + lat.cydr * c.dr);
-  const Lm = qS * ac.b * (lat.clb * beta + lat.clp * ph + lat.clr * rh + lat.clda * c.da + lat.cldr * c.dr) + Lp;
+  // The fin's own push from its delayed side gust (M489k): its yaw is cnr's share of the yaw gust; being zf above the
+  // roll axis and lt behind, it rolls by −(zf / lt) of that yaw.
+  const finL = c.fin ? -c.fin.ratio * qS * ac.b * lat.cnr * ((-c.fin.gr * ac.b) / (2 * V)) : 0;
+  const Lm = qS * ac.b * (lat.clb * beta + lat.clp * ph + lat.clr * rh + lat.clda * c.da + lat.cldr * c.dr) + Lp + finL;
   const Mm = qS * ac.c * (ac.cm0 + ac.cma * alpha + ac.cmq * ((qa * ac.c) / (2 * V)) + ac.cmde * c.de) + gyM;
   const Nm = qS * ac.b * (lat.cnb * beta + lat.cnp * ph + lat.cnr * rh + lat.cnda * c.da + lat.cndr * c.dr) + Np + gyN;
   const g = toBody(s, [0, 0, G0]);
@@ -500,7 +507,7 @@ export function flight6(ac: Aircraft, T: number, o: {
     }
     if (o.yawDamper) dr += 1.2 * (s.r - rLow);
     de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
-    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll || upPitch || lagN ? [rotG[0] + upRoll, rotG[1] + upPitch + tailQ, rotG[2] + finR] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
+    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll || upPitch || lagN ? [rotG[0] + upRoll, rotG[1] + upPitch + tailQ, rotG[2] + finR] : undefined, fin: tb?.finLag && tb.finRoll ? { gr: finR, ratio: (ac.zf ?? 0.9) / (ac.lt ?? 3 * ac.c) } : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
     if (g.alpha > ac.alphaStall) stalled = true;
     if (k % every === 0 || k === n) {
       const pos = toEarth(s, [s.u, s.v, s.w]);

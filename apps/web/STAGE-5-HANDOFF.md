@@ -13396,6 +13396,16 @@ speeds in a rollover are a few m/s, so knocks are a few g belted, up to ~15 unbe
 "Five seats" and "Heads knocking together". Rough figures. Not built: a front middle seat drawn in the window (the
 language takes 'Seat', 'middle', 'Row', 'front'), bodies (not only heads) loading each other in a rollover.
 
+## M489k (25 Nov): Hyperion aeroplanes, the fin above the wing rolling it in side gusts
+
+The owner, 25 Nov (M489j's left-out). `flight.ts`: `Aircraft.zf` (the fin's centre of pressure above the roll axis,
+0.9 m when not given) and `Wind.turbulence.finRoll` (with `finLag`): the fin's own push from its delayed side gust is
+cnr's share of M489j's yaw gust, and being zf above the roll axis and lt behind, it rolls by L = −(zf / lt)·N
+(`Ctl.fin`, added to the roll moment in `deriv6`). Off by default. Checked: the roll changes, more for a taller fin,
+the yaw much the same. Language 'FinHeight', m (0 to 5; turns 'TurbulenceFin' on). Window: All six → Rough → "The fin
+sits above the wing (its push rolls it too)". Not built: the fin's height for steady sideslip (already in clb), the
+downwash's own lag.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
