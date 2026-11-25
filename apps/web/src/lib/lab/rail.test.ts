@@ -292,4 +292,14 @@ describe('Hyperion railways (M491)', () => {
     const far = (e?: number) => rl.railVolts({ ...ac, earth: e }, [30000, 32000], [300, 0])[1] / rl.railVolts({ ...ac, earth: e }, [30000, 32000], [300, 0])[0];
     expect(far(rl.CARSON_50HZ)).toBeLessThan(far());
   });
+  it('how deep the return current runs in the soil (M491n)', () => {
+    // Carson: ~930 m at 100 Ω·m and 50 Hz, giving the rails' usual 0.55 Ω/km; unchanged when the soil isn't given.
+    expect(rl.carsonDepth(100)).toBeCloseTo(930.6, 0); expect(rl.railReactance(100)).toBeCloseTo(0.55, 3);
+    const ac = rl.SUPPLIES.ac25(100000), at = (soil?: number) => rl.railVolts({ ...ac, soil }, [30000], [300])[0];
+    expect(at(100)).toBeCloseTo(at(), 9);
+    // Dry rock: deeper, more reactance, higher rail voltage; wet clay lower.
+    expect(at(2000)).toBeGreaterThan(at()); expect(at(20)).toBeLessThan(at());
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    expect(() => lab.run("railLine('intercity', trainModel('intercity'), [0], 'Supply', 'ac25', 'Soil', 0)")).toThrow(/Soil/);
+  });
 });

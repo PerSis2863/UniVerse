@@ -213,6 +213,8 @@ export interface Supply {
    * M491m: Carson's 0.0493 Ω/km at 50 Hz, `CARSON_50HZ`). */
   crossBond?: boolean;
   earth?: number;
+  /** M491n: the soil's resistivity (Ω·m) on AC lines: how deep the ground's return current runs. */
+  soil?: number;
   /** Storage on the line (M491g, DC): units at positions (m), each able to take or give `power` (W) and hold
    * `energy` (J); it charges when the line is above `vcharge` (a braking train lifting it) and supports below
    * `vsupport`, each way at `eta`. Batteries or supercapacitors in lineside cabinets. */
@@ -388,13 +390,21 @@ export function faultEmf(sup: Supply, c: Cable) {
 // Z0 = √(|z|·r_e), dying away as e^(−d·√(|z| / r_e)). Rails 0.15 + j0.55 Ω/km on ballast leaking about 5 Ω·km (typical
 // figures). EN 50122-1 allows 60 V where people can touch the rails for long.
 export const RAIL_Z = Math.hypot(0.15, 0.55), RAIL_RE = 5, RAIL_LIMIT = 60, CARSON_50HZ = 0.0493;
+/** Carson's depth of the ground's return current (m) at 50 Hz, and the rails-to-earth reactance it gives (Ω/km). */
+export const carsonDepth = (rho: number, f = 50) => 658 * Math.sqrt(rho / f);
+// The rails' equivalent radius (~0.146 m) set so 100 Ω·m gives their usual 0.55 Ω/km.
+const RAIL_GMR = carsonDepth(100) / Math.exp(0.55 / 0.0628);
+export const railReactance = (rho: number) => 0.0628 * Math.log(carsonDepth(rho) / RAIL_GMR);
 export function railVolts(sup: Supply, s: number[], amps: number[]) {
   // Cross-bonded (M491l): both tracks' rails in parallel, half the impedance and half the leakage resistance: the same
   // decay, half the voltage.
   // The ground's own impedance (M491m, `earth` Ω/km, Carson's ~0.05 at 50 Hz): as on DC, the rails and the ground are
   // two conductors joined by the leakage: Z0 = |z_r|·√(r_e / |z_r + r_g|), decaying as √(|z_r + r_g| / r_e).
-  const zt = sup.earth ? Math.hypot(0.15 + sup.earth, 0.55) : RAIL_Z;
-  const k = sup.ac?.screen ?? 0.5, z0 = (RAIL_Z * Math.sqrt(RAIL_RE / zt)) / (sup.crossBond ? 2 : 1), g = Math.sqrt(zt / RAIL_RE) / 1000;
+  // The soil (M491n, `soil` Ω·m): the current returning through the ground runs at Carson's depth 658·√(ρ/f) m, so the
+  // rails-to-earth loop's reactance is 0.0628·ln(depth / 0.146 m) Ω/km at 50 Hz (0.55 at 100 Ω·m): wet ground (low ρ)
+  // keeps it shallower, less reactance; dry rock deeper, more.
+  const xs = sup.soil ? railReactance(sup.soil) : 0.55, zr = Math.hypot(0.15, xs), zt = Math.hypot(0.15 + (sup.earth ?? 0), xs);
+  const k = sup.ac?.screen ?? 0.5, z0 = (zr * Math.sqrt(RAIL_RE / zt)) / (sup.crossBond ? 2 : 1), g = Math.sqrt(zt / RAIL_RE) / 1000;
   // Bonded to earth at each substation (M491k): an image current there holds the rails at 0 at the bond nearest
   // each train (the one feeding it).
   const bond = (x: number) => sup.subs.reduce((b, y) => (Math.abs(y - x) < Math.abs(b - x) ? y : b), sup.subs[0]);

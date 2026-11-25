@@ -13308,6 +13308,15 @@ speed, a wall or a car like it, Nothing / Belt / Airbag / Belt + airbag; the car
 150 ms with the 60 g line and the firing). Rough figures. Not built: offset and side crashes, the back seats, the
 head's own HIC, the steering column collapsing.
 
+## M491n (25 Nov): Hyperion railways, how deep the return current runs in the soil
+
+The owner, 25 Nov (M491m's left-out). `rail.ts`: `Supply.soil` (Ω·m, AC): `carsonDepth` 658·√(ρ/f) m and
+`railReactance` 0.0628·ln(depth / `RAIL_GMR`) Ω/km, the radius set so 100 Ω·m gives the rails' usual 0.55 exactly
+(unset or 100 is unchanged). `railVolts` uses it for both the rails' and the loop's impedance. Checked: ~930 m at 100
+Ω·m; dry rock (2,000) raises the rail voltage, wet clay (20) lowers it. Language 'Soil' (1–100,000). Window: Several
+trains → 25 kV → "The soil" (Wet clay / Normal / Dry rock), which also sets the telephone cable's soil. Not built:
+the soil in the AC line's own feeding impedance (`solveAc` keeps its fixed reactance), layered soils.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
