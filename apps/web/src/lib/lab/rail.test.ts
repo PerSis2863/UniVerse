@@ -263,4 +263,23 @@ describe('Hyperion railways (M491)', () => {
     const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('s', 'StrayCurrent')).toBeGreaterThan(0); expect(f('s', 'IronLossKgPerYear')).toBeCloseTo(f('s', 'StrayCurrent') * rl.IRON_KG_PER_AYEAR, 9); expect(f('q', 'MaxRailVolts')).toBeGreaterThan(0);
   });
+  it('tracks cross-bonded and the ground\'s own resistance (M491l)', { timeout: 60_000 }, () => {
+    const m = { ...rl.SUPPLIES.metro(5200), subs: [0, 5200] }, rr = 0.4 * m.rline, one = rl.dcStray({ ...m, leak: 10 }, [1000], [2000]);
+    // Cross-bonded: half the rails' voltage, the same stray current (DC); half on AC too.
+    const two = rl.dcStray({ ...m, leak: 10, crossBond: true }, [1000], [2000]);
+    expect(two.rail[0]).toBeCloseTo(one.rail[0] / 2, 9); expect(two.stray).toBeCloseTo(one.stray, 9);
+    const ac = rl.SUPPLIES.ac25(100000);
+    expect(rl.railVolts({ ...ac, crossBond: true }, [30000], [300])[0]).toBeCloseTo(rl.railVolts(ac, [30000], [300])[0] / 2, 9);
+    // The ground's resistance: 0 gives the exact two-conductor forms, close to the short-section ones over 1 km.
+    const ex = rl.dcStray({ ...m, leak: 10, earth: 0 }, [1000], [2000]), gm = Math.sqrt(rr / 10);
+    expect(ex.rail[0]).toBeCloseTo((rr * 2000 * Math.tanh(gm / 2)) / gm, 9); expect(ex.stray / one.stray).toBeCloseTo(1, 3);
+    // More of it, less stray current; and never more than r/(r + r_g) of the train's current, however leaky.
+    const s1 = rl.dcStray({ ...m, leak: 10, earth: 0.01 }, [1000], [2000]).stray, s2 = rl.dcStray({ ...m, leak: 10, earth: 0.1 }, [1000], [2000]).stray;
+    expect(s1).toBeLessThan(ex.stray); expect(s2).toBeLessThan(s1);
+    expect(rl.dcStray({ ...m, leak: 0.01, earth: 0.01, subs: [0, 52000] }, [26000], [2000]).stray).toBeLessThan((2000 * rr) / (rr + 0.01));
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, ~, a] = railLine('metro', trainModel('metro'), [0 90 180], 'Supply', 'metro'); [~, ~, b] = railLine('metro', trainModel('metro'), [0 90 180], 'Supply', 'metro', 'CrossBonded', 1, 'EarthResistance', 0.1);");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('b', 'MaxRailVolts')).toBeLessThan(f('a', 'MaxRailVolts')); expect(f('b', 'StrayCurrent')).toBeLessThan(f('a', 'StrayCurrent'));
+  });
 });

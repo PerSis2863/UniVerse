@@ -13226,6 +13226,19 @@ Injury. Window: Kerb → "People inside" (No belts / Belts / Belts + curtains), 
 screen's state; facts "Heads · thrown out", "Windscreen · injury (rough)". Not built: the same for vehicleSim's
 rollovers (only vehicleTrip), people's own size and seating place.
 
+## M491l (25 Nov): Hyperion railways, tracks cross-bonded and the ground's own resistance
+
+The owner, 25 Nov (M491k's left-outs). `rail.ts`: `Supply.crossBond` puts both tracks' rails in parallel (half the
+resistance and half the leakage resistance): DC rail voltage halves, stray current unchanged; AC `railVolts` halves (Z0
+halves, the decay is the same). `Supply.earth` (Ω/km, DC): rails and ground solved as two conductors joined by the
+leakage, u'' = γ²u, γ = √((r + r_g)/R), all of I in the rails at both ends: rails I·r·tanh(γd/2)/γ under the train,
+stray r·I/(r + r_g)·(1 − sech(γd/2)), which never passes r/(r + r_g) of I. Unset keeps M491k's short-section forms
+(they agree within ~1% under 10 km; old runs unchanged). Checked by hand, and through the language. Language
+'CrossBonded', 'EarthResistance' (0–10). Window: Several trains → power supply → "Both tracks' rails tied together"
+and, on DC, "The ground's own resistance" (Not counted / Wet clay 0.01 / Dry rock 0.1, rough). Not built: drainage
+bonds, the ground's resistance on AC lines (its return is in the rails' impedance already), the earth's resistance
+under each substation.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -121,6 +121,9 @@ function supplyOf(o: Map<string, Value>, r: rl.Route): rl.Supply | undefined {
   // M491k: 'Leakage' (DC rails to earth, Ω·km) and 'Bonded' (AC rails bonded to earth at the substations).
   if (o.get('leakage')) { const lk = toMat(o.get('leakage')!).d[0]; if (!(lk >= 0.1 && lk <= 1000)) throw new LabError("'Leakage' is the rails' leakage resistance to earth, 0.1 to 1,000 Ω·km (10 new track)."); sup.leak = lk; }
   if (o.get('bonded') && sup.ac) sup.ac = { ...sup.ac, bonded: !!toMat(o.get('bonded')!).d[0] };
+  // M491l: 'CrossBonded' (1: the two tracks' rails tied together) and 'EarthResistance' (the ground's own, Ω/km, DC).
+  if (o.get('crossbonded')) sup.crossBond = !!toMat(o.get('crossbonded')!).d[0];
+  if (o.get('earthresistance')) { const e = toMat(o.get('earthresistance')!).d[0]; if (!(e >= 0 && e <= 10)) throw new LabError("'EarthResistance' is the ground's own resistance along the line, 0 to 10 Ω/km."); sup.earth = e; }
   // Storage on the line (M491g; on AC lines too, M491i, where it shaves the peaks): 'Storage', positions in m (1 MW, 10 kWh each) or a struct At, Power (W),
   // Energy (kWh), VCharge, VSupport.
   const so = o.get('storage');

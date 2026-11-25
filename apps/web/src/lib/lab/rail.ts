@@ -208,6 +208,10 @@ export interface Supply {
   ac?: { xs: number; xline: number; pf: number; neutral: number; screen?: number; bonded?: boolean };
   /** DC rails' leakage to earth (Ω·km, M491k): 10 new track, 1–3 old or wet; the rails' own resistance is 0.4 of rline. */
   leak?: number;
+  /** M491l: the two tracks' rails tied together every few hundred metres (cross-bonded), sharing the return current;
+   * and the ground's own resistance along the line (Ω/km, DC), which the stray current must flow through. */
+  crossBond?: boolean;
+  earth?: number;
   /** Storage on the line (M491g, DC): units at positions (m), each able to take or give `power` (W) and hold
    * `energy` (J); it charges when the line is above `vcharge` (a braking train lifting it) and supports below
    * `vsupport`, each way at `eta`. Batteries or supercapacitors in lineside cabinets. */
@@ -384,7 +388,9 @@ export function faultEmf(sup: Supply, c: Cable) {
 // figures). EN 50122-1 allows 60 V where people can touch the rails for long.
 export const RAIL_Z = Math.hypot(0.15, 0.55), RAIL_RE = 5, RAIL_LIMIT = 60;
 export function railVolts(sup: Supply, s: number[], amps: number[]) {
-  const k = sup.ac?.screen ?? 0.5, z0 = Math.sqrt(RAIL_Z * RAIL_RE), g = Math.sqrt(RAIL_Z / RAIL_RE) / 1000;
+  // Cross-bonded (M491l): both tracks' rails in parallel, half the impedance and half the leakage resistance: the same
+  // decay, half the voltage.
+  const k = sup.ac?.screen ?? 0.5, z0 = Math.sqrt(RAIL_Z * RAIL_RE) / (sup.crossBond ? 2 : 1), g = Math.sqrt(RAIL_Z / RAIL_RE) / 1000;
   // Bonded to earth at each substation (M491k): an image current there holds the rails at 0 at the bond nearest
   // each train (the one feeding it).
   const bond = (x: number) => sup.subs.reduce((b, y) => (Math.abs(y - x) < Math.abs(b - x) ? y : b), sup.subs[0]);
@@ -397,10 +403,20 @@ export function railVolts(sup: Supply, s: number[], amps: number[]) {
 // over d km, so floating rails sit at +I·r·d/2 under the train and −I·r·d/2 at the substation, and leak
 // I·r·d² / (8·R_leak) into the ground on the way: that current eats the rails, pipes and reinforcement where it
 // leaves them (Faraday: about 9.1 kg of iron per ampere-year). EN 50122-2 keeps it small by insulating the rails.
+// M491l: cross-bonded tracks put both tracks' rails in parallel (half the resistance, half the leakage resistance):
+// half the rail voltage, the same stray current. With the ground's own resistance r_g (Ω/km) the rails and the ground
+// are two conductors joined by the leakage: the rails' voltage u'' = γ²u, γ = √((r + r_g)/R), with all of I in the
+// rails at both ends, so u = r·I·tanh(γd/2)/γ under the train and the stray current r·I/(r + r_g)·(1 − sech(γd/2)):
+// the short-section forms above when γd is small, and never more than r/(r + r_g) of I however poor the insulation.
 export function dcStray(sup: Supply, s: number[], amps: number[]) {
-  const rr = 0.4 * sup.rline, R = sup.leak ?? 10;
+  const two = sup.crossBond ? 2 : 1, rr = (0.4 * sup.rline) / two, R = (sup.leak ?? 10) / two, rg = sup.earth;
   const d = s.map((x) => Math.min(...sup.subs.map((y) => Math.abs(y - x))) / 1000);
-  return { rail: amps.map((I, k) => (I * rr * d[k]) / 2), stray: amps.reduce((q, I, k) => q + (I * rr * d[k] * d[k]) / (8 * R), 0) };
+  if (rg === undefined) return { rail: amps.map((I, k) => (I * rr * d[k]) / 2), stray: amps.reduce((q, I, k) => q + (I * rr * d[k] * d[k]) / (8 * R), 0) };
+  const gm = Math.sqrt((rr + rg) / R);
+  return {
+    rail: amps.map((I, k) => (gm * d[k] > 1e-9 ? (rr * I * Math.tanh((gm * d[k]) / 2)) / gm : (I * rr * d[k]) / 2)),
+    stray: amps.reduce((q, I, k) => q + ((rr * I) / (rr + rg)) * (1 - 1 / Math.cosh((gm * d[k]) / 2)), 0),
+  };
 }
 export const IRON_KG_PER_AYEAR = 9.13;
 /** AC with storage units: each unit a load at its place (+ charging, − giving), its power from the voltage there, the
