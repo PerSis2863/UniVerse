@@ -12582,3 +12582,23 @@ places". `globals.css` (after `.display-face`): `:is(.hand, .side-label, .ios-se
 `.hand` is put on the search window's field, chips, section names and result titles (`CommandPalette.tsx`) and on the
 top bar's entries, its menus' rows and group names (`TopNav.tsx`). Hints, body text, fields people fill, tables and
 numbers stay Inter (readability). For a new label that should look like a heading, add `hand`.
+
+## M478: Hyperion's computer app smoother, 1.2.0 (25 Nov)
+
+The owner, 25 Nov: "make everything ultra smooth specially the downloaded hyperion app". The site's Hyperion pages were
+measured in M468 (no long task at CPU ×1), so this is the app's window and two costs found in the pages.
+- **`desktop/hyperion/main.js`:** `enable-gpu-rasterization` and `enable-zero-copy` (not `ignore-gpu-blocklist`: those
+  chips are blocked for crashes); the window's background follows the system's light/dark (`nativeTheme`, updated live)
+  so resizing or the first frame never flashes white in dark; `v8CacheOptions: 'bypassHeatCheck'` keeps the site's code
+  compiled from its first run; the connection to the site opens while the window is made (`preconnect`); the window
+  reopens maximized when it closed so (`getNormalBounds` + `maximized` in window.json); shown at its first paint or
+  after 4 s at the latest, and a second launch shows it (it could stay hidden on a slow line).
+- **File → Code / Simulate / Learn without a reload:** main sends `hyperion:go` (only when the page is the site's);
+  `preload.js` hands it to the page's `hyperionDesktop.onGo` listener (`components/lab/DesktopGo.tsx` in the Hyperion
+  layout: `router.push`, only `/hyperion…` paths) or, when nothing listens (an older site, sign-in), loads the address.
+  Tried in the real Electron under xvfb both ways.
+- **The scene behind the page holds one still frame in the app** (`AppBackdrop`: `'hyperionDesktop' in window`, like
+  Reduce Motion): a work tool's graphics chip goes to the editor, figures and live simulations.
+- **The command window** (`LabApp`): each printed line has a steady number (`n`) and is a memo'd `LogLine`, so a run's
+  streaming output draws only the new line, not up to 800 above it (index keys shifted every row once at the cap).
+- **[owner]:** after merging, GitHub → Actions → "Hyperion desktop" → Run workflow with "publish" ticked (version 1.2.0).
