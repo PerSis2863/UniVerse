@@ -14,7 +14,8 @@ describe('the science and industry examples (M492–M505)', () => {
       const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
       expect(() => lab.run(ex.code)).not.toThrow();
       expect(out).not.toMatch(/^Error/m);
-    });
+      // The ray-traced and simulated examples take seconds each; with the whole suite running side by side, 5 s was tight.
+    }, 20000);
   }
 });
 

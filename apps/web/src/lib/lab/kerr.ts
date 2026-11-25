@@ -8,7 +8,8 @@ import { rk45 } from './sci-num';
 // magnetic charge g too (Δ gains g²; a charged particle then feels it in θ: P_θ = aE sin²θ − Lz − εg cos θ, so its
 // orbits leave the equator and ride Poincaré's cones). R doesn't feel εg, so `circular` and `constants` still give
 // the radial motion asked for; only the tilt then wobbles.
-// M543: the disc with a thickness, see-through, and its colour by temperature (`blackbodyRGB`).
+// M543: the disc with a thickness, see-through, and its colour by temperature (`blackbodyRGB`). M544: a see-through thick
+// disc glows and absorbs all through its gas (it shadows its own far side); a solid one's inner and outer walls shine.
 
 /** The hole's charge q and the particle's charge per mass ε (Gaussian units, G = c = M = 1). */
 export interface Charge { q?: number; eps?: number; g?: number }
@@ -256,6 +257,7 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
   const Fof = (r: number) => (1 - Math.sqrt(rIn / r)) / r ** 3, Tpk = Fof(Math.min(rOut, (49 / 36) * rIn)) ** 0.25;
   const I = new Float64Array(n * n), G = new Float64Array(n * n).fill(NaN), Rh = new Float64Array(n * n).fill(NaN), Tm = new Float64Array(n * n).fill(NaN);
   const zc = H; // the disc's faces: |cos θ| = h/r (a disc that flares, its height growing with r)
+  const vol = H > 0 && op < 1; // a see-through thick disc: glow and absorption through its gas (M544)
   const so = Math.sin(thO), co = Math.cos(thO);
   for (let py = 0; py < n; py++) for (let px = 0; px < n; px++) {
     const al = -half + (2 * half * (px + 0.5)) / n, be = half - (2 * half * (py + 0.5)) / n;
@@ -270,6 +272,39 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
       const k1 = F(y), k2 = F(y.map((v, j) => v + (h / 2) * k1[j])), k3 = F(y.map((v, j) => v + (h / 2) * k2[j])), k4 = F(y.map((v, j) => v + h * k3[j]));
       const ny = y.map((v, j) => v + (h / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
       if (ny[0] < rh * 1.01) break;
+      if (vol) {
+        // M544: inside the slab the gas glows and absorbs along the way (Beer–Lambert), so a ray grazing through a
+        // long stretch of it is dimmed more: the near side shadows the far side's glow. κ makes a straight-down pass
+        // through the full height at that radius take away `opacity`; the source is the gas's glow, so that pass
+        // gives opacity × glow, as a crossing did before. shortcut: lengths in Boyer–Lindquist coordinates.
+        const um = (u + ny[2]) / 2, rm = (r + ny[0]) / 2, s2 = Math.max(1e-12, 1 - um * um), rc = rm * Math.sqrt(s2);
+        if (Math.abs(um) < zc && rc >= rIn && rc <= rOut) {
+          const dph = h * (L / s2 - a + (a * (rm * rm + a * a - a * L)) / (rm * rm - 2 * rm + a * a + q * q));
+          const ds = Math.hypot(ny[0] - r, (rm * (ny[2] - u)) / Math.sqrt(s2), rm * Math.sqrt(s2) * dph);
+          const kap = -Math.log(1 - op) / ((2 * rc * zc) / Math.sqrt(1 - zc * zc)), take = 1 - Math.exp(-kap * ds);
+          const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * take * g ** 4 * Fof(rc);
+          Isum += w; Tsum += w * g * (Fof(rc) ** 0.25 / Tpk);
+          // Its shift and radius: where the gas has taken the first 5% (one step takes little).
+          if (Number.isNaN(G[py * n + px]) && tr2 * (1 - take) < 0.95) { G[py * n + px] = g; Rh[py * n + px] = rc; }
+          tr2 *= 1 - take;
+          if (tr2 < 1e-3) break;
+        }
+        [r, rv, u, uv] = ny;
+        rv = Math.sign(rv) * Math.sqrt(Math.max(0, Rf(r, a, 1, L, Q, 0, q))); uv = Math.sign(uv) * Math.sqrt(Math.max(0, Uf(u, a, 1, L, Q, 0)));
+        if (r > r0 * 1.01 && rv > 0) break;
+        continue;
+      }
+      // M544: a solid thick disc's walls (the cylinders at rIn and rOut between its faces). The inner one, met from the
+      // hole's side, shines with the gas one disc-height behind it (Novikov–Thorne's glow is zero at rIn itself); the
+      // outer rim, met from outside (a ray seen edge-on that never crosses a face), with the gas at rOut.
+      const c0 = r * Math.sqrt(1 - u * u), c1 = ny[0] * Math.sqrt(1 - ny[2] * ny[2]);
+      const wall = !zc || Math.abs(u) >= zc || Math.abs(ny[2]) >= zc ? 0 : c0 < rIn && c1 >= rIn ? Math.min(rOut, rIn * (1 + zc)) : c0 > rOut && c1 <= rOut ? rOut : 0;
+      if (wall) {
+        const rc = wall, g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * g ** 4 * Fof(rc);
+        Isum += w; Tsum += w * g * (Fof(rc) ** 0.25 / Tpk);
+        if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = wall === rOut ? rOut : rIn; }
+        break;
+      }
       // Entering the disc through its top face (cos θ = h/r from above) or its bottom (−h/r from below).
       let hit = -1;
       for (const sf of zc ? [zc, -zc] : [0]) {

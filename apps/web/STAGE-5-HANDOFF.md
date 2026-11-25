@@ -13205,3 +13205,32 @@ light; a thick disc edge-on covers more. Not built: a smooth curved mesh is spli
 the rest stay a little hollow-hulled), the disc's own thickness doesn't shadow its far side's glow (the light passes
 the slab once per entry), and no light from the disc's inner edge wall.
 
+
+## M544 (25 Nov): Hyperion physics, M543's left-outs (curved solids split tightly, the thick disc's own shadow and walls)
+
+The owner sent M543's "left out on purpose" list back. **`convexSplit` on smooth curves** (`rigid3d.ts`): a bug first —
+the sliver filter stepped each corner towards the part's middle, which for a bent part lies in its hole, so real corners
+on the inside of a curve were dropped and a 16- or 24-step half ring came out at 54% / 20% of its volume. Now a corner is
+kept when a 1e-5 step towards the middle **or any of 26 directions** (`PROBES`) lands strictly inside the cell and the
+mesh. New cut candidates: besides the two face planes at each fold inwards, the plane **through the fold halving its
+angle** (normal n₁ − n₂; on a ring, the radial cut). Each cut keeps the folds it came from (`at`); a part only tries cuts
+with a fold inside it, the 12 passing nearest its middle. A part may have at most **64 corners** (what a solid takes): one
+with more is cut even when solid (by the best cut, else across its longest side), and refused with a clear message when
+'Parts' runs out. 'Parts' up to 32, default 16. Speed: `meshTest(V, T)` precomputes each triangle's ray-fixed numbers and
+a bounding box (was 60% of the time); `hull` skips triples already on a found face and stops a plane's scan once points
+lie on both sides. A 24-step half ring: 13 parts, 100.2% of its volume, 1.6 s (was 18 s and hollow); a 12 × 6 doughnut:
+12 parts, exact, 0.5 s. **The disc** (`kerr.ts`): a see-through thick disc (`thick` > 0, `opacity` < 1, `vol`) now glows
+and absorbs **along the path through its gas** (Beer–Lambert, κ such that a straight-down pass through the full height
+at that radius takes `opacity`, the source the gas's glow, so that pass gives opacity × glow as a crossing did); path
+length from dr, r dθ and r sinθ dφ (dφ/dλ = L/sin²θ − a + aP/Δ), in Boyer–Lindquist coordinates (`shortcut:`). A ray
+skimming through the near side is dimmed more, so it shadows the far side (the far side's share at 80° falls from 62%
+to 55% going from h/r 0.05 to 0.25). g and r are taken where the gas has taken the first 5%. A **solid** thick disc's
+walls: the inner cylinder rIn, met from the hole's side between the faces, shines with the gas one disc-height behind it
+(Novikov–Thorne's glow is zero at rIn itself; r reports rIn); the outer rim, met from outside (an edge-on ray that never
+crosses a face used to pass straight through), with the gas at rOut. Example `physics8.m` (the doughnut dropped, the two
+discs); the science examples' test now allows 20 s each (heavy examples missed 5 s when the whole suite runs side by
+side). Tests (`physics-m544.test.ts`): the half ring within 1% and ≤ 64 corners a part, the doughnut exact, face-on
+see-through about the opacity, the thicker disc's far side shadowed, inner wall seen at 60° and not on a thin disc, the
+rim edge-on, 'Parts' 32 and its limit. Not built: lengths in the disc's gas are coordinate lengths (not the gas's own
+frame), the gas absorbs the same at every colour, and convexSplit's cuts are still only planes from the mesh's folds (no
+free search for the best plane, as V-HACD does).

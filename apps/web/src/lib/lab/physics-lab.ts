@@ -20,7 +20,8 @@ import { call, col, def, lines, need, nums, one, options, optNum, optText, recor
 // schrodinger3D drawn as 3D surfaces. M520: shapes with dents, rigidShapes3D, charged black holes ('Charge',
 // 'ParticleCharge'), light from any direction (kerrLight's 'Inclination', 'Beta'). M542: 'Rolling' resistance, glued
 // solids in rigidShapes3D, 'Magnetic' charge, kerrDisc (a glowing disc, ray traced). M543: 'Rolling' for any shape,
-// convexSplit (a dented mesh cut into convex parts), kerrDisc's 'Thickness', 'Opacity', 'Colour' 'temperature'. M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
+// convexSplit (a dented mesh cut into convex parts), kerrDisc's 'Thickness', 'Opacity', 'Colour' 'temperature'. M544: convexSplit
+// up to 32 parts with cuts across bends (smooth curved meshes), the thick disc shadowing itself and its walls glowing. M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
 // relativistic, minkowskiDiagram, chargedParticle's 'Relativistic', schrodinger1D, finiteWell, tunneling,
 // transmission, rigidBody, collide1d, diskCollisions.
 
@@ -723,8 +724,8 @@ def('convexSplit', (a) => {
   if (V.c !== 3) throw new LabError('convexSplit(V, F): V is n × 3 corners, F the faces (each row the corner numbers of one face, from 1), as patch takes them.');
   const faces = F ? Array.from({ length: F.r }, (_, i) => Array.from({ length: F.c }, (_, j) => F.d[i + j * F.r]).filter((x) => Number.isFinite(x) && x > 0).map((x) => x - 1))
     : (a[1] as { d: Value[] }).d.map((x) => nums(x).map((v) => v - 1));
-  const o = options(a, 2, ['Parts', 'Tolerance'], 'convexSplit'), maxParts = Math.round(optNum(o, 'Parts', 12)), tol = optNum(o, 'Tolerance', 0.02);
-  if (!(maxParts >= 1 && maxParts <= 12 && tol > 0 && tol < 0.5)) throw new LabError("convexSplit: 'Parts' 1 to 12 (the most it makes), 'Tolerance' the share of a part's hull that may be empty (0 to 0.5).");
+  const o = options(a, 2, ['Parts', 'Tolerance'], 'convexSplit'), maxParts = Math.round(optNum(o, 'Parts', 16)), tol = optNum(o, 'Tolerance', 0.02);
+  if (!(maxParts >= 1 && maxParts <= 32 && tol > 0 && tol < 0.5)) throw new LabError("convexSplit: 'Parts' 1 to 32 (the most it makes), 'Tolerance' the share of a part's hull that may be empty (0 to 0.5).");
   const pts = Array.from({ length: V.r }, (_, i) => [V.d[i], V.d[i + V.r], V.d[i + 2 * V.r]]);
   const parts = wrap(() => r3.convexSplit(pts, faces, { maxParts, tol }));
   return [{ k: 'cell', r: 1, c: parts.length, d: parts.map((P) => rows(P)) }];

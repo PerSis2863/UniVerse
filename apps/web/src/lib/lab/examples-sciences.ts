@@ -330,7 +330,21 @@ for k = 1:n, F{end+1} = [k, mod(k, n)+1, n+mod(k, n)+1, n+k]; end
 parts = convexSplit(V, F)
 figure; rigidShapes3D({parts}, [5 5 3 30 20 0], [], 'Time', 3)
 % 3. A thick, half see-through disc coloured by its temperature: the far side shows through
-figure; kerrDisc(0.9, 80, 'Pixels', 120, 'Thickness', 0.05, 'Opacity', 0.6, 'Colour', 'temperature')
+figure; kerrDisc(0.9, 80, 'Pixels', 90, 'Thickness', 0.05, 'Opacity', 0.6, 'Colour', 'temperature')
+` },
+  { name: 'physics8.m', code: `% Physics: a curved solid split by itself, a thick disc's glowing wall and its own shadow
+% 1. A doughnut (curved all over) split into convex parts, then dropped: it lands on its side and rests
+N = 12; M = 6; [u, v] = ndgrid(2*pi*(0:N-1)/N, 2*pi*(0:M-1)/M);
+V = [(2 + 0.6*cos(v(:))).*cos(u(:)), (2 + 0.6*cos(v(:))).*sin(u(:)), 0.6*sin(v(:))];
+id = @(i, j) mod(i, N) + N*mod(j, M) + 1;        % ndgrid runs down u first
+F = zeros(N*M, 4);
+for i = 0:N-1, for j = 0:M-1, F(i*M + j + 1, :) = [id(i, j) id(i+1, j) id(i+1, j+1) id(i, j+1)]; end, end
+parts = convexSplit(V, F);
+fprintf('The doughnut in %d convex parts\\n', numel(parts))
+figure; rigidShapes3D({parts}, [5 5 3 40 0 0], [], 'Time', 2)
+% 2. A thick solid disc seen from above: its inner wall glows; then see-through, nearly edge-on, shadowing itself
+figure; kerrDisc(0.5, 60, 'Pixels', 80, 'Thickness', 0.2)
+figure; kerrDisc(0, 85, 'Pixels', 80, 'Thickness', 0.2, 'Opacity', 0.3)
 ` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
