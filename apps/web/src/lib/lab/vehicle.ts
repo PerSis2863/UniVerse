@@ -315,12 +315,16 @@ export interface Inside { headSide: number; headRoof: number; headG: number; thr
 // blows), or 'far' (the head swings across the car before anything stops it); no seat given takes the worse of the two
 // sides. Front airbags fire if the blow along the car passes FRONT_G (rare in a rollover; the tumble records it).
 export const SIZES = { small: 0.06, average: 0, tall: -0.06 } as const, REAR_CRUSH = 0.7;
-export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; seat?: 'near' | 'far'; row?: 'front' | 'rear' } = {}): Inside {
+// M486m: the middle seat ('middle'): between the two roof edges, so it takes their mean crush, ~2 cm more room (the roof
+// is highest there), the head swinging 1.15× (between the near seat's and the far one's); no window of its own, so
+// belted nobody there is partly out, unbelted either side's window.
+export const MIDDLE_ROOM = 0.02;
+export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; seat?: 'near' | 'far' | 'middle'; row?: 'front' | 'rear' } = {}): Inside {
   // M486i: the back row sits ~3 cm nearer the roof (it slopes down) but further from the windscreen pillars, where the
   // roof gives most: about 0.7 of the crush reaches it; no front airbags there.
   const rear = o.row === 'rear', share = rear ? REAR_CRUSH : 1;
-  const belt = o.belt ?? true, curt = o.curtains ?? false, sh = shape(v), room = HEADROOM + SIZES[o.size ?? 'average'] - (rear ? 0.03 : 0);
-  const side = o.seat === 'near' ? 0 : o.seat === 'far' ? 1 : -1, crushAt = (c: [number, number] | undefined) => share * (c ? (side >= 0 ? c[side as 0 | 1] : Math.max(...c)) : 0);
+  const mid = o.seat === 'middle', belt = o.belt ?? true, curt = o.curtains ?? false, sh = shape(v), room = HEADROOM + SIZES[o.size ?? 'average'] - (rear ? 0.03 : 0) + (mid ? MIDDLE_ROOM : 0);
+  const side = o.seat === 'near' ? 0 : o.seat === 'far' ? 1 : -1, crushAt = (c: [number, number] | undefined) => share * (c ? (mid ? (c[0] + c[1]) / 2 : side >= 0 ? c[side as 0 | 1] : Math.max(...c)) : 0);
   const r = Math.max(0.3, sh.roof - v.h - room - 0.1);
   let dw = 0, crushRate = 0, inverted = false, screenCracked = NaN, screenOut = NaN;
   for (let i = 0; i < tb.t.length; i++) {
@@ -333,9 +337,9 @@ export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: b
     if (Number.isNaN(screenCracked) && c > SCREEN_CRACK) screenCracked = tb.t[i];
     if (Number.isNaN(screenOut) && c > SCREEN_OUT) screenOut = tb.t[i];
   }
-  const crush = share * (side >= 0 ? (tb.crushes.at(-1)?.[side as 0 | 1] ?? 0) : tb.crush), headroom = room - crush;
+  const last = tb.crushes.at(-1) ?? [0, 0], crush = share * (mid ? (last[0] + last[1]) / 2 : side >= 0 ? last[side as 0 | 1] : tb.crush), headroom = room - crush;
   // The far side's head swings across the car first: more speed when it's stopped.
-  const headSide = dw * r * (belt ? 0.6 : 1) * (side === 1 ? 1.3 : 1);
+  const headSide = dw * r * (belt ? 0.6 : 1) * (side === 1 ? 1.3 : mid ? 1.15 : 1);
   const reached = headroom < (belt ? 0.05 : room);
   const headRoof = !inverted ? 0 : belt ? (reached ? crushRate : 0) : Math.sqrt(2 * G * (Math.max(0, room - crush) + 0.15)) + crushRate;
   const g = (sp: number, stop: number) => (sp * sp) / (2 * stop) / G;
@@ -343,7 +347,7 @@ export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: b
   // An opening that is open at time t: a broken side window not covered by a curtain (or after it has gone down), or the
   // windscreen out of its frame; flung if the car still rolls fast enough then. Unbelted, either side's window; belted,
   // only their own side's (head and arms).
-  const glass = (t: number, own: boolean) => tb.windows.some((x, k) => (!own || side < 0 || k === side) && !Number.isNaN(x) && x <= t && (!curt || t > CURTAIN_HOLD));
+  const glass = (t: number, own: boolean) => !(own && mid) && tb.windows.some((x, k) => (!own || side < 0 || k === side) && !Number.isNaN(x) && x <= t && (!curt || t > CURTAIN_HOLD));
   const screen = (t: number) => !Number.isNaN(screenOut) && screenOut <= t && Math.abs(tb.spin) > Math.PI / 2;
   const fling = Math.sqrt(G / r);
   let out = NaN;
@@ -355,8 +359,26 @@ export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: b
 }
 /** M486i: everyone at once: the four outer seats (front and back, the side it tips to and the other). */
 export const SEATS = [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['rear', 'far']] as const;
-export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES } = {}) {
-  return SEATS.map(([row, seat]) => ({ row, seat, ...inside(v, tb, { ...o, row, seat }) }));
+// M486m: with `middle` someone in the back's middle seat too. People knock into each other: in a row, the head of each
+// person swings across towards the one on the side it tips to; the nearer one is stopped first (by the glass or the
+// pillar), so they meet at the swinging one's speed, heads stopped in 5 cm (`HEADS_STOP`), and both feel it. Unbelted,
+// the body comes behind the head: 1.5× the blow. The near person is hit; the far one hits; the middle one both.
+export const HEADS_STOP = 0.05;
+export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; middle?: boolean } = {}) {
+  const { middle, ...who } = o;
+  const seats: (readonly ['front' | 'rear', 'near' | 'far' | 'middle'])[] = middle ? [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['rear', 'middle'], ['rear', 'far']] : [...SEATS];
+  const all = seats.map(([row, seat]) => ({ row, seat, knock: 0, ...inside(v, tb, { ...who, row, seat }) }));
+  const order = { near: 0, middle: 1, far: 2 } as const;
+  for (const row of ['front', 'rear'] as const) {
+    const line = all.filter((x) => x.row === row).sort((a, b) => order[a.seat] - order[b.seat]);
+    for (let i = 1; i < line.length; i++) {
+      const sp = line[i].headSide, g = ((sp * sp) / (2 * HEADS_STOP) / G) * (o.belt === false ? 1.5 : 1);
+      for (const x of [line[i], line[i - 1]]) { x.knock = Math.max(x.knock, g); x.headG = Math.max(x.headG, g); }
+    }
+  }
+  // The rough bands again with the knocks counted.
+  for (const x of all) if (x.headG > 150) x.risk = 'severe'; else if (x.headG > 80 && x.risk === 'low') x.risk = 'serious';
+  return all;
 }
 
 // M486j: a head-on crash. The car's front is a spring tuned so 56 km/h into a rigid wall crushes it ~0.65 m (Euro NCAP

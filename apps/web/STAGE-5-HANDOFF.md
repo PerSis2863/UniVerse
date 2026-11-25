@@ -13381,6 +13381,21 @@ alone milder, beside someone severe (heads). Language `vehicleSideCrash` (help, 
 other side / Other side, someone beside). Rough figures. Not built: the car spinning after the blow, a crash at an
 angle, the back seats in a side crash, rib deflection (Euro NCAP's real measure; g here).
 
+## M486m (25 Nov): Hyperion vehicles, the middle seat and people knocking into each other in a rollover
+
+The owner, 25 Nov (M486i's left-outs). `vehicle.ts` `inside(…, { seat: 'middle' })`: between both roof edges, so their
+mean crush, `MIDDLE_ROOM` 2 cm more room (the roof is highest there), the head swinging 1.15× (between near 1 and far
+1.3); no window of its own (belted, never partly out; unbelted, either side's). `everyone(…, { middle })` adds the
+back's middle seat, and people knock into each other: along a row each head swings across into the next person on
+the side it tips to; the nearer one is stopped first, so they meet at the swinging one's speed, stopped in 5 cm
+(`HEADS_STOP`; unbelted 1.5× for the body behind), both feel it (`knock`, counted in `headG` and the risk). Note:
+`everyone` now counts the knocks for the four outer seats too (everyone sits there at once). Checked: the middle's
+room and swing between the outer seats', knocks on all three in the back, harder unbelted. The model's head swing
+speeds in a rollover are a few m/s, so knocks are a few g belted, up to ~15 unbelted. Language: vehicleTrip 'Seat'
+'middle', 'Middle', 1 (info.Seats with five rows and a Knock column). Window: Kerb → Seat → "Back middle", the facts
+"Five seats" and "Heads knocking together". Rough figures. Not built: a front middle seat drawn in the window (the
+language takes 'Seat', 'middle', 'Row', 'front'), bodies (not only heads) loading each other in a rollover.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

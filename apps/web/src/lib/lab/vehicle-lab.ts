@@ -109,16 +109,16 @@ const outline = (x: number, y: number, psi: number, v: vd.Vehicle) => {
   return [[b, -w], [f, -w], [f, w], [b, w], [b, -w]].map(([u, q]) => [x + u * c - q * s, y + u * s + q * c]);
 };
 // The people inside after a tumble (M486g; size, seat and front airbags M486h): 'Belts' 1/0, 'Curtains' 1/0,
-// 'Occupant' 'small' | 'average' | 'tall', 'Seat' 'near' | 'far'.
+// 'Occupant' 'small' | 'average' | 'tall', 'Seat' 'near' | 'far' (M486m: or 'middle').
 const peopleOf = (o: Map<string, Value>) => {
   const flag = (k: string) => { const x = o.get(k) ? toMat(o.get(k)!).d[0] : undefined; if (x !== undefined && x !== 0 && x !== 1) throw new LabError("'Belts' and 'Curtains' are 1 or 0."); return x; };
   const size = o.get('occupant') ? textOf(o.get('occupant')!).toLowerCase() : 'average', seat = o.get('seat') ? textOf(o.get('seat')!).toLowerCase() : undefined;
   if (!(size in vd.SIZES)) throw new LabError("'Occupant' is 'small', 'average' or 'tall'.");
-  if (seat !== undefined && seat !== 'near' && seat !== 'far') throw new LabError("'Seat' is 'near' (the side it tips towards) or 'far'.");
+  if (seat !== undefined && seat !== 'near' && seat !== 'far' && seat !== 'middle') throw new LabError("'Seat' is 'near' (the side it tips towards), 'middle' or 'far'.");
   // M486i: 'Row' 'front' (default) or 'rear'.
   const rowName = o.get('row') ? textOf(o.get('row')!).toLowerCase() : 'front';
   if (rowName !== 'front' && rowName !== 'rear') throw new LabError("'Row' is 'front' or 'rear'.");
-  return { belt: flag('belts') !== 0, curtains: flag('curtains') === 1, size: size as keyof typeof vd.SIZES, seat: seat as 'near' | 'far' | undefined, row: rowName as 'front' | 'rear' };
+  return { belt: flag('belts') !== 0, curtains: flag('curtains') === 1, size: size as keyof typeof vd.SIZES, seat: seat as 'near' | 'far' | 'middle' | undefined, row: rowName as 'front' | 'rear' };
 };
 const peopleFields = (ins: vd.Inside | null): [string, Value][] => [['HeadG', num(ins?.headG ?? 0)], ['ThrownOutAt', num(ins?.thrownOut ?? NaN)], ['PartlyOut', num(ins?.partly ? 1 : 0)], ['WindscreenCracked', num(ins?.screenCracked ?? NaN)], ['WindscreenOut', num(ins?.screenOut ?? NaN)], ['FrontAirbags', num(ins?.frontBags ?? NaN)], ['PersonHeadroom', num(ins?.headroom ?? vd.HEADROOM)], ['Injury', str(ins?.risk ?? 'low')]];
 // After a rollover (M486d): how many quarter turns, what it rests on, how far it slid sideways, how long.
@@ -184,9 +184,12 @@ def('vehicleTrip', (a, nout, lab) => {
   if (swr !== undefined && !(swr >= 0.5 && swr <= 10)) throw new LabError("'RoofStrength' is the roof's strength-to-weight ratio, 0.5 to 10 (3 by the US rule).");
   if ((yr !== undefined && !(Math.abs(yr) <= 5)) || (vf !== undefined && !(Math.abs(vf) <= 60))) throw new LabError("'YawRate' is up to 5 rad/s and 'ForwardSpeed' up to 60 m/s.");
   const who = peopleOf(o), tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf }), people = peopleFields(vd.inside(v, tb, who));
-  // M486i: all four outer seats at once (info.Seats: a table).
-  const all = vd.everyone(v, tb, who);
-  people.push(['Seats', table([['Row', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.row)) } as Value], ['Side', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.seat)) } as Value], ['HeadG', col(all.map((x) => x.headG))], ['Headroom', col(all.map((x) => x.headroom))], ['ThrownOutAt', col(all.map((x) => x.thrownOut))], ['PartlyOut', col(all.map((x) => (x.partly ? 1 : 0)))]])]);
+  // M486i: all four outer seats at once (info.Seats: a table); M486m: 'Middle', 1 adds the back's middle seat, and
+  // Knock is the g of heads meeting.
+  const mid = o.get('middle') ? toMat(o.get('middle')!).d[0] : 0;
+  if (mid !== 0 && mid !== 1) throw new LabError("'Middle' is 1 (someone in the back's middle seat) or 0.");
+  const all = vd.everyone(v, tb, { ...who, middle: mid === 1 });
+  people.push(['Seats', table([['Row', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.row)) } as Value], ['Side', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.seat)) } as Value], ['HeadG', col(all.map((x) => x.headG))], ['Knock', col(all.map((x) => x.knock))], ['Headroom', col(all.map((x) => x.headroom))], ['ThrownOutAt', col(all.map((x) => x.thrownOut))], ['PartlyOut', col(all.map((x) => (x.partly ? 1 : 0)))]])]);
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ...people, ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
   if (nout > 0) return [table([['Time', col(tb.t)], ['Across', col(tb.y)], ['Height', col(tb.z)], ['Roll', col(tb.th)], ['RollRate', col(tb.w)]]), info];
   call(lab, 'hold', str('on'));

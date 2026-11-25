@@ -181,7 +181,7 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('a', 'Rolls')).toBeGreaterThan(0); expect(f('a', 'HeadG')).toBeGreaterThan(0); expect(Number.isNaN(f('a', 'FrontAirbags'))).toBe(true);
     expect(f('b', 'HeadG')).toBeCloseTo(tall.headG, 9);
-    expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'Seat', 'middle')")).toThrow(/near/);
+    expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'Seat', 'roof')")).toThrow(/near/);
   });
   it('front and back rows, and everyone at once (M486i)', { timeout: 60_000 }, () => {
     const saloon = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, hard = vd.kerbTrip(saloon, 18);
@@ -258,5 +258,24 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const f = (k: string) => toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('PersonForce')).toBeCloseTo(beside.hitPerson, 6);
     expect(() => lab.run("vehicleSideCrash(vehicle(), 10, 'Into', 'tree')")).toThrow(/pole/);
+  });
+  it('the middle seat and people knocking into each other in a rollover (M486m)', { timeout: 60_000 }, () => {
+    const v = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, tb = vd.kerbTrip(v, 18, 0.15);
+    // The middle seat: the roof edges' mean crush and 2 cm more room; belted, no window of its own.
+    const near = vd.inside(v, tb, { seat: 'near', row: 'rear' }), far = vd.inside(v, tb, { seat: 'far', row: 'rear' }), mid = vd.inside(v, tb, { seat: 'middle', row: 'rear' });
+    expect(mid.headroom).toBeCloseTo((near.headroom + far.headroom) / 2 + vd.MIDDLE_ROOM, 9); expect(mid.partly).toBe(false);
+    expect(mid.headSide).toBeGreaterThan(near.headSide); expect(mid.headSide).toBeLessThan(far.headSide);
+    // Everyone: heads knock together, both feel it, at least what each had alone; the middle one meets someone either side.
+    const all = vd.everyone(v, tb, { middle: true }), back = all.filter((x) => x.row === 'rear');
+    expect(all).toHaveLength(5); expect(back.map((x) => x.seat)).toEqual(['near', 'middle', 'far']);
+    for (const x of back) { expect(x.knock).toBeGreaterThan(0); expect(x.headG).toBeGreaterThanOrEqual(vd.inside(v, tb, { seat: x.seat, row: 'rear' }).headG); }
+    expect(back[1].knock).toBeCloseTo((far.headSide ** 2 / (2 * vd.HEADS_STOP)) / vd.G, 9);
+    // Unbelted, harder knocks.
+    expect(Math.max(...vd.everyone(v, tb, { belt: false }).map((x) => x.knock))).toBeGreaterThan(Math.max(...vd.everyone(v, tb).map((x) => x.knock)));
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleTrip(vehicle('Roll', true), 18, 'Middle', 1, 'Seat', 'middle', 'Row', 'rear');");
+    const seats = (lab.vars.get('i') as unknown as { f: Map<string, unknown> }).f.get('Seats');
+    expect(seats).toBeTruthy();
+    expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'Middle', 2)")).toThrow(/Middle/);
   });
 });
