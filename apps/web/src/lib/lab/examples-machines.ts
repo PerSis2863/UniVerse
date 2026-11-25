@@ -161,6 +161,10 @@ van.Mu = 1; [~, hk] = vehicleSim(van, 'fishhook', 6, 'Amplitude', 0.12, 'Initial
 fprintf('Rolled %d quarter turns, resting on its %s, %.1f m away\\n', hk.Rolls, hk.RestsOn, hk.TumbleDistance)
 [~, kb] = vehicleTrip(vehicle('Roll', true), 12, 'Kerb', 0.15);
 fprintf('A 15 cm kerb trips it from %.0f km/h sideways\\n', kb.TripSpeed*3.6)
+% The people inside: unbelted they can be thrown out through a broken window; belts and curtain airbags keep them in
+[~, nb] = vehicleTrip(vehicle('Roll', true), 18, 'Belts', 0);
+[~, bc] = vehicleTrip(vehicle('Roll', true), 18, 'Belts', 1, 'Curtains', 1);
+fprintf('Unbelted: thrown out at %.2f s, head %.0f g; belted with curtains: head %.0f g\\n', nb.ThrownOutAt, nb.HeadG, bc.HeadG)
 figure; vehicleTrip(vehicle('Roll', true), 15, 'Kerb', 0, 'Ground', 'soil')
 ` },
   { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead

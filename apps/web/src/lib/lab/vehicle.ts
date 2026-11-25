@@ -290,6 +290,48 @@ export function tripSpeed(v: Vehicle, kerb = 0.15) {
   return Math.sqrt((2 * G * rise * Ie) / v.m) / hh;
 }
 
+// M486g: the people inside, belted or not, with or without side curtain airbags (rough figures). Their heads sit about
+// `HEADROOM` under the roof, `r` from the roll axis; each landing changes the roll rate at once, and the head keeps its
+// speed for a moment: |Δω|·r into the side (a belt holds the body, so its head swings 0.6 of that). Upside down, an
+// unbelted person falls through the headroom (and the seat's give) onto the roof; a belted one only if the crushing roof
+// comes down to them. Stopped by glass or a pillar in 2 cm, the roof's lining 3 cm, a curtain airbag 10 cm: g = v²/2s.
+// Thrown out: unbelted, through a broken side window (no curtain over it: curtains stay up 6 s, FMVSS 226) or a
+// windscreen pulled from its frame, while still rolling fast enough (ω²·r over 1 g) to fling them; belted, only head and
+// arms. The windscreen is laminated: it cracks as the pillars bend (3 cm of roof crush) and comes out of its frame past
+// 15 cm; rolling flings people sideways, so it lets them out only when the car also turned over 90° as it tumbled. The
+// roof's crush is taken as spread over its 0.1 s on the ground (the model's own crush is at once). Frontal airbags don't fire in a rollover (no frontal blow), so they're left out.
+export const CURTAIN_HOLD = 6, SCREEN_CRACK = 0.03, SCREEN_OUT = 0.15;
+export interface Inside { headSide: number; headRoof: number; headG: number; thrownOut: number; partly: boolean; screenCracked: number; screenOut: number; risk: 'low' | 'serious' | 'severe' }
+export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean } = {}): Inside {
+  const belt = o.belt ?? true, curt = o.curtains ?? false, sh = shape(v), r = Math.max(0.3, sh.roof - v.h - HEADROOM - 0.1);
+  let dw = 0, crushRate = 0, inverted = false, screenCracked = NaN, screenOut = NaN;
+  for (let i = 0; i < tb.t.length; i++) {
+    const c = Math.max(...(tb.crushes[i] ?? [0, 0])), dt = i ? tb.t[i] - tb.t[i - 1] : 0;
+    // A landing's change in roll rate over 50 ms; the roof's crush spread over its 0.1 s on the ground.
+    let j = i; while (j > 0 && tb.t[i] - tb.t[j - 1] <= 0.05) j--;
+    dw = Math.max(dw, Math.abs(tb.w[i] - tb.w[j]));
+    if (i && dt > 0) crushRate = Math.max(crushRate, (c - Math.max(...(tb.crushes[i - 1] ?? [0, 0]))) / Math.max(dt, 0.1));
+    if (Math.cos(tb.th[i]) < -0.5) inverted = true;
+    if (Number.isNaN(screenCracked) && c > SCREEN_CRACK) screenCracked = tb.t[i];
+    if (Number.isNaN(screenOut) && c > SCREEN_OUT) screenOut = tb.t[i];
+  }
+  const headSide = dw * r * (belt ? 0.6 : 1);
+  const reached = tb.headroom < (belt ? 0.05 : HEADROOM);
+  const headRoof = !inverted ? 0 : belt ? (reached ? crushRate : 0) : Math.sqrt(2 * G * (Math.max(0, HEADROOM - tb.crush) + 0.15)) + crushRate;
+  const g = (sp: number, stop: number) => (sp * sp) / (2 * stop) / G;
+  const headG = Math.max(g(headSide, curt ? 0.1 : 0.02), g(headRoof, 0.03));
+  // An opening that is open at time t: a broken side window not covered by a curtain (or after it has gone down), or the
+  // windscreen out of its frame; flung if the car still rolls fast enough then.
+  const open = (t: number) => tb.windows.some((x) => !Number.isNaN(x) && x <= t && (!curt || t > CURTAIN_HOLD)) || (!Number.isNaN(screenOut) && screenOut <= t && Math.abs(tb.spin) > Math.PI / 2);
+  const fling = Math.sqrt(G / r);
+  let out = NaN;
+  for (let i = 0; i < tb.t.length && Number.isNaN(out); i++) if (open(tb.t[i]) && Math.abs(tb.w[i]) > fling) out = tb.t[i];
+  const thrownOut = belt ? NaN : out, partly = belt && !Number.isNaN(out);
+  // Rough bands: thrown out, a head over 150 g, or upside down with the roof 5 cm into their heads is severe.
+  const risk = !Number.isNaN(thrownOut) || headG > 150 || (inverted && tb.headroom < -0.05) ? 'severe' : headG > 80 || partly || tb.headroom < 0 ? 'serious' : 'low';
+  return { headSide, headRoof, headG, thrownOut, partly, screenCracked, screenOut, risk };
+}
+
 // ——— Steady state ———
 /** The understeer gradient K (rad per m/s² of side acceleration; above 0 understeers), the yaw-rate gain at a speed
  * (r/δ = u / (L + K u²)), and the characteristic speed (the most yaw gain, understeer) or critical speed (unstable past

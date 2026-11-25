@@ -147,4 +147,22 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(hard.crushes.every((c, i) => i === 0 || (c[0] >= hard.crushes[i - 1][0] && c[1] >= hard.crushes[i - 1][1]))).toBe(true);
     expect(Math.max(...hard.crushes.at(-1)!)).toBeCloseTo(hard.crush, 12);
   });
+  it('belts, curtain airbags, people thrown out and the windscreen (M486g)', { timeout: 60_000 }, () => {
+    const saloon = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, hard = vd.kerbTrip(saloon, 18), calm = vd.kerbTrip(saloon, 6);
+    const loose = vd.inside(saloon, hard, { belt: false }), belted = vd.inside(saloon, hard), both = vd.inside(saloon, hard, { curtains: true });
+    const looseCurt = vd.inside(saloon, hard, { belt: false, curtains: true });
+    // Unbelted through a broken window; belted only head and arms; curtains over the windows keep them in.
+    expect(loose.thrownOut).toBeGreaterThanOrEqual(Math.min(...hard.windows)); expect(loose.risk).toBe('severe');
+    expect(Number.isNaN(belted.thrownOut)).toBe(true); expect(belted.partly).toBe(true);
+    expect(both.partly).toBe(false); expect(Number.isNaN(looseCurt.thrownOut)).toBe(true);
+    // Belts and curtains soften the heads' blows; the windscreen cracks before it comes out.
+    expect(belted.headG).toBeLessThan(loose.headG); expect(both.headG).toBeLessThan(belted.headG);
+    expect(belted.screenCracked).toBeLessThanOrEqual(belted.screenOut);
+    const c = vd.inside(saloon, calm, { belt: false });
+    expect(Number.isNaN(c.thrownOut) && Number.isNaN(c.screenCracked)).toBe(true); expect(c.risk).toBe('low');
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, a] = vehicleTrip(vehicle('Roll', true), 18, 'Belts', 0); [~, b] = vehicleTrip(vehicle('Roll', true), 18, 'Curtains', 1);");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('a', 'ThrownOutAt')).toBeCloseTo(loose.thrownOut, 9); expect(f('b', 'HeadG')).toBeCloseTo(both.headG, 9);
+  });
 });

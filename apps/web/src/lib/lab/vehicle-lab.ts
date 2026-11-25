@@ -128,8 +128,12 @@ def('vehicleTrip', (a, nout, lab) => {
   const opt = (k: string) => (o.get(k) ? toMat(o.get(k)!).d[0] : undefined), swr = opt('roofstrength'), yr = opt('yawrate'), vf = opt('forwardspeed');
   if (swr !== undefined && !(swr >= 0.5 && swr <= 10)) throw new LabError("'RoofStrength' is the roof's strength-to-weight ratio, 0.5 to 10 (3 by the US rule).");
   if ((yr !== undefined && !(Math.abs(yr) <= 5)) || (vf !== undefined && !(Math.abs(vf) <= 60))) throw new LabError("'YawRate' is up to 5 rad/s and 'ForwardSpeed' up to 60 m/s.");
-  const tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf });
-  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
+  // M486g: 'Belts' (1 belted, the default; 0 not) and 'Curtains' (1: side curtain airbags).
+  const belts = opt('belts'), curtains = opt('curtains');
+  if ((belts !== undefined && belts !== 0 && belts !== 1) || (curtains !== undefined && curtains !== 0 && curtains !== 1)) throw new LabError("'Belts' and 'Curtains' are 1 or 0.");
+  const tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf }), ins = vd.inside(v, tb, { belt: belts !== 0, curtains: curtains === 1 });
+  const people: [string, Value][] = [['HeadG', num(ins.headG)], ['ThrownOutAt', num(ins.thrownOut)], ['PartlyOut', num(ins.partly ? 1 : 0)], ['WindscreenCracked', num(ins.screenCracked)], ['WindscreenOut', num(ins.screenOut)], ['Injury', str(ins.risk)]];
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ...people, ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
   if (nout > 0) return [table([['Time', col(tb.t)], ['Across', col(tb.y)], ['Height', col(tb.z)], ['Roll', col(tb.th)], ['RollRate', col(tb.w)]]), info];
   call(lab, 'hold', str('on'));
   let last = -Infinity;

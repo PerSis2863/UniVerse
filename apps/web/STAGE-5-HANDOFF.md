@@ -13210,6 +13210,22 @@ WindowsBroken, PeakG, Headroom. Window: Kerb draws the roof sinking in and the s
 broken); facts "Roof in · windows broken" and "People inside: most g · headroom". Not built: belts and airbags,
 people thrown out, the windscreen.
 
+## M486g (25 Nov): Hyperion vehicles, belts, curtain airbags, people thrown out, the windscreen
+
+The owner, 25 Nov (M486f's left-outs). `vehicle.ts` `inside(v, tumble, { belt, curtains })`, after the tumble (rough
+figures, said so in help): heads ~`r` from the roll axis keep their speed when a landing changes the roll rate (|Δω|
+over 50 ms · r; ×0.6 belted) into the side; upside down an unbelted person falls headroom + 15 cm onto the roof, a
+belted one is hit only by the crushing roof (crush spread over its 0.1 s on the ground); stopped in 2 cm (glass,
+pillar), 3 cm (lining), 10 cm (curtain): `headG`. Thrown out: unbelted, through a broken side window not covered by a
+curtain (`CURTAIN_HOLD` 6 s) or a windscreen out of its frame (only if it also turned over 90°), while ω²·r > g; belted:
+`partly` (head and arms). Windscreen: cracked past 3 cm of crush, out past 15 cm. `risk` bands. Frontal airbags left
+out (they don't fire in a rollover). Checked: unbelted at 18 m/s thrown out after the first window broke, belted only
+partly, curtains keep both in; head g falls with belts and again with curtains; rocking back at 6 m/s is 'low'.
+Language: vehicleTrip 'Belts', 'Curtains'; info HeadG, ThrownOutAt, PartlyOut, WindscreenCracked, WindscreenOut,
+Injury. Window: Kerb → "People inside" (No belts / Belts / Belts + curtains), a red dot leaving when thrown out, the
+screen's state; facts "Heads · thrown out", "Windscreen · injury (rough)". Not built: the same for vehicleSim's
+rollovers (only vehicleTrip), people's own size and seating place.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
