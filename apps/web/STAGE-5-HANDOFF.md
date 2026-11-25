@@ -13348,6 +13348,22 @@ train 20 km out sags a little more, wet clay a little less, a far-end fault draw
 voltage too. Not built: layered soils, the booster and autotransformer feeds' own return wires as separate
 conductors (they stay in the screening factor).
 
+## M486k (25 Nov): Hyperion vehicles, offset crashes, the back seat and someone unbelted behind
+
+The owner, 25 Nov (M486j's left-outs). `vehicle.ts` `frontalCrash(…, { overlap, seat, behind })`: only `overlap` of
+the front hits (`overlapShare`: with a main rail in it, 30% or more, half the stiffness or more; below, the rail is
+missed). The front has `FRONT_ROOM` 0.8 m; past it the footwell and dashboard come in 2.5× as stiff (`intrusion`,
+taking the knees' room and half of it the wheel's). The car swings round, so the person also moves 0.7·(1 − overlap)²
+of their forward travel sideways; past 12 cm the head slides off the airbag's edge (`slidOff`: half its push, the head
+may meet the pillar). `seat: 'rear'`: no airbag, 6 cm slack and a 16 kN belt (no limiter), knees and chest into the
+front seat's back (`SEATBACK_MAX` 12 kN, where it folds), `hitSeat` for the head. `behind: 'unbelted'`: a second
+person thrown into the front seat's back pushes the front person forward (`backLoad`). Rigid barrier (harsher than
+Euro NCAP's soft one). Checked: full front unchanged; 64 km/h 40% ~16 cm in, 25% ~29 cm in and slides off the bag; the
+back seat belted reaches the seat in front, unbelted goes over it; pushed from behind, the driver reaches the wheel.
+Language: vehicleCrash 'Overlap', 'Seat', 'Behind'; info Intrusion, SlidOffAirbag, HitFrontSeat, BackLoad; an example.
+Window: Vehicle → Crash → "How much of the front hits" (All / 40% / 25%) and "Who" (The driver / Driver, unbelted
+behind / Back seat). Rough figures. Not built: the head's HIC, a soft deformable barrier, the car's own spin drawn.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

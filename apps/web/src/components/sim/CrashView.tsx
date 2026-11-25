@@ -8,18 +8,24 @@ import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Vehicle → Crash (M486j): a head-on crash into a wall or another car, the front person
 // held by the belt, the knees and the front airbag. The car's and the person's deceleration over the first 150 ms are
-// drawn, and how far the person moved towards the steering wheel. The maths is vehicle.ts (frontalCrash).
+// drawn, and how far the person moved towards the steering wheel. M486k: part of the front only (offset), the back
+// seat, and someone unbelted behind the front person. The maths is vehicle.ts (frontalCrash).
 
 type Into = 'wall' | 'car';
 type Guard = 'none' | 'belt' | 'bag' | 'both';
+type Overlap = '1' | '0.4' | '0.25';
+type Seat = 'front' | 'rear' | 'pushed';
 
 export function CrashView({ car }: { car: Vehicle }) {
   const dark = useDarkMode();
   const [kmh, setKmh] = useState(56);
   const [into, setInto] = useState<Into>('wall');
   const [guard, setGuard] = useState<Guard>('both');
+  const [overlap, setOverlap] = useState<Overlap>('1');
+  const [seat, setSeat] = useState<Seat>('front');
   const cv = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
-  const c = useMemo(() => frontalCrash(car, kmh / 3.6, { into, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both' }), [car, kmh, into, guard]);
+  const c = useMemo(() => frontalCrash(car, kmh / 3.6, { into, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', overlap: Number(overlap), seat: seat === 'rear' ? 'rear' : 'front', behind: seat === 'pushed' ? 'unbelted' : 'none' }), [car, kmh, into, guard, overlap, seat]);
+  const rear = seat === 'rear';
 
   const draw = useEffectEvent(() => {
     const b = box.current, el = cv.current;
@@ -56,8 +62,10 @@ export function CrashView({ car }: { car: Vehicle }) {
   const facts: [string, string][] = [
     ['Result', `${c.risk === 'low' ? 'Likely to walk away' : c.risk === 'serious' ? 'Serious injury likely' : 'Severe injury likely'} (rough)`],
     ['Like hitting a wall at', `${(c.vEq * 3.6).toFixed(0)} km/h · front crushed ${(c.crush * 100).toFixed(0)} cm`],
-    ['Chest (3 ms) · moved forward', `${c.chestG.toFixed(0)} g · ${c.hitWheel ? 'hit the steering wheel' : `${(c.travelMax * 100).toFixed(0)} cm of ${(WHEEL_GAP * 100).toFixed(0)}`}${c.headHit ? ', head on the wheel' : ''}`],
-    ['Front airbag', Number.isNaN(c.bagAt) ? (guard === 'none' || guard === 'belt' ? 'none fitted' : 'didn’t fire') : `fired at ${(c.bagAt * 1000).toFixed(0)} ms${c.late ? ' (late)' : ''}`],
+    ['Chest (3 ms) · moved forward', rear ? `${c.chestG.toFixed(0)} g · ${(c.travelMax * 100).toFixed(0)} cm${c.hitSeat ? ', head on the seat in front' : ''}` : `${c.chestG.toFixed(0)} g · ${c.hitWheel ? 'hit the steering wheel' : `${(c.travelMax * 100).toFixed(0)} cm of ${(WHEEL_GAP * 100).toFixed(0)}`}${c.headHit ? ', head on the wheel' : ''}`],
+    ['Front airbag', rear ? 'none in the back' : Number.isNaN(c.bagAt) ? (guard === 'none' || guard === 'belt' ? 'none fitted' : 'didn’t fire') : `fired at ${(c.bagAt * 1000).toFixed(0)} ms${c.late ? ' (late)' : ''}${c.slidOff ? ', the head slid off its edge' : ''}`],
+    ['Into the cabin', c.intrusion > 0.005 ? `${(c.intrusion * 100).toFixed(0)} cm (footwell and dashboard)` : 'nothing'],
+    ['Pushed from behind', seat === 'pushed' ? `${(c.backLoad / 1000).toFixed(1)} kN into the seat's back` : 'nobody unbelted behind'],
   ];
   return (
     <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="A head-on crash">
@@ -68,8 +76,14 @@ export function CrashView({ car }: { car: Vehicle }) {
         <div className="space-y-1"><span className={label}>Into</span>
           <Segmented<Into> label="Into" value={into} onChange={setInto} segments={[{ value: 'wall', label: 'A wall' }, { value: 'car', label: 'A car like it, head on' }]} />
         </div>
-        <div className="space-y-1"><span className={label}>The front person</span>
-          <Segmented<Guard> label="The front person" value={guard} onChange={setGuard} segments={[{ value: 'none', label: 'Nothing' }, { value: 'belt', label: 'Belt' }, { value: 'bag', label: 'Airbag' }, { value: 'both', label: 'Belt + airbag' }]} />
+        <div className="space-y-1"><span className={label}>Belt and airbag</span>
+          <Segmented<Guard> label="Belt and airbag" value={guard} onChange={setGuard} segments={[{ value: 'none', label: 'Nothing' }, { value: 'belt', label: 'Belt' }, { value: 'bag', label: 'Airbag' }, { value: 'both', label: 'Belt + airbag' }]} />
+        </div>
+        <div className="space-y-1"><span className={label}>How much of the front hits</span>
+          <Segmented<Overlap> label="How much of the front hits" value={overlap} onChange={setOverlap} segments={[{ value: '1', label: 'All of it' }, { value: '0.4', label: '40%' }, { value: '0.25', label: '25%' }]} />
+        </div>
+        <div className="space-y-1"><span className={label}>Who</span>
+          <Segmented<Seat> label="Who" value={seat} onChange={setSeat} segments={[{ value: 'front', label: 'The driver' }, { value: 'pushed', label: 'Driver, unbelted behind' }, { value: 'rear', label: 'Back seat' }]} />
         </div>
       </div>
       <div ref={box} className="flex min-h-0 flex-1 flex-col p-3">

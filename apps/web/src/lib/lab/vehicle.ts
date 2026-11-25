@@ -368,43 +368,79 @@ export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?:
 // the steering wheel (stiff: 1 MN/m). Chest g is the 3 ms average (FMVSS 208 allows 60 g); late firing (after 12.5 cm
 // of travel, the "5 inches less 30 ms" rule) is flagged. Rough figures.
 export const NCAP_CRUSH = 0.65, BELT_K = 2e5, BELT_LIMIT = 12000, BAG_GAP = 0.2, BAG_N = 6000, BAG_STROKE = 0.3, WHEEL_GAP = 0.55, KNEE_GAP = 0.12, KNEE_K = 2e5, KNEE_MAX = 9000;
-export interface Crash { t: number[]; carG: number[]; personG: number[]; travel: number[]; crush: number; dv: number; bagAt: number; late: boolean; beltPeak: number; hitWheel: boolean; headHit: boolean; chestG: number; travelMax: number; vEq: number; risk: 'low' | 'serious' | 'severe' }
-export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'car'; other?: number; belt?: boolean; bags?: boolean } = {}): Crash {
-  const m = v.m, m2 = o.other ?? m, belt = o.belt ?? true, bags = o.bags ?? true, mo = 75, dt = 1e-5, T = 0.2;
-  const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k = (m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
-  let xc = 0, vc = vEq, xo = 0, vo = vEq, crush = 0, sens = 0, bagAt = NaN, beltPeak = 0, hitWheel = false, travelMax = 0, late = false;
-  const out: Crash = { t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, risk: 'low' };
+// M486k: offset crashes and the back seats. Only `overlap` of the front's width hits (0.4 is Euro NCAP's offset test,
+// 0.25 the small overlap): while one of the two main rails is in it (30% or more) about half the front's stiffness or
+// more takes the blow; below, the rail is missed and only the wheel, the suspension and the wing are in the way. The
+// front has `FRONT_ROOM` 0.8 m to crush; past it the footwell and the dashboard on that side come back into the cabin
+// 2.5 times as stiff (the intrusion, the driver's side), taking up the knees' room and half of it the wheel's. The car swings round
+// in an offset crash, so the person also moves towards the struck side: 0.7·(1 − overlap)² of their forward travel (the
+// swing grows fast as the overlap shrinks); past 12 cm the head slides off the airbag's edge (only half its push, and
+// the head can meet the pillar). The back seat ('rear'): no airbag and no pretensioner or load limiter in many cars (6 cm slack, up to
+// 16 kN); the knees reach the front seat's back after 25 cm, the head it after 45 cm of the chest's travel (+15 cm
+// nod); a seat's back folds forward at about 12 kN (`SEATBACK_MAX`). Someone unbelted behind the front person (`behind`)
+// is thrown into the front seat's back, which pushes the front person into their belt and airbag too (people knocking
+// into each other). The crash is into something rigid (a wall, or a car taken as one), harsher than Euro NCAP's soft
+// barrier. Rough figures.
+export const FRONT_ROOM = 0.8, SEATBACK_KNEE = 0.25, SEATBACK_HEAD = 0.45, REAR_BELT_LIMIT = 16000, SEATBACK_K = 1.5e5, SEATBACK_MAX = 12000;
+export interface Crash { t: number[]; carG: number[]; personG: number[]; travel: number[]; crush: number; dv: number; bagAt: number; late: boolean; beltPeak: number; hitWheel: boolean; headHit: boolean; chestG: number; travelMax: number; vEq: number; intrusion: number; slidOff: boolean; hitSeat: boolean; backLoad: number; risk: 'low' | 'serious' | 'severe' }
+/** The front's stiffness share for an overlap (1 is the full width). */
+export const overlapShare = (ov: number) => (ov >= 1 ? 1 : ov >= 0.3 ? 0.5 + (5 / 7) * (ov - 0.3) : (0.5 * ov) / 0.3);
+export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'car'; other?: number; belt?: boolean; bags?: boolean; overlap?: number; seat?: 'front' | 'rear'; behind?: 'none' | 'belted' | 'unbelted' } = {}): Crash {
+  const m = v.m, m2 = o.other ?? m, belt = o.belt ?? true, rear = o.seat === 'rear', bags = (o.bags ?? true) && !rear, mo = 75, dt = 1e-5, T = 0.25;
+  const ov = Math.max(0.1, Math.min(1, o.overlap ?? 1)), share = overlapShare(ov), side = 0.7 * (1 - ov) ** 2;
+  // An unbelted person behind the front one (the back seat itself has nobody behind it).
+  const pushed = !rear && o.behind === 'unbelted';
+  const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k0 = (m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
+  let xc = 0, vc = vEq, xo = 0, vo = vEq, xb = 0, vb = vEq, crush = 0, sens = 0, bagAt = NaN, beltPeak = 0, hitWheel = false, travelMax = 0, late = false, backLoad = 0, slidOff = false;
+  const out: Crash = { t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, intrusion: 0, slidOff: false, hitSeat: false, backLoad: 0, risk: 'low' };
   const win = Math.round(0.003 / dt), recent: number[] = [];
+  // The front's force for a crush: k·share up to FRONT_ROOM, 2.5 times as stiff past it.
+  const kk = k0 * share, front = (x: number) => (x <= FRONT_ROOM ? kk * x : kk * FRONT_ROOM + 2.5 * kk * (x - FRONT_ROOM));
+  // Into a seat's back (knees, then the chest), folding at SEATBACK_MAX.
+  const seatback = (x: number) => Math.min(SEATBACK_MAX, (x > SEATBACK_KNEE ? Math.min(KNEE_K * (x - SEATBACK_KNEE), KNEE_MAX) : 0) + (x > SEATBACK_HEAD + 0.1 ? SEATBACK_K * (x - SEATBACK_HEAD - 0.1) : 0));
   let sum = 0;
   for (let i = 0; i * dt <= T; i++) {
     const t = i * dt;
-    // The wall pushes while the front is squeezed: loading on k, unloading on k/e² from the most crush.
+    // The wall pushes while the front is squeezed: loading on the front's curve, unloading on k/e² from the most crush.
     let Fw = 0;
-    if (xc >= crush) { crush = xc; Fw = k * xc; } else Fw = Math.max(0, k * crush - (k / (e * e)) * (crush - xc));
-    const ac = -Fw / m;
+    if (xc >= crush) { crush = xc; Fw = front(xc); } else Fw = Math.max(0, front(crush) - (kk / (e * e)) * (crush - xc));
+    const ac = -Fw / m, intr = Math.max(0, crush - FRONT_ROOM);
     sens += ((-ac / G - sens) * dt) / 0.03;
     if (bags && Number.isNaN(bagAt) && sens > FRONT_G) { bagAt = t; late = xo - xc > 0.125; }
     const xr = xo - xc, fired = !Number.isNaN(bagAt);
     const slack = fired ? 0.02 : 0.06;
-    const Fb = belt && xr > slack ? Math.min(BELT_K * (xr - slack), BELT_LIMIT) : 0;
-    const Fa = fired && t > bagAt + 0.03 && xr > BAG_GAP && xr < BAG_GAP + BAG_STROKE ? BAG_N : 0;
-    // The knees reach the padded dashboard below it (the seat and legs carry much of the body; ~4.5 kN a thigh).
-    const Fk = xr > KNEE_GAP ? Math.min(KNEE_K * (xr - KNEE_GAP), KNEE_MAX) : 0;
-    const Fh = xr > WHEEL_GAP ? 1e6 * (xr - WHEEL_GAP) : 0;
+    const Fb = belt && xr > slack ? Math.min(BELT_K * (xr - slack), rear ? REAR_BELT_LIMIT : BELT_LIMIT) : 0;
+    if (side * xr > 0.12) slidOff = true;
+    const Fa = fired && t > bagAt + 0.03 && xr > BAG_GAP && xr < BAG_GAP + BAG_STROKE ? BAG_N * (slidOff ? 0.5 : 1) : 0;
+    // Front: the knees reach the padded dashboard (the seat and legs carry much of the body; ~4.5 kN a thigh), the
+    // dashboard and the wheel nearer by the intrusion. Back: the knees and then the chest into the front seat's back.
+    const Fk = rear ? seatback(xr) : xr + intr > KNEE_GAP ? Math.min(KNEE_K * (xr + intr - KNEE_GAP), KNEE_MAX) : 0;
+    const Fh = !rear && xr + intr / 2 > WHEEL_GAP ? 1e6 * (xr + intr / 2 - WHEEL_GAP) : 0;
     if (Fh > 0) hitWheel = true;
-    const F = Fb + Fa + Fh + Fk, ao = -F / mo;
+    // The unbelted person behind: knees and chest into the seat's back, which passes the push on to the front person.
+    let Fback = 0;
+    if (pushed) {
+      Fback = seatback(xb - xc);
+      backLoad = Math.max(backLoad, Fback);
+      vb += (-Fback / mo) * dt; xb += vb * dt;
+    }
+    const F = Fb + Fa + Fh + Fk - Fback, ao = -F / mo;
     beltPeak = Math.max(beltPeak, Fb); travelMax = Math.max(travelMax, xr);
     // The chest's 3 ms average.
     recent.push(-ao / G); sum += -ao / G; if (recent.length > win) sum -= recent.shift()!;
     out.chestG = Math.max(out.chestG, sum / recent.length);
     if (i % 100 === 0) { out.t.push(t); out.carG.push(-ac / G); out.personG.push(-ao / G); out.travel.push(xr); }
     vc += ac * dt; vo += ao * dt; xc += vc * dt; xo += vo * dt;
-    if (vc < 0 && Fw === 0 && vo <= vc + 1e-3 && t > 0.05) break;
+    if (vc < 0 && Fw === 0 && vo <= vc + 1e-3 && (!pushed || vb <= vc + 1e-3) && t > 0.05) break;
   }
-  // The head nods ~15 cm further than the chest: with no airbag in front of it, it reaches the wheel sooner.
-  const headHit = Number.isNaN(bagAt) && travelMax + 0.15 > WHEEL_GAP;
-  const risk = hitWheel || out.chestG > 60 ? 'severe' : out.chestG > 40 || headHit ? 'serious' : 'low';
-  return { ...out, crush, dv: vEq - vc, bagAt, late, beltPeak, hitWheel, headHit, travelMax, risk };
+  const intrusion = Math.max(0, crush - FRONT_ROOM);
+  // The head nods ~15 cm further than the chest: with no airbag in front of it (or past its edge), it reaches the wheel
+  // sooner (front) or the seat's back (rear).
+  const headHit = !rear && (Number.isNaN(bagAt) || slidOff) && travelMax + intrusion / 2 + 0.15 > WHEEL_GAP;
+  const hitSeat = rear && travelMax + 0.15 > SEATBACK_HEAD;
+  // Thrown over a folded seat's back (80 cm or more from the back seat) is severe too.
+  const risk = hitWheel || out.chestG > 60 || intrusion > 0.25 || (rear && travelMax > 0.8) ? 'severe' : out.chestG > 40 || headHit || hitSeat || intrusion > 0.1 ? 'serious' : 'low';
+  return { ...out, crush, dv: vEq - vc, bagAt, late, beltPeak, hitWheel, headHit, travelMax, intrusion, slidOff, hitSeat, backLoad, risk };
 }
 
 // ——— Steady state ———

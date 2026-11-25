@@ -169,6 +169,10 @@ fprintf('Unbelted: thrown out at %.2f s, head %.0f g; belted with curtains: head
 [~, ok] = vehicleCrash(vehicle(), 56/3.6);
 [~, bad] = vehicleCrash(vehicle(), 56/3.6, 'Belts', 0, 'Airbags', 0);
 fprintf('Belt + airbag: chest %.0f g, moved %.0f cm; nothing: chest %.0f g, hit the wheel = %d\\n', ok.ChestG, ok.Travel*100, bad.ChestG, bad.HitWheel)
+% Only part of the front hitting at 64 km/h, and someone unbelted in the back pushing into the driver's seat
+[~, off] = vehicleCrash(vehicle(), 64/3.6, 'Overlap', 0.25);
+[~, bk] = vehicleCrash(vehicle(), 56/3.6, 'Behind', 'unbelted');
+fprintf('Small overlap: %.0f cm into the cabin, slid off the airbag = %d; pushed from behind: hit the wheel = %d\\n', off.Intrusion*100, off.SlidOffAirbag, bk.HitWheel)
 figure; vehicleTrip(vehicle('Roll', true), 15, 'Kerb', 0, 'Ground', 'soil')
 ` },
   { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead

@@ -217,4 +217,26 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(f('ChestG')).toBeCloseTo(ncap.chestG, 9);
     expect(() => lab.run("vehicleCrash(vehicle(), 15, 'Into', 'tree')")).toThrow(/wall/);
   });
+  it('offset crashes, the back seat and someone unbelted behind (M486k)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, full = vd.frontalCrash(car, 56 / 3.6);
+    // The full front unchanged: no intrusion, nothing slid off, nobody behind.
+    expect(full.crush).toBeCloseTo(vd.NCAP_CRUSH, 2); expect(full.intrusion).toBe(0); expect(full.slidOff).toBe(false); expect(full.backLoad).toBe(0);
+    expect(vd.overlapShare(1)).toBe(1); expect(vd.overlapShare(0.4)).toBeLessThan(1); expect(vd.overlapShare(0.25)).toBeLessThan(vd.overlapShare(0.4));
+    // 64 km/h with 40%: the front crushes past its room, the footwell comes in; 25%: more, and the head slides off the airbag.
+    const off = vd.frontalCrash(car, 64 / 3.6, { overlap: 0.4 }), small = vd.frontalCrash(car, 64 / 3.6, { overlap: 0.25 });
+    expect(off.intrusion).toBeGreaterThan(0.05); expect(off.slidOff).toBe(false);
+    expect(small.intrusion).toBeGreaterThan(off.intrusion); expect(small.slidOff).toBe(true); expect(small.risk).toBe('severe');
+    // The back seat: no airbag; belted the head may reach the seat in front, unbelted they go over its folded back.
+    const rb = vd.frontalCrash(car, 56 / 3.6, { seat: 'rear' }), ru = vd.frontalCrash(car, 56 / 3.6, { seat: 'rear', belt: false });
+    expect(Number.isNaN(rb.bagAt)).toBe(true); expect(rb.hitWheel).toBe(false); expect(ru.travelMax).toBeGreaterThan(rb.travelMax); expect(ru.risk).toBe('severe');
+    // Unbelted behind the driver: the seat's back takes up to 12 kN and pushes the driver onto the wheel.
+    const pushed = vd.frontalCrash(car, 56 / 3.6, { behind: 'unbelted' });
+    expect(pushed.backLoad).toBeCloseTo(vd.SEATBACK_MAX, 0); expect(pushed.travelMax).toBeGreaterThan(full.travelMax); expect(pushed.hitWheel).toBe(true);
+    expect(vd.frontalCrash(car, 56 / 3.6, { behind: 'belted' }).chestG).toBeCloseTo(full.chestG, 9);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleCrash(vehicle(), 64/3.6, 'Overlap', 0.25); [~, j] = vehicleCrash(vehicle(), 56/3.6, 'Seat', 'rear', 'Behind', 'unbelted');");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('i', 'SlidOffAirbag')).toBe(1); expect(f('i', 'Intrusion')).toBeCloseTo(small.intrusion, 9); expect(f('j', 'HitFrontSeat')).toBe(1);
+    expect(() => lab.run("vehicleCrash(vehicle(), 15, 'Overlap', 2)")).toThrow(/Overlap/);
+  });
 });
