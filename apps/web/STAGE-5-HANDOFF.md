@@ -13089,3 +13089,34 @@ averaged over the packet's momenta (to 0.005); the 2D box against the discrete e
 (2,1) pair); the 3D oscillator's 3/2 and threefold 5/2 ħω within 5%. Not built: contact between rigid shapes other than
 disks, aspheres and Seidel coefficients, Kerr (spinning) black holes and orbits out of the plane, time-dependent
 packets in 2D, 3D views of 3D states (slices only).
+
+## M519 (25 Nov): Hyperion physics, the last left-outs (shapes, Kerr, 3D states)
+
+From M518's "Not built" (the owner: "please do this"). **Shapes** (`rigid2d.ts`, `rigidShapes`): convex polygons (any
+corners, centred on their centroid, made counter-clockwise, concave refused) and circles; contacts by the
+separating-axis test with Box2D-style clipping of the incident edge (up to two points), circle–polygon by the nearest
+face or corner, walls as four half-planes; sequential impulses (20 passes) with accumulated clamping, restitution
+targeted from the approach speed only above 2g·dt (slower contacts rest, so nothing jitters) and Coulomb friction within
+μ·jn; afterwards a position-only push apart (80% beyond a slop of 1e-4 of the box) so no energy is made. 'Fixed' bodies
+have infinite mass (ramps, pegs). The step is capped so nothing moves a tenth of its smallest size in one. **Kerr**
+(`kerr.ts`, G = c = M = 1): Boyer–Lindquist, Mino time, r'' = R'/2 and u'' = U'/2 (u = cos θ), re-projected onto
+(dr/dλ)² = R and (du/dλ)² = U after every output step (without it, light from r = 1000 lost the constraint: R ~ r⁴).
+`constants(a, p, e, inc)` solves E, Lz by Newton with Q = Lz² tan² inc (polar orbits solve E, Q with Lz = 0);
+`circular`, `isco` (Bardeen–Press–Teukolsky), `photonOrbit`, `shadow` (Bardeen's ξ, η along the spherical light
+orbits), `precessions` (φ between southward equator crossings, periapsis by a parabola). Pictures in x = √(r² + a²)
+sin θ cos φ. **3D views**: a new figure grid kind `'tri'` (`plot.ts` `Grid.tri` / `face` / `edge`; drawn in `draw3d`
+with the other faces, sorted far first, lit per face or by averaged corner normals under `lighting gouraud`; LaTeX as
+a pgfplots patch); `isosurface.ts` by marching tetrahedra (six a cube along one diagonal, so it has no holes; triangles
+face away from larger values); `isosurface` (meshgrid layout, level the middle of the range when left out, adds a
+camlight and gouraud when the axes have no light) and `patch(fv)` / `patch('Faces', F, 'Vertices', V, …)` (polygons
+as fans; FaceColor, EdgeColor, FaceAlpha, FaceVertexCData). `schrodinger3D` now draws ψ = ±30% of its peak in blue
+and orange ('View', 'slice' for the old middle slice). Example `physics4.m`. Tests (`physics-m519.test.ts`): a square's
+s²/6, equal squares swapping speeds, a tilted square's corner hit keeping its energy to 1e-8 and spinning, a pair's
+momentum to 1e-9, a box sliding v²/(2μg) and resting flat, a ball bouncing to e² its height, a disc rolling down a
+fixed ramp at ⅔ g sin θ with ωr = v; horizon, ISCO 6 / 1 / 9 and light orbits 3 / 1 / 4; a circle's constants against
+the closed form and staying circular to 1e-6; with no spin the periapsis shift equal to M518's Schwarzschild solver;
+a tilted circle's φ per vertical swing 2π Ω_φ/Ω_θ (the exact Kerr vertical frequency) to 1e-4; capture 2% either side
+of the critical b both ways; a = 0's deflection equal to `lightRay`; the shadow a 3√3 circle without spin and
+−2 … 7 edge-on at a = 1; a sphere's isosurface closed (every edge in two triangles) holding 4/3 π r³ to 1%. Not built:
+friction between two moving shapes in 3D (2D only), concave shapes (split them), Kerr–Newman (charge), light out of
+the equator in `kerrLight` (the shadow covers it), and a smooth-shaded isosurface coloured by another field.

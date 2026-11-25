@@ -5,13 +5,18 @@ import { mat, num, str, toMat, type Value } from './values';
 import * as ph from './physics';
 import * as pp from './physics-plus';
 import * as pm from './physics-more';
-import { call, col, def, lines, need, nums, one, options, optNum, record, row, rows } from './sci-kit';
+import * as rb from './rigid2d';
+import * as kr from './kerr';
+import { isosurface } from './isosurface';
+import { triPatch } from './plot3d';
+import { call, col, def, lines, need, nums, one, options, optNum, optText, record, row, rows } from './sci-kit';
 
 // Hyperion's physics in the language (M497): projectile, pendulum, pendulumPeriod, doublePendulum, nbody,
 // chargedParticle, stringWave, slitPattern, waveField, efield. Our own names (MATLAB has no physics toolbox functions
 // like these). Each drawing takes 'At', t: the state at that moment, so a live slider on t (and Sweep) animates it.
 // M518: rigidRotation, lensAberration, spotDiagram, realRayTrace, schwarzschildOrbit, lightBending, perihelionShift,
-// wavePacket, schrodinger2D, schrodinger3D. M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
+// wavePacket, schrodinger2D, schrodinger3D. M519: rigidShapes, kerrRadii, kerrOrbit, kerrLight, kerrShadow, and
+// schrodinger3D drawn as 3D surfaces. M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
 // relativistic, minkowskiDiagram, chargedParticle's 'Relativistic', schrodinger1D, finiteWell, tunneling,
 // transmission, rigidBody, collide1d, diskCollisions.
 
@@ -483,7 +488,7 @@ function gridOf(v: Value | undefined, name: string) {
 }
 function wells(a: Value[], nout: number, lab: Lab, dimsN: 2 | 3) {
   const name = dimsN === 2 ? 'schrodinger2D' : 'schrodinger3D', axes = (dimsN === 2 ? ['x', 'y'] : ['x', 'y', 'z']).map((n, i) => gridOf(a[i], `${n} (nm)`));
-  const { o, m } = qOpts(a, dimsN + 1, name, ['States']), k = Math.round(optNum(o, 'States', 4)), [nx, ny, nz] = [axes[0].g.length, axes[1].g.length, axes[2]?.g.length ?? 1];
+  const { o, m } = qOpts(a, dimsN + 1, name, dimsN === 3 ? ['States', 'View'] : ['States']), k = Math.round(optNum(o, 'States', 4)), [nx, ny, nz] = [axes[0].g.length, axes[1].g.length, axes[2]?.g.length ?? 1];
   const n = nx * ny * nz;
   if (n > (dimsN === 2 ? 90000 : 64000)) throw new LabError(dimsN === 2 ? 'Up to 300 × 300 points.' : 'Up to 40 × 40 × 40 points.');
   if (!(k >= 1 && k <= 20)) throw new LabError("'States' is 1 to 20.");
@@ -504,15 +509,115 @@ function wells(a: Value[], nout: number, lab: Lab, dimsN: 2 | 3) {
   // Back to meshgrid's layout: rows y, columns x (pages z), the states one after another.
   const lay = (psi: number[]) => { const out = new Float64Array(n); for (let kz = 0; kz < nz; kz++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) out[j + ny * (i + nx * kz)] = psi[i + nx * (j + ny * kz)]; return out; };
   if (nout > 0) { const all = new Float64Array(n * k); r.psi.forEach((p, s) => all.set(lay(p), s * n)); const P = mat(ny, nx, all); if (dimsN === 3) { delete P.p; P.nd = [nz, k]; } return [col(r.E), P]; }
-  const cols = Math.min(k, 3), rws = Math.ceil(Math.min(k, 6) / cols);
+  const cols = Math.min(k, 3), rws = Math.ceil(Math.min(k, 6) / cols), slices = dimsN === 2 || /^slice$/i.test(optText(o, 'View', '3d'));
   r.psi.slice(0, 6).forEach((p, s) => {
     call(lab, 'subplot', num(rws), num(cols), num(s + 1));
-    const L = lay(p), mid = Math.floor(nz / 2), slice = Array.from({ length: nx * ny }, (_, q) => L[q + nx * ny * mid] ** 2);
-    call(lab, 'imagesc', row(axes[0].g), row(axes[1].g), mat(ny, nx, slice)); call(lab, 'axis', str('equal')); call(lab, 'axis', str('tight'));
+    if (slices) {
+      const L = lay(p), mid = Math.floor(nz / 2), slice = Array.from({ length: nx * ny }, (_, q) => L[q + nx * ny * mid] ** 2);
+      call(lab, 'imagesc', row(axes[0].g), row(axes[1].g), mat(ny, nx, slice)); call(lab, 'axis', str('equal')); call(lab, 'axis', str('tight'));
+    } else {
+      // The state in 3D: where ψ is +30% and −30% of its largest size, in two colours (the lobes and their signs).
+      const top = Math.max(...p.map(Math.abs)) || 1;
+      for (const [sign, face] of [[1, '#2563eb'], [-1, '#f97316']] as const) {
+        const iso = isosurface(axes[0].g, axes[1].g, axes[2].g, p.map((v) => sign * v), 0.3 * top);
+        if (iso.faces.length) triPatch(lab, iso.verts, iso.faces.flat(), { face });
+      }
+      call(lab, 'camlight'); call(lab, 'lighting', str('gouraud')); call(lab, 'view', num(3));
+      call(lab, 'xlim', row([axes[0].g[0], axes[0].g[nx - 1]])); call(lab, 'ylim', row([axes[1].g[0], axes[1].g[ny - 1]])); call(lab, 'zlim', row([axes[2].g[0], axes[2].g[nz - 1]]));
+    }
     call(lab, 'title', str(`E${s + 1} = ${r.E[s].toPrecision(4)} eV`));
   });
-  lab.host.out(`Lowest ${k} energies (eV): ${r.E.map((e) => e.toPrecision(6)).join(', ')}${dimsN === 3 ? '  (pictures: the middle z slice)' : ''}\n`);
+  lab.host.out(`Lowest ${k} energies (eV): ${r.E.map((e) => e.toPrecision(6)).join(', ')}${dimsN === 3 ? (slices ? '  (pictures: the middle z slice)' : '  (pictures: ψ at ±30% of its peak, blue +, orange −)') : ''}\n`);
   return [];
 }
 def('schrodinger2D', (a, nout, lab) => wells(a, nout, lab, 2));
 def('schrodinger3D', (a, nout, lab) => wells(a, nout, lab, 3));
+
+// ——— M519: shapes that collide, spinning black holes ———
+def('rigidShapes', (a, nout, lab) => {
+  if (a[0]?.k !== 'cell' || !a[0].d.length) throw new LabError("rigidShapes(shapes, positions, velocities): shapes is a cell array, each an n × 2 list of a convex shape's corners, [w h] for a box or r for a circle.");
+  const shapes = a[0].d.map((v) => { const m = toMat(v, 'A shape'); return m.d.length === 1 ? m.d[0] : m.d.length === 2 ? [[0, 0], [m.d[0], 0], [m.d[0], m.d[1]], [0, m.d[1]]] : m.c === 2 ? Array.from({ length: m.r }, (_, i) => [m.d[i], m.d[i + m.r]]) : null; });
+  if (shapes.some((x) => x === null)) throw new LabError('Each shape is n × 2 corners, [w h] for a box, or a radius.');
+  const n = shapes.length, P = toMat(a[1] ?? mat(0, 0), 'The positions'), V2 = a[2] && a[2].k !== 'str' ? toMat(a[2], 'The velocities') : null, Vv = V2 && V2.d.length ? V2 : null;
+  if (P.r !== n || (P.c !== 2 && P.c !== 3)) throw new LabError(`The positions are ${n} rows of [x y] or [x y angle (degrees)].`);
+  if (Vv && (Vv.r !== n || (Vv.c !== 2 && Vv.c !== 3))) throw new LabError(`The velocities are ${n} rows of [vx vy] or [vx vy spin (rad/s)].`);
+  const o = options(a, V2 ? 3 : 2, ['Box', 'Time', 'Gravity', 'Restitution', 'Friction', 'Density', 'Mass', 'Fixed', 'Step', 'At'], 'rigidShapes');
+  const box = o.has('Box') ? nums(o.get('Box')) : [10, 10], T = optNum(o, 'Time', 5), g = optNum(o, 'Gravity', 9.81), e = optNum(o, 'Restitution', 0.5), mu = optNum(o, 'Friction', 0.3), rho = optNum(o, 'Density', 1);
+  const fixed = new Set((o.has('Fixed') ? nums(o.get('Fixed')) : []).map((i) => i - 1)), ms = o.has('Mass') ? nums(o.get('Mass')) : null;
+  if (!(n <= 60 && box.length === 2 && box[0] > 0 && box[1] > 0 && T > 0 && T <= 120 && g >= 0 && e >= 0 && e <= 1 && mu >= 0 && rho > 0)) throw new LabError("rigidShapes: up to 60 shapes; 'Box' [W H], 'Time' up to 120 s, 'Gravity' ≥ 0, 'Restitution' 0 to 1, 'Friction' ≥ 0.");
+  if (ms && ms.length !== n) throw new LabError(`'Mass' gives one mass for each of the ${n} shapes.`);
+  const B = wrap(() => shapes.map((sh, i) => rb.body(sh!, P.d[i], P.d[i + n], P.c === 3 ? (P.d[i + 2 * n] * Math.PI) / 180 : 0, [Vv?.d[i] ?? 0, Vv?.d[i + n] ?? 0, Vv && Vv.c === 3 ? Vv.d[i + 2 * n] : 0], ms ? ms[i] : rho * rb.area(sh!), fixed.has(i))));
+  // A step that no shape crosses a tenth of its size in.
+  const size = Math.min(...B.map((b) => (b.shape.kind === 'circle' ? b.shape.r : Math.min(...b.shape.v.map((v) => Math.hypot(v[0], v[1])))))), vmax = Math.max(...B.map((b) => Math.hypot(b.vx, b.vy) + Math.abs(b.w) * size)) + Math.sqrt(2 * g * box[1]);
+  const dt = Math.min(optNum(o, 'Step', 1e-3), (0.1 * size) / (vmax || 1));
+  if (T / dt * n * n > 4e8) throw new LabError("That's too many steps: fewer shapes, a shorter 'Time' or a larger 'Step'.");
+  const at = Math.min(T, Math.max(0, optNum(o, 'At', T))), frames = steps(at, 200);
+  const res = rb.simulate(B, { W: box[0], H: box[1], g, e, mu, dt, frames });
+  const deg = (f: number[]) => f.map((v, i) => (i % 3 === 2 ? (v * 180) / Math.PI : v));
+  if (nout > 0) return [col(frames), rows(res.frames.map(deg)), record([['Collisions', res.hits], ['Energy', row(res.energy)]])];
+  call(lab, 'plot', row([0, box[0], box[0], 0, 0]), row([0, 0, box[1], box[1], 0]), str('k-'), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
+  B.forEach((b, i) => {
+    if (!b.fixed) call(lab, 'plot', row(res.frames.map((f) => f[3 * i])), row(res.frames.map((f) => f[3 * i + 1])), str(':'));
+    const ol = rb.outline(b);
+    call(lab, 'fill', row(ol.map((p) => p[0])), row(ol.map((p) => p[1])), row(b.fixed ? [0.55, 0.55, 0.6] : hsl(i)));
+  });
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'xlim', row([0, box[0]])); call(lab, 'ylim', row([0, box[1]]));
+  call(lab, 'title', str(`t = ${at.toPrecision(3)} s: ${res.hits} contacts started`));
+  return [];
+});
+const hsl = (i: number) => { const h = (i * 0.618034) % 1, f = (k: number) => 0.55 - 0.35 * Math.max(-1, Math.min(k - 3, 9 - k, 1)), k0 = (n: number) => (n + h * 12) % 12; return [f(k0(0)), f(k0(8)), f(k0(4))]; };
+
+const spin = (v: Value | undefined) => { const a = need(v, 'The spin a (0 to 1, in units of M)'); if (!(Math.abs(a) <= 1)) throw new LabError('The spin a is between −1 and 1 (units of GM/c).'); return Math.min(Math.abs(a), 0.9999) * Math.sign(a); };
+/** A black ball of radius R at the centre of a 3D plot. */
+function horizonBall(lab: Lab, R: number) {
+  const nt = 12, np = 24, verts: number[][] = [], tri: number[] = [];
+  for (let i = 0; i <= nt; i++) for (let j = 0; j < np; j++) { const t = (Math.PI * i) / nt, p = (2 * Math.PI * j) / np; verts.push([R * Math.sin(t) * Math.cos(p), R * Math.sin(t) * Math.sin(p), R * Math.cos(t)]); }
+  for (let i = 0; i < nt; i++) for (let j = 0; j < np; j++) { const a = i * np + j, b = i * np + ((j + 1) % np), c = a + np, d = b + np; tri.push(a, c, b, b, c, d); }
+  triPatch(lab, verts, tri, { face: '#18181b' });
+}
+def('kerrRadii', (a) => {
+  const s = spin(a[0]);
+  return [record([['Horizon', kr.horizon(s)], ['InnerHorizon', 1 - Math.sqrt(1 - s * s)], ['Ergosphere', 2], ['ISCOPrograde', kr.isco(Math.abs(s))], ['ISCORetrograde', kr.isco(-Math.abs(s))], ['PhotonPrograde', kr.photonOrbit(Math.abs(s))], ['PhotonRetrograde', kr.photonOrbit(-Math.abs(s))]])];
+});
+def('kerrOrbit', (a, nout, lab) => {
+  const s = spin(a[0]), p = need(a[1], 'The orbit size p (in GM/c²)'), e = one(a[2], 0), inc = one(a[3], 0), o = options(a, 4, ['Orbits'], 'kerrOrbit'), n = optNum(o, 'Orbits', 5);
+  if (!(p > 1 && e >= 0 && e < 0.95 && inc >= 0 && inc <= 180 && n > 0 && n <= 40)) throw new LabError('kerrOrbit(a, p, e, inclination): p in GM/c², 0 ≤ e < 0.95, inclination 0 to 180° (over 90° goes against the spin), up to 40 orbits.');
+  const k = wrap(() => kr.constants(s, p, e, (inc * Math.PI) / 180)), r1 = p / (1 + e);
+  const lmax = (n * 2 * Math.PI * 1.15) / Math.sqrt(p), g = wrap(() => kr.geodesic(s, k.E, k.L, k.Q, 1, r1, Math.PI / 2, 0, lmax, { n: Math.round(400 * n), north: false }));
+  const pr = kr.precessions(g), d = (x: number) => (Number.isFinite(x) ? ((x - 2 * Math.PI) * 180) / Math.PI : NaN);
+  if (nout > 0) return [col(g.x), col(g.y), col(g.z), record([['E', k.E], ['Lz', k.L], ['Q', k.Q], ['PeriapsisShift', d(pr.peri)], ['NodeShift', d(pr.node)], ['t', col(g.t)], ['r', col(g.r)]])];
+  call(lab, 'plot3', row(g.x), row(g.y), row(g.z), str('LineWidth'), num(1.2)); call(lab, 'hold', str('on'));
+  horizonBall(lab, kr.horizon(s)); call(lab, 'camlight'); call(lab, 'hold', str('off'));
+  call(lab, 'axis', str('equal')); call(lab, 'xlabel', str('x (GM/c²)')); call(lab, 'ylabel', str('y')); call(lab, 'zlabel', str('z'));
+  const parts = [Number.isFinite(pr.peri) && e > 0 ? `closest point turns ${d(pr.peri).toPrecision(3)}°` : '', Number.isFinite(pr.node) && inc > 0 && inc < 180 ? `the plane turns ${d(pr.node).toPrecision(3)}°` : ''].filter(Boolean);
+  call(lab, 'title', str(`a = ${s}: ${parts.length ? `${parts.join(', ')} an orbit` : 'a circular orbit'}`));
+  return [];
+});
+def('kerrLight', (a, nout, lab) => {
+  const s = spin(a[0]), b = nums(a[1] ?? row([-8, -7, -6, 2.5, 3, 4, 6]), 'The impact parameters (in GM/c²; positive goes with the spin)');
+  if (!b.length || b.length > 40 || b.some((x) => !Number.isFinite(x) || x === 0 || Math.abs(x) > 100)) throw new LabError('Impact parameters are non-zero, up to 100 GM/c² either way (positive goes with the spin), up to 40.');
+  const r0 = 200, rays = b.map((bb) => { const x0 = -Math.sqrt(r0 * r0 - bb * bb); return wrap(() => kr.geodesic(s, 1, bb, 0, 0, r0, Math.PI / 2, Math.atan2(-bb, x0), 3, { inward: true, rFar: r0, n: 3000 })); });
+  // The turn beyond a straight line's (π − 2 asin(b/r0) between the same two circles of radius r0).
+  const defl = rays.map((g, i) => (g.captured ? NaN : Math.abs(g.ph[g.ph.length - 1] - g.ph[0]) - (Math.PI - 2 * Math.asin(Math.abs(b[i]) / r0))));
+  if (nout > 0) return [row(defl), row(rays.map((g) => (g.captured ? 1 : 0)))];
+  call(lab, 'hold', str('on'));
+  rays.forEach((g) => { const pts = g.x.map((v, j) => [v, g.y[j]]).filter((q) => Math.hypot(q[0], q[1]) < 40); call(lab, 'plot', row(pts.map((q) => q[0])), row(pts.map((q) => q[1]))); });
+  const c = Array.from({ length: 121 }, (_, i) => (2 * Math.PI * i) / 120), rh = kr.horizon(s);
+  call(lab, 'plot', row(c.map((v) => 2 * Math.cos(v))), row(c.map((v) => 2 * Math.sin(v))), str('k:'));
+  call(lab, 'fill', row(c.map((v) => rh * Math.cos(v))), row(c.map((v) => rh * Math.sin(v))), str('k'));
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'xlim', row([-30, 30])); call(lab, 'ylim', row([-22, 22]));
+  call(lab, 'title', str(`Light past a black hole spinning anticlockwise (a = ${s}): caught inside b ≈ ${(-s + 6 * Math.cos(Math.acos(-s) / 3)).toPrecision(3)} with the spin, ${(s + 6 * Math.cos(Math.acos(s) / 3)).toPrecision(3)} against`));
+  return [];
+});
+def('kerrShadow', (a, nout, lab) => {
+  const sp = nums(a[0] ?? row([0, 0.5, 0.9, 0.998]), 'The spins'), inc = one(a[1], 90);
+  if (!sp.length || sp.length > 8 || sp.some((x) => !(Math.abs(x) <= 1)) || !(inc > 0 && inc <= 90)) throw new LabError('kerrShadow(spins, inclination): spins −1 to 1 (up to 8), seen from 0 < inclination ≤ 90° off the spin axis.');
+  const outs = sp.map((x) => kr.shadow(Math.min(Math.abs(x), 0.9999) * Math.sign(x), (inc * Math.PI) / 180));
+  if (nout > 0) { const o0 = outs[0]; return [col(o0.map((q) => q[0])), col(o0.map((q) => q[1]))]; }
+  call(lab, 'hold', str('on'));
+  outs.forEach((o2) => call(lab, 'plot', row(o2.map((q) => q[0])), row(o2.map((q) => q[1])), str('LineWidth'), num(1.5)));
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'legend', ...sp.map((x) => str(`a = ${x}`)));
+  call(lab, 'xlabel', str('α (GM/c²)')); call(lab, 'ylabel', str('β (GM/c²)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`The black hole's shadow seen ${inc}° off its spin axis`));
+  return [];
+});

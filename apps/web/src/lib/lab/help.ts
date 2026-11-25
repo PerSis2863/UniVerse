@@ -410,7 +410,8 @@ errorbar | errorbar(x, y, err) | Points with error bars.
 pie | pie(x, explode, labels) | A pie chart.
 pie3 | pie3(x) | A pie chart.
 fill | fill(x, y, 'g') | A filled shape.
-patch | patch(x, y, c) | A filled shape (added to the plot).
+patch | patch(x, y, c), patch(fv), patch('Faces', F, 'Vertices', V, 'FaceColor', 'r', 'EdgeColor', 'none', 'FaceAlpha', 1) | A filled shape (added to the plot), or a 3D surface of faces (rows of vertex numbers) and vertices (n × 3), as isosurface gives them.
+isosurface | isosurface(X, Y, Z, V, level), fv = isosurface(V, level), [F, P] = isosurface(...) | The surface where a 3D array V (laid out as meshgrid makes it) equals level (the middle of its range if left out): drawn, lit, without outputs; fv has faces and vertices for patch.
 rectangle | rectangle('Position', [x y w h], 'Curvature', c) | A rectangle (or rounded, or an ellipse).
 line | line(x, y) | A line added to the plot.
 text | text(x, y, 'words') | Words on the plot.

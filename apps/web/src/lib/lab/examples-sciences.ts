@@ -273,6 +273,22 @@ figure; wavePacket(x, V, 'X0', -25, 'K0', 2.6, 'Sigma', 4)
 g = linspace(-6, 6, 60);
 figure; schrodinger2D(g, g, @(x, y) 0.02*(x.^2 + 2*y.^2), 'States', 6)
 ` },
+  { name: 'physics4.m', code: `% Physics: shapes that tumble, a spinning black hole, and an atom-sized box in 3D
+% 1. A box, a ball and a wedge fall onto a fixed ramp and bounce, spin and slide
+t = 4;   % slider 0 4
+rigidShapes({[8 0; 0 0; 0 4], [1 1], 0.5, [0 0; 1.4 0; 0.7 1.2]}, [3 2 0; 2 8 20; 4 9 0; 6 7 10], [], 'Fixed', 1, 'Time', 4, 'At', t)
+% 2. A spinning black hole: the innermost orbits, an orbit whose plane is dragged round, light, the shadow
+R = kerrRadii(0.9)
+figure; kerrOrbit(0.9, 9, 0.2, 40, 'Orbits', 6)
+figure; kerrLight(0.9)
+figure; kerrShadow([0 0.5 0.9 0.998], 90)
+% 3. An electron in a 3D box with soft walls: its lowest states as 3D shapes (blue +, orange −)
+g = linspace(-2, 2, 20);
+figure; schrodinger3D(g, g, g, @(x, y, z) 0.5*(x.^2 + y.^2 + z.^2), 'States', 4)
+% 4. Any 3D field as a surface: where x² + y² + z² + sin(3x) = 2
+[x, y, z] = meshgrid(-2:0.1:2);
+figure; isosurface(x, y, z, x.^2 + y.^2 + z.^2 + sin(3*x), 2)
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north

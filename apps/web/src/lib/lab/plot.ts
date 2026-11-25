@@ -16,8 +16,9 @@ export type Kind = 'line' | 'scatter' | 'bar' | 'barh' | 'stairs' | 'stem' | 'ar
 export interface Series { kind: Kind; x: number[]; y: number[]; z?: number[]; level?: number; value?: number; cv?: number[]; filled?: boolean; err?: [number[], number[]]; base?: number[]; edge?: string; fa?: number; color: string; dash: '' | '--' | ':' | '-.' | 'none'; marker: string | null; width: number; label: string | null; size: number }
 /** A surface or mesh (x, y, z all r×c, column by column), or an image / filled contour (x: c column centres, y: r row
  * centres, z: r×c values; `direct` images index the colour map, `levels` band a filled contour, `rgb` holds a full-colour
- * picture's red, green and blue pages from 0 to 1, M382). */
-export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean; rgb?: number[] }
+ * picture's red, green and blue pages from 0 to 1, M382). A 'tri' patch (M519) has r vertices (c = 1) and `tri` lists its
+ * triangles' corners (0-based, three a triangle), one `face` colour or the colour map over `cdata` / z. */
+export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled' | 'tri'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean; rgb?: number[]; tri?: number[]; face?: string; edge?: string }
 /** Text placed on the axes (text). */
 export interface Note { x: number; y: number; z?: number; s: string; color: string | null; size: number; align: 'start' | 'middle' | 'end' }
 /** A line across the whole axes at x = v or y = v (xline, yline). */
