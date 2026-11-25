@@ -125,6 +125,8 @@ function supplyOf(o: Map<string, Value>, r: rl.Route): rl.Supply | undefined {
   if (o.get('crossbonded')) sup.crossBond = !!toMat(o.get('crossbonded')!).d[0];
   // M491n: 'Soil' (Ω·m, AC lines): how deep the ground's return current runs.
   if (o.get('soil')) { const r = toMat(o.get('soil')!).d[0]; if (!(r >= 1 && r <= 100000)) throw new LabError("'Soil' is the soil's resistivity, 1 to 100,000 Ω·m (100 normal, 10–30 wet clay, 1,000+ dry rock)."); sup.soil = r; }
+  // M491p: 'Topsoil', [resistivity depth]: a top layer over the 'Soil' beneath.
+  if (o.get('topsoil')) { const t = toMat(o.get('topsoil')!).d; if (!(t.length === 2 && t[0] >= 1 && t[0] <= 100000 && t[1] > 0 && t[1] <= 10000)) throw new LabError("'Topsoil' is [resistivity (1 to 100,000 Ω·m) depth (above 0 up to 10,000 m)] of a top layer over the 'Soil'."); sup.topsoil = { rho: t[0], depth: t[1] }; }
   if (o.get('earthresistance')) { const e = toMat(o.get('earthresistance')!).d[0]; if (!(e >= 0 && e <= 10)) throw new LabError("'EarthResistance' is the ground's own resistance along the line, 0 to 10 Ω/km."); sup.earth = e; }
   // Storage on the line (M491g; on AC lines too, M491i, where it shaves the peaks): 'Storage', positions in m (1 MW, 10 kWh each) or a struct At, Power (W),
   // Energy (kWh), VCharge, VSupport.

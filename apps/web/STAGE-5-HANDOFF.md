@@ -13406,6 +13406,16 @@ the yaw much the same. Language 'FinHeight', m (0 to 5; turns 'TurbulenceFin' on
 sits above the wing (its push rolls it too)". Not built: the fin's height for steady sideslip (already in clb), the
 downwash's own lag.
 
+## M491p (25 Nov): Hyperion railways, soils in layers
+
+The owner, 25 Nov (M491o's left-out). `rail.ts`: `Supply.topsoil` { rho, depth } over `soil` (the ground beneath, 100 when
+not given); `soilRho(sup)`: the return current spreads down to Carson's depth D and the layers carry it side by side,
+1/ρ = (h/D)/ρ_top + (1 − h/D)/ρ_below (all ρ_top once the layer is deeper than D), D found from that ρ by a few rounds.
+`railVolts` and `feedZ` use it; one layer or none as before. Checked: a deep top layer is all that counts, a thin one
+hardly; 5 m of wet clay over dry rock ~sits between them and agrees with its own depth; rail volts and feed follow it.
+Language 'Topsoil', [resistivity depth]. Window: Several trains → 25 kV → The soil → "5 m of clay over rock" (also the
+telephone cable's soil). Not built: more than two layers, the layers' effect on DC stray current.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

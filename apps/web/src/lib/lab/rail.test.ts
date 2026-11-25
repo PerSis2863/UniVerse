@@ -314,4 +314,20 @@ describe('Hyperion railways (M491)', () => {
     // A fault at the far end draws less current through drier ground.
     expect(rl.faultEmf({ ...ac, soil: 2000 }, { sep: 30, rho: 100 })[0].current).toBeLessThan(rl.faultEmf(ac, { sep: 30, rho: 100 })[0].current);
   });
+  it('soils in layers (M491p)', () => {
+    // One layer as before; a top layer deeper than Carson's depth is all that counts; a thin one hardly matters.
+    expect(rl.soilRho({ soil: 300 })).toBe(300); expect(rl.soilRho({})).toBeUndefined();
+    expect(rl.soilRho({ soil: 2000, topsoil: { rho: 20, depth: 5000 } })).toBeCloseTo(20, 6);
+    const thin = rl.soilRho({ soil: 2000, topsoil: { rho: 20, depth: 0.01 } })!;
+    expect(thin).toBeLessThan(2000); expect(thin).toBeGreaterThan(1000);
+    // 5 m of wet clay over dry rock: between the two, and it agrees with itself: ρ from its own depth.
+    const r = rl.soilRho({ soil: 2000, topsoil: { rho: 20, depth: 5 } })!, f = 5 / rl.carsonDepth(r);
+    expect(r).toBeGreaterThan(20); expect(r).toBeLessThan(2000); expect(1 / r).toBeCloseTo(f / 20 + (1 - f) / 2000, 12);
+    // The rails' voltage and the feed follow it.
+    const ac = rl.SUPPLIES.ac25(100000), at = (o: object) => rl.railVolts({ ...ac, ...o }, [30000], [300])[0];
+    expect(at({ soil: 2000, topsoil: { rho: 20, depth: 5 } })).toBeLessThan(at({ soil: 2000 }));
+    expect(rl.feedZ({ ...ac, soil: 2000, topsoil: { rho: 20, depth: 5 } }).x).toBeCloseTo(rl.feedZ({ ...ac, soil: r }).x, 12);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    expect(() => lab.run("railLine('intercity', trainModel('intercity'), [0], 'Supply', 'ac25', 'Soil', 2000, 'Topsoil', [20 0])")).toThrow(/Topsoil/);
+  });
 });

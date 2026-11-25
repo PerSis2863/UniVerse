@@ -215,6 +215,9 @@ export interface Supply {
   earth?: number;
   /** M491n: the soil's resistivity (Ω·m) on AC lines: how deep the ground's return current runs. */
   soil?: number;
+  /** M491p: a top layer over it: its resistivity (Ω·m) and depth (m); `soil` is then the ground beneath (100 when
+   * not given). */
+  topsoil?: { rho: number; depth: number };
   /** Storage on the line (M491g, DC): units at positions (m), each able to take or give `power` (W) and hold
    * `energy` (J); it charges when the line is above `vcharge` (a braking train lifting it) and supports below
    * `vsupport`, each way at `eta`. Batteries or supercapacitors in lineside cabinets. */
@@ -395,13 +398,29 @@ export const carsonDepth = (rho: number, f = 50) => 658 * Math.sqrt(rho / f);
 // The rails' equivalent radius (~0.146 m) set so 100 Ω·m gives their usual 0.55 Ω/km.
 const RAIL_GMR = carsonDepth(100) / Math.exp(0.55 / 0.0628);
 export const railReactance = (rho: number) => 0.0628 * Math.log(carsonDepth(rho) / RAIL_GMR);
+/** Two layers (M491p): the return current spreads down to Carson's depth D, and the layers carry it side by side, so
+ * the ground acts as one of 1/ρ = (h/D)/ρ_top + (1 − h/D)/ρ_below (all ρ_top once the top layer is deeper than D), D
+ * itself found from that ρ (a few rounds settle it). One layer: just `soil`; neither: undefined (the presets' 100). */
+export function soilRho(sup: Pick<Supply, 'soil' | 'topsoil'>): number | undefined {
+  const top = sup.topsoil;
+  if (!top) return sup.soil;
+  const below = sup.soil ?? 100;
+  let rho = below;
+  for (let i = 0; i < 40; i++) {
+    const f = Math.min(1, top.depth / carsonDepth(rho)), next = 1 / (f / top.rho + (1 - f) / below);
+    if (Math.abs(next - rho) < 1e-9 * rho) { rho = next; break; }
+    rho = next;
+  }
+  return rho;
+}
 /** The AC line's own feeding impedance per km (M491o): the contact wire with the rails and the ground coming back. The
  * share of the current returning through the ground (the screening factor) runs at Carson's depth, so the soil changes
  * the loop's reactance by k·0.0628·ln(depth(ρ) / depth(100 Ω·m)) Ω/km (the presets are for 100 Ω·m), and the ground's
  * own resistance (`earth`, Carson's 0.0493 Ω/km at 50 Hz) adds k times that. Unset: the presets' figures. */
 export function feedZ(sup: Supply): { r: number; x: number } {
   const ac = sup.ac!, k = ac.screen ?? 0.5;
-  return { r: sup.rline + k * (sup.earth ?? 0), x: ac.xline + (sup.soil ? k * 0.0628 * Math.log(carsonDepth(sup.soil) / carsonDepth(100)) : 0) };
+  const rho = soilRho(sup);
+  return { r: sup.rline + k * (sup.earth ?? 0), x: ac.xline + (rho ? k * 0.0628 * Math.log(carsonDepth(rho) / carsonDepth(100)) : 0) };
 }
 export function railVolts(sup: Supply, s: number[], amps: number[]) {
   // Cross-bonded (M491l): both tracks' rails in parallel, half the impedance and half the leakage resistance: the same
@@ -411,7 +430,7 @@ export function railVolts(sup: Supply, s: number[], amps: number[]) {
   // The soil (M491n, `soil` Ω·m): the current returning through the ground runs at Carson's depth 658·√(ρ/f) m, so the
   // rails-to-earth loop's reactance is 0.0628·ln(depth / 0.146 m) Ω/km at 50 Hz (0.55 at 100 Ω·m): wet ground (low ρ)
   // keeps it shallower, less reactance; dry rock deeper, more.
-  const xs = sup.soil ? railReactance(sup.soil) : 0.55, zr = Math.hypot(0.15, xs), zt = Math.hypot(0.15 + (sup.earth ?? 0), xs);
+  const rho = soilRho(sup), xs = rho ? railReactance(rho) : 0.55, zr = Math.hypot(0.15, xs), zt = Math.hypot(0.15 + (sup.earth ?? 0), xs);
   const k = sup.ac?.screen ?? 0.5, z0 = (zr * Math.sqrt(RAIL_RE / zt)) / (sup.crossBond ? 2 : 1), g = Math.sqrt(zt / RAIL_RE) / 1000;
   // Bonded to earth at each substation (M491k): an image current there holds the rails at 0 at the bond nearest
   // each train (the one feeding it).
