@@ -13230,3 +13230,770 @@ The last of M534–M537's "left out" list: a generalised linear model's link ste
   and its class from the sign; int8full within 3 points of double's accuracy.
 - **Left out:** links Hyperion's fitglm doesn't have (Poisson's log, probit…).
 
+## M492 (23 Nov): Hyperion toolbox, epidemics (sciences and industries, 1 of 14)
+
+The owner, 23 Nov ("help me to build what is left… as another agent didnt build", with MathWorks' solutions page): the
+Hyperion list's group 7, sciences and industries, is M492–M505 on `claude/hyperion-sciences-industries` (two other
+sessions build signals and capabilities, M472–M481, and machines and vehicles, M482–M491, on their own branches).
+**Shared files for the whole group, so the three branches merge cleanly:** `sciences.ts` (imports every `*-lab.ts`
+of the group; the worker and `help.test.ts` import only it), `help-sciences.ts` (`SCIENCES_HELP`, appended to help.ts's
+TEXT by one line), `examples-sciences.ts` (`SCIENCE_EXAMPLES`, spread into LabApp's EXAMPLES by one line; its test
+runs every example), `sci-kit.ts` (def, call, rows, `options` for name–value pairs, `record` for result structs,
+`lines` for a labelled plot) and `sci-num.ts` (pure: `rk4Grid` on an output grid with an `onStep` hook for doses and
+spikes, `rk45` Dormand–Prince, `ros23` the Rosenbrock 2(3) stiff method behind ode23s, `jacobian`, `sample`, `root`).
+A new toolbox of the group adds its import to `sciences.ts`, its help block and its example, nothing more shared.
+Epidemics, `epi.ts` (pure) and `epi-lab.ts`: `sir`, `seir`, `sirAge` (contact matrix C(i, j), state [S… I… R…]), all
+RK4 at 0.05 day reported daily, with `'Intervention'` rows [from to cut], `'Vaccinate'` (share of S a day) from
+`'VaccineFrom'`, `'Mu'`; the third output is the day's new infections (a hidden cumulative compartment differenced).
+`epiR0` (β/γ, or the spectral radius of K_ij = β C_ij N_i / (γ N_j) by power iteration), `epiFinalSize`
+(z = 1 − e^(−R0 z)), `herdImmunity`, `fitEpidemic` (β, γ, I0 on log scale by Levenberg–Marquardt against
+log(1 + cases), nine starts on a 0.25-day step, polished at 0.05; SEIR's first infected are put in I, not E: seeding E
+made a true SEIR fit land in a false valley), `epiRt` (the renewal equation with a discretised gamma serial interval,
+gamma prior 1 and 5 as Cori et al., normal-approximated 95% band). Names are our own (MATLAB builds these in
+SimBiology as objects). Tests: final size 0.9405 at R0 3 and 0.7968 at 2, the peak at S = N/R0, conservation,
+next-generation R0 for mixed and separate groups, fits recovering β and R0, R_t = e^r for steady growth, the stiff
+solver on a 1000:1 problem in under 400 steps. Not built: stochastic (Gillespie) outbreaks, spatial spread, deaths and
+hospital beds as compartments, fitting with confidence intervals.
+
+## M493 (23 Nov): Hyperion toolbox, pharmacokinetics (sciences and industries, 2 of 14)
+
+`pk.ts` (pure) and `pk-lab.ts`. A linear model is its disposition as exponential modes (`modes`: one compartment
+A = 1/V, λ = CL/V; two compartments α and β from k10, k12, k21 with A_α = (α − k21)/(V(α − β))), so every route has
+a closed form (`single`: bolus Σ A e^(−λt); infusion R Σ A/λ (1 − e^(−λt)) then decaying; oral F D Σ A ka/(ka − λ)
+(e^(−λt) − e^(−ka t)), with the ka = λ limit) and a schedule is a sum of single doses (`simulate`). Saturating
+elimination ('Vmax', 'Km', one compartment plus the gut) is solved by RK4 mark to mark (asked times, doses, infusion
+ends) so a bolus lands at its time; a time asked for at a dose reads after it. `steadyState` sums doses until the
+slowest mode is e^−30 down (at most 100,000); `dosingWindow` bisects the interval whose steady-state peak ÷ trough
+equals MTC ÷ MEC, then picks the longest practical interval (1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 168 h) and a dose aimed
+at the window's geometric middle; `nca` is linear-up log-down AUC and AUMC, λz from the last points after the peak.
+Language: `pkModel` (a struct, Type 'pkModel', with Rates and HalfLife), `pkSimulate` ('Route', 'Duration', 'Every',
+'Doses', 'Times', 'Hours', 'Step', 'Window'), `pkSteadyState`, `pkDosingWindow`, `pkNCA` (our own names; SimBiology's
+are objects). Units are the person's (mg, L, h by default). The example `dosing.m` says it is teaching, not medical
+advice. Tests: the textbook formulas (bolus, infusion end, oral Tmax = ln(ka/k)/(ka − k), AUC = F D/CL), two
+compartments against Dormand–Prince on the equations, the bolus steady state and accumulation 1/(1 − e^(−kτ)),
+the window τ = ln(MTC/MEC)/k with dose V(MTC − MEC), saturating = linear at low levels. Not built: population PK
+(mixed effects), fitting a model to measured levels (use lsqcurvefit on `pkSimulate`'s output), PD (effect) models,
+three compartments, lag times.
+
+## M494 (23 Nov): Hyperion toolbox, DNA and protein tools (sciences and industries, 3 of 14)
+
+`bio.ts` (pure) and `bio-lab.ts`. Sequences: `complement` (ambiguity letters too, case kept), `reverseComplement`,
+`gcContent`, `counts` (U as T), `translate` (the standard code as one 64-letter string in TCAG order; unknown codons
+'X', stops '*'), `orfs` (ATG to the first stop in frame, six frames; positions in the original's coordinates, start >
+stop on the reverse strand; the stop codon in the span, not the protein; longest first). Alignment, `align`: Gotoh's
+three matrices (M a pair, X a letter of a against a gap, Y the other way) with a pointer matrix each (P* = 3 marks
+where a local alignment starts), so the traceback never guesses from floating-point equalities; global or local;
+BLOSUM62 for proteins, +5/−4 (−2 against N) for DNA; gap = open + (L − 1) × extend (MATLAB's defaults 8 and 8 kept).
+Trees: `distance` (p, Jukes–Cantor; gaps skipped), `upgma` (size-weighted average, heights half the distance),
+`neighborJoin` (Saitou–Nei Q matrix; the result is unrooted Newick with three branches at the top, drawn rooted at
+the last join), `treeLayout` (elbow lines, leaves 1…n down the y axis). Language: MATLAB's `seqcomplement`,
+`seqrcomplement`, `seqreverse`, `basecount`, `nt2aa` ('Frame', 'all' a cell), `nwalign`, `swalign` ([score,
+alignment, start, identity]; the alignment a three-line text, since the engine's text has one row), `seqpdist` (a
+pdist row or 'SquareForm'; unequal lengths aligned first), `seqlinkage` ('average' only), `seqneighjoin`; our own
+`gcContent`, `findORFs` (a table) and `plottree` (MATLAB's trees are phytree objects; ours are structs with Type
+'phytree', Newick, Names, Parent, Length). Example `dna.m`: human β-globin, its ORF, the sickle-cell change GAG→GTG
+found by swalign, a five-species tree. Tests: textbook translations, ORFs on both strands, Durbin's HEAGAWGHEE pair
+(the score recomputed from the alignment), a local match and one long affine gap, Wikipedia's UPGMA and
+neighbour-joining examples. Not built: multiple alignment (profiles, ClustalW-style), reading FASTA/GenBank files
+(fastaread), other genetic codes, BLAST-style database search, maximum-likelihood trees, PAM and other matrices.
+
+## M495 (23 Nov): Hyperion toolbox, chemistry and chemical engineering (sciences and industries, 4 of 14)
+
+`chem.ts` (pure) and `chem-lab.ts`. `parseMechanism` reads 'A + B -> C; 2 C <-> D' (arrows ->, =>, <->, <=>, =;
+';' or new lines between reactions; a coefficient before a name), species in the order they first appear; `rates` is
+mass action (a reversible reaction takes forward then backward k); `batch` (= `pfr`: at constant density a plug-flow
+reactor's concentrations at residence time τ are the batch's at t = τ) solved stiffly by `ros23`; `cstr` runs the
+tank's equations 40 τ from the inlet and polishes by Newton with the finite-difference Jacobian; `equilibrium` is damped
+Newton on ln K = Σ ν ln c over the extents, halving the step until every involved concentration stays positive (a
+product starting at zero is first given a hair of extent); `acidPH` bisects the charge-balance cubic with water's ions;
+`arrhenius` and `arrheniusFit` (ln k on 1/T). Language: MATLAB's `odeset` (RelTol, AbsTol; the rest kept but unused),
+`ode15s` and `ode23s` (both the same Rosenbrock 2(3), MATLAB's ode23s method; ode15s's variable-order NDF is not
+built: say so if someone compares step counts); our own `kineticsSim`, `batchReactor`, `pfrReactor`, `cstrReactor`
+(one row per τ), `arrhenius`, `arrheniusFit`, `chemEquilibrium`, `acidPH`. **Fixed in sci-num.ts on the way:** the
+stiff solver's first step came out ~1e-17 when a component started at 0 with a tight AbsTol and it gave up; the first
+step now has a floor of 1e-10 × the span, and both solvers' "step too small" test is relative to the span, not to 1
+(problems in nanoseconds work). Example `reactors.m`. Tests: Robertson's problem to Hairer–Wanner's values (0.7158,
+9.185e-6, 0.2842), first-order batch and CSTR closed forms, the second-order CSTR quadratic, Arrhenius fit, single,
+bimolecular and coupled equilibria, acetic acid pH 2.87. Not built: non-isothermal reactors (energy balances, runaway),
+reactors with pressure drop or changing volume, Langmuir–Hinshelwood or other non-mass-action rate laws, activity
+coefficients, polyprotic acids and buffers, a periodic table and molar masses.
+
+## M496 (23 Nov): Hyperion toolbox, neuroscience (sciences and industries, 5 of 14)
+
+`neuro.ts` (pure; randomness passed in) and `neuro-lab.ts`. `hodgkinHuxley`: the 1952 squid axon with the modern
+voltage convention (rest −65 mV, ENa 50, EK −77, EL −54.387), RK4 at 0.01 ms, the rate functions' 0/0 points
+replaced by their limits, spike times at upward 0 mV crossings (interpolated). `lif`: the exact exponential step
+between inputs and the crossing time solved inside the step, so spike times and the firing rate match `lifRate`'s
+formula 1/(t_ref + τ ln((RI + rest − reset)/(RI + rest − θ))) to 6 digits; the refractory time is carried across steps
+(`quiet`). `izhikevich`: the 2003 model with v in two half steps as in the paper, named types RS, IB, CH, FS, LTS, TC,
+RZ. `izhNetwork`: the paper's network (excitatory c = −65 + 15r², d = 8 − 6r²; inhibitory a = 0.02 + 0.08r, b = 0.25 −
+0.05r; weights 0.5·rand and −rand; thalamic noise 5 and 2 × randn) at 1 ms. `lifNetwork`: W(i, j) mV added to i
+when j fires, after a delay (a ring of steps), noise σ√dt. Spike trains: `spikeTimes`, `poisson` (with dead time),
+`isiStats` (CV), `fano`, `psth` (Hz), `crossCorrelogram`. A spike list is rows [time neuron] everywhere (ms).
+Language (our own names): `hodgkinHuxley`, `lifNeuron`, `lifRate`, `izhikevich`, `izhNetwork`, `lifNetwork`,
+`poissonSpikes`, `spikeTimes`, `isiStats`, `fanoFactor`, `psth`, `rasterPlot`, `spikeXcorr`; a current is a number with
+'Start'/'Stop' or one value per step. Example `neurons.m`. Tests: HH rests at −65, fires 64–72 Hz at 10 µA/cm² and
+not at 2; LIF against its formula at four currents; Izhikevich RS adapts, FS is faster, CH bursts; a network's spikes
+in range; Poisson CV ≈ 1 and Fano ≈ 1, a clock 0; the correlogram's peak at the lag; one neuron driving another.
+Not built: cable and multi-compartment neurons, synaptic conductances with their own time course (synapses are
+instant voltage jumps), plasticity (STDP), spike sorting from recordings, reading electrophysiology files.
+
+## M497 (23 Nov): Hyperion toolbox, physics (sciences and industries, 6 of 14)
+
+`physics.ts` (pure, SI) and `physics-lab.ts`. Mechanics: `projectile` (quadratic drag k = ½ρCdA/m, from a height;
+the landing found by bisection on a re-integration of the last step), `ellipticK` (AGM) and `pendulumPeriod`
+(4√(L/g)K(sin θ0/2)), `pendulum` (θ'' = −(g/L) sin θ − bθ'), `doublePendulum` (the Lagrangian equations for unequal
+masses and rods, energy returned as a check), `nbody` (velocity Verlet, softening, positions every k-th step),
+`chargedParticle` (the Boris push). Waves: `pluckedString` (Fourier series of the triangle, b_n = 2hL² sin(nπp/L) /
+(n²π²p(L − p))), `slits` (single-slit envelope × the N-slit grating term, normalised to 1 at the centre),
+`waveField` (Σ A cos(kr − ωt + φ)/√(r/λ), 2D spreading). Fields: `pointCharges` (Coulomb, NaN inside a small core
+when drawing). **sci-num.ts `rk45` gained `{ at, maxStep }`:** with `at` the steps are shortened to land exactly on
+the asked-for times (no interpolation; a step shortened only for that doesn't shrink the next), which the pendulums
+and the projectile use; `sample` (linear) is still what ode15s uses for given times. Language (our own names):
+`projectile`, `pendulum`, `pendulumPeriod`, `doublePendulum`, `nbody`, `chargedParticle`, `stringWave`, `slitPattern`,
+`waveField`, `efield`. **Animation:** the engine's `drawnow` and `pause` do nothing (a script runs to its end, then
+draws), so every drawing takes the moment to show ('At', t, or t itself for the waves): a `% slider` on t moves it and
+Sweep (M402) films it as a GIF; `physics.m` is built that way. Tests: drag-free range, height and time; a horizontal
+throw from 10 m; K(0) = π/2; T(90°)/T0 = 1.180340599 and the simulated period agreeing; the double pendulum's energy
+to 1e-6; the Earth's year round the Sun with energy to 1e-6; the cyclotron radius and the E×B drift E/B; the plucked
+string's shape, its mirror at half a period and return at a whole one; two-slit maxima and minima; a point charge's
+V and E and a dipole's 2kp/r³. Not built: rigid bodies and collisions, 3D field lines (streamlines), magnetism of
+currents (Biot–Savart), optics with lenses, relativity, quantum wells; real-time animation inside a running script.
+
+## M498 (23 Nov): Hyperion toolbox, geoscience (sciences and industries, 7 of 14)
+
+`geo.ts` (pure; randomness passed in) and `geo-lab.ts`. Seismic: `seismogram` (P and S as Ricker wavelets with
+decaying codas, amplitude falling with distance, noise), `staLta` (trailing windows on cumulative energy), `aicPick`
+(Maeda's AIC by running sums, O(n)), `pick` (STA/LTA's first trigger, then AIC over the 2 s before and 0.5 s after),
+`locate` (Geiger's method by `levenbergMarquardt` from optim.ts, epicentre and origin time, depth bounded 0–700 km when
+asked), `spDistance`, `localMagnitude` (Hutton–Boore anchored at 1 mm, 100 km = ML 3). Globe: `arc` (haversine),
+`bearing`, `destination`, `vincenty` (inverse, on [a e]; NaN when it fails to converge near antipodes). Projections:
+`project` (spherical Mercator, equirectangular, Lambert azimuthal equal-area, orthographic with the far side NaN; x, y
+in sphere radii) and UTM by Krüger's series to n³ (`toUtm`, `fromUtm`; ~1 mm round trip; the northing on the central
+meridian equals k0 × the WGS84 meridian arc to 0.1 mm). Terrain: `fractalTerrain` (diamond-square), `slopeAspect`
+(rows north to south, aspect the way the slope faces, clockwise from north), `hillshade`. Language: MATLAB's Mapping
+Toolbox names `distance` (degrees; a radius gives length; [a e] gives Vincenty), `azimuth`, `reckon`, `deg2km`,
+`km2deg`, `wgs84Ellipsoid` (a vector [a e], not MATLAB's object); our own `seismogram`, `staLta`, `pickArrival`,
+`locateQuake`, `spDistance`, `localMagnitude`, `mapProject`, `ll2utm`, `utm2ll`, `fractalTerrain`, `slopeAspect`,
+`hillshade`. **Merge watch:** `distance`, `azimuth` and `reckon` are general names; the machines-and-vehicles branch
+(aerospace, M482–M491) may define geodesy functions too: a later registration silently wins, so check for duplicate
+`def(` names and help lines when the branches meet. Example `quake.m`. Tests: a P pick within 0.15 s, a quake located
+to 1e-4 km (and its depth), S−P distance, ML 3 anchor, haversine and London–Paris, bearings, destination round trip,
+Vincenty's Flinders Peak–Buninyong 54,972.271 m, Mercator, Lambert's radius-2 disc, UTM meridian arc and round trips
+(north and south), slope and aspect of planes, flat hillshade = sin(altitude). Not built: travel times through a
+layered Earth (only a uniform speed), focal mechanisms, real map data (coastlines, DEM files: GeoTIFF reading),
+gravity and magnetic surveys, well logs.
+
+## M499 (23 Nov): Hyperion toolbox, ECG and biosignals (sciences and industries, 8 of 14)
+
+`biosig.ts` (pure; randomness passed in) and `biosig-lab.ts`. For learning, not diagnosis: said in the help section's
+title, `patientMonitor`'s title, `panTompkins`' drawing and the example. Filters: our own second-order Butterworth
+biquads (bilinear with pre-warping; −3 dB at fc, tested) and `zeroPhase` (forwards and backwards). **Not defined on
+purpose:** `butter`, `filtfilt`, `pwelch`, `findpeaks`: the signals branch (M472–M481, "a signal analyser and filter
+designer") is likely to add them, and two `def`s of one name would silently replace each other at merge; after both
+merge, these toolboxes may switch to theirs. `ecgSynth`: Gaussian P, Q, R, S, T per beat, intervals with respiratory
+sinus arrhythmia (0.25 Hz) and jitter, QT scaled by √RR (Bazett), noise, baseline wander, 50 Hz hum. `panTompkins`:
+band-pass 5–15 Hz, the five-point derivative, squaring, 150 ms moving-window integration, peaks 200 ms apart,
+SPKI/NPKI thresholds learnt on the first 2 s and updated (1/8), search back past 1.66 × the mean of the last 8 RR at
+half the threshold, the R peak placed at the band-passed maximum in the integration window. `hrv`: SDNN, RMSSD,
+pNN50, and LF (0.04–0.15) / HF (0.15–0.4) by resampling the tachogram at 4 Hz and `welch` (Hann, half overlap,
+one-sided, density). `eegBands` (Welch with 2 s segments, five bands), `eegSynth` (AR(1) background + rhythms).
+`wdrc`: a 10 ms mean-square level read as a sine's peak, the gain smoothed with attack and release (an envelope
+follower on |x| was biased high by its fast attack: 1.4 dB too much compression; fixed this way); `hearingAid`:
+bands split at the edges by zero-phase pairs, each band compressed with its own gain, summed. Language (our own
+names): `ecgSynth`, `panTompkins`, `hrvMetrics`, `eegSynth`, `eegBandPower`, `patientMonitor`, `wdrc`, `hearingAid`.
+Example `ecg.m`. Tests: biquads at −3 dB, Pan–Tompkins > 98% of beats within 30 ms at 60 and 110 bpm with noise,
+wander and hum, HRV time measures by hand and HF ≫ LF for breathing-paced RR, a 10 Hz sine is alpha with A²/2,
+2:1 compression 20 dB over gives 10 dB over, unity hearing aid passes through. Not built: arrhythmia
+classification, reading real ECG files (WFDB/EDF), 12-lead views, SpO₂ from red and infrared light, EEG artefact
+removal (ICA), feedback cancellation and noise reduction in the hearing aid, audiogram fitting rules (NAL, DSL).
+
+## M500 (23 Nov): Hyperion toolbox, medical imaging (sciences and industries, 9 of 14)
+
+`medimg.ts` (pure) and `medimg-lab.ts`. For learning, not diagnosis. `readDicom`: Part 10 (preamble + DICM, group
+0002 always explicit, then the transfer syntax decides) or a bare implicit-VR file; only implicit and explicit VR
+little-endian (compressed or big-endian syntaxes are refused by name, encapsulated pixel data too); sequences of
+undefined length and their items are skipped (`skipUndefined` / `walk(…, inItem)`); only the tags in `TAGS` are read
+into `info` (geometry, rescale, window, modality, date, description): **patient identifiers are never read**; 8, 16 or
+32-bit, one sample a pixel, frames as pages. `writeDicom`: explicit VR LE, 16-bit stored values (signed when any value
+is negative), the meta group's length computed first, a random 2.25 UID. `windowed` is DICOM's linear VOI rule;
+`WINDOWS` the usual presets. `headPhantom` (whole HU: skull, brain with a texture, ventricles, a 70 HU lesion),
+`regionGrow` (6-connected, tolerance from the seed's value, iterative stack), `largestComponent` (6-connected).
+Language: MATLAB's `dicominfo`, `dicomread` (int16/uint16 by PixelRepresentation, as MATLAB), `dicomwrite`,
+`dicomreadVolume` (ours takes a cell of names or the start of the names, not a folder; rescale applied: HU; sorted by
+ImagePositionPatient z, else InstanceNumber; returns [dy dx dz]); our own `ctWindow`, `headPhantom`, `orthoSlices`
+(axial, coronal, sagittal at true proportions via imagesc's x/y in mm), `regionGrow`, `segmentHU` (mask and mL).
+Files go through the window's `FileStore` (Files panel), so a person's own uncompressed .dcm uploads open directly.
+Example `ctscan.m` (writes 40 slices, reads them back, four windows, three planes, a lesion and the skull measured,
+`bwlabel` from M428). Tests: write/read round trip with every header field, an old implicit file with a nested
+undefined-length sequence, refusing junk, the windowing rule, the phantom's skull as one component, region growing
+staying outside the head, a series round trip in the language to 0 HU. Not built: compressed DICOM (JPEG, JPEG 2000,
+RLE: needs decoders), DICOMDIR and folders, multi-frame enhanced objects, RGB ultrasound, 3D volume rendering,
+registration, MRI-specific tools.
+
+## M501 (23 Nov): Hyperion toolbox, finance: pricing (sciences and industries, 10 of 14)
+
+`fin.ts` (pure) and `fin-lab.ts`. `ncdf` is Hart's double-precision algorithm (West 2005; ~1e-15 absolute, 1e-8
+relative in the far tail past 7.07); `bs` is Black–Scholes–Merton with a continuous dividend yield, all Greeks
+(theta per year, vega per 1.00 of volatility, as MATLAB's), and the intrinsic limit at T = 0 or σ = 0;
+`impliedVol` is Newton kept in a bracket by bisection (NaN outside what any σ in (1e-6, 10) gives); `crr` the
+Cox–Ross–Rubinstein tree (rows nodes, columns steps; NaN below the diagonal, zeros in the language as MATLAB's);
+`monteCarlo` GBM paths with antithetic pairs, European in one step, Asian (arithmetic average) and knock-out barriers
+(up-and-out when the barrier is above the spot, down-and-out below) on `steps` steps, with the standard error. Bonds
+use per-period compounding at the coupon frequency and whole periods (`flows`): `bondPrice`, `bondYield` (bisection),
+`bondRisk` (Macaulay, modified, convexity), `bootstrap` (par → discount factors → zero rates), `nelsonSiegel` and
+`fitNelsonSiegel` (LM from five τ starts, bounded). Language: MATLAB's `blsprice`, `blsdelta`, `blsgamma`, `blsvega`,
+`blstheta`, `blsrho`, `blsimpv` (name–value 'Yield', 'Class'), `binprice` (American, Flag 1 call / 0 put, MATLAB's
+output layout), all element by element; our own `mcOptionPrice`, `bondPrice`, `bondYield`, `bondDuration`,
+`zeroCurve`, `nelsonSiegel`, `nelsonSiegelFit` (MATLAB's bond functions are date-based and its curves objects; ours
+take years). Example `options.m` (says teaching, not investment advice). Tests: Φ to 14 digits, Hull's 4.76 / 0.81,
+put–call parity with dividends, every Greek against finite differences, implied vol round trip, the tree converging
+to BS, Hull's two-step American put 7.43, no early exercise of a call without dividends, Monte Carlo within 4 standard
+errors, par bonds at 100, a zero's duration = maturity, duration + convexity predicting a 1% move, bootstrapped par
+bonds repricing to 1, Nelson–Siegel recovering a known curve. Not built: day counts and real dates (settlement,
+accrued interest), stochastic volatility (Heston), local volatility, interest-rate trees (Hull–White, BDT), credit
+spreads, exotic payoffs beyond these three.
+
+## M502 (23 Nov): Hyperion toolbox, finance: portfolios and risk (sciences and industries, 11 of 14)
+
+`risk.ts` (pure; uses `ncdf`/`npdf` from fin.ts and `nelderMead`/`solve` from optim.ts) and `risk-lab.ts`.
+`minRisk` is a primal active-set method on the KKT system (2 C_FF w_F − δ1 − γμ_F = 0, 1'w = 1, μ'w = target): the
+most negative weight leaves the free set; an asset at zero whose multiplier is negative rejoins; shorts allowed solves
+once. `frontier` (from the least-risk portfolio to the best single return long-only; a target only a corner reaches can
+be singular and is skipped), `maxSharpe` (200 frontier points, then a golden-section on the target), `ninv` (Acklam +
+one Newton step, 1e-12), `var_` (historical with interpolated quantile and the mean of the tail; normal; Cornish–Fisher
+with skew and excess kurtosis), `kupiec` (POF likelihood ratio, χ²₁ p-value), `garchFit` (normal likelihood; ω = e^p0,
+α + β = 0.9999·logistic, β's share logistic, so α + β < 1 always; Nelder–Mead twice; the variance starts at the
+sample's), `garchSim`, `ewma`, `maxDrawdown`, `backtestMA` (position decided on the previous close: no look-ahead;
+a cost on each switch), `carbonStress` (yearly emissions × price × (1 − pass-through) as a perpetuity at the rate,
+capped at the holding's value: a transparent basic, no scenario data invented). Language: MATLAB's `tick2ret`,
+`ret2tick`, `ewstats` (no decay factor), `portstats`, `portvrisk`, `maxdrawdown`; our own `efficientFrontier`,
+`maxSharpe`, `valueAtRisk`, `varBacktest`, `garchFit`, `garchSim`, `ewmaVol`, `backtestStrategy`, `carbonStress`
+(MATLAB's are Portfolio, varbacktest and garch objects). There is no `chol` in the engine (the example builds correlated
+returns from a market factor instead). Example `portfolio.m`. Tests: the least-risk portfolio's equal marginal risks,
+long-only weights ≥ 0 summing to 1 on a rising frontier, a corner target, the two-asset tangency closed form and its
+Sharpe √(e'C⁻¹e), normal VaR/ES formulas against 200,000 draws and the historical estimate, ninv(0.975), Kupiec
+accept/reject, GARCH recovering α 0.08, β 0.9 and the long-run volatility, returns and prices round trip, drawdown,
+a back-test with one trade, the carbon stress by hand. Not built: Black–Litterman, CVaR optimisation, transaction-cost
+or cardinality constraints, multivariate GARCH and copulas, credit risk (PD, LGD), NGFS climate scenarios with real
+data (the owner would need to choose a data source).
+
+## M503 (23 Nov): Hyperion toolbox, maths teaching (sciences and industries, 12 of 14)
+
+`teach.ts` (pure, on the symbolic `N` of sym.ts) and `teach-lab.ts`. Every step is `{ rule, tex, plain }`; the
+language prints "Step k, rule:" then the maths between `TEX_OPEN`/`TEX_MID`/`TEX_CLOSE`, so the command window sets it
+as real maths and copying keeps the plain text. `diffSteps` walks the expression: constant, the variable, the sum
+rule, the constant multiple rule (constant factors pulled out), the quotient rule (when a product has a factor with a
+negative numeric power), the product rule (first factor against the rest), the power rule and the chain rule with it,
+the exponential rule, the table (derivatives read from sym.ts's own `diff` of f(_u), so the table is never duplicated),
+and a final `simplify`. `intSteps`: constants, linearity, constant multiples, the power rule and ∫1/x = ln|x| by hand,
+otherwise `integrate` from sym-calc.ts with its result checked by differentiating back (the rule then says so), and
+F(b) − F(a) with limits. `solveSteps`: linear (move and divide), quadratic (a, b, c, the discriminant, its sign, the
+formula, the roots; one root when Δ = 0), otherwise `solveFor`. `rrefSteps` (exact fractions; swap, scale, clear the
+column; rank, pivots, the determinant from the pivots and swaps), `eigSteps` (A − λI, its determinant by cofactors,
+its roots). Language (our own names): `diffSteps`, `intSteps`, `solveSteps`, `rrefSteps`, `detSteps`, `eigSteps`, and
+graphs for a class through function handles: `tangentLine`, `riemannSum` (left, right, mid, trap against `integral`),
+`newtonSteps` (a table and the tangents), `taylorPlot` (exact derivatives at the centre). Sliders and Sweep animate them
+(example `teach.m`). Tests: product, chain and quotient rules named and agreeing with `diff`, linearity and a definite
+integral of 9, a linear and a quadratic equation, complex roots flagged, the classic 3 × 3 system to (2, 3, −1), a
+determinant with a swap, eigenvalues 1 and 3, the language run end to end. Not built: limits with L'Hôpital steps,
+integration by parts shown as steps (the integrator does it silently), proofs, differential equations step by step,
+exercises with checking of a student's own answer.
+
+## M504 (23 Nov): Hyperion toolbox, semiconductors and materials (sciences and industries, 13 of 14)
+
+`matsci.ts` (pure) and `matsci-lab.ts`. Semiconductors (silicon; doping cm⁻³, lengths cm, energies eV): `siEg`
+(Varshni 1.17 − 4.73e-4 T²/(T + 636)), `siNi` from Nc, Nv ∝ T^1.5 (6.1e9 at 300 K by these textbook constants; the
+"1e10" often quoted is a rounded measurement), `pnJunction` (depletion approximation: Vbi, W, xn, xp, Emax; refuses
+forward bias at or past Vbi), `bands` (the parabolic potential in each depletion side; Ec, Ev and both Fermi levels),
+`diodeCurrent` (Shockley with Rs solved by Newton from the smaller of the two limits), `mosThreshold` (V_FB + 2φF +
+√(2εqNa·2φF)/Cox), `mosfetId` (square law with λ). Materials (MPa): `MATERIALS` (steel S355, aluminium 6061-T6,
+Ti-6Al-4V, annealed copper; rounded textbook figures, labelled "for teaching, not design data" in help and titles),
+`stressStrain` (Ramberg–Osgood to the UTS, then a necking tail to the elongation), `tensile` (E by a fit below 40% of the
+strength, the 0.2% offset crossing interpolated, UTS, plastic elongation, toughness by trapezoids), `basquinFit`,
+`cyclesToFailure` (Goodman), `rainflow` (ASTM E1049 three-point stack on turning points; the residue counted as halves),
+`minerDamage`. Mining: `variogram` (binned half mean squared differences), `spherical`, `krige` (ordinary kriging,
+the (n+1)² system solved per query point: fine to ~1,000 samples), `idw`. Language (our own names): `siliconNi`,
+`pnJunction` (band diagram), `diodeIV`, `mosfetVth`, `mosfetIV`, `materialCurve`, `tensileTest`, `basquinFit`,
+`fatigueLife`, `rainflowCount` (not `rainflow`: MATLAB's has another layout, and the signals branch may define it),
+`minerDamage`, `variogramExp`, `krigeGrade`, `idwGrade`. Example `materials.m`. Tests: Vbi and W by the formulas,
+charge balance, reverse bias widening, the band bending equal to Vbi, the diode equation satisfied with Rs, square-law
+saturation and continuity, a thinner oxide's lower threshold, the tensile test recovering E and the yield it was built
+with, Basquin round trip, Goodman shortening life, ASTM E1049's own example (ranges 3, 4, 6, 8, 9 counted ½, 1½, ½,
+1, ½), Miner on one cycle, kriging exact at data with zero variance, IDW at a sample. Not built: carrier transport
+(drift–diffusion), MOS capacitance curves, heterojunctions, plasticity in 3D, crack growth (Paris law), strain-life
+(Coffin–Manson), block models and ore reserve classification.
+
+## M505 (23 Nov): Hyperion toolbox, agriculture and energy production (sciences and industries, 14 of 14)
+
+`agri.ts` (pure) and `agri-lab.ts`. `et0` is FAO-56 equation 6 step by step (pressure from elevation, γ, Δ, es from
+Tmax and Tmin, ea from RHmin/RHmax or a mean, Ra and daylight from latitude and day, Rs measured or Ångström from
+sunshine, Rso, Rns at albedo 0.23, Rnl), checked against FAO-56 example 18 (Brussels, 6 July: Ra 41.09, Rs 22.07,
+ea 1.409, Rn 13.28, ET0 3.9); `kcCurve` (the four stages, straight lines between); `waterBalance` (FAO-56 chapter 8:
+depletion, Ks below RAW, rain beyond field capacity drains, irrigation back to field capacity the day depletion passes
+RAW, an application efficiency); `cropGrowth` (degree-days over a base; LAI an S-curve peaking at 35% of the thermal
+time and dying back over the last quarter; RUE × ½Rs × (1 − e^(−k·LAI)) × Ks; harvest index); `dispatch` (bisection on
+λ with every unit clamped to its limits; null when the demand is outside the fleet's range), checked against Wood and
+Wollenberg's example 3A (λ 9.148; 393.2, 334.6, 122.2 MW); `lcoe` with panel degradation. Language (our own names):
+`et0PM`, `kcCurve`, `soilWaterBalance`, `cropGrowth`, `economicDispatch` (many demands at once: a row per demand),
+`lcoe`. The "process optimisation examples using M422" are in `farm_energy.m`: a least-cost feed by `linprog` and the
+most profitable irrigation by `fminbnd`. The examples' test now also loads image-lab and optim-lab (the worker loads
+every toolbox; the test must too when an example uses another toolbox's functions). Not built: crop models of the
+AquaCrop / DSSAT kind (phenology stages, nitrogen), soil layers and capillary rise, unit commitment (start-ups, minimum
+up and down times), transmission losses in dispatch, hourly solar and wind (M434 has those).
+
+**Group 7 (M492–M505) is complete.** No point-and-click window was added: every toolbox draws its own figure and every
+example has live sliders (and Sweep for films), which covered what a window would have given; a window remains possible
+later (Learn's pattern, M421/M465) if the owner wants one for a particular toolbox.
+
+**M505 follow-up (23 Nov): every example's figures rendered and looked at** (46 figures, `renderSvg` to PNG). Fixed:
+`plot(x, y, 'Color', '#22c55e')` (and 'Color', 'r') read the pair's name as a line spec and drew circle markers: the
+engine only treated a pair name as a pair when a number followed it (plot.ts `seriesFrom`, one line; a regression test
+in `examples-sciences.test.ts`). This touched every chart in the app that passes a colour by text. Also: the diode's log
+plot was empty (0 A at 0 V; now left out), the epidemic example's fit drew nothing (it asked for an output), a tree's
+root line hid under the y axis (a little room on the left), the dosing window's top line sat on the frame (more head
+room), PSTH counted only the neurons that fired (now the highest neuron number), shorter "mV" labels for stacked
+neuron traces, the MOSFET title's threshold rounded.
+
+**Checked in a browser (23 Nov):** `scripts/checks/hyperion-sciences-ui.mjs` on a local build runs all 14 examples from
+their tabs in the engine's thread (each must print its line, no error), checks the maths-teaching steps are set as maths
+(MathML) and a figure shows; axe clean at 1280 dark and 1024 light, no sideways scroll, no page errors. It found one
+accessibility fault, fixed: a wide maths line in the command window (a matrix step) scrolls sideways but couldn't take
+the keyboard's focus (`LabText`'s maths span now has `tabIndex={0}`).
+
+## M506 (23 Nov): Hyperion, animation while a script runs
+
+The owner (23 Nov) asked for M492–M505's left-outs ("please work on this"); the first: no live animation while a script
+ran (Hyperion drew when it finished). Now `drawnow` and `pause` call the host's `frame()` (interp.ts `Host.frame`,
+`Host.wait`); the worker (`lab.worker.ts`) posts `{ live: FigOut }` for the current figure when it changed, at most every
+33 ms, and flushes printed text, so a loop plays in the figure pane and the command window fills as it goes. `pause(t)`
+really waits there: a busy wait in the engine's own thread (shortcut: `Atomics.wait` would need a cross-origin-isolated
+page, which the site isn't; the page stays free and Stop ends the worker), capped at an hour. Only runs from the command
+window or Run animate (`ToLab.run.animate`); live controls, notebook sections, Sweep, Watch it run, Time it and the tests
+neither send frames nor wait, so a slider never replays an animation slowly. The window upserts a live figure that
+didn't exist before the run (`'live' in m` in LabApp).
+
+Handles: `h = plot(…)` returns a handle per line (numbers from `HANDLE` = 1000, kept in `Graphics.handles`; figure
+numbers stay small); `set(h, 'XData', x, 'YData', y, 'Color', …)` changes the line (only pair names `isPairName`
+knows are applied: a bare `'Visible'` would otherwise read as a line spec); `animatedline` (respects hold like plot),
+`addpoints(h, x, y[, z])`, `clearpoints(h)`. The example `animate.m` (a pendulum and its angle growing) is in the
+examples list. Tests in `plot.test.ts` (M506). Not built: `getframe` / `movie` / `VideoWriter` (Sweep's GIF film covers
+saving a film), `set` on other objects (text, surfaces), `delete(h)`.
+
+## M507 (23 Nov): Hyperion reads compressed DICOM
+
+M500 left out compressed scans. `dicom-codecs.ts` (pure, written from the standards): `decodeRle` (PS3.5 annex G:
+PackBits segments, most significant byte first, any samples and 8/16/32 bits) and `decodeJpeg` (T.81: baseline and
+extended sequential Huffman, 8 or 12 bits, any sampling factors, interleaved or one-component scans, restart markers;
+lossless process 14, predictors 1–7, point transform, up to 16 bits, components not subsampled). Colour in a DCT JPEG:
+an Adobe APP14 decides, then component ids R, G, B (no change), then JFIF (YCbCr), then the DICOM photometric (`ybr`);
+lossless syntaxes never transform. Subsampled chroma is stretched by centred linear steps (libjpeg's "fancy"
+upsampling), which brought a 4:2:2 ultrasound film from 15 levels off libjpeg to 3 (the rest is libjpeg's integer IDCT).
+
+`readDicom` (medimg.ts) now: reads the meta group, then by transfer syntax: deflated (fflate `inflateSync` on the rest),
+explicit big-endian (`le` flag; 8-bit pixels in a big-endian OW element are swapped in pairs), files without a meta
+header (explicit or implicit guessed from the first element's VR), encapsulated pixel data (basic offset table and
+fragments → frames by the table, one fragment a frame, all for one frame, or JPEG start markers), RGB / YBR_FULL /
+YBR_FULL_422 colour (3 samples, planar or not; YBR turned into RGB), 1-bit, signed values within BitsStored.
+`DicomImage.samples` is new; `pixels` is frame by frame, sample by sample. `dicomread` gives rows × cols × 3 for colour
+(× frames as a 4D array, `nd: [3, F]`); `dicomreadVolume` refuses colour. JPEG-LS, JPEG 2000, HTJ2K and MPEG are
+refused by name. Checked against 27 of pydicom's test files (decoded by pydicom, libjpeg-turbo and imagecodecs, on this
+machine only, not committed): every supported file identical or within 1 level (12-bit extended, colour baseline),
+the 4:2:2 film within 3. Committed tests use `fixtures/dicom-compressed.json` (made with libjpeg-turbo and pydicom's
+RLE encoder: lossless with three predictors, a 4:2:0 colour JPEG, a two-frame lossless and an RLE DICOM). Not built:
+JPEG-LS, JPEG 2000, palette colour, DICOMDIR, enhanced multi-frame's per-frame headers.
+
+## M508 (23 Nov): Hyperion Learn → Sciences, a point-and-click window for every science toolbox
+
+The owner was asked which toolbox should get a window first and answered "all of them". One window serves all 14:
+`src/lib/lab/sci-apps.ts` describes each toolbox as data (`SciApp`: fields of kind num / menu / toggle / text, each
+optionally shown only `when` another field allows, and `script(values)` that writes a Hyperion script). `clean` keeps
+numbers in range, menus to their options and text to its allowed letters before any value reaches a script (nothing
+typed can leave a number or a quoted string). Scripts print their results as `= Label | value` lines (`resultsOf`);
+anything else they print shows under "What it printed". `SciencesApp.tsx` (Learn's third tab, `LearnTabs`) runs the
+script in its own `lab.worker.ts` (prefixed `close('all'); clear;`), the newest values winning while a run goes (a
+queue of one), and shows the run's current figure (light or dark SVG), the result cards, and the script (Copy, Open in
+Code through `shareFragment`). The chosen toolbox is remembered for the visit (sessionStorage `uv-sci-app`).
+
+Windows: epidemics (SIR/SEIR, vaccination, a lockdown), drug dosing (levels, the best schedule), DNA (one-letter
+changes, reading frames, a family tree), chemistry (series reactions, CSTR against PFR, Arrhenius), neurons (HH, LIF,
+Izhikevich), physics (throw, pendulum, double pendulum, slits), geoscience (locate a quake, a lit landscape, distance on
+the globe), ECG (monitor, beat-to-beat rate, EEG bands), medical imaging (window, three planes, measure a range),
+pricing (option price and delta against the spot, a bond against its yield), portfolios (frontier, VaR, a trend rule,
+a carbon price), maths for class (tangent, Riemann sums, Newton, Taylor), materials (junction, MOSFET, tensile,
+fatigue), farms and power (irrigation, dispatch, LCOE). `sci-apps.test.ts` runs every view with its starting values
+(each prints results; each but reading frames draws). Values checked by hand: Wood and Wollenberg's dispatch (393, 335,
+122 MW at 9.148), the junction's 0.80 V, the Riemann exact integral, Newton to √2. The pk "best schedule" view takes
+about 2 s (pkDosingWindow's search). Not built: a window per toolbox beyond these views, files in the window (the
+window's worker has none of the person's files; scripts in Code do).
+
+**M508 checked in a browser (23 Nov):** `scripts/checks/hyperion-windows-ui.mjs` on a local build: all 14 windows show a
+figure and result cards, a slider (R0, by keyboard) changes the results, axe clean at 1280 dark and 1024 light, no
+sideways scroll, no page errors; animate.m (M506) showed 20 different frames while it ran. Fixed from it: pressing the
+toolbox already open wiped its results (`pick` now ignores it); the pendulum in animate.m was drawn in black, invisible
+in dark mode (an orange line now). Open in Code lands on Code's "Someone shared … Open it" banner, as Machine health's
+does.
+
+## M509 (24 Nov): Hyperion, real climate scenarios in the carbon stress test
+
+The owner chose both ways, "focus more on the first": (1) people download NGFS's (or IPCC's) scenario file themselves
+and Hyperion reads it; (2) a few headline numbers ship with credit. NGFS's licence (data.ene.iiasa.ac.at/ngfs/#/license,
+read 23 Nov) is CC BY 4.0 adapted: parts may be shared with attribution, "a substantial portion" may not; so only the
+range NGFS states in its own report ships: Net Zero 2050's global shadow carbon price, 100–260 US$2010/t CO₂ in 2030
+and 500–1,250 in 2050 across its models ("NGFS long-term scenarios, narratives and key findings", Phase V, 2025),
+`NGFS_NZ2050` in risk.ts with its source line. IIASA's explorer and API are blocked from this machine (proxy), so no
+dataset was downloaded; other scenarios come from the person's file.
+
+`readIamc` (risk.ts) reads the IAMC layout (Model, Scenario, Region, Variable, Unit, then a column per year; any order
+and case; empty cells NaN). `ngfsRead(file, 'Variable', …, 'Region', …, 'Scenario', …, 'Model', …)` (risk-lab.ts) goes
+through `rowsOf` (files.ts, now exported) so CSV, .xlsx and .xls all work, and returns a struct (cells of names, Years,
+Values a row per series). `yearly` turns a path into whole years (straight lines; before its first year a line up from
+0 at 'Start'). `carbonStressPath` pays emissions × price × (1 − pass-through) at each year's end, emissions falling by
+'Decline' a year, discounted at 'Rate' to 'Start', the last year's cost carried on as a shrinking perpetuity, capped at
+the value: a flat path gives exactly `carbonStress`'s answer (tested). Several rows of prices are several scenarios;
+without outputs it draws bars. The Portfolios window's carbon view has "Carbon prices": one price, NGFS Net Zero 2050
+low end or high end (with "Emissions cut each year"), and prints the source. Not built: downloading from NGFS inside
+Hyperion (people fetch the file; the explorer needs its own sign-in), GDP or physical-risk variables in the stress.
+
+## M510 (24 Nov): Hyperion epidemics, the left-outs
+
+The owner, 24 Nov: work through "the toolbox gaps from the M492–M505 notes", a few at a time from M510 (the order:
+each note's "Not built" list, M492 first). `epi.ts` / `epi-lab.ts`: `sirGillespie(β, γ, [S I R], days, 'Runs', n)`,
+Gillespie's exact method (one infection or recovery at a time, exponential waits, the state read at whole days, stops
+when nobody is infectious or at 5 million events), random numbers from the engine's `random` (so `rng(seed)` repeats
+it); at most 1,000,000 people and runs × people 20 million. Drawn as grey runs against the smooth SIR, printing how
+many died out early against theory (γ/β)^I0. `seihrd(β, σ, γ, [S E I H R D], days, 'Hospital', 'StayDays',
+'Fatality', 'Beds', 'FatalityNoBed', + sir's 'Intervention' / 'Vaccinate')`: a share of those leaving I goes to H, a
+share of those leaving H dies; patients past the beds die at FatalityNoBed (deaths = 1/stay × (m·min(H, B) + m'·
+(H − B)⁺)); the fourth output is daily admissions. `epiOptions` now takes extra option names (and a parsed map) so a
+model can add its own. `fitEpidemic` gives 95% intervals from the curvature at the best fit (s²(JᵀJ)⁻¹ on the logs,
+Student's t by Hill's expansion, `studentT975`), lopsided after exp; R0's from var(log β − log γ); [NaN NaN] when JᵀJ
+is singular. Tests: half of single-case outbreaks at R0 2 die out, the big ones reach the final size, no person lost;
+SEIHRD without hospital equals SEIR, deaths = fatality × admissions, too few beds means 1.5× the deaths; the intervals
+hold the truth on noisy data. Not built: spatial spread (a metapopulation between cities is the natural next step).
+
+## M511 (24 Nov): Hyperion pharmacokinetics, the left-outs
+
+From M493's "Not built". `pk.ts` / `pk-lab.ts`: `pkModel` takes 'Lag' (hours before a dose by mouth starts; `single`
+shifts oral doses, the saturating solver gets oral doses moved by the lag) and 'Q3', 'V3' (a third compartment, needs
+the second). Three compartments go through `mammillary(V, k10, [[k1j, kj1]…])`, general for any number of peripherals:
+the rates solve k10 + Σk1j − λ = Σ k1j kj1/(kj1 − λ), one root between each pair of poles (bracketed, the top end
+doubled until the sign turns), each mode's weight the residue 1/(V(1 + Σ k1j kj1/(kj1 − λ)²)); equal kj1 are merged.
+Two compartments keep the closed form (the test checks the general route gives the same). Older pkModel structs
+without Q3, V3 or Lag still work (read as 0). `pkEffect(t, C, 'Emax', 'EC50', 'Hill', 'E0', 'ke0')`: Hill's sigmoid
+Emax; with ke0 an effect site Ce' = ke0(C − Ce) solved exactly with C straight between samples (`effectSite`); drawn
+as effect over time and the hysteresis loop. `pkFit(t, C, dose, 'Route', 'Every', 'Doses', 'Times', 'Compartments' 1
+or 2, 'F', 'Lag')`: Levenberg–Marquardt on log parameters against log levels (zero levels left out), starts from NCA
+(CL = dose/AUC, V = CL/λz, ka from Tmax; two compartments try six splits), 95% intervals by the curvature (Student's t
+from `studentT975` in epi.ts, M510); returns a pkModel struct plus RMSE, Fitted and CLCI, VCI, kaCI, QCI, V2CI. Tests:
+three compartments against the equations stepped by RK4, the lag exact, Emax at EC50, the effect site for a steady
+and a ramping level, fits recovering one and two compartments (the interval holds CL). Not built: population PK
+(mixed effects: a model of how parameters vary between people), fitting the effect model's parameters (use lsqcurvefit
+on `pkEffect`).
+
+## M512 (24 Nov): Hyperion DNA tools, the left-outs
+
+From M494's "Not built". `bio.ts` / `bio-lab.ts`. **Data:** NCBI's 27 genetic codes (ids 1–6, 9–16, 21–33: name, the
+64 amino acids in TCAG order, the start codons) and Dayhoff's PAM250 (same 24-letter order as BLOSUM62), both checked
+against Biopython 1.85's copies (its wheel read as text, nothing run; NCBI's FTP is blocked from this machine).
+`translate` / `codonToAA` take a code; `nt2aa(…, 'GeneticCode', n or a name)`; `geneticcode(n)` returns ID, Name,
+AminoAcids, Codons, Starts, Stops, and with nothing prints the list. `nwalign`, `swalign` and `multialign` take
+'ScoringMatrix' ('BLOSUM62', 'PAM250', 'NUC44' = the +5/−4 we had). **Files:** `fileText` / `writeFileText` are now
+exported from files.ts for toolbox readers. `fastaread(file or text starting with '>')`: one output a struct (text for
+one record, cells for several; no struct arrays in the engine), two outputs cells; ';' comment lines and a final '*'
+dropped. `fastawrite(file, headers, seqs | struct | seqs)` appends as MATLAB does, 70 letters a line. `genbankread`
+reads the first record: LOCUS (name, length, molecule), DEFINITION over several lines, ACCESSION, VERSION, ORGANISM,
+FEATURES as a table (type, location joined across lines, first /gene and /product), ORIGIN. **multialign**: distances
+1 − identity from pairwise global alignments, a UPGMA guide tree (`upgma`'s internal nodes come in merge order, so
+children always exist before their parent), then profile against profile by Gotoh's three states, a column pair scored
+as the average of its letters' pair scores (gaps 0); returns a cell of rows and the guide tree; without outputs prints
+blocks of 60 with '*' under columns identical in all. Up to 100 sequences, 60,000 letters. `seqconsensus` gives the
+commonest letter per column and the share agreeing. Not built: refinement after the progressive pass (MUSCLE-style),
+reading several GenBank records at once, BLAST-style database search, maximum-likelihood trees.
+
+
+## M513 (24 Nov): Hyperion chemistry, the left-outs
+
+From M495's "Not built". **Periodic table** (`elements.ts`): 118 elements, IUPAC 2021 standard weights (the conventional
+value where IUPAC gives an interval; mass numbers in brackets for those with no stable isotope, `bracketed`); checked
+against the NIST table in the periodictable package (read as text; only Zn differs, IUPAC revised it in 2007).
+`chem-plus.ts` (pure): `parseFormula` (brackets ( ) and [ ], hydrates after '·', '•', '*' or '.', a leading count per
+hydrate part; charges '^2-', '^{3+}', '{2-}' or bare trailing signs, each one charge, so 'Fe3+' reads as Fe₃⁺: write
+Fe^3+), `molarMass` (electrons ignored); `balance`: species split on ' + ' with spaces (so 'Na+ + Cl-' works), a row per
+element plus one for charge, the null space by elimination must be one-dimensional (else "can't, or two reactions in
+one"), scaled to the smallest whole numbers up to ×10,000. **Acids:** an `Acid` is Ka's from the most protonated form,
+total C, and that form's `charge` (0 for H3PO4, 1 for NH4⁺, so ammonia is NH4⁺'s Ka with charge 1); `solvePH` solves
+the charge balance on log h by `root` over [−20, 3] (it rises with h), strong cations (Na⁺) and anions (Cl⁻) given
+apart; with `activity`, Davies' γ (25 °C, A = 0.509) iterated with the ionic strength, concentration constants
+Kc = Ka γ(z_{j−1})/(γ₁ γ(z_j)), Kw/γ₁², the pH −log(γ₁h). `fractions` in logs (no overflow for H3PO4 at pH 14).
+`titration` dilutes analyte and titrant; equivalence volumes are one per proton the titrant can take or give.
+**Heat:** chem.ts now has `reactionRates(m)(c, k)` (per-reaction net rates, k passed each call) and `stoichiometry`;
+`rates` and `equilibrium` use them. `heatedBatch`: [c…, T] with ρCp dT/dt = Σ(−ΔH)r − UA(T − Tc) by `ros23`.
+`cstrSteadyStates`: the mass balance at each of 300 temperatures (Newton from the previous one, `cstr` as fallback),
+G(T) against R(T) = ρCp(T − Tin)/τ + UA(T − Tc), crossings refined by `root`, stable by the slope test (necessary only:
+said in the help). Units: mol/L, J/mol, J/(L·K), W/(L·K), K, s. Language: `molarMass`, `elementInfo`,
+`balanceEquation`, `polyproticPH`, `bufferPH`, `acidSpecies`, `titrationCurve`, `activityCoeff`, `ionicStrength`,
+`heatedBatch`, `cstrSteadyStates` (in chem-lab.ts). Example `solutions.m`. Tests: molar masses of glucose, the hydrate,
+ferrocyanide; three balances (one ionic); H3PO4 against the quadratic, ammonia, the buffer at pKa and its Davies shift,
+acetic acid's titration (pKa half way, 8.72 at equivalence); the adiabatic rise ΔH·c/ρCp; three CSTR states (cold,
+unstable middle, hot) each checked against c = cin/(1 + kτ) and the energy balance. Not built: reactors with pressure
+drop or changing volume, Langmuir–Hinshelwood and other non-mass-action rate laws, activity models past Davies
+(Pitzer), temperature-dependent Ka, a tank that oscillates (the slope test can't see it).
+
+## M514 (24 Nov): Hyperion neuroscience, the left-outs
+
+From M496's "Not built". `neuro-plus.ts` (pure) and its language part at the end of `neuro-lab.ts`. **Cable**
+(`cable`): n compartments, sealed ends, axial coupling 1000·d/(4·Ri·dx²) mS/cm² (d, dx in cm), the injected nA spread
+over the compartment's side area; each step the HH gates by exponential Euler, then the voltages by backward Euler
+along the cable (Thomas' algorithm), as NEURON does. Passive: leak 1/Rm to the rest; active: HH's own leak and
+channels (Rm is ignored), rates × 3^((°C − 6.3)/10). Recorded at most 4000 times and 2 million values; first arrival
+at 0 mV per compartment, the speed from a line through the middle half. `cableNeuron`'s defaults switch with
+'Active': the squid giant axon (476 µm, 35.4 Ω·cm, 5 cm, 500 compartments, 18.5 °C, 2000 nA for 0.5 ms) against a
+thin passive 1 mm dendrite. **Synapses** (`kernel`, `conductance`): exponential, alpha, or two exponentials normalised
+to peak 1 (the peak at τrτd/(τd − τr) ln(τd/τr)). **STDP** (`stdpChange`, `songNeuron`): Song, Miller and Abbott's
+2000 neuron, conductances relative to the leak; Poisson inputs drawn per step as a Poisson count spread over random
+inputs (the same process as independent trains); each input's potentiation trace decays lazily (stored with its last
+time), so a post spike costs one pass over the weights. **Spike sorting** (`detect`, `sortSpikes`): σ = median|x| /
+0.6745, threshold crossings aligned on the peak within 1 ms, dead time, windows of 'Pre' / 'Post' ms; `pca` and
+`kmeans` from ml.ts; the automatic k (1–6) by the mean silhouette on ≤ 600 spikes, a k counted only if every cluster
+holds 5% (a cluster of noise crossings had won otherwise); units numbered by mean peak size. Language: `cableNeuron`,
+`synapseConductance`, `stdpWindow`, `stdpNeuron`, `detectSpikes`, `spikeSort`. Example `brain.m`. Tests: the passive
+cable's V(L)/V(0) = 1/cosh(L/λ) and its λ, τ; the axon at 18.5 °C between 17.5 and 20 m/s (HH's computed 18.8; 18.6
+here) and slower when cold; the kernels' peaks; the pair rule; Song's neuron fast at first, settling under 40 Hz with
+over 60% of weights near 0 or the maximum after 1000 s (1.4 s to run); two simulated units in noise found (> 90%) and
+told apart (> 95%). Not built: branched morphologies (SWC files), channels other than HH's, synapses on the cable,
+plasticity rules other than pair-based additive STDP, filtering raw recordings before sorting (pass a band-passed
+signal), reading electrophysiology files (ABF, NWB).
+
+## M515 (24 Nov): Hyperion physics, the left-outs
+
+From M497's "Not built". `physics-plus.ts` (pure) and its language part at the end of `physics-lab.ts`. **Currents:**
+`biotSavart` is exact per straight piece (μ0I/(4πd)(sB/√(sB²+d²) − sA/√(sA²+d²)) round u × −d̂), so a polygon of 720
+sides matches a loop to 1e-4; `coulomb3` in 3D; `fieldLine` is RK4 along the unit field direction, stopping on leaving
+the box, near a sink, when the field vanishes or when it closes on its seed. `bfield`'s drawing seeds along a line from
+the wire's middle toward its nearest point (a straight wire on its axis gets an offset), so a loop's lines thread it.
+**Optics:** a system is text ('d L; f F; s R n1 n2; m R'), rays [height; angle], matrices multiplied last-first;
+focal length −1/C, back −A/C, front −D/C, an image at si = −(A so + B)/(C so + D); the mirror is unfolded with the
+matrix [1 0; −2/R 1], so a concave (focusing) mirror is R > 0 with focal length R/2 and 'm -100' is a convex one, f = −50
+(the test checks it). `gaussianBeam` propagates q (complex, written out) through d, f and m only (no index
+changes) and reports the last waist. **Relativity:** `relativisticParticle` is the Boris push on u = γv (the rotation
+with t = qBdt/(2mγ⁻)); the speed is kept exactly in a pure B field and stays below c under any E; `chargedParticle(…,
+'Relativistic', true)`. `lorentz`, `addVelocity`, `relativistic`, `minkowskiDiagram`. **Quantum** (eV, nm, electron
+masses; ħ²/2mₑ = 0.0380998212 eV·nm²): `schrodinger` builds the three-point Hamiltonian (ψ = 0 beyond the grid) and
+`tridiagEigen` finds the lowest states by Sturm bisection and inverse iteration (tridiagonal, any size to 50,000);
+`finiteWell` solves the even and odd transcendental equations branch by branch; `barrier` in closed form (E = V0 as its
+limit); `transmission` walks transfer matrices from the right lead (outgoing wave only) to the left, each region with
+its own local origin so evanescent stretches don't overflow early, regions bounded half way between samples and the
+first and last samples as the leads. **Rigid bodies:** `eulerSpin` (rk45 at 1e-10 on the given times), `collide1d`,
+`disks`: event-driven hard disks (the next wall or contact solved exactly, all pairs each event: n ≤ 300), walls
+elastic, pairs with restitution e along the line of centres, positions at the frame times; `diskCollisions` starts on a
+lattice with directions from the engine's `random` (so `rng` repeats it) and takes 'At' for a slider. Example
+`physics2.m`. Tests: a long wire's 2e-5 T, a loop's centre and axis; a wire's field line closing and a dipole's ending on
+−; two lenses' f1f2/(f1 + f2 − d), the lensmaker's 50 from two surfaces, imaging at 2f, a beam's √2 at zR and its focus
+by the formula; the interval, 0.5c ⊕ 0.5c, an electron's γmv/(qB) at 0.9c, a proton pushed by 1 GV/m never at c; the
+infinite well to 1e-5, the oscillator to 1e-4, the finite well against the grid, `transmission` = `barrier` to 1e-9 and
+resonant tunnelling through two barriers; the middle-axis flip with energy and |L| to 1e-8; head-on exchange, energy
+kept through 30 disks' collisions with no overlaps, energy lost at e = 0.5. Not built: rigid bodies' orientation
+(quaternions) and contact between shapes other than disks, field lines of currents in a chosen plane only, thick-lens
+apertures and aberrations, general relativity, time-dependent quantum wave packets, potentials in 2D and 3D.
+
+## M516 (24 Nov): Hyperion chemistry, more left-outs
+
+From M513's "Not built" (the owner, 24 Nov, the list of what was left out). `chem-more.ts` (pure) and its language part
+at the end of `chem-lab.ts`. **Packed bed** (`packedBed`): isothermal, gas phase, along the catalyst mass W:
+dFᵢ/dW = Σ νᵢⱼ r′ⱼ with Cᵢ = C_T0 (Fᵢ/F_T) y (C_T0 = P0/RT in mol/L), dy/dW = −α/(2y) · F_T/F_T0 (Fogler, isothermal),
+by `ros23`; the gas flow v = v0 (F_T/F_T0)/y is reported; it stops where y < 0.01 (said in the window). α = 0 is a gas
+PFR whose flow grows with the moles (the changing volume). `ergunAlpha` gives α and β0 from the bed (SI units).
+**Rate laws** (`RateLaw`: concentrations and T → one net rate per reaction): `massAction`, `lhRate` (k Π K p of the first
+n species / (1 + Σ K p)^n), `rateLawBatch`; in the language `rateLawSim` and `packedBed` take rate constants or a
+function `@(c) [...]` (called with c only). **Pitzer** (`pitzer`, 25 °C, one salt, molality): Aφ = 0.3915, b = 1.2,
+α1 = 2 (2:2: α1 = 1.4, α2 = 12), ln γ± and φ as Pitzer and Mayorga; 2:1 salts stored from their printed (4/3)β0,
+(4/3)β1, (2^(5/2)/3)Cφ; a_w = exp(−φνmM_w). MgSO4 left out on purpose: the commonly quoted 1974 parameters gave γ±
+10% above Robinson and Stokes' table (0.055 against 0.049 at 1 mol/kg) where CuSO4's matched to 1%; a person can pass
+any salt as a struct. Language: `rateLawSim`, `lhRate`, `ergunAlpha`, `packedBed`, `pitzerActivity` (drawn beside
+Davies'). Example `beds.m`. Tests: NaCl's γ± 0.657 and φ 0.936 at 1 mol/kg, 0.986 at 6; KCl 0.604; CaCl2 0.500; CuSO4
+0.0423; y = √(1 − αW) without reaction and the stop near W = 1/α; A → 2B without pressure drop against Fogler's
+(1 + ε) ln(1/(1 − X)) − εX = kW/v0 and v/v0 = 1 + X; LH by hand; a Michaelis-like batch against its closed form. Not
+built: non-isothermal packed beds, mixed electrolytes in Pitzer's model (θ and ψ terms) and temperatures other than
+25 °C, Pitzer inside `solvePH`.
+
+## M517 (24 Nov): Hyperion neuroscience, more left-outs
+
+From M514's "Not built". `neuro-tree.ts` (pure), `neuro-files.ts` (readers), the language part at the end of
+`neuro-lab.ts`. **Branches:** `parseSWC` (id type x y z radius parent; `#` comments), `buildTree`: the root is a cylinder
+as long as it is wide (a sphere's area), every other point ends a piece from its parent cut to at most 'MaxLength' µm
+(20), breadth-first so a parent always comes before its children; one root only, at most 20,000 compartments.
+`treeNeuron` works in nF, µS, mV, ms and nA: backward Euler, Hines' two sweeps (up the tree eliminating, down it
+substituting), HH by exponential Euler only where `active(type)` says ('none', 'soma', 'axon' = soma and axon, 'all'),
+else a leak of 1/Rm at rest; synapses are one event each (kernel from `neuro-plus.ts`, nS, implicit in V);
+`cableTerms` gives the axial conductance from the two half pieces' resistances. An SWC id names the last piece ending at
+that point. **Cleaning:** Butterworth by RBJ biquads at Q = 1/(2cos((2k−1)π/2N)) (even orders 2–8), notches (Q 30)
+at the mains and its harmonics up to 5× below the band's top, `zeroPhase` with odd reflection at both ends long enough to
+settle (3 periods of the low edge, 5 notch time constants), each section started at its DC steady state;
+`commonAverage` takes the median across channels. detectSpikes and spikeSort take 'Band', 'Notch', 'Order'. **Files:**
+`readAbf`: ABF2 only (ABF 1 refused with how to convert), offsets as pyabf documents them (header: episodes @12, data
+format @30, sections of 16 bytes from @76: protocol, ADC @92, strings @220, data @236; protocol: mode @0, interval µs @2,
+ADC range @110, resolution @118; ADC entry: instrument scale @40, signal gain @48, programmable gain @28, telegraph gain
+@6 when enabled @2, offsets @44 − @52, name and unit string indices @74, @78 counted from the 'clampex'/'clampfit'/
+'axoscope'/'patchxpress' string). Checked against a file laid out the same way in the test, not yet against a real
+Clampex recording. `readNwb`: series under /acquisition and /stimulus/presentation with a numeric `data`, scaled by
+`conversion` and `offset`, `starting_time` and its `rate`, or `timestamps`. **hdf5.ts** now reads variable-length string
+attributes (the global heap, 'GCOL'), which h5py and the NWB tools write; the fixture `fixtures/nwb-small.nwb` was
+written with h5py (gzip chunks, int16, a vlen unit). Language: `swcRead`, `treeNeuron`, `filterRecording`, `abfload`
+(MATLAB's File Exchange name: d, si in µs, h), `nwbRead`. Example `branches.m`. Tests: an unbranched tree equals
+`cable()` to 1e-6; Rall's 3/2 rule (two daughters of the right size and length give the soma the same voltage as one
+cylinder, within 1%); a spike reaching an active axon's end, later than its middle; a distal EPSP over halved at the
+soma; 1 kHz kept and 50 Hz cut by the band-pass, the notch alone killing 50 and keeping 130; spikes under 300 mV of
+4 Hz and 80 mV of hum sorted after filtering (> 85% found, > 90% agreeing); ABF2 and NWB read back. Not built: ABF 1,
+NWB's processing modules and units tables, channel types other than HH's on the tree, 3D views of the morphology (drawn
+from above), spines.
+
+## M518 (24 Nov): Hyperion physics, more left-outs
+
+From M515's "Not built". `physics-more.ts` (pure) and its language part at the end of `physics-lab.ts`.
+**Orientation** (`spinBody`): state [ω (body), q (scalar first, body → space)], Euler's equations with a torque,
+q' = ½ q ⊗ (0, ω), `rk45` at 1e-11, q renormalised on output; gravity for a top on a fixed point as m·g·l with the centre
+of mass on the body's third axis and gravity down space z (body torque = l e3 × (−mg Rᵀẑ)); reports the third axis and
+L in space and the energy. **Real rays** (`traceSurfaces`): surfaces [R t n (Vd)], the first vertex at z = 0, light
+from −z, the stop at the first surface; the sphere's intersection on the vertex's side (−b − √ for R > 0, + for R < 0),
+vector Snell, total reflection drops the ray; n(λ) by two-term Cauchy from nd and Vd (F, d, C lines); `axisCrossing`,
+`paraxialFocus` (a ray at 1e-5 of the aperture), `spot` (hexagonal rings filling the pupil, field angle in y–z), an
+optional `paths` record for drawing. **Schwarzschild** (G = c = M = 1): bound orbits from their turning points
+(1/L² = (u1 + u2)/2 − (u1² + u1u2 + u2²); refused unless the cubic's third root u3 = ½ − u1 − u2 lies above u1);
+u'' = 1/L² − u + 3u² by rk45, perihelia where u' changes sign; light u'' = −u + 3u² from u = 0, u' = 1/b; both
+right-hand sides frozen once u > 0.6 (inside the horizon) so the solver doesn't chase the singularity.
+`perihelionShift` in SI. **Wave packet** (`wavePacket`): Crank–Nicolson in eV, nm, fs (ħ = 0.6582119569 eV·fs,
+ħ²/2m from `HB2M`), ψ = 0 beyond the grid, the tridiagonal complex factorisation done once, |ψ|² saved at the asked
+times. **2D/3D** (`boundStates`): LOBPCG on [X W P] with modified Gram–Schmidt twice (dropping dependent vectors) and
+Rayleigh–Ritz by `symEig` (sim/modal.ts), block size states + 3, deterministic start; preconditioner the exact inverse
+of (−(ħ²/2m)∇² + mean(V − Vmin)) by dense sine transforms along each axis (O(n·N) per axis); stops at residual
+< 1e-6 × scale or when the energies stop moving (< 1e-10 × scale) with residuals under 1e-3 × scale (degenerate states
+converge slowly: a 24³ oscillator takes ~4 s). In the language V is in meshgrid's layout (rows y) or a function; ours
+runs x fastest, converted both ways. Language: `rigidRotation`, `lensAberration`, `spotDiagram`, `realRayTrace`,
+`schwarzschildOrbit`, `lightBending`, `perihelionShift`, `wavePacket`, `schrodinger2D`, `schrodinger3D`. Example
+`physics3.m`. Tests: a free symmetric body's ω1 = A cos((I3 − I1)/I1 ω3 t) to 1e-6 and L in space fixed to 1e-7; a
+fast top precessing at mgl/(I3ω3) within 5% with energy to 1e-7; one refracting surface against the exact
+sine-rule crossing to 1e-9 and nR/(n − 1); a plano-convex lens's aberration negative and growing as h², blue focus
+short of red, best focus spot under half the paraxial one, the image height f tan θ; precession and deflection
+within 1% of 6πM/(a(1 − e²)) and 4M/b far out, capture at b = 5.1 and not 5.3, Mercury's 43″; a free packet's norm
+to 1e-6, its spread σ√(1 + (ħt/2mσ²)²) and speed; a barrier's transmitted share against the plane waves' transmission
+averaged over the packet's momenta (to 0.005); the 2D box against the discrete eigenvalues to 1e-7 (with the (1,2),
+(2,1) pair); the 3D oscillator's 3/2 and threefold 5/2 ħω within 5%. Not built: contact between rigid shapes other than
+disks, aspheres and Seidel coefficients, Kerr (spinning) black holes and orbits out of the plane, time-dependent
+packets in 2D, 3D views of 3D states (slices only).
+
+## M519 (25 Nov): Hyperion physics, the last left-outs (shapes, Kerr, 3D states)
+
+From M518's "Not built" (the owner: "please do this"). **Shapes** (`rigid2d.ts`, `rigidShapes`): convex polygons (any
+corners, centred on their centroid, made counter-clockwise, concave refused) and circles; contacts by the
+separating-axis test with Box2D-style clipping of the incident edge (up to two points), circle–polygon by the nearest
+face or corner, walls as four half-planes; sequential impulses (20 passes) with accumulated clamping, restitution
+targeted from the approach speed only above 2g·dt (slower contacts rest, so nothing jitters) and Coulomb friction within
+μ·jn; afterwards a position-only push apart (80% beyond a slop of 1e-4 of the box) so no energy is made. 'Fixed' bodies
+have infinite mass (ramps, pegs). The step is capped so nothing moves a tenth of its smallest size in one. **Kerr**
+(`kerr.ts`, G = c = M = 1): Boyer–Lindquist, Mino time, r'' = R'/2 and u'' = U'/2 (u = cos θ), re-projected onto
+(dr/dλ)² = R and (du/dλ)² = U after every output step (without it, light from r = 1000 lost the constraint: R ~ r⁴).
+`constants(a, p, e, inc)` solves E, Lz by Newton with Q = Lz² tan² inc (polar orbits solve E, Q with Lz = 0);
+`circular`, `isco` (Bardeen–Press–Teukolsky), `photonOrbit`, `shadow` (Bardeen's ξ, η along the spherical light
+orbits), `precessions` (φ between southward equator crossings, periapsis by a parabola). Pictures in x = √(r² + a²)
+sin θ cos φ. **3D views**: a new figure grid kind `'tri'` (`plot.ts` `Grid.tri` / `face` / `edge`; drawn in `draw3d`
+with the other faces, sorted far first, lit per face or by averaged corner normals under `lighting gouraud`; LaTeX as
+a pgfplots patch); `isosurface.ts` by marching tetrahedra (six a cube along one diagonal, so it has no holes; triangles
+face away from larger values); `isosurface` (meshgrid layout, level the middle of the range when left out, adds a
+camlight and gouraud when the axes have no light) and `patch(fv)` / `patch('Faces', F, 'Vertices', V, …)` (polygons
+as fans; FaceColor, EdgeColor, FaceAlpha, FaceVertexCData). `schrodinger3D` now draws ψ = ±30% of its peak in blue
+and orange ('View', 'slice' for the old middle slice). Example `physics4.m`. Tests (`physics-m519.test.ts`): a square's
+s²/6, equal squares swapping speeds, a tilted square's corner hit keeping its energy to 1e-8 and spinning, a pair's
+momentum to 1e-9, a box sliding v²/(2μg) and resting flat, a ball bouncing to e² its height, a disc rolling down a
+fixed ramp at ⅔ g sin θ with ωr = v; horizon, ISCO 6 / 1 / 9 and light orbits 3 / 1 / 4; a circle's constants against
+the closed form and staying circular to 1e-6; with no spin the periapsis shift equal to M518's Schwarzschild solver;
+a tilted circle's φ per vertical swing 2π Ω_φ/Ω_θ (the exact Kerr vertical frequency) to 1e-4; capture 2% either side
+of the critical b both ways; a = 0's deflection equal to `lightRay`; the shadow a 3√3 circle without spin and
+−2 … 7 edge-on at a = 1; a sphere's isosurface closed (every edge in two triangles) holding 4/3 π r³ to 1%. Not built:
+friction between two moving shapes in 3D (2D only), concave shapes (split them), Kerr–Newman (charge), light out of
+the equator in `kerrLight` (the shadow covers it), and a smooth-shaded isosurface coloured by another field.
+
+## M520 (25 Nov): Hyperion physics, M519's left-outs (dents, 3D, charge, light from anywhere)
+
+The owner sent M519's "left out on purpose" list back. **Dents** (`rigid2d.ts`): `polygon` takes any simple outline
+(up to 64 corners; a crossing outline is refused), its area, centroid and ∫r² by the shoelace sums (signed, so dents
+count right), and `convexParts`: ear clipping into triangles, then Hertel–Mehlhorn (a shared diagonal removed while the
+merged piece stays convex). `Shape.poly.parts` collide part by part (`worldParts`); walls still use the outline's corners.
+**3D** (`rigid3d.ts`, `rigidShapes3D`): `hull(points)` by every plane through three points with all on one side, coplanar
+corners merged into one face (ordered round its normal, mid-edge points dropped), volume, centroid and inertia per unit
+mass from tetrahedra (∫xxᵀ = V/20 (Σ vvᵀ + ssᵀ)); `boxHull`; balls. Each body keeps L in space, ω = R J⁻¹ Rᵀ L, the
+quaternion turned by exp(ω dt): a free body keeps L exactly. Contacts: SAT over both face normals and every edge × edge
+(edges biased 5% so faces win ties); the reference face is the one pointing along the axis (opposite faces share an axis:
+the bug fixed while building), the incident face clipped by Sutherland–Hodgman against its sides; edge–edge by the two
+nearest segment points; ball–hull by the deepest face inside or the nearest face / edge point outside. Friction is a disc
+(both tangent impulses scaled to μ jn together). **Charge** (`kerr.ts`): Δ = r² − 2r + a² + q², P = E(r² + a²) − aLz − εqr
+(ε the particle's charge per mass); `circular` keeps Kerr's closed form and otherwise walks Newton in from r = 30 with
+the charge added in 20 steps; `isco` by bisection on R'' < 0; the light orbits and the shadow from the general
+ξ = (r² + a² − 4rΔ/Δ')/a, η = 16r²Δ/Δ'² − (ξ − a)² (equal to Bardeen's at q = 0), their r range where η ≥ 0 (scanned and
+bisected); no spin: a circle r²/√Δ at r = (3 + √(9 − 8q²))/2. The language keeps a² + q² a hair under 1. **Light from
+anywhere**: `imageRay` (Lz = −α sin θo, Q = β² + (α² − a²) cos² θo), traced back from r = 200 with `north = β > 0`;
+`kerrLight(…, 'Inclination', deg, 'Beta', β)` draws it in 3D. **axis equal in 3D** (`draw3d`): the shorter ranges widen
+about their middles to the box's 2 : 2 : 2·ZS, so a ball is round. Example `physics5.m`. Tests (`physics-m520.test.ts`):
+an L's two parts, area and ∫r² against two rectangles; a star rests on the floor without sinking; a ball rests inside a
+fixed U; a cube hull's 6 faces, 12 edges, s²/6, a tetrahedron's 1/6 and centroid; a tumbling box's L to 1e-12; equal cubes
+swapping speeds; a ball bouncing to e²; a tilted cube's corner hit keeping its energy to 1e-7 and spinning; a box sliding
+v²/(2μg) and resting; a cube stacked off-centre staying; RN's horizons, light sphere 2, ISCO 4 at q = 1 and the cubic for
+q = 0.6, the shadow r²/√Δ through the spinning formulas; q → 0 giving Kerr back; a particle with ε = 1 hovering beside an
+extremal hole (the Majumdar–Papapetrou balance) and falling in without its charge; a charged circular orbit staying
+circular to 1e-6; rays 3% inside the shadow's edge caught and 3% outside escaping, at three places round it. Not built:
+rolling resistance (balls roll for ever on a flat floor), concave solids in 3D (split them into convex ones by hand),
+magnetic charge, and a ray-traced picture of a disc round the hole.
+
+## M542 (25 Nov): Hyperion physics, M520's left-outs (rolling, dented solids, magnetic charge, the disc)
+
+Numbered after the signals branch's M541 (this branch's M492–M520 were used up). **Rolling resistance** ('Rolling',
+`roll` in both `simulate`s): at a contact with a ball or circle, an angular impulse against the relative turning across
+the contact (3D: the part of ω_b − ω_a across n), accumulated and kept within Crr · jn · r (r the smaller radius); boxes
+don't get it. A rolling disc slows at Crr g / 1.5, a ball at Crr g / 1.4. **Glued solids** (`r3.compound`): parts from
+`hull` / `boxHull` with their centroids in one frame; volume summed, centre volume-weighted, J = ∑ V_i (J_i + |d|²1 −
+ddᵀ) / V; `Shape3` is now `{ kind: 'hull'; parts }` (a single hull is one part), `posed(b)` gives each part's corners,
+normals and hull in space, contacts loop over part pairs, and `hullHull` points its axis by the parts' own middles (a
+compound's centre can sit outside a part). In the language a shape may be a cell of parts, each n × 3 corners or a
+placed box [w d h x y z]. Parts that overlap count twice. **Magnetic charge** g (`Charge.g`): Δ gains g² everywhere; the
+θ equation is now the general (du/dλ)² = (1 − u²)(K − μa²u²) − P_θ², K = Q + (Lz − aE)², P_θ = aE(1 − u²) − Lz − εg u
+(`Uf`, `dU` exported; equal to the old one at εg = 0, tested), dt/dλ = −aP_θ + (r² + a²)P/Δ, dφ/dλ = −P_θ/(1 − u²) +
+aP/Δ. R doesn't see εg, so `constants` and `circular` still set the radial motion; a charged body then rides a cone
+(Poincaré), shown in `kerrOrbit`'s title. Light and the shadow use the metric charge √(q² + g²) (`charge()` in the
+language returns q, g and m). **The disc** (`discImage`, `kerrDisc`): fixed-step RK4 in Mino time (h = 0.02 / (r +
+√(Q + Lz²) + 1)), re-projected onto R and U each step, from r = 1000, stopped at the first equator crossing between rIn
+(the ISCO) and rOut, at the horizon (×1.01) or going out past r0; brightness g⁴ (1 − √(rIn/r)) / r³, g = 1/(uᵗ(1 − Ωξ))
+with Ω and uᵗ from the circular orbit's E, L on a 300-radius log table. 80 × 80 takes ~1.3 s; the language allows 16–240
+pixels. Drawn with `imagesc`, `colormap hot`, brightness^¼, `axis xy`. Example `physics6.m`. Tests
+(`physics-m542.test.ts`): the two rolling rates and no slowing without it; an L's centre and I_yy by hand, landing and
+resting on both feet; a ball staying in a U of three glued boxes; the general θ equation against the old; a charged
+particle's cos θ held on Poincaré's cone to 1e-7; a face-on disc's shadow pixel empty and its far shift √(1 − 3/r); the
+approaching half more than twice as bright edge-on; the language bits. Not built: rolling resistance for boxes' edges
+(they don't roll), automatic splitting of a dented 3D mesh into convex parts, the disc's thickness and colour by
+temperature, and light that passes through the disc (it's opaque).
+
+## M543 (25 Nov): Hyperion physics, M542's left-outs (boxes that rock, dented meshes split, the disc's thickness, colour and see-through)
+
+The owner sent M542's "left out on purpose" list back. **Rolling resistance for any shape** (`rigid2d.ts`, `rigid3d.ts`):
+the same capped angular impulse, but a polygon or solid gets it too, its lever the distance from its centre to the
+contact (a circle or ball keeps its radius); fixed bodies give no lever. Resting flat it does nothing (no relative turn);
+rocking, tipping or tumbling on a corner it takes the energy out. **`convexSplit(V, F)`** (`r3.convexSplit`): a closed
+mesh (faces of any size, dents allowed in a face: `earClip` in the face's plane; closed and turned one way round is
+checked, a negative volume flipped). Parts are convex cells (planes) met with the mesh; a cell's corners are mesh corners
+inside it, mesh edges through its planes, cell corners inside the mesh and cell edges through mesh triangles; a point
+that only touches as a flat sliver is dropped (a 1e-5 step towards the middle, the mean of a 9³ grid inside both, must be
+inside the mesh: the corners' own mean can sit on the dent's edge, the bug met while building). A part is kept when ≥ 98%
+of a 12³ grid inside its hull is inside the mesh (`insideMesh`: ray parity along a skewed direction); otherwise it is cut
+by the plane of a face beside a fold inwards (a reflex edge) that leaves the least empty volume, worst part first, up to
+12 parts. `hull` takes a `max` (64 for these parts and in `rigidShapes3D`). **The disc** (`discImage`): `thick` = h/r
+(0–0.3) makes its faces the cones |cos θ| = h/r, entered from above or below, the gas taken at the cylinder radius;
+`opacity` < 1 adds each later crossing times (1 − opacity)ᵏ (stops under 1e-3), so the far side and the thin ring show
+through; `T` is g · (F/F_peak)^¼, brightness-weighted (F peaks at 49/36 rIn). `blackbodyRGB(T)`: Planck through Wyman,
+Sloan and Shirley's CIE fit, to sRGB, brightest channel 1. In the language: 'Thickness', 'Opacity', 'Colour'
+'temperature' (an RGB `image`, colour × brightness^¼), 'Temperature' (hottest gas, K), a 4th output T in kelvin.
+Example `physics7.m`. Tests (`physics-m543.test.ts`): a tumbling hexagon stops sooner, a box resting flat isn't moved, a
+tipped cube settles; a cube one part, an L two, a U three with their volumes; the split L glued back has the L's centre
+and rests; an open mesh refused; blackbody colours at 2000, 6500, 20 000 K; the plain disc unchanged; see-through adds
+light; a thick disc edge-on covers more. Not built: a smooth curved mesh is split into many flat-cut parts (12 at most;
+the rest stay a little hollow-hulled), the disc's own thickness doesn't shadow its far side's glow (the light passes
+the slab once per entry), and no light from the disc's inner edge wall.
+

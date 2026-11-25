@@ -1,6 +1,7 @@
 // Hyperion's help (M391): a line for every function, grouped as a person looks for them. `help name` and `doc
 // name` print it, the editor shows it beside suggestions and on hover, the function browser lists it. Written for
 // this Lab (what our own functions do), in plain words.
+import { SCIENCES_HELP } from './help-sciences';
 
 const TEXT = `
 # Numbers and arithmetic
@@ -565,7 +566,8 @@ errorbar | errorbar(x, y, err) | Points with error bars.
 pie | pie(x, explode, labels) | A pie chart.
 pie3 | pie3(x) | A pie chart.
 fill | fill(x, y, 'g') | A filled shape.
-patch | patch(x, y, c) | A filled shape (added to the plot).
+patch | patch(x, y, c), patch(fv), patch('Faces', F, 'Vertices', V, 'FaceColor', 'r', 'EdgeColor', 'none', 'FaceAlpha', 1) | A filled shape (added to the plot), or a 3D surface of faces (rows of vertex numbers) and vertices (n × 3), as isosurface gives them.
+isosurface | isosurface(X, Y, Z, V, level), fv = isosurface(V, level), [F, P] = isosurface(...) | The surface where a 3D array V (laid out as meshgrid makes it) equals level (the middle of its range if left out): drawn, lit, without outputs; fv has faces and vertices for patch.
 rectangle | rectangle('Position', [x y w h], 'Curvature', c) | A rectangle (or rounded, or an ellipse).
 line | line(x, y) | A line added to the plot.
 text | text(x, y, 'words') | Words on the plot.
@@ -616,8 +618,11 @@ cla | cla | Clears the axes.
 close | close, close all | Closes figures.
 gcf | gcf | The current figure's number.
 gca | gca, set(gca, 'XLim', [0 10]) | The current axes (for set).
-set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on') | Changes the current axes' limits and grid.
-drawnow | drawnow | Draws now.
+set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on'), set(h, 'XData', x, 'YData', y) | Changes the current axes' limits and grid, or a line's points, colour and width by its handle (h = plot(…)).
+drawnow | drawnow | Shows the figure as it is now, while the script goes on: call it in a loop to animate.
+animatedline | h = animatedline('Color', 'r') | An empty line to grow point by point (addpoints) while a loop draws it.
+addpoints | addpoints(h, x, y) | Adds points to an animated line; drawnow shows them.
+clearpoints | clearpoints(h) | Empties an animated line.
 rlim | rlim([a b]) | A polar plot's radius limits.
 
 # 3D plots and colour
@@ -966,7 +971,7 @@ warning | warning('message') | Shows a warning and goes on.
 assert | assert(condition, 'message') | Stops when the condition is false.
 input | input('prompt') | (Not available in the browser: no keyboard prompt.)
 keyboard | keyboard | (Not available here.)
-pause | pause(s) | Waits (figures update).
+pause | pause(s) | Shows the figure as it is now and waits s seconds: a loop with pause(0.05) plays as an animation.
 tic | tic | Starts a stopwatch.
 toc | toc | Seconds since tic.
 clock | clock | [year month day hour minute seconds].
@@ -993,7 +998,7 @@ export const HELP = new Map<string, Entry>();
 export const SECTIONS: string[] = [];
 {
   let section = '';
-  for (const line of TEXT.split('\n')) {
+  for (const line of (TEXT + SCIENCES_HELP).split('\n')) {
     if (line.startsWith('# ')) { section = line.slice(2); SECTIONS.push(section); continue; }
     const m = /^(\S+) \| (.+?) \| (.+)$/.exec(line);
     if (m) HELP.set(m[1], { name: m[1], syntax: m[2], text: m[3], section });

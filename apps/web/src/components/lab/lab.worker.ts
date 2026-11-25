@@ -19,6 +19,7 @@ import '@/lib/lab/filters-lab';
 import '@/lib/lab/audio-lab';
 import { serialFeed, type SerialOut } from '@/lib/lab/serial-lab';
 import { reportText, runScriptTests, testReports, type TestReport } from '@/lib/lab/verify-lab';
+import '@/lib/lab/sciences';
 import '@/lib/lab/help-commands';
 import { parallel, runResumable, type Pool, type Task, type TaskResult } from '@/lib/lab/parallel-lab';
 import '@/lib/lab/gpu-lab';
@@ -40,7 +41,7 @@ import type { SweepFrame } from '@/lib/lab/sweep';
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { run: string; id: number; test: string } | { serial: Parameters<typeof serialFeed>[0] } | { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
+export type ToLab = { run: string; id: number; test: string } | { serial: Parameters<typeof serialFeed>[0] } | { run: string; id: number; animate?: boolean } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -51,6 +52,7 @@ export type FromLab =
   | { out: string }
   | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[]; drawn: number[] }
   | { fig: FigOut }
+  | { live: FigOut }
   | { names: string[] }
   | { sound: { channels: Float32Array[]; fs: number } }
   | { serialOut: SerialOut }
@@ -82,6 +84,24 @@ const host: Host = {
   now: () => performance.now(),
   serial: (m) => { postMessage({ serialOut: m as SerialOut } satisfies FromLab); },
   sound: (channels, fs) => { flush(); postMessage({ sound: { channels, fs } } satisfies FromLab); },
+};
+// Live drawing (M506): while a run from the window goes, drawnow and pause send the current figure at most ~30 times a
+// second, and pause really waits (this thread only: the page stays free; Stop ends the worker).
+let animating = false, dirty = false, frameAt = 0;
+host.frame = () => {
+  if (!animating) return;
+  flush();
+  const f = graphics.current;
+  if (!f || !dirty || performance.now() - frameAt < 33) return;
+  dirty = false; frameAt = performance.now();
+  const out = figOut(f.id);
+  if (out) postMessage({ live: out } satisfies FromLab);
+};
+host.wait = (s) => {
+  if (!animating) return;
+  // shortcut: a busy wait (Atomics.wait needs a cross-origin-isolated page); it runs in the engine's own thread.
+  const end = performance.now() + s * 1000;
+  while (performance.now() < end) { /* waiting */ }
 };
 const lab = new Lab(host);
 // M477: a pool of engines for parfor and parfeval (one fewer than the computer's cores, at most 8), started the first
@@ -217,7 +237,8 @@ self.onmessage = async (e: MessageEvent<ToLab>) => {
   const code = 'watch' in m ? m.watch : 'profile' in m ? m.profile : m.run;
   if ('watch' in m) recorder = new Recorder(code, graphics);
   if ('profile' in m) { profiler = new Profiler(code, () => performance.now()); host.fnTimer = profiler; }
-  graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
+  animating = 'animate' in m && !!m.animate; dirty = false; frameAt = 0;
+  graphics.onChange = () => { touched = true; dirty = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
   try {
     // M476: the Test button runs the script's %% sections (and test functions) as tests.
     // M523: Run on a test class (classdef … < matlab.unittest.TestCase) runs its tests too.
@@ -226,6 +247,7 @@ self.onmessage = async (e: MessageEvent<ToLab>) => {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;
   }
+  animating = false;
   const w = takeWarning();
   if (recorder) {
     if (w) recorder.write(`${w}\n`);

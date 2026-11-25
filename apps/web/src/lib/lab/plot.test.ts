@@ -163,3 +163,39 @@ describe('Hyperion: more plot kinds (M381)', () => {
     expect(run('fplot3(@(t) cos(t), @(t) sin(t), @(t) t, [0 6])').current!.axes.get(1)!.series[0].z).toHaveLength(300);
   });
 });
+
+describe('Hyperion: live drawing while a script runs (M506)', () => {
+  const setup = () => {
+    const g = new Graphics(), frames: number[] = [], waits: number[] = [];
+    const lab = new Lab({ out: () => {}, graphics: g, frame: () => frames.push(g.current?.axes.get(1)?.series[0]?.x.length ?? 0), wait: (s) => waits.push(s) });
+    return { g, lab, frames, waits };
+  };
+  it('drawnow and pause show each frame; pause asks to wait', () => {
+    const { lab, frames, waits } = setup();
+    lab.run('for k = 1:3, plot(1:k, (1:k).^2); drawnow; end\npause(0.25)');
+    expect(frames).toEqual([1, 2, 3, 3]);
+    expect(waits).toEqual([0.25]);
+  });
+  it('animatedline grows with addpoints; clearpoints empties it', () => {
+    const { g, lab } = setup();
+    lab.run("h = animatedline('Color', 'r', 'LineWidth', 2);\nfor k = 1:5, addpoints(h, k, k^2); drawnow; end");
+    const s = g.current!.axes.get(1)!.series[0];
+    expect(s.y).toEqual([1, 4, 9, 16, 25]);
+    expect(s.width).toBe(2);
+    expect(s.color).toBe('#dc2626');
+    lab.run('clearpoints(h)');
+    expect(s.x).toEqual([]);
+  });
+  it("h = plot(…) and set(h, 'YData', …) move a line", () => {
+    const { g, lab } = setup();
+    lab.run("x = 0:0.5:1; h = plot(x, x); set(h, 'YData', 2*x, 'Color', 'k')");
+    const s = g.current!.axes.get(1)!.series[0];
+    expect(s.y).toEqual([0, 1, 2]);
+    expect(s.color).not.toBe('#2563eb');
+    expect(() => lab.run('addpoints(3, 1, 1)')).toThrow(/handle/);
+  });
+  it('pause without a window waits for nothing', () => {
+    const g = new Graphics(), lab = new Lab({ out: () => {}, graphics: g });
+    expect(() => lab.run("pause(2); pause; pause('off')")).not.toThrow();
+  });
+});

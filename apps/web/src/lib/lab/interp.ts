@@ -33,6 +33,10 @@ export interface Host {
   trace?(at: number, vars: Map<string, Value>, depth: number): void;
   /** Time it (M401): told when a function (built-in or the script's own) starts and finishes. */
   fnTimer?: { enter(name: string): void; leave(): void };
+  /** Live drawing (M506): drawnow and pause ask the window to show the figures as they are now. */
+  frame?(): void;
+  /** pause(t) (M506): really wait t seconds (only while the window animates; elsewhere pause doesn't wait). */
+  wait?(seconds: number): void;
 }
 
 /** break / continue / return, and 'pause' (M477: a run waiting for parallel work, resumed by parallel-lab.ts). */

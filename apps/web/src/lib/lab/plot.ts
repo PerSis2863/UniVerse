@@ -1,5 +1,5 @@
 import { LabError } from './parse';
-import { mat, numel, scalar, toMat, type Value } from './values';
+import { mat, num, numel, scalar, toMat, type Value } from './values';
 import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { hexAt, mapOf } from './colormap';
@@ -16,8 +16,9 @@ export type Kind = 'line' | 'scatter' | 'bar' | 'barh' | 'stairs' | 'stem' | 'ar
 export interface Series { kind: Kind; x: number[]; y: number[]; z?: number[]; level?: number; value?: number; cv?: number[]; filled?: boolean; err?: [number[], number[]]; base?: number[]; edge?: string; fa?: number; color: string; dash: '' | '--' | ':' | '-.' | 'none'; marker: string | null; width: number; label: string | null; size: number }
 /** A surface or mesh (x, y, z all r×c, column by column), or an image / filled contour (x: c column centres, y: r row
  * centres, z: r×c values; `direct` images index the colour map, `levels` band a filled contour, `rgb` holds a full-colour
- * picture's red, green and blue pages from 0 to 1, M382). */
-export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean; rgb?: number[] }
+ * picture's red, green and blue pages from 0 to 1, M382). A 'tri' patch (M519) has r vertices (c = 1) and `tri` lists its
+ * triangles' corners (0-based, three a triangle), one `face` colour or the colour map over `cdata` / z. */
+export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled' | 'tri'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean; rgb?: number[]; tri?: number[]; face?: string; edge?: string }
 /** Text placed on the axes (text). */
 export interface Note { x: number; y: number; z?: number; s: string; color: string | null; size: number; align: 'start' | 'middle' | 'end' }
 /** A line across the whole axes at x = v or y = v (xline, yline). */
@@ -32,11 +33,17 @@ export const PALETTE = ['#2563eb', '#ea580c', '#16a34a', '#9333ea', '#dc2626', '
 const LETTER: Record<string, string> = { b: '#2563eb', r: '#dc2626', g: '#16a34a', c: '#0891b2', m: '#c026d3', y: '#ca8a04', k: '#111827', w: '#ffffff' };
 const NAMED: Record<string, string> = { blue: LETTER.b, red: LETTER.r, green: LETTER.g, cyan: LETTER.c, magenta: LETTER.m, yellow: LETTER.y, black: LETTER.k, white: LETTER.w };
 
+/** Line handles start here, far above figure numbers. */
+export const HANDLE = 1000;
 export class Graphics {
   figures: Figure[] = [];
   current: Figure | null = null;
   /** Called after any change (the window redraws the figure). */
   onChange: (() => void) | null = null;
+  /** Lines a script holds by handle (M506): h = plot(…), animatedline; handle k is HANDLE + its place here. */
+  handles: Series[] = [];
+  handle(s: Series) { this.handles.push(s); return HANDLE + this.handles.length - 1; }
+  line(h: number): Series | undefined { return Number.isInteger(h) && h >= HANDLE ? this.handles[h - HANDLE] : undefined; }
   figure(id?: number) {
     let f = id !== undefined ? this.figures.find((x) => x.id === id) : undefined;
     if (!f) { f = { id: id ?? (Math.max(0, ...this.figures.map((x) => x.id)) + 1), rows: 1, cols: 1, axes: new Map(), current: 1, name: '', cmap: mapOf('hyperion')!, title: '' }; this.figures.push(f); }
@@ -126,7 +133,8 @@ function seriesFrom(args: Value[], lab: Lab, kind: Kind): Series[] {
     const [X, Y] = !second && first.im ? [mat(first.r, first.c, first.d), mat(first.r, first.c, first.im)] : second ? [first, second] : [mat(first.r === 1 || first.c === 1 ? 1 : first.r, first.r === 1 || first.c === 1 ? first.d.length : 1, Array.from({ length: first.r === 1 || first.c === 1 ? first.d.length : first.r }, (_, k) => k + 1)), first];
     i += second ? 2 : 1;
     const spec: Value[] = [];
-    while (i < args.length && args[i].k === 'str' && !(args[i + 1] && args[i + 1].k !== 'str' && isPairName(args[i]))) { spec.push(args[i]); i++; if (spec.length) break; }
+    // A pair name starts the name–value pairs whatever its value is ('Color', 'r' or '#2563eb' included, M504's fix).
+    while (i < args.length && args[i].k === 'str' && !(args[i + 1] && isPairName(args[i]))) { spec.push(args[i]); i++; if (spec.length) break; }
     const columns = Y.r === 1 || Y.c === 1 ? [[...Y.d]] : Array.from({ length: Y.c }, (_, j) => [...Y.d.subarray(j * Y.r, j * Y.r + Y.r)]);
     const xs = X.r === 1 || X.c === 1 ? [...X.d] : null;
     columns.forEach((ys, j) => {
@@ -142,7 +150,35 @@ function seriesFrom(args: Value[], lab: Lab, kind: Kind): Series[] {
 }
 export const isPairName = (v: Value) => v.k === 'str' && /^(linewidth|color|displayname|markersize|marker|linestyle|markerfacecolor|facecolor)$/i.test(v.v);
 
-def('plot', (a, _n, lab) => { if (!a.length) throw new LabError('plot needs something to draw, like plot(x, y).'); add(lab, seriesFrom(a, lab, 'line')); return []; });
+def('plot', (a, nout, lab) => {
+  if (!a.length) throw new LabError('plot needs something to draw, like plot(x, y).');
+  const s = seriesFrom(a, lab, 'line');
+  add(lab, s);
+  // h = plot(…) gives a handle per line, for set(h, 'XData', …, 'YData', …) in an animation (M506).
+  return nout > 0 ? [mat(s.length, 1, s.map((x) => gfx(lab).handle(x)))] : [];
+});
+// animatedline / addpoints / clearpoints (M506): a line that grows point by point while the window shows it.
+def('animatedline', (a, _n, lab) => {
+  const g = gfx(lab), first = a.findIndex((v) => v.k === 'str'), nums = first < 0 ? a : a.slice(0, first);
+  const x = nums[0] ? [...toMat(nums[0]).d] : [], y = nums[1] ? [...toMat(nums[1]).d] : [];
+  const s: Series = { kind: 'line', x, y, color: nextColour(lab), dash: '', marker: null, width: 1.5, label: null, size: 6, ...style(first < 0 ? [] : a.slice(first), {}) } as Series;
+  add(lab, [s]);
+  return [num(g.handle(s))];
+});
+const lineOf = (lab: Lab, v: Value | undefined, fn: string) => {
+  const s = v ? gfx(lab).line(scalar(v)) : undefined;
+  if (!s) throw new LabError(`${fn} needs a line's handle (h = animatedline or h = plot(…)).`);
+  return s;
+};
+def('addpoints', (a, _n, lab) => {
+  const s = lineOf(lab, a[0], 'addpoints'), x = a[1] ? toMat(a[1]).d : [], y = a[2] ? toMat(a[2]).d : [];
+  if (x.length !== y.length) throw new LabError('addpoints needs as many x as y values.');
+  for (let i = 0; i < x.length; i++) { s.x.push(x[i]); s.y.push(y[i]); }
+  if (a[3]) { const z = toMat(a[3]).d; s.z = [...(s.z ?? []), ...z]; }
+  gfx(lab).changed();
+  return [];
+});
+def('clearpoints', (a, _n, lab) => { const s = lineOf(lab, a[0], 'clearpoints'); s.x = []; s.y = []; if (s.z) s.z = []; gfx(lab).changed(); return []; });
 def('scatter', (a, _n, lab) => { const s = seriesFrom(a.slice(0, 2), lab, 'scatter'); points(s, a.slice(2)); add(lab, s); return []; });
 /** scatter's size, colour (one, or a value per point from the colour map) and 'filled'. */
 export function points(s: Series[], a: Value[]) {
@@ -253,9 +289,26 @@ def('close', (a, _n, lab) => {
   return [];
 });
 def('gcf', (_a, _n, lab) => [mat(1, 1, [gfx(lab).current?.id ?? gfx(lab).figure().id])]);
-def('drawnow', () => []);
+def('drawnow', (_a, _n, lab) => { lab.host.frame?.(); return []; });
 def('gca', (_a, _n, lab) => [mat(1, 1, [gfx(lab).current?.id ?? gfx(lab).figure().id])]);
 def('set', (a, _n, lab) => {
+  // set(h, 'XData', x, 'YData', y, …) on a line's handle (M506).
+  const line = a[0] && a[0].k === 'mat' && numel(a[0]) >= 1 ? gfx(lab).line(a[0].d[0]) : undefined;
+  if (line) {
+    for (const h of a[0].k === 'mat' ? a[0].d : []) {
+      const s = gfx(lab).line(h);
+      if (!s) continue;
+      for (let i = 1; i + 1 < a.length; i += 2) {
+        const k = textOf(a[i]).toLowerCase(), v = a[i + 1];
+        if (k === 'xdata') s.x = [...toMat(v).d];
+        else if (k === 'ydata') s.y = [...toMat(v).d];
+        else if (k === 'zdata') s.z = [...toMat(v).d];
+        else if (isPairName(a[i])) Object.assign(s, style([a[i], v], {}));
+      }
+    }
+    gfx(lab).changed();
+    return [];
+  }
   // set(gca, 'XLim', [0 10], 'YGrid', 'on', …): limits and grids change the current axes.
   // shortcut: other properties (FontSize, LineWidth…) are accepted and change nothing yet.
   const ax = gfx(lab).axes();

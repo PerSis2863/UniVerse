@@ -646,7 +646,14 @@ def('assert', (a) => { if (a.length === 1 ? !truthy(a[0]) : !same(a[0], a[1]) &&
 def('isvarname', (a) => [bool(/^[A-Za-z]\w*$/.test(textOf(a[0])))]);
 def('eval evalin', (a, _n, lab) => { try { lab.run(textOf(a[a.length > 1 && a[0].k === 'str' && /^(base|caller)$/.test(a[0].v) ? 1 : 0])); } catch (e) { if (a[1] && a[0].k === 'str' && !/^(base|caller)$/.test(a[0].v)) lab.run(textOf(a[1])); else throw e; } return []; });
 def('input keyboard', () => { throw new LabError('input isn’t available yet: set the value in the script instead.'); });
-def('pause drawnow beep more pkg close', () => []);
+def('beep more pkg', () => []);
+// M506: pause shows the figures and waits (in the window's engine thread; a run with no window, Sweep or a test, doesn't).
+def('pause', (a, _n, lab) => {
+  if (a[0]?.k === 'str') return []; // pause on / off / query
+  lab.host.frame?.();
+  if (a[0]) { const t = scalar(a[0]); if (!(t >= 0)) throw new LabError('pause needs a time in seconds (0 or more).'); lab.host.wait?.(Math.min(t, 3600)); }
+  return [];
+});
 def('rng', (a) => {
   const s = a[0];
   if (!s) return [];
