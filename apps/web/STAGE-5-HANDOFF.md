@@ -13275,6 +13275,16 @@ away sooner. Language: 'EarthResistance' now acts on AC lines too. Window: Sever
 ground's own resistance (0.05 Ω/km at 50 Hz)". Not built: the soil's depth of return (Carson's reactance is already in
 the rails' 0.55 Ω/km).
 
+## M489h (25 Nov): Hyperion aeroplanes, the tail meeting a gust after the wing
+
+The owner, 25 Nov (M489g's left-outs). `flight.ts`: `Aircraft.lt` (the tail's distance behind the wing, 3 chords when
+not given) and `Wind.gust.tail`: the tail meets the '1 − cos' gust lt / V after the wing, and the difference
+(up_wing − up_tail) / lt goes into the pitch-gust channel (`Ctl.gust[1]`, MIL-F-8785C's q_g, through Cmq and CLq): nose
+up while only the wing is in the rising air, nose down as the tail goes through. Off by default (old runs the same).
+Checked: off unchanged; on, more pitch rate just after the wing enters; much the same climb once through. Language
+'GustTail', 1. Window: All six → Gust → "The tail meets it later (the nose pitches)". Not built: the tail's own lag
+for turbulence (M489f's q gust already smooths over the length), the downwash's lag behind the wing.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

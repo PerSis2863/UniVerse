@@ -134,4 +134,18 @@ describe('Hyperion flight in six directions (M489c)', () => {
     lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 12, 'Gust', [2 60 5 30]);");
     expect(lab.vars.get('tr')).toBeTruthy();
   });
+  it('the tail meeting a gust after the wing (M489h)', { timeout: 60_000 }, () => {
+    const go = (tail: boolean) => fl.flight6(ac, 12, { V0: 50, h0: 1000, wind: { gust: { at: 2, length: 60, up: 5, tail } }, points: 2400 });
+    const off = go(false), on = go(true), at = (r: typeof on, t: number) => r.t.findIndex((x) => x >= t);
+    // Off: as before. On: the nose pitches more while the wing is in it and the tail not (the first lt / V ≈ 0.09 s).
+    expect(go(false).q).toEqual(off.q);
+    const i = at(on, 2.08);
+    expect(on.q[i]).toBeGreaterThan(off.q[i]);
+    // Once both have gone through, much the same climb.
+    expect(Math.max(...on.h)).toBeCloseTo(Math.max(...off.h), 0);
+    expect(on.q.some((x, k) => x !== off.q[k])).toBe(true);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 12, 'Gust', [2 60 5], 'GustTail', 1);");
+    expect(lab.vars.get('tr')).toBeTruthy();
+  });
 });

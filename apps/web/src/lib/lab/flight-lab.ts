@@ -146,6 +146,8 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   if (w20 !== undefined) { if (!(w20 >= 0 && w20 <= 40)) throw new LabError("'TurbulenceWind20' is the wind 6 m up, 0 to 40 m/s."); wind.turbulence = { sigma: 0, w20, seed: num1('seed') }; }
   const sig = num1('turbulence');
   if (sig !== undefined) { if (!(sig >= 0 && sig <= 15)) throw new LabError("'Turbulence' is its strength, 0 to 15 m/s (1.5 light, 3 moderate, 6 severe)."); wind.turbulence = { sigma: sig, scale: num1('turbulencescale'), seed: num1('seed') }; }
+  // M489h: 'GustTail', 1: the tail meets the gust after the wing (it pitches as it goes through).
+  if (wind.gust && num1('gusttail')) wind.gust.tail = true;
   // M489f: 'TurbulenceRotation', 1 makes the gusts turn the air too.
   if (wind.turbulence && num1('turbulencerotation')) wind.turbulence.rotational = true;
   // Wind shear (M489d): 'Shear', the exponent (1/7 open country; the 'Wind' is then what blows 10 m up), and

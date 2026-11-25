@@ -30,6 +30,8 @@ export interface Aircraft {
   cd0: number; k: number; cm0: number; cma: number; cmq: number; cmde: number;
   /** Engine power at sea level (W), the propeller's efficiency, the most static thrust (N), the elevator's travel (rad). */
   power: number; eta: number; t0: number; deMax: number;
+  /** The tail's distance behind the wing (m, M489h); about 3 chords when not given. */
+  lt?: number;
 }
 /** A light four-seat aeroplane with textbook-typical coefficients (not any one maker's data). */
 export const PLANE_DEFAULT: Aircraft = { m: 1100, S: 16.2, c: 1.49, b: 11, iyy: 1825, cl0: 0.31, cla: 5.14, clde: 0.43, clq: 3.9, alphaStall: (16 * Math.PI) / 180, cd0: 0.031, k: 0.054, cm0: -0.015, cma: -0.89, cmq: -12.4, cmde: -1.28, power: 120e3, eta: 0.8, t0: 3000, deMax: (25 * Math.PI) / 180 };
@@ -237,7 +239,8 @@ export interface Wind {
   /** A '1 − cos' vertical gust: starting at `at` seconds, `length` metres long (flown through at the airspeed), up to
    * `up` m/s (+ up). */
   /** `skew` (M489g, rad): the gust's front at an angle to square across the path, + reaching the right wing first. */
-  gust?: { at: number; length: number; up: number; skew?: number };
+  /** `tail` (M489h): the tail meets the gust lt / V after the wing, so the aeroplane pitches as it goes through. */
+  gust?: { at: number; length: number; up: number; skew?: number; tail?: boolean };
   /** Dryden turbulence: its strength (m/s rms in each direction; about 1.5 light, 3 moderate, 6 severe), the length
    * scale (m, 533 at medium heights) and a seed so a run repeats. */
   /** `rotational` (M489f): the gusts turn the air too (MIL-F-8785C's p, q, r gusts over the wing and tail). */
@@ -423,13 +426,16 @@ export function flight6(ac: Aircraft, T: number, o: {
     // The wind now: steady, plus the gust (flown through at the airspeed), plus turbulence.
     // A front at an angle (M489g): each wing tip meets it (b/2)·tan(skew) earlier or later than the middle, so the air
     // rises more under one wing: the difference over the span is a roll gust (MIL-F-8785C's p_g = ∂w/∂y).
-    let up = 0, upRoll = 0;
+    // The tail behind (M489h): while the wing is in the rising air and the tail not yet, the air's change along the
+    // aeroplane is a pitch gust q_g = (up_wing − up_tail) / lt (nose up), then the other way as the tail goes through.
+    let up = 0, upRoll = 0, upPitch = 0;
     const ahead = W.gust?.skew ? (ac.b / 2) * Math.tan(W.gust.skew) : 0;
     if (W.gust && t >= W.gust.at - Math.abs(ahead) / tr.V) {
       if (Number.isNaN(gustStart)) gustStart = ahead ? W.gust.at : t;
       const into = (t - gustStart) * tr.V, gs = W.gust, at = (x: number) => (x >= 0 && x < gs.length ? (gs.up / 2) * (1 - Math.cos((2 * Math.PI * x) / gs.length)) : 0);
       const r = at(into + ahead), l = at(into - ahead);
       up = ahead ? (r + l) / 2 : at(into); upRoll = ahead ? (l - r) / ac.b : 0;
+      if (gs.tail) { const lt = ac.lt ?? 3 * ac.c; upPitch = (up - at(into - lt)) / lt; }
     }
     if (tb && tb.w20) {
       // By height (M489e): each direction its own strength and scale where the aeroplane is now.
@@ -470,7 +476,7 @@ export function flight6(ac: Aircraft, T: number, o: {
     }
     if (o.yawDamper) dr += 1.2 * (s.r - rLow);
     de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
-    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll ? [rotG[0] + upRoll, rotG[1], rotG[2]] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
+    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll || upPitch ? [rotG[0] + upRoll, rotG[1] + upPitch, rotG[2]] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
     if (g.alpha > ac.alphaStall) stalled = true;
     if (k % every === 0 || k === n) {
       const pos = toEarth(s, [s.u, s.v, s.w]);

@@ -33,6 +33,8 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
   const [turning, setTurning] = useState(false);
   // M489g: the gust's front at an angle (degrees), reaching the right wing first.
   const [front, setFront] = useState<'0' | '30' | '60'>('0');
+  // M489h: the tail meeting the gust after the wing.
+  const [tailLag, setTailLag] = useState(false);
   const [k, setK] = useState(0);
   const [playing, setPlaying] = useState(false);
   const top = useRef<HTMLCanvasElement>(null), chart = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
@@ -43,7 +45,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
     if (move === 'turn') return flight6(ac, 50, { V0: V, h0, holdHeading: () => Math.PI * 0.999, maxBank: (35 * Math.PI) / 180, ...(hold === 'hold' ? pilot : {}), points: 700 });
     // A wind from the west (blowing east) while the autopilot keeps the nose north.
     if (move === 'cross') return flight6(ac, 60, { V0: V, h0, wind: { steady: [0, wind, 0] }, holdHeading: () => 0, ...pilot, points: 700 });
-    if (move === 'gust') return flight6(ac, 12, { V0: V, h0, wind: { gust: { at: 2, length: 60, up: wind / 2, skew: (Number(front) * Math.PI) / 180 } }, points: 1200 });
+    if (move === 'gust') return flight6(ac, 12, { V0: V, h0, wind: { gust: { at: 2, length: 60, up: wind / 2, skew: (Number(front) * Math.PI) / 180, tail: tailLag } }, points: 1200 });
     // A twin's right engine stops 5 s in.
     if (move === 'engine') return flight6(ac, 40, { V0: V, h0, engines: { count: 2, fail: { at: 5, which: 1 }, feather }, ...(hold === 'hold' ? { holdHeading: () => 0, yawDamper: true } : {}), points: 800 });
     // Full power at 35 m/s, climbing: the propeller swings the nose left.
@@ -53,7 +55,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
     // Near the ground (M489e): at 60 m, the turbulence of a wind 6 m up ten times its rms (MIL-F-8785C, by height).
     if (low) return flight6(ac, 60, { V0: V, h0: 60, wind: { turbulence: { sigma: 0, w20: ROUGH[rough] * 10, seed: 3, rotational: turning } }, holdHeading: () => 0, holdHeight: () => 60, holdSpeed: V, yawDamper: true, points: 1200 });
     return flight6(ac, 60, { V0: V, h0, wind: { turbulence: { sigma: ROUGH[rough], seed: 3, rotational: turning } }, holdHeading: () => 0, ...pilot, points: 1200 });
-  }, [ac, move, hold, wind, rough, feather, propOn, low, turning, front]);
+  }, [ac, move, hold, wind, rough, feather, propOn, low, turning, front, tailLag]);
   const n = run.t.length;
 
   const kNow = useRef(0);
@@ -168,6 +170,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
         </label>}
         {move === 'gust' && <div className="space-y-1"><span className={label}>The gust’s front</span>
           <Segmented<'0' | '30' | '60'> label="The gust’s front" value={front} onChange={setFront} segments={[{ value: '0', label: 'Square on' }, { value: '30', label: 'At 30°' }, { value: '60', label: 'At 60°' }]} />
+          <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={tailLag} onChange={(e) => setTailLag(e.target.checked)} className="h-4 w-4 accent-violet-600" />The tail meets it later (the nose pitches)</label>
         </div>}
         {move === 'rough' && <div className="space-y-2">
           <span className={label}>Turbulence</span>
