@@ -4,25 +4,35 @@ import { rk45 } from './sci-num';
 // (0 ≤ |a| ≤ 1). Orbits in and out of the equator from the three constants E, Lz and Carter's Q, integrated in Mino
 // time λ as second-order equations (r'' = R'(r)/2, u'' = U'(u)/2 with u = cos θ), so turning points need no sign flips.
 // μ = 1 for matter, 0 for light. M520: Kerr–Newman, a charge q on the hole (a² + q² ≤ 1, Δ = r² − 2r + a² + q²) and
-// a charge-to-mass ratio ε on the particle (P = E(r² + a²) − aLz − εqr); the defaults (0) give Kerr back.
+// a charge-to-mass ratio ε on the particle (P = E(r² + a²) − aLz − εqr); the defaults (0) give Kerr back. M542: a
+// magnetic charge g too (Δ gains g²; a charged particle then feels it in θ: P_θ = aE sin²θ − Lz − εg cos θ, so its
+// orbits leave the equator and ride Poincaré's cones). R doesn't feel εg, so `circular` and `constants` still give
+// the radial motion asked for; only the tilt then wobbles.
 
 /** The hole's charge q and the particle's charge per mass ε (Gaussian units, G = c = M = 1). */
-export interface Charge { q?: number; eps?: number }
+export interface Charge { q?: number; eps?: number; g?: number }
 const chk = (a: number, q: number) => { if (!(a * a + q * q <= 1 + 1e-12)) throw new Error('a² + q² must stay at most 1 (otherwise there is no horizon).'); };
 
 export const horizon = (a: number, q = 0) => { chk(a, q); return 1 + Math.sqrt(Math.max(0, 1 - a * a - q * q)); };
 export const ergosphere = (a: number, th: number, q = 0) => 1 + Math.sqrt(Math.max(0, 1 - a * a * Math.cos(th) ** 2 - q * q));
 
-const Rf = (r: number, a: number, E: number, L: number, Q: number, mu: number, q = 0, eps = 0) => {
-  const D = r * r - 2 * r + a * a + q * q, P = E * (r * r + a * a) - a * L - eps * q * r;
+const Rf = (r: number, a: number, E: number, L: number, Q: number, mu: number, q = 0, eps = 0, g = 0) => {
+  const D = r * r - 2 * r + a * a + q * q + g * g, P = E * (r * r + a * a) - a * L - eps * q * r;
   return P * P - D * (mu * r * r + (L - a * E) ** 2 + Q);
 };
-const dR = (r: number, a: number, E: number, L: number, Q: number, mu: number, q = 0, eps = 0) => {
-  const D = r * r - 2 * r + a * a + q * q, P = E * (r * r + a * a) - a * L - eps * q * r;
+const dR = (r: number, a: number, E: number, L: number, Q: number, mu: number, q = 0, eps = 0, g = 0) => {
+  const D = r * r - 2 * r + a * a + q * q + g * g, P = E * (r * r + a * a) - a * L - eps * q * r;
   return 2 * P * (2 * E * r - eps * q) - (2 * r - 2) * (mu * r * r + (L - a * E) ** 2 + Q) - 2 * mu * r * D;
 };
-const Uf = (u: number, a: number, E: number, L: number, Q: number, mu: number) => Q * (1 - u * u) - u * u * (a * a * (mu - E * E) * (1 - u * u) + L * L);
-const dU = (u: number, a: number, E: number, L: number, Q: number, mu: number) => -2 * u * Q - 2 * u * (a * a * (mu - E * E) * (1 - u * u) + L * L) + 2 * u ** 3 * a * a * (mu - E * E);
+/** (du/dλ)² with u = cos θ: (1 − u²)(K − μa²u²) − P_θ², K = Q + (Lz − aE)², P_θ = aE(1 − u²) − Lz − wu (w = εg). */
+export const Uf = (u: number, a: number, E: number, L: number, Q: number, mu: number, w = 0) => {
+  const K = Q + (L - a * E) ** 2, Pt = a * E * (1 - u * u) - L - w * u;
+  return (1 - u * u) * (K - mu * a * a * u * u) - Pt * Pt;
+};
+export const dU = (u: number, a: number, E: number, L: number, Q: number, mu: number, w = 0) => {
+  const K = Q + (L - a * E) ** 2, Pt = a * E * (1 - u * u) - L - w * u;
+  return -2 * u * (K - mu * a * a * u * u) - 2 * mu * a * a * u * (1 - u * u) - 2 * Pt * (-2 * a * E * u - w);
+};
 
 /** Newton on two unknowns with a numerical Jacobian; NaN when it doesn't settle. */
 function newton2(F: (x: number[]) => number[], x0: number[], tol = 1e-14) {
@@ -41,38 +51,38 @@ function newton2(F: (x: number[]) => number[], x0: number[], tol = 1e-14) {
 /** Energy and angular momentum (per unit mass) of a circular orbit in the equator; prograde when L > 0. Kerr's closed
  * form, otherwise Newton on R = R' = 0 stepped up from it (charge added in ten steps). */
 export function circular(a: number, r: number, prograde = true, c: Charge = {}) {
-  const q = c.q ?? 0, eps = c.eps ?? 0, s = prograde ? 1 : -1, sr = Math.sqrt(r), den = r ** 0.75 * Math.sqrt(r ** 1.5 - 3 * sr + 2 * s * a);
-  if (!q && !eps) {
+  const q = c.q ?? 0, eps = c.eps ?? 0, g = c.g ?? 0, s = prograde ? 1 : -1, sr = Math.sqrt(r), den = r ** 0.75 * Math.sqrt(r ** 1.5 - 3 * sr + 2 * s * a);
+  if (!q && !eps && !g) {
     if (!(den > 0)) throw new Error('No circular orbit there (inside the light orbit).');
     return { E: (r ** 1.5 - 2 * sr + s * a) / den, L: (s * (r * r - 2 * s * a * sr + a * a)) / den };
   }
-  chk(a, q);
+  chk(a, Math.hypot(q, g));
   // Start from a far orbit (always there), then walk in and add the charge.
   const far = Math.max(r, 30), k0 = circular(a, far, prograde);
   let x = [k0.E, k0.L];
   const steps = 20;
   for (let i = 1; i <= steps; i++) {
     const f = i / steps, rr = far + (r - far) * f, qq = q * f, ee = eps;
-    x = newton2((y) => [Rf(rr, a, y[0], y[1], 0, 1, qq, ee), dR(rr, a, y[0], y[1], 0, 1, qq, ee)], x);
+    x = newton2((y) => [Rf(rr, a, y[0], y[1], 0, 1, qq, ee, g * f), dR(rr, a, y[0], y[1], 0, 1, qq, ee, g * f)], x);
     if (!x.every(Number.isFinite)) throw new Error('No circular orbit there (inside the light orbit).');
   }
   return { E: x[0], L: x[1] };
 }
 const stableAt = (a: number, r: number, pro: boolean, c: Charge) => {
   try {
-    const k = circular(a, r, pro, c), h = 1e-4 * r, q = c.q ?? 0, eps = c.eps ?? 0;
-    return (dR(r + h, a, k.E, k.L, 0, 1, q, eps) - dR(r - h, a, k.E, k.L, 0, 1, q, eps)) / (2 * h) < 0 && k.E > 0;
+    const k = circular(a, r, pro, c), h = 1e-4 * r, q = c.q ?? 0, eps = c.eps ?? 0, g = c.g ?? 0;
+    return (dR(r + h, a, k.E, k.L, 0, 1, q, eps, g) - dR(r - h, a, k.E, k.L, 0, 1, q, eps, g)) / (2 * h) < 0 && k.E > 0;
   } catch { return false; }
 };
 /** The innermost stable circular orbit in the equator (Bardeen, Press & Teukolsky without charge; otherwise where
  * R'' turns zero, by bisection), prograde for a > 0. */
 export function isco(a: number, c: Charge = {}) {
-  if (!c.q && !c.eps) {
+  if (!c.q && !c.eps && !c.g) {
     const z1 = 1 + Math.cbrt(1 - a * a) * (Math.cbrt(1 + a) + Math.cbrt(1 - a)), z2 = Math.sqrt(3 * a * a + z1 * z1);
     return 3 + z2 - Math.sign(a) * Math.sqrt((3 - z1) * (3 + z1 + 2 * z2));
   }
   const pro = a >= 0, A = Math.abs(a);
-  let lo = horizon(A, c.q ?? 0) * 1.0001, hi = 60;
+  let lo = horizon(A, Math.hypot(c.q ?? 0, c.g ?? 0)) * 1.0001, hi = 60;
   if (!stableAt(A, hi, pro, c)) throw new Error('No stable circular orbits.');
   for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (stableAt(A, m, pro, c)) hi = m; else lo = m; }
   return hi;
@@ -109,7 +119,7 @@ function lightRange(a: number, q: number) {
 /** E, Lz, Q of the bound orbit between r1 = p/(1 + e) and r2 = p/(1 − e) tilted by `inc` (radians) from the
  * equator (cos inc = Lz/√(Lz² + Q); inc > π/2 goes against the spin). Newton from the Kepler guess. */
 export function constants(a: number, p: number, e: number, inc: number, c: Charge = {}) {
-  const q = c.q ?? 0, eps = c.eps ?? 0;
+  const q = c.q ?? 0, eps = c.eps ?? 0, g = c.g ?? 0;
   const r1 = p / (1 + e), r2 = p / (1 - e), pro = inc < Math.PI / 2, tq = Math.tan(inc) ** 2, cosi = Math.cos(inc);
   if (!(e >= 0 && e < 1 && p > 0)) throw new Error('0 ≤ e < 1 and p > 0.');
   let { E, L } = circular(a, Math.max(p, isco(pro ? Math.abs(a) : -Math.abs(a), c) + 0.5), pro, c);
@@ -121,7 +131,7 @@ export function constants(a: number, p: number, e: number, inc: number, c: Charg
   let Q = polar ? p * p : Qof(L);
   const F = (x: number[]) => {
     const [E0, y] = x, L0 = polar ? 0 : y, Q0 = polar ? y : Qof(y);
-    return e < 1e-9 ? [Rf(p, a, E0, L0, Q0, 1, q, eps), dR(p, a, E0, L0, Q0, 1, q, eps)] : [Rf(r1, a, E0, L0, Q0, 1, q, eps), Rf(r2, a, E0, L0, Q0, 1, q, eps)];
+    return e < 1e-9 ? [Rf(p, a, E0, L0, Q0, 1, q, eps, g), dR(p, a, E0, L0, Q0, 1, q, eps, g)] : [Rf(r1, a, E0, L0, Q0, 1, q, eps, g), Rf(r2, a, E0, L0, Q0, 1, q, eps, g)];
   };
   let x = [E, polar ? Q : L];
   for (let k = 0; k < 100; k++) {
@@ -135,8 +145,8 @@ export function constants(a: number, p: number, e: number, inc: number, c: Charg
   [E] = x; L = polar ? 0 : x[1]; Q = polar ? x[1] : Qof(x[1]);
   // Bound between r1 and r2 (R ≥ 0 inside) and, for a circle, stable (R'' < 0 there).
   const mid = e < 1e-9 ? p : (r1 + r2) / 2, h2 = 1e-4 * p;
-  const curv = (dR(p + h2, a, E, L, Q, 1, q, eps) - dR(p - h2, a, E, L, Q, 1, q, eps)) / (2 * h2);
-  if (!(E > 0 && E < 1 && Q >= -1e-9 && Rf(mid, a, E, L, Q, 1, q, eps) >= -1e-9) || (e < 1e-9 && !(curv < 0)) || Math.abs(F([x[0], x[1]])[0]) > 1e-8 * p ** 4)
+  const curv = (dR(p + h2, a, E, L, Q, 1, q, eps, g) - dR(p - h2, a, E, L, Q, 1, q, eps, g)) / (2 * h2);
+  if (!(E > 0 && E < 1 && Q >= -1e-9 && Rf(mid, a, E, L, Q, 1, q, eps, g) >= -1e-9) || (e < 1e-9 && !(curv < 0)) || Math.abs(F([x[0], x[1]])[0]) > 1e-8 * p ** 4)
     throw new Error('No stable bound orbit there: move it further out.');
   return { E, L, Q: Math.max(0, Q) };
 }
@@ -146,35 +156,35 @@ export interface Geo { lambda: number[]; t: number[]; r: number[]; th: number[];
 /** A geodesic from (r0, θ0, φ0), moving inward (or out), its θ moving towards the north (u rising) or south;
  * recorded every `dl` of Mino time up to `lmax`. Stops at the horizon or far away (r > rFar). */
 export function geodesic(a: number, E: number, L: number, Q: number, mu: number, r0: number, th0: number, ph0: number, lmax: number, opts: { inward?: boolean; north?: boolean; n?: number; rFar?: number } & Charge = {}): Geo {
-  const q = opts.q ?? 0, eps = mu ? opts.eps ?? 0 : 0;
-  const R0 = Rf(r0, a, E, L, Q, mu, q, eps), u0 = Math.cos(th0), U0 = Uf(u0, a, E, L, Q, mu);
+  const q = opts.q ?? 0, eps = mu ? opts.eps ?? 0 : 0, g = opts.g ?? 0, w = eps * g;
+  const R0 = Rf(r0, a, E, L, Q, mu, q, eps, g), u0 = Math.cos(th0), U0 = Uf(u0, a, E, L, Q, mu, w);
   if (R0 < -1e-9 * (1 + r0 ** 4) || U0 < -1e-9) throw new Error('Those constants cannot be at that place (R or Θ below 0).');
   const rp = (opts.inward ? -1 : 1) * Math.sqrt(Math.max(0, R0)), up = (opts.north ? 1 : -1) * Math.sqrt(Math.max(0, U0));
-  const rh = horizon(a, q), rFar = opts.rFar ?? Infinity;
+  const rh = horizon(a, Math.hypot(q, g)), rFar = opts.rFar ?? Infinity;
   // State [t, r, r', u, u', φ]; derivatives in λ.
   const f = (_: number, s: number[]) => {
-    const [, r, v, u, w] = s, D = r * r - 2 * r + a * a + q * q, P = E * (r * r + a * a) - a * L - eps * q * r, s2 = Math.max(1e-12, 1 - u * u);
+    const [, r, v, u, uv] = s, D = r * r - 2 * r + a * a + q * q + g * g, P = E * (r * r + a * a) - a * L - eps * q * r, s2 = Math.max(1e-12, 1 - u * u), Pt = a * E * s2 - L - w * u;
     if (r < rh * 1.0001 || r > rFar) return [0, 0, 0, 0, 0, 0];
-    return [-a * (a * E * s2 - L) + ((r * r + a * a) * P) / D, v, dR(r, a, E, L, Q, mu, q, eps) / 2, w, dU(u, a, E, L, Q, mu) / 2, -(a * E - L / s2) + (a * P) / D];
+    return [-a * Pt + ((r * r + a * a) * P) / D, v, dR(r, a, E, L, Q, mu, q, eps, g) / 2, uv, dU(u, a, E, L, Q, mu, w) / 2, -Pt / s2 + (a * P) / D];
   };
-  const n = opts.n ?? 2000, g: Geo = { lambda: [], t: [], r: [], th: [], ph: [], x: [], y: [], z: [], captured: false };
+  const n = opts.n ?? 2000, out: Geo = { lambda: [], t: [], r: [], th: [], ph: [], x: [], y: [], z: [], captured: false };
   let y = [0, r0, rp, u0, up, ph0];
   for (let i = 0; i <= n; i++) {
     if (i) {
       y = rk45(f, (lmax * (i - 1)) / n, (lmax * i) / n, y, 1e-11, 1e-13, 200_000).y.at(-1)!;
       // Back onto the first integrals ((dr/dλ)² = R, (du/dλ)² = U): the second-order form would drift off them.
-      const Rr = Rf(y[1], a, E, L, Q, mu, q, eps), Uu = Uf(y[3], a, E, L, Q, mu);
+      const Rr = Rf(y[1], a, E, L, Q, mu, q, eps, g), Uu = Uf(y[3], a, E, L, Q, mu, w);
       if (y[1] >= rh * 1.0001 && y[1] <= rFar) { y[2] = Math.sign(y[2]) * Math.sqrt(Math.max(0, Rr)); y[4] = Math.sign(y[4]) * Math.sqrt(Math.max(0, Uu)); }
     }
     const [t, r, , u, , ph] = y;
-    if (r < rh * 1.0001) { g.captured = true; break; }
+    if (r < rh * 1.0001) { out.captured = true; break; }
     const th = Math.acos(Math.max(-1, Math.min(1, u))), rr = Math.sqrt(r * r + a * a);
-    g.lambda.push((lmax * i) / n); g.t.push(t); g.r.push(r); g.th.push(th); g.ph.push(ph);
+    out.lambda.push((lmax * i) / n); out.t.push(t); out.r.push(r); out.th.push(th); out.ph.push(ph);
     // A Cartesian picture: x = √(r² + a²) sin θ cos φ.
-    g.x.push(rr * Math.sin(th) * Math.cos(ph)); g.y.push(rr * Math.sin(th) * Math.sin(ph)); g.z.push(r * u);
+    out.x.push(rr * Math.sin(th) * Math.cos(ph)); out.y.push(rr * Math.sin(th) * Math.sin(ph)); out.z.push(r * u);
     if (r > rFar) break;
   }
-  return g;
+  return out;
 }
 
 /** The φ turned between one crossing of the equator going south and the next (2π Ω_φ / Ω_θ), and r's turn
@@ -218,4 +228,51 @@ export function shadow(a: number, thO: number, n = 400, q = 0) {
 export function imageRay(a: number, thO: number, alpha: number, beta: number) {
   const L = -alpha * Math.sin(thO), Q = beta * beta + (alpha * alpha - a * a) * Math.cos(thO) ** 2;
   return { E: 1, L, Q };
+}
+
+/** A thin glowing disc round the hole, seen from far away at inclination θo (radians): one ray a pixel traced back
+ * from the observer (fixed-step RK4 in Mino time, steps shrinking near the hole, kept on R and U after each), stopped
+ * where it first crosses the equator between rIn (the ISCO unless given) and rOut. Each hit shines with
+ * Novikov–Thorne's shape F ∝ r⁻³(1 − √(rIn/r)) times g⁴, g = 1 / (uᵗ(1 − Ωξ)) the shift of light from gas circling at
+ * Ω (with the spin). Rows run from the top of the picture down; α across, β up, both in GM/c². `q` is the metric
+ * charge √(q² + g²). */
+export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number } = {}) {
+  const q = o.q ?? 0, n = o.n ?? 80, rOut = o.rOut ?? 20, rIn = o.rIn ?? isco(a, q ? { q } : {}), half = o.half ?? rOut * 1.1, rh = horizon(a, q), r0 = 1000;
+  if (!(rOut > rIn)) throw new Error('The disc\'s outer edge must lie outside its inner edge.');
+  // The gas's Ω and uᵗ on a table of radii (log-spaced), from its circular orbit's E and L.
+  const NT = 300, tr: number[] = [], tOm: number[] = [], tUt: number[] = [];
+  for (let i = 0; i < NT; i++) {
+    const r = rIn * (rOut / rIn) ** (i / (NT - 1)), k = circular(a, r, true, q ? { q } : {});
+    const D = r * r - 2 * r + a * a + q * q, P = k.E * (r * r + a * a) - a * k.L, dt = -a * (a * k.E - k.L) + ((r * r + a * a) * P) / D, dp = -(a * k.E - k.L) + (a * P) / D;
+    tr.push(r); tOm.push(dp / dt); tUt.push(dt / (r * r));
+  }
+  const look = (r: number, t: number[]) => { const x = (Math.log(r / rIn) / Math.log(rOut / rIn)) * (NT - 1), i = Math.max(0, Math.min(NT - 2, Math.floor(x))), f = x - i; return t[i] * (1 - f) + t[i + 1] * f; };
+  const I = new Float64Array(n * n), G = new Float64Array(n * n).fill(NaN), Rh = new Float64Array(n * n).fill(NaN);
+  const so = Math.sin(thO), co = Math.cos(thO);
+  for (let py = 0; py < n; py++) for (let px = 0; px < n; px++) {
+    const al = -half + (2 * half * (px + 0.5)) / n, be = half - (2 * half * (py + 0.5)) / n;
+    const L = -al * so, Q = be * be + (al * al - a * a) * co * co;
+    // State [r, r', u, u'] with E = 1, μ = 0.
+    let r = r0, u = co, rv = -Math.sqrt(Math.max(0, Rf(r, a, 1, L, Q, 0, q))), uv = (be > 0 ? 1 : -1) * Math.sqrt(Math.max(0, Uf(u, a, 1, L, Q, 0)));
+    const F = (y: number[]) => [y[1], dR(y[0], a, 1, L, Q, 0, q) / 2, y[3], dU(y[2], a, 1, L, Q, 0) / 2];
+    const scale = Math.sqrt(Math.max(0, Q) + L * L) + 1;
+    for (let k = 0; k < 20000; k++) {
+      const h = 0.02 / (r + scale), y = [r, rv, u, uv];
+      const k1 = F(y), k2 = F(y.map((v, j) => v + (h / 2) * k1[j])), k3 = F(y.map((v, j) => v + (h / 2) * k2[j])), k4 = F(y.map((v, j) => v + h * k3[j]));
+      const ny = y.map((v, j) => v + (h / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
+      if (ny[0] < rh * 1.01) break;
+      if (u * ny[2] <= 0 && u !== ny[2]) {
+        const f = u / (u - ny[2]), rc = r + f * (ny[0] - r);
+        if (rc >= rIn && rc <= rOut) {
+          const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), flux = (1 - Math.sqrt(rIn / rc)) / rc ** 3;
+          I[py * n + px] = g ** 4 * flux; G[py * n + px] = g; Rh[py * n + px] = rc; break;
+        }
+      }
+      [r, rv, u, uv] = ny;
+      // Back onto the first integrals (the signs kept).
+      rv = Math.sign(rv) * Math.sqrt(Math.max(0, Rf(r, a, 1, L, Q, 0, q))); uv = Math.sign(uv) * Math.sqrt(Math.max(0, Uf(u, a, 1, L, Q, 0)));
+      if (r > r0 * 1.01 && rv > 0) break;
+    }
+  }
+  return { I, g: G, r: Rh, n, half };
 }

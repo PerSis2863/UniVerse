@@ -4,6 +4,9 @@
 // two nearest edge points; a ball against a solid by its nearest point. Sequential impulses with restitution and
 // Coulomb friction (the sliding impulse kept inside μ times the push), then a position-only push apart. Each body keeps
 // its angular momentum L in space, so a body turning freely keeps L exactly and its spin ω = I⁻¹L follows.
+// M542: solids with dents as several convex parts glued together (`compound`: their mass, centre and inertia added up
+// by the parallel-axis rule; contacts part by part), and rolling resistance (an opposing turn at a ball's contact, at
+// most Crr · push · radius).
 
 export type V3 = number[];
 const add = (a: V3, b: V3) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -82,28 +85,44 @@ export function hull(pts: V3[]): Hull & { centroid: V3 } {
 }
 export const boxHull = (w: number, d: number, h: number) => hull([-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => [(x * w) / 2, (y * d) / 2, (z * h) / 2]))));
 
-export type Shape3 = { kind: 'ball'; r: number } | { kind: 'hull'; h: Hull };
+/** A ball, or one or more convex parts (corners in the body's frame, about the whole body's centre of mass). */
+export type Shape3 = { kind: 'ball'; r: number } | { kind: 'hull'; parts: Hull[] };
 export interface Body3 { shape: Shape3; m: number; J: number[][]; Jinv: number[][]; p: V3; q: number[]; v: V3; L: V3; fixed: boolean; R: number }
 
 const inv3 = (M: number[][]) => {
   const [[a, b, c], [d, e, f], [g, h, i]] = M, A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g, det = a * A + b * B + c * C;
   return [[A / det, -(b * i - c * h) / det, (b * f - c * e) / det], [B / det, (a * i - c * g) / det, -(a * f - c * d) / det], [C / det, -(a * h - b * g) / det, (a * e - b * d) / det]];
 };
-/** A body: a ball's radius or a hull, at p, turned by the rotation vector rot, moving at v and spinning at w. */
-export function body3(shape: number | Hull, p: V3, rot: V3, v: V3, w: V3, m: number, fixed = false): Body3 {
-  const sh: Shape3 = typeof shape === 'number' ? { kind: 'ball', r: shape } : { kind: 'hull', h: shape };
+/** Convex parts glued into one solid (each from `hull`, with its centroid in a shared frame): the parts moved to be
+ * about the whole's centre of mass, the volume and inertia per unit mass (∑ V_i (J_i + |d|²1 − ddᵀ) / V). Parts that
+ * overlap count twice. */
+export function compound(parts: (Hull & { centroid: V3 })[]) {
+  const vol = parts.reduce((s, h) => s + h.volume, 0), c = mul(parts.reduce((s, h) => add(s, mul(h.centroid, h.volume)), [0, 0, 0]), 1 / vol);
+  const J = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (const h of parts) {
+    const d = sub(h.centroid, c), dd = dot(d, d);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) J[i][j] += (h.volume / vol) * (h.J[i][j] + (i === j ? dd : 0) - d[i] * d[j]);
+  }
+  return { parts: parts.map((h) => ({ ...h, v: h.v.map((x) => add(x, sub(h.centroid, c))) })), volume: vol, J, centroid: c };
+}
+/** A body: a ball's radius, a hull, or a compound's parts, at p, turned by the rotation vector rot, moving at v and
+ * spinning at w. */
+export function body3(shape: number | Hull | { parts: Hull[]; J: number[][] }, p: V3, rot: V3, v: V3, w: V3, m: number, fixed = false): Body3 {
+  const sh: Shape3 = typeof shape === 'number' ? { kind: 'ball', r: shape } : { kind: 'hull', parts: 'parts' in shape ? shape.parts : [shape] };
   if (sh.kind === 'ball' && !(sh.r > 0)) throw new Error('A ball needs a positive radius.');
-  const J = sh.kind === 'ball' ? [[0.4 * m * sh.r ** 2, 0, 0], [0, 0.4 * m * sh.r ** 2, 0], [0, 0, 0.4 * m * sh.r ** 2]] : sh.h.J.map((row) => row.map((x) => x * m));
-  const b: Body3 = { shape: sh, m, J, Jinv: inv3(J), p: p.slice(), q: qFromVec(rot), v: v.slice(), L: [0, 0, 0], fixed, R: sh.kind === 'ball' ? sh.r : Math.max(...sh.h.v.map(norm)) };
+  const J = typeof shape === 'number' ? [[0.4 * m * shape ** 2, 0, 0], [0, 0.4 * m * shape ** 2, 0], [0, 0, 0.4 * m * shape ** 2]] : shape.J.map((row) => row.map((x) => x * m));
+  const b: Body3 = { shape: sh, m, J, Jinv: inv3(J), p: p.slice(), q: qFromVec(rot), v: v.slice(), L: [0, 0, 0], fixed, R: sh.kind === 'ball' ? sh.r : Math.max(...sh.parts.flatMap((h) => h.v.map(norm))) };
   b.L = Lof(b, w);
   return b;
 }
 /** I in space = R J Rᵀ, applied to ω; and its inverse to L. */
 const Lof = (b: Body3, w: V3) => { const R = rotOf(b.q); return mv(R, mv(b.J, mtv(R, w))); };
 export const omega = (b: Body3) => { if (b.fixed) return [0, 0, 0]; const R = rotOf(b.q); return mv(R, mv(b.Jinv, mtv(R, b.L))); };
-/** A hull's corners in space. */
-export const corners = (b: Body3) => { if (b.shape.kind !== 'hull') return []; const R = rotOf(b.q); return b.shape.h.v.map((v) => add(b.p, mv(R, v))); };
-const normalsOf = (b: Body3) => { if (b.shape.kind !== 'hull') return []; const R = rotOf(b.q); return b.shape.h.n.map((n) => mv(R, n)); };
+/** Each convex part placed in space: its corners, outward normals and the hull itself. */
+export interface Posed { V: V3[]; N: V3[]; h: Hull }
+export const posed = (b: Body3): Posed[] => { if (b.shape.kind !== 'hull') return []; const R = rotOf(b.q); return b.shape.parts.map((h) => ({ V: h.v.map((v) => add(b.p, mv(R, v))), N: h.n.map((n) => mv(R, n)), h })); };
+/** Every corner of a body's parts in space. */
+export const corners = (b: Body3) => posed(b).flatMap((P) => P.V);
 
 export interface Contact3 { a: number; b: number; n: V3; p: V3; depth: number }
 
@@ -126,8 +145,10 @@ function segNear(p1: V3, q1: V3, p2: V3, q2: V3) {
 }
 
 /** Hull A against hull B: contacts with the normal from A to B. */
-function hullHull(A: Body3, B: Body3, ia: number, ib: number, out: Contact3[]) {
-  const VA = corners(A), VB = corners(B), NA = normalsOf(A), NB = normalsOf(B), hA = (A.shape as { h: Hull }).h, hB = (B.shape as { h: Hull }).h;
+function hullHull(PA: Posed, PB: Posed, ia: number, ib: number, out: Contact3[]) {
+  const { V: VA, N: NA, h: hA } = PA, { V: VB, N: NB, h: hB } = PB;
+  // The parts' own middles say which way is from A to B (a compound's centre may lie outside a part).
+  const mid = (V: V3[]) => mul(V.reduce((s, x) => add(s, x), [0, 0, 0]), 1 / V.length), AB = sub(mid(VB), mid(VA));
   const span = (V: V3[], n: V3) => { let lo = Infinity, hi = -Infinity; for (const v of V) { const s = dot(n, v); if (s < lo) lo = s; if (s > hi) hi = s; } return [lo, hi]; };
   // The axis of least overlap, pointing from A to B; faces preferred over edges when nearly equal.
   let best = Infinity, axis: V3 = [0, 0, 1], kind = 0, which = -1;
@@ -137,7 +158,7 @@ function hullHull(A: Body3, B: Body3, ia: number, ib: number, out: Contact3[]) {
     let n = mul(n0, 1 / l);
     const [a0, a1] = span(VA, n), [b0, b1] = span(VB, n), o = Math.min(a1 - b0, b1 - a0);
     if (o < 0) return false;
-    if (dot(n, sub(B.p, A.p)) < 0) n = mul(n, -1);
+    if (dot(n, AB) < 0) n = mul(n, -1);
     if (o * bias < best) { best = o * bias; axis = n; kind = k; which = w; }
     return true;
   };
@@ -174,8 +195,8 @@ function hullHull(A: Body3, B: Body3, ia: number, ib: number, out: Contact3[]) {
   }
 }
 /** A ball (centre c, radius r) against hull body H: the normal from the hull to the ball. */
-function hullBall(H: Body3, c: V3, r: number, ih: number, ib: number, out: Contact3[]) {
-  const V = corners(H), N = normalsOf(H), h = (H.shape as { h: Hull }).h;
+function hullBall(P: Posed, c: V3, r: number, ih: number, ib: number, out: Contact3[]) {
+  const { V, N, h } = P;
   let sep = -Infinity, f = 0;
   for (let i = 0; i < N.length; i++) { const s = dot(N[i], sub(c, V[h.faces[i][0]])); if (s > sep) { sep = s; f = i; } }
   if (sep > r) return;
@@ -208,9 +229,10 @@ export function contacts3(B: Body3[], box: V3): Contact3[] {
   for (let i = 0; i < B.length; i++) for (let j = i + 1; j < B.length; j++) {
     const a = B[i], b = B[j];
     if ((a.fixed && b.fixed) || norm(sub(a.p, b.p)) > a.R + b.R) continue;
-    if (a.shape.kind === 'hull' && b.shape.kind === 'hull') hullHull(a, b, i, j, out);
-    else if (a.shape.kind === 'hull' && b.shape.kind === 'ball') hullBall(a, b.p, b.shape.r, i, j, out);
-    else if (b.shape.kind === 'hull' && a.shape.kind === 'ball') hullBall(b, a.p, a.shape.r, j, i, out);
+    // Part by part (a convex solid is its own one part).
+    if (a.shape.kind === 'hull' && b.shape.kind === 'hull') { const pb = posed(b); for (const pa of posed(a)) for (const q of pb) hullHull(pa, q, i, j, out); }
+    else if (a.shape.kind === 'hull' && b.shape.kind === 'ball') { for (const pa of posed(a)) hullBall(pa, b.p, b.shape.r, i, j, out); }
+    else if (b.shape.kind === 'hull' && a.shape.kind === 'ball') { for (const pb of posed(b)) hullBall(pb, a.p, a.shape.r, j, i, out); }
     else if (a.shape.kind === 'ball' && b.shape.kind === 'ball') {
       const d = sub(b.p, a.p), l = norm(d);
       if (l < a.shape.r + b.shape.r && l > 1e-15) { const n = mul(d, 1 / l); out.push({ a: i, b: j, n, p: add(a.p, mul(n, a.shape.r)), depth: a.shape.r + b.shape.r - l }); }
@@ -219,7 +241,7 @@ export function contacts3(B: Body3[], box: V3): Contact3[] {
   return out;
 }
 
-export interface SimOpts3 { box: V3; g: number; e: number; mu: number; dt: number; frames: number[]; iterations?: number }
+export interface SimOpts3 { box: V3; g: number; e: number; mu: number; dt: number; frames: number[]; iterations?: number; roll?: number }
 
 /** Runs the bodies (changed in place); [x y z qw qx qy qz] of each at the frame times, the energy and the contacts. */
 export function simulate3(B: Body3[], o: SimOpts3) {
@@ -246,7 +268,9 @@ export function simulate3(B: Body3[], o: SimOpts3) {
     const pre = C.map((c) => {
       const rel = sub(vel(c.b, c.p), vel(c.a, c.p)), vn = dot(rel, c.n);
       const t1 = unit(Math.abs(c.n[0]) < 0.9 ? cross(c.n, [1, 0, 0]) : cross(c.n, [0, 1, 0])), t2 = cross(c.n, t1);
-      return { c, t1, t2, mn: 1 / kOf(c, c.n), m1: 1 / kOf(c, t1), m2: 1 / kOf(c, t2), target: vn < -rest ? -o.e * vn : 0, jn: 0, j1: 0, j2: 0 };
+      // A ball in the contact rolls: its radius sets the most the resistance can turn it back by.
+      const radii = [c.a, c.b].filter((i) => i >= 0 && B[i].shape.kind === 'ball').map((i) => (B[i].shape as { r: number }).r);
+      return { c, t1, t2, mn: 1 / kOf(c, c.n), m1: 1 / kOf(c, t1), m2: 1 / kOf(c, t2), target: vn < -rest ? -o.e * vn : 0, jn: 0, j1: 0, j2: 0, rad: radii.length ? Math.min(...radii) : 0, H: [0, 0, 0] };
     });
     for (let k = 0; k < it; k++) for (const q of pre) {
       const { c } = q;
@@ -259,6 +283,20 @@ export function simulate3(B: Body3[], o: SimOpts3) {
         if (l > lim) { j1 *= lim / l; j2 *= lim / l; }
         const J = add(mul(q.t1, j1 - q.j1), mul(q.t2, j2 - q.j2));
         q.j1 = j1; q.j2 = j2; kick(c.b, c.p, J); kick(c.a, c.p, mul(J, -1));
+      }
+      if (o.roll && q.rad) {
+        // Rolling resistance: an angular impulse H (on b; −H on a) against the turning across the contact.
+        const wr = sub(c.b >= 0 ? omega(B[c.b]) : [0, 0, 0], omega(B[c.a])), wt = sub(wr, mul(c.n, dot(wr, c.n))), l = norm(wt);
+        if (l > 1e-14) {
+          const d = mul(wt, 1 / l), k = (B[c.a].fixed ? 0 : dot(d, Iinv(c.a, d))) + (c.b >= 0 && !B[c.b].fixed ? dot(d, Iinv(c.b, d)) : 0);
+          let H = sub(q.H, mul(d, l / (k || Infinity)));
+          const lim = o.roll * q.jn * q.rad, hl = norm(H);
+          if (hl > lim) H = mul(H, lim / hl);
+          const dH = sub(H, q.H);
+          q.H = H;
+          if (c.b >= 0 && !B[c.b].fixed) B[c.b].L = add(B[c.b].L, dH);
+          if (!B[c.a].fixed) B[c.a].L = sub(B[c.a].L, dH);
+        }
       }
     }
     const now = new Set(C.map((c) => `${c.a},${c.b}`));

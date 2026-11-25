@@ -13151,3 +13151,30 @@ extremal hole (the Majumdar–Papapetrou balance) and falling in without its cha
 circular to 1e-6; rays 3% inside the shadow's edge caught and 3% outside escaping, at three places round it. Not built:
 rolling resistance (balls roll for ever on a flat floor), concave solids in 3D (split them into convex ones by hand),
 magnetic charge, and a ray-traced picture of a disc round the hole.
+
+## M542 (25 Nov): Hyperion physics, M520's left-outs (rolling, dented solids, magnetic charge, the disc)
+
+Numbered after the signals branch's M541 (this branch's M492–M520 were used up). **Rolling resistance** ('Rolling',
+`roll` in both `simulate`s): at a contact with a ball or circle, an angular impulse against the relative turning across
+the contact (3D: the part of ω_b − ω_a across n), accumulated and kept within Crr · jn · r (r the smaller radius); boxes
+don't get it. A rolling disc slows at Crr g / 1.5, a ball at Crr g / 1.4. **Glued solids** (`r3.compound`): parts from
+`hull` / `boxHull` with their centroids in one frame; volume summed, centre volume-weighted, J = ∑ V_i (J_i + |d|²1 −
+ddᵀ) / V; `Shape3` is now `{ kind: 'hull'; parts }` (a single hull is one part), `posed(b)` gives each part's corners,
+normals and hull in space, contacts loop over part pairs, and `hullHull` points its axis by the parts' own middles (a
+compound's centre can sit outside a part). In the language a shape may be a cell of parts, each n × 3 corners or a
+placed box [w d h x y z]. Parts that overlap count twice. **Magnetic charge** g (`Charge.g`): Δ gains g² everywhere; the
+θ equation is now the general (du/dλ)² = (1 − u²)(K − μa²u²) − P_θ², K = Q + (Lz − aE)², P_θ = aE(1 − u²) − Lz − εg u
+(`Uf`, `dU` exported; equal to the old one at εg = 0, tested), dt/dλ = −aP_θ + (r² + a²)P/Δ, dφ/dλ = −P_θ/(1 − u²) +
+aP/Δ. R doesn't see εg, so `constants` and `circular` still set the radial motion; a charged body then rides a cone
+(Poincaré), shown in `kerrOrbit`'s title. Light and the shadow use the metric charge √(q² + g²) (`charge()` in the
+language returns q, g and m). **The disc** (`discImage`, `kerrDisc`): fixed-step RK4 in Mino time (h = 0.02 / (r +
+√(Q + Lz²) + 1)), re-projected onto R and U each step, from r = 1000, stopped at the first equator crossing between rIn
+(the ISCO) and rOut, at the horizon (×1.01) or going out past r0; brightness g⁴ (1 − √(rIn/r)) / r³, g = 1/(uᵗ(1 − Ωξ))
+with Ω and uᵗ from the circular orbit's E, L on a 300-radius log table. 80 × 80 takes ~1.3 s; the language allows 16–240
+pixels. Drawn with `imagesc`, `colormap hot`, brightness^¼, `axis xy`. Example `physics6.m`. Tests
+(`physics-m542.test.ts`): the two rolling rates and no slowing without it; an L's centre and I_yy by hand, landing and
+resting on both feet; a ball staying in a U of three glued boxes; the general θ equation against the old; a charged
+particle's cos θ held on Poincaré's cone to 1e-7; a face-on disc's shadow pixel empty and its far shift √(1 − 3/r); the
+approaching half more than twice as bright edge-on; the language bits. Not built: rolling resistance for boxes' edges
+(they don't roll), automatic splitting of a dented 3D mesh into convex parts, the disc's thickness and colour by
+temperature, and light that passes through the disc (it's opaque).

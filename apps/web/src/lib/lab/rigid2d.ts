@@ -2,6 +2,7 @@
 // against fixed shapes. Contacts by the separating-axis test with edge clipping (up to two points a pair), solved by
 // sequential impulses with restitution and Coulomb friction, then pushed apart (positions only, so no energy is made).
 // M520: shapes with dents, split by ear clipping and Hertel–Mehlhorn merging into convex parts that collide one by one.
+// M542: rolling resistance, an opposing turn at a circle's contact of at most Crr · push · radius.
 
 /** A polygon's outline `v` (body frame, about its centroid) and the convex parts it is made of. */
 export type Shape = { kind: 'poly'; v: number[][]; parts: number[][][] } | { kind: 'circle'; r: number };
@@ -167,7 +168,7 @@ export function contacts(B: Body[], W: number, H: number): Contact[] {
   return out;
 }
 
-export interface SimOpts { W: number; H: number; g: number; e: number; mu: number; dt: number; frames: number[]; iterations?: number }
+export interface SimOpts { W: number; H: number; g: number; e: number; mu: number; dt: number; frames: number[]; iterations?: number; roll?: number }
 
 /** Runs the bodies (changed in place) and records [x, y, angle] of each at the frame times. */
 export function simulate(B: Body[], o: SimOpts) {
@@ -203,7 +204,8 @@ export function simulate(B: Body[], o: SimOpts) {
       const kn = ia + ib + Ia * cross(ra[0], ra[1], c.n[0], c.n[1]) ** 2 + Ib * cross(rb[0], rb[1], c.n[0], c.n[1]) ** 2;
       const kt = ia + ib + Ia * cross(ra[0], ra[1], t2[0], t2[1]) ** 2 + Ib * cross(rb[0], rb[1], t2[0], t2[1]) ** 2;
       const vn = relN(c, ra, rb, c.n);
-      return { c, ra, rb, t2, mn: 1 / kn, mt: 1 / kt, target: vn < -rest ? -o.e * vn : 0, jn: 0, jt: 0 };
+      const radii = [c.a, c.b].filter((i) => i >= 0 && B[i].shape.kind === 'circle').map((i) => (B[i].shape as { r: number }).r);
+      return { c, ra, rb, t2, mn: 1 / kn, mt: 1 / kt, target: vn < -rest ? -o.e * vn : 0, jn: 0, jt: 0, rad: radii.length ? Math.min(...radii) : 0, jr: 0 };
     });
     for (let k = 0; k < it; k++) for (const q of pre) {
       // The normal push (never pulling), then friction within μ times it.
@@ -214,6 +216,12 @@ export function simulate(B: Body[], o: SimOpts) {
         const vt = relN(q.c, q.ra, q.rb, q.t2), lim = o.mu * q.jn;
         const jt = Math.max(-lim, Math.min(lim, q.jt - q.mt * vt)), dt2 = jt - q.jt;
         q.jt = jt; apply(q.c, q.ra, q.rb, q.t2, dt2);
+      }
+      if (o.roll && q.rad) {
+        // Rolling resistance: an angular impulse (on b; the opposite on a) against their relative turning.
+        const ia = invI[q.c.a], ib = q.c.b >= 0 ? invI[q.c.b] : 0, wr = (q.c.b >= 0 ? B[q.c.b].w : 0) - B[q.c.a].w, lim = o.roll * q.jn * q.rad;
+        const jr = Math.max(-lim, Math.min(lim, q.jr - wr / (ia + ib || Infinity))), d = jr - q.jr;
+        q.jr = jr; B[q.c.a].w -= d * ia; if (q.c.b >= 0) B[q.c.b].w += d * ib;
       }
     }
     const now = new Set(C.map((c) => `${c.a},${c.b}`));

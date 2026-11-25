@@ -304,6 +304,19 @@ figure; kerrOrbit(0.6, 9, 0.2, 35, 'Orbits', 4, 'Charge', 0.7, 'ParticleCharge',
 % 4. Light reaching someone 70° off the spin axis, traced back past the hole in 3D
 figure; kerrLight(0.9, -8:2:8, 'Inclination', 70, 'Beta', 2)
 ` },
+  { name: 'physics6.m', code: `% Physics: rolling resistance, solids with dents, a magnetic charge, a black hole's glowing disc
+% 1. Three balls roll across the floor: none, a little and more rolling resistance
+figure; rigidShapes3D({0.4, 0.4, 0.4}, [1 2 0.4; 1 5 0.4; 1 8 0.4], [3 0 0 0 7.5 0; 3 0 0 0 7.5 0; 3 0 0 0 7.5 0], 'Time', 3, 'Rolling', 0.05, 'Box', [12 10 4])
+% 2. An L-shaped solid (two boxes glued) and a U-shaped cup (three boxes, fixed): a ball falls into the cup
+L = {[2 1 1 0 0 0], [1 1 1 0.5 0 1]};
+U = {[3 3 0.5 0 0 0], [0.5 3 2 -1.25 0 1.25], [0.5 3 2 1.25 0 1.25]};
+t = 3;   % slider 0 3
+figure; rigidShapes3D({U, L, 0.5}, [5 5 0.7 0 0 0; 2 5 3 20 10 0; 5.2 5 5 0 0 0], [], 'Fixed', 1, 'Time', 3, 'At', t)
+% 3. A charged particle beside a magnetic charge rides a cone instead of a flat orbit
+figure; kerrOrbit(0, 12, 0, 40, 'Orbits', 3, 'Magnetic', 0.5, 'ParticleCharge', 2)
+% 4. A black hole's glowing disc, as a camera would see it: light bent over the top, the near side brighter
+figure; kerrDisc(0.9, 80, 'Pixels', 120)
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north
