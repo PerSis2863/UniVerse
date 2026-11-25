@@ -12590,3 +12590,14 @@ window, and by a browser), and Firebase's popup skips the chooser unless asked. 
 prompt: 'select_account' })` on the Google provider in `login/page.tsx` and `register/page.tsx` (Microsoft already had
 it). Not set inside `popupSignIn`: `setCustomParameters` replaces the whole object and would drop Microsoft's `tenant`.
 Web only: the computer app loads the live site, so it needs no new build, only the merge.
+
+## M455: a check for problems, one library advisory fixed (25 Nov)
+
+The owner asked for a check for errors, bugs and security. The live `error_reports` have nothing new since 17 Nov: the
+open rows are old ones already fixed (M221's `_retryCache`, M73's "too many SQL variables"), bots on old chunks, or
+third-party scripts (reCAPTCHA, Firebase). The owner can mark them resolved in the console. `pnpm check` passed
+(2317 tests). `pnpm audit --prod` found one high advisory, GHSA-7589-6fvf-x4pw in `effect` (a slow regex in
+`Schema.TemplateLiteral`), pulled in only by Prisma's config loader (`@prisma/config`, build and CLI time; no request
+reaches it). Pinned `"effect@<3.22.1": "3.22.4"` in the root overrides; `prisma validate` and `generate` still work.
+Also looked at: the two `$queryRawUnsafe` calls in `owner-insights.ts` (safe: a typed literal and `?` values), and
+committed key-looking strings (only Firebase's public web key and test placeholders).
