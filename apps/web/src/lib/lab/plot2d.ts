@@ -2,6 +2,7 @@ import { LabError } from './parse';
 import { mat, numel, scalar, toMat, type Mat, type Value } from './values';
 import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
+import { triPatch } from './plot3d';
 import { add, blankAxes, colour, esc, gfx, isPairName, label, markerSvg, outward, PALETTE, style, tex, ticks, vec, type Axes, type Box, type Ink, type Series } from './plot';
 
 // Hyperion's other plot kinds (M381): text, errorbar, pie, fill / patch / rectangle, line, polarplot, boxplot,
@@ -137,7 +138,34 @@ function polygons(a: Value[], lab: Lab): { list: Series[]; rest: Value[] } {
   return { list, rest };
 }
 def('fill', (a, _n, lab) => { const { list } = polygons(a, lab); const ax = gfx(lab).axes(); const zr = ax.zrange; add(lab, list); gfx(lab).axes().zrange = zr; return []; });
-def('patch', (a, _n, lab) => { keep(lab, polygons(a, lab).list); return []; });
+def('patch', (a, _n, lab) => {
+  // Faces and vertices (a struct from isosurface, or name–value pairs): a 3D triangle patch (M519).
+  const fv = a[0]?.k === 'struct' ? a[0].f : null, names = new Map<string, Value>();
+  for (let i = fv ? 1 : 0; i + 1 < a.length; i++) if (a[i].k === 'str') { names.set(textOf(a[i]).toLowerCase(), a[i + 1]); i++; }
+  const F = fv?.get('faces') ?? names.get('faces'), V = fv?.get('vertices') ?? names.get('vertices');
+  if (F && V) {
+    const Fm = toMat(F, 'Faces'), Vm = toMat(V, 'Vertices');
+    if (Vm.c < 2 || Vm.c > 3) throw new LabError('Vertices is n × 3 (or n × 2).');
+    const verts = Array.from({ length: Vm.r }, (_, i) => [Vm.d[i], Vm.d[i + Vm.r], Vm.c === 3 ? Vm.d[i + 2 * Vm.r] : 0]), tri: number[] = [];
+    for (let i = 0; i < Fm.r; i++) {
+      // A polygon face as a fan of triangles; NaN ends a shorter face.
+      const f: number[] = [];
+      for (let j = 0; j < Fm.c; j++) { const v = Fm.d[i + j * Fm.r]; if (!Number.isFinite(v)) break; if (!(v >= 1 && v <= Vm.r && Number.isInteger(v))) throw new LabError(`Faces names vertex ${v}, but there are ${Vm.r}.`); f.push(v - 1); }
+      for (let j = 1; j + 1 < f.length; j++) tri.push(f[0], f[j], f[j + 1]);
+    }
+    const fc = names.get('facecolor'), ec = names.get('edgecolor'), fa = names.get('facealpha'), cd = names.get('facevertexcdata');
+    const fcText = fc?.k === 'str' ? textOf(fc).toLowerCase() : '';
+    const cdata = cd ? [...toMat(cd).d] : undefined;
+    if (cdata && cdata.length !== Vm.r) throw new LabError('FaceVertexCData has one value a vertex.');
+    triPatch(lab, verts, tri, {
+      face: fc && !['interp', 'flat'].includes(fcText) ? colour(fc) : cdata ? undefined : nextOn(gfx(lab).axes()),
+      edge: ec && !(ec.k === 'str' && /^none$/i.test(textOf(ec))) ? colour(ec) : undefined, alpha: fa ? scalar(fa) : 1, cdata,
+    });
+    return [];
+  }
+  keep(lab, polygons(a, lab).list);
+  return [];
+});
 def('rectangle', (a, _n, lab) => {
   let pos = [0, 0, 1, 1], curve = [0, 0];
   for (let i = 0; i < a.length - 1; i++) { const n = a[i]; if (n.k !== 'str') continue; if (/^position$/i.test(n.v)) pos = vec(a[i + 1]); else if (/^curvature$/i.test(n.v)) { const v = vec(a[i + 1]); curve = [v[0], v[1] ?? v[0]]; } }

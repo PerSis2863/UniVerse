@@ -19,7 +19,7 @@ export interface Str { k: 'str'; v: string }
 export interface Cell { k: 'cell'; r: number; c: number; d: Value[] }
 /** `table`: a table (M383): a struct whose fields are equal-height columns, shown as rows. */
 /** `lti`: a transfer function (M414: fields num, den, Ts; control.ts gives it arithmetic and the toolbox). */
-export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean; lti?: true }
+export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean; lti?: true; gpu?: true; fi?: true }
 export interface Fn { k: 'fn'; name?: string; params?: string[]; body?: Expr; src?: string; closure?: Map<string, Value> }
 /** A symbolic array (M396): expressions from sym.ts, column by column like a matrix. */
 export interface Sym { k: 'sym'; r: number; c: number; d: SymNode[] }
@@ -106,14 +106,14 @@ export const truthy = (v: Value): boolean => {
   return m.d.length > 0 && m.d.every((x) => x !== 0 && !Number.isNaN(x));
 };
 export const at = (m: Mat, i: number, j: number) => m.d[i + j * m.r];
-export const sizeOf = (v: Value): [number, number] => (v.k === 'mat' || v.k === 'cell' || v.k === 'sym' ? [v.r, v.c] : v.k === 'str' ? [v.v.length ? 1 : 0, v.v.length] : v.k === 'struct' && v.table ? [tableHeight(v), v.f.size] : [1, 1]);
+export const sizeOf = (v: Value): [number, number] => (v.k === 'struct' && v.fi ? [(v.f.get('Value') as Mat).r, (v.f.get('Value') as Mat).c] : v.k === 'mat' || v.k === 'cell' || v.k === 'sym' ? [v.r, v.c] : v.k === 'str' ? [v.v.length ? 1 : 0, v.v.length] : v.k === 'struct' && v.table ? [tableHeight(v), v.f.size] : v.k === 'struct' && v.gpu ? [(v.f.get('Size') as Mat).d[0], (v.f.get('Size') as Mat).d[1]] : [1, 1]);
 
 export function kind(v: Value): string {
   switch (v.k) {
     case 'mat': return v.logical ? 'logical' : v.cls ?? 'double';
     case 'str': return 'char';
     case 'cell': return 'cell';
-    case 'struct': return v.lti ? 'tf' : v.table ? 'table' : 'struct';
+    case 'struct': return v.lti ? 'tf' : v.gpu ? 'gpuArray' : v.fi ? 'embedded.fi' : v.table ? 'table' : 'struct';
     case 'fn': return 'function_handle';
     case 'sym': return 'sym';
   }
@@ -160,6 +160,8 @@ export const plainOf = (text: string) => text.replace(/\u0001[^\u0002]*\u0002([^
 export function show(name: string, v: Value, f: Fmt): string {
   if (v.k === 'sym') return `${name} =\n\n${symShown(v)}\n\n`;
   if (v.k === 'struct' && v.lti) return `${name} =\n\n${tfText(...tfParts(v))}\n\nContinuous-time transfer function.\n\n`;
+  if (v.k === 'struct' && v.fi) { const d = (v.f.get('Value') as Mat).d, wl = (v.f.get('WordLength') as Mat).d[0], fl = (v.f.get('FractionLength') as Mat).d[0], sg = (v.f.get('Signed') as Mat).d[0]; return `${name} =\n\n  ${[...d].slice(0, 12).map((x) => String(+x.toPrecision(10))).join('  ')}${d.length > 12 ? '  …' : ''}\n\n  fixed point: ${sg ? 'signed' : 'unsigned'}, ${wl} bits, ${fl} after the point (steps of ${2 ** -fl})\n\n`; }
+  if (v.k === 'struct' && v.gpu) return `${name} =\n\n  ${(v.f.get('Size') as Mat | undefined)?.d.join('×') ?? ''} gpuArray (${(v.f.get('Where') as Str | undefined)?.v ?? 'GPU'}): gather(${name}) brings it back\n\n`;
   if (v.k === 'mat' && (v.p ?? 1) > 1) return Array.from({ length: v.p! }, (_, k) => `${name}${pageLabel(v, k)} =\n\n${render(page(v, k), f)}\n\n`).join('');
   if (v.k === 'mat' && v.r * v.c === 1) return `${name} = ${v.im ? fmtC(v.d[0], v.im[0], f) : fmtNum(v.d[0], f, !!v.logical || Number.isInteger(v.d[0]))}\n`;
   const body = render(v, f);

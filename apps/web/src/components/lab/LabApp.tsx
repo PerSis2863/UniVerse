@@ -1,9 +1,15 @@
 'use client';
 
+import { SIGNAL_EXAMPLES } from './examples-signals';
+import { TestResults } from './TestResults';
+import type { TestReport } from '@/lib/lab/verify-lab';
+import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
+import { asksOf, onAsk, onChannel } from './page-answers';
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { MACHINE_EXAMPLES } from '@/lib/lab/examples-machines';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
-import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, FlaskConical, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
@@ -29,6 +35,7 @@ import { MAX_FRAMES, sweepCodes, sweepValues } from '@/lib/lab/sweep';
 import { builtinNames } from './matlab-lang';
 import { LANGS, langOf } from '@/lib/lab/langs';
 import { LangRunner, type LangEvent } from './lang-runner';
+import { SCIENCE_EXAMPLES } from '@/lib/lab/examples-sciences';
 
 /** Figures from the other languages (M466–) are numbered from here and shown as pictures, never put into the page. */
 const OTHER_FIG = 1_000_000;
@@ -40,7 +47,7 @@ const OTHER_FIG = 1_000_000;
 
 type Line = { k: 'in' | 'out' | 'err'; t: string };
 /** 'tool': a line the toolstrip runs (M472): like a command, but always in Hyperion's own engine. */
-type From = 'cmd' | 'tool' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep';
+type From = 'cmd' | 'tool' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep' | 'test';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
 const SPEEDS = [1, 2, 4, 8, 16, 32];
@@ -48,6 +55,7 @@ interface Script { name: string; code: string }
 const KEEP = 'uv-lab-scripts';
 const EXAMPLES: Script[] = [
   { name: 'first_plot.m', code: "% A first plot: press Run (or Ctrl+Enter)\nx = linspace(0, 2*pi, 200);\nplot(x, sin(x), x, cos(x), '--')\ntitle('sin and cos')\nxlabel('x'); grid on\nlegend('sin', 'cos')\n" },
+  { name: 'animate.m', code: "% Animation: a pendulum swinging while the script runs (drawnow and pause show each frame)\ng = 9.81; L = 1; th = 1.2; w = 0; dt = 0.02;\nsubplot(1, 2, 2)\nh = animatedline('Color', 'b');      % its angle over time, growing as it goes\nfor k = 1:150\n  w = w - g/L*sin(th)*dt; th = th + w*dt;\n  subplot(1, 2, 1)\n  plot([0 L*sin(th)], [0 -L*cos(th)], '-o', 'Color', '#f97316', 'LineWidth', 3)\n  axis([-1.2 1.2 -1.2 0.2]); title(sprintf('t = %.1f s', k*dt))\n  subplot(1, 2, 2)\n  addpoints(h, k*dt, th); xlim([0 3]); ylim([-1.3 1.3]); title('angle (rad)')\n  pause(0.02)\nend\n" },
   { name: 'matrices.m', code: "% Solve A x = b\nA = [4 -2 1; -2 4 -2; 1 -2 4];\nb = [11; -16; 17];\nx = A \\ b\ncheck = A * x - b\nd = det(A)\n" },
   { name: 'spring.m', code: "% A damped spring with ode45\nf = @(t, y) [y(2); -4*y(1) - 0.5*y(2)];\n[t, y] = ode45(f, [0 20], [1; 0]);\nplot(t, y(:, 1)); grid on\ntitle('Position over time'); xlabel('t (s)'); ylabel('x (m)')\n" },
   { name: 'fit.m', code: "% Fit a line to measurements\nx = 0:10;\ny = 2.5*x + 1 + randn(1, 11);\np = polyfit(x, y, 1)\nscatter(x, y); hold on\nplot(x, polyval(p, x), 'r'); hold off\nlegend('data', 'fit'); title(sprintf('y = %.2f x + %.2f', p(1), p(2)))\n" },
@@ -72,12 +80,23 @@ const EXAMPLES: Script[] = [
   { name: 'goals.m', code: "% Several goals at once: a beam that is light and stiff (they pull against each other)\n% x = [width height] of a rectangular steel beam (m), 2 m long, 10 kN at its end\nL = 2; F = 1e4; E = 200e9; rho = 7850;\nmass = @(x) rho*L*x(1)*x(2);\nsag = @(x) F*L^3/(3*E*x(1)*x(2)^3/12) * 1000;          % mm\ngoals = @(x) [mass(x), sag(x)];\nlb = [0.02 0.05]; ub = [0.2 0.4];\nrng(1)\n[x, f] = gamultiobj(goals, 2, [], [], [], [], lb, ub);\nplot(f(:,1), f(:,2), 'o'); xlabel('Mass (kg)'); ylabel('Sag at the end (mm)'); grid on\ntitle(sprintf('%d best trade-offs between weight and stiffness', size(f, 1)))\n% Pick the lightest beam that sags under 5 mm\nlimit = 5;   % slider 1 20\nok = find(f(:,2) <= limit);\n[~, k] = min(f(ok, 1)); k = ok(k);\nfprintf('Under %g mm: %.0f mm wide, %.0f mm high, %.1f kg, sags %.2f mm\\n', limit, 1000*x(k,1), 1000*x(k,2), f(k,1), f(k,2))\n" },
   { name: 'solvers.m', code: "% The rarer solvers: roots, mixtures, the worst case and rough landscapes\n% 1. Where a cable's sag equation is zero, and the cheapest point on an interval\nx = fzero(@(x) cosh(x) - 2*x, [0 1]);\n[m, fm] = fminbnd(@(t) t.^3 - 2*t, 0, 2);\nfprintf('cosh(x) = 2x at x = %.10f; t^3 - 2t is smallest at t = %.6f\\n', x, m)\n% 2. A blend of three alloys (no negative amounts) closest to a target recipe\nC = [0.7 0.2 0.1; 0.2 0.6 0.3; 0.1 0.2 0.6];    % columns: each alloy's share of three metals\ntarget = [0.45; 0.35; 0.20];\namounts = lsqnonneg(C, target);\nfprintf('Alloy amounts: %.3f %.3f %.3f\\n', amounts)\n% 3. Five functions: make the worst of them as small as it can be\nf = @(x) [2*x(1)^2 + x(2)^2 - 48*x(1) - 40*x(2) + 304, -x(1)^2 - 3*x(2)^2, x(1) + 3*x(2) - 18, -x(1) - x(2), x(1) + x(2) - 8];\n[xm, fval, worst] = fminimax(f, [0.1 0.1]);\nfprintf('fminimax: x = (%.3f, %.3f), the worst value %.4f\\n', xm, worst)\n% 4. A bumpy landscape (Rastrigin): a local solver gets stuck, annealing and pattern search look further\nras = @(x) 20 + sum(x.^2 - 10*cos(2*pi*x));\nstart = 2.6;   % slider -4.5 4.5\nx0 = [start -start];\nxl = fminsearch(ras, x0);\nrng(3)\nxa = simulannealbnd(ras, x0, [-5 -5], [5 5]);\nxp = patternsearch(ras, x0, [], [], [], [], [-5 -5], [5 5]);\nfprintf('fminsearch %.3f, simulannealbnd %.3f, patternsearch %.3f\\n', ras(xl), ras(xa), ras(xp))\n[X, Y] = meshgrid(-5:0.1:5);\ncontour(X, Y, 20 + X.^2 - 10*cos(2*pi*X) + Y.^2 - 10*cos(2*pi*Y), 20); hold on\nplot(x0(1), x0(2), 'ks', xl(1), xl(2), 'bo', xa(1), xa(2), 'r*', xp(1), xp(2), 'gd')\nlegend('Rastrigin', 'start', 'fminsearch', 'simulannealbnd', 'patternsearch'); title('Where each solver ended')\n" },
   { name: 'vibration.m', code: "% Vibration analysis: a hammer test, and a bearing that is starting to fail\nrng(3); fs = 1000; n = 2^16; T = 1/fs;\n% A bracket with two modes (32 Hz at 2 % damping, 87 Hz at 3 %), shaken by random taps\nx = randn(n, 1);\nw1 = 2*pi*32; r1 = exp(-0.02*w1*T); w2 = 2*pi*87; r2 = exp(-0.03*w2*T);\ny = filter([0 r1*sin(w1*T)], [1 -2*r1*cos(w1*T) r1^2], x) + filter([0 r2*sin(w2*T)], [1 -2*r2*cos(w2*T) r2^2], x);\n[H, f] = modalfrf(x, y, fs, 4096);\n[fn, zeta] = modalfit(H, f, fs, 2)          % natural frequencies (Hz) and damping ratios\nsemilogy(f, abs(H)); grid on; xlim([0 200])\ntitle('Frequency response'); xlabel('Hz')\n\n% A bearing: steady noise plus impacts that ring near 3 kHz, 12 times a second\nfs = 20000; t = (0:1/fs:1-1/fs)';\nv = 0.3*randn(size(t));\nfor s = 1:round(fs/12):numel(t) - 300\n  k = (0:299)';\n  v(s + k) = v(s + k) + 2*exp(-k/40).*sin(2*pi*3000*k/fs);\nend\nfigure; kurtogram(v, fs, 7)                  % the band where the impacts ring\n[~, ~, ~, fc, ~, bw] = kurtogram(v, fs, 7);\nfprintf('Filter around %.0f Hz (%.0f Hz wide), then look at its envelope spectrum\\n', fc, bw)\n" },
+  ...SIGNAL_EXAMPLES,
+  ...SCIENCE_EXAMPLES,
   { name: 'learn.m', code: "% Machine learning: Fisher's iris flowers\nrng(1)                              % the same folds every run\nload fisheriris                     % meas: 150 flowers x 4 measurements (cm); species: their names\nk = 5;   % slider 1 15\nknn = fitcknn(meas, species, 'NumNeighbors', k);\ncv = crossval(knn, 'KFold', 5);\nfprintf('%d nearest neighbours: %.1f%% right on flowers they never saw\\n', k, 100*(1 - kfoldLoss(cv)))\nconfusionchart(species, kfoldPredict(cv))\nfigure; gscatter(meas(:,3), meas(:,4), species); xlabel('Petal length (cm)'); ylabel('Petal width (cm)')\ntree = fitctree(meas(:,3:4), species);\nlabel = predict(tree, [4.8 1.6])\nfigure; [~, score, ~, ~, explained] = pca(meas);\ngscatter(score(:,1), score(:,2), species); title(sprintf('The first two components: %.0f%% of the spread', sum(explained(1:2))))\n" },
   { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
   { name: 'python_demo.py', code: "# Python inside Hyperion: NumPy, SciPy, Pandas and Matplotlib, nothing to install (the first run loads them)\nimport numpy as np\nimport pandas as pd\nfrom scipy import integrate, optimize\nimport matplotlib.pyplot as plt\n\n# A damped spring, solved by SciPy\ndef spring(t, y):\n    return [y[1], -4 * y[0] - 0.5 * y[1]]\n\nsol = integrate.solve_ivp(spring, [0, 20], [1, 0], max_step=0.05)\nplt.plot(sol.t, sol.y[0])\nplt.xlabel('t (s)'); plt.ylabel('x (m)'); plt.title('A damped spring (SciPy)')\n\n# Where cos(x) = x\nprint('cos(x) = x at', optimize.brentq(lambda x: np.cos(x) - x, 0, 1))\n\n# A small table with Pandas\ndf = pd.DataFrame({'day': range(1, 8), 'steps': np.random.default_rng(1).integers(3000, 12000, 7)})\nprint(df.describe().round(1))\n" },
   { name: 'r_demo.R', code: "# R inside Hyperion, with ggplot2: nothing to install (the first run loads R and the package)\nlibrary(ggplot2)\n\n# A linear model of the cars data that comes with R\nfit <- lm(dist ~ speed, data = cars)\nprint(round(coef(fit), 2))\ncat('R squared:', round(summary(fit)$r.squared, 3), '\\n')\n\nprint(\n  ggplot(cars, aes(speed, dist)) +\n    geom_point(colour = 'steelblue') +\n    geom_smooth(method = 'lm', formula = y ~ x, colour = 'firebrick') +\n    labs(title = 'Stopping distance against speed', x = 'Speed (mph)', y = 'Distance (ft)')\n)\n" },
+  ...MACHINE_EXAMPLES,
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
+/** sound / soundsc from a script (M473): played here, as the engine's thread has no speakers. */
+function playSound(channels: Float32Array[], fs: number) {
+  try {
+    const ctx = new AudioContext(), buf = ctx.createBuffer(channels.length, channels[0].length, fs);
+    channels.forEach((c, i) => buf.copyToChannel(Float32Array.from(c), i));
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.onended = () => void ctx.close(); src.start();
+  } catch { /* no audio here */ }
+}
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
 /** A control moved in the notebook view while something ran: run every section of this script, afterwards. */
 const NOTE_ALL = '\u0000notes\u0000';
@@ -133,6 +152,7 @@ export function LabApp() {
   const [helpQuery, setHelpQuery] = useState('');
   // Sweep (M402): a slider run through its range (the film and its table), and the form that starts one.
   const [sweep, setSweep] = useState<Sweep | null>(null);
+  const [tests, setTests] = useState<TestReport | null>(null);
   const [sweepAsk, setSweepAsk] = useState<{ name: string; from: string; to: string; n: number } | null>(null);
   const sweepUrls = useRef<string[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -183,10 +203,11 @@ export function LabApp() {
     busyNow.current = true;
     setBusy(true);
     if (from === 'note') noteBuf.current = '';
-    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' || from === 'tool' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : 'run'} ${list[open]?.name ?? 'script'}` });
+    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' || from === 'tool' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : from === 'test' ? 'runtests' : 'run'} ${list[open]?.name ?? 'script'}` });
     if (from === 'watch') { watchingScript.current = open; worker.current.postMessage({ watch: code, id } satisfies ToLab); }
     else if (from === 'profile') { watchingScript.current = open; worker.current.postMessage({ profile: code, id } satisfies ToLab); }
-    else worker.current.postMessage({ run: code, id } satisfies ToLab);
+    else if (from === 'test') worker.current.postMessage({ run: code, id, test: list[open]?.name ?? 'tests' } satisfies ToLab);
+    else worker.current.postMessage({ run: code, id, animate: from === 'cmd' || from === 'script' } satisfies ToLab);
   };
   /** The next waiting notebook section, if any. */
   const nextNote = () => {
@@ -210,6 +231,13 @@ export function LabApp() {
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
       if ('out' in m) { if (pending.current?.from === 'note') noteBuf.current += m.out; else if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
+      if ('tested' in m) { setTests(m.tested); return; }
+      if ('serialOut' in m) { applySerialOut(m.serialOut); return; }
+      if ('channel' in m) { onChannel(w, m.channel); return; }
+      if ('ask' in m) { onAsk(w, m.ask); return; }
+      if ('sound' in m) { playSound(m.sound.channels, m.sound.fs); return; }
+      // A frame of a running animation (M506): drawnow or pause showed the figure as it is now.
+      if ('live' in m) { setFigs((fs) => (fs.some((f) => f.id === m.live.id) ? fs.map((f) => (f.id === m.live.id ? m.live : f)) : [...fs, m.live])); setCurrent(m.live.id); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
       if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }
@@ -264,6 +292,8 @@ export function LabApp() {
     worker.current = w;
     // A restarted engine (after Stop) gets the files again.
     if (fileData.current.size) w.postMessage({ upload: [...fileData.current.values()] } satisfies ToLab);
+    // A device connected in Signals → Devices (M474) is known to the new engine.
+    if (serialLink.state.open) w.postMessage({ serial: { state: engineView(serialLink.state) } } satisfies ToLab);
   };
   const listFiles = () => setFiles([...fileData.current.values()].map((f) => ({ name: f.name, size: f.bytes.length })).sort((a, b) => a.name.localeCompare(b.name)));
   const restore = useEffectEvent(async () => {
@@ -273,6 +303,7 @@ export function LabApp() {
     if (list.length) { worker.current?.postMessage({ upload: list } satisfies ToLab); listFiles(); }
   });
   useEffect(() => { void restore(); }, []);
+  useEffect(() => bridgeToEngine(() => worker.current, () => asksOf(worker.current)), []);
   useEffect(() => {
     const readHash = () => { void readShare(window.location.hash).then((s) => { if (s) setIncoming(s); }); };
     readHash();
@@ -574,6 +605,7 @@ export function LabApp() {
         </label>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
         {mat && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>}
+        {mat && !noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'test')} title="Run its %% sections and test… functions as tests"><FlaskConical className="h-3.5 w-3.5" aria-hidden />Test</button>}
         {mat && !noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'profile')} title="Run it and time every line"><Gauge className="h-3.5 w-3.5" aria-hidden />Time it</button>}
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy} onClick={() => run(script.code, 'script')}><Play className="h-3.5 w-3.5" aria-hidden />Run</button>
       </div>
@@ -764,7 +796,9 @@ export function LabApp() {
       </div>
       {watching && figIndex >= 0 ? (
         traceSvg[figIndex] ? <div ref={figBox} className="min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" role="img" aria-label={`The figure at step ${watch!.k + 1}`} dangerouslySetInnerHTML={{ __html: dark ? traceSvg[figIndex].dark : traceSvg[figIndex].light }} /> : <div ref={figBox} className="min-h-0 flex-1" />
-      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : sweep ? (
+      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : tests ? (
+        <TestResults report={tests} onClose={() => setTests(null)} onAgain={() => run(script.code, 'test')} busy={busy} />
+      ) : sweep ? (
         <LabSweep sweep={sweep} dark={dark} onClose={dropSweep} onUse={sweepSlider ? takeSwept : null} onDownload={download} />
       ) : fig && fig.id > OTHER_FIG && otherUrl ? (
         // Another language's figure: drawn by its own code, so only ever shown as a picture (no script in it can run).
