@@ -12,7 +12,7 @@ import { ui } from './bench-ui';
 // seat, and someone unbelted behind the front person. M486l: a side crash (a car or a pole), the struck side or the other,
 // side and curtain airbags, the person beside. The maths is vehicle.ts (frontalCrash, sideCrash).
 
-type Into = 'wall' | 'car';
+type Into = 'wall' | 'barrier' | 'car';
 type Guard = 'none' | 'belt' | 'bag' | 'both';
 type Overlap = '1' | '0.4' | '0.25';
 type Seat = 'front' | 'rear' | 'pushed';
@@ -77,7 +77,7 @@ export function CrashView({ car }: { car: Vehicle }) {
   ];
   const frontFacts: [string, string][] = [
     ['Result', `${c.risk === 'low' ? 'Likely to walk away' : c.risk === 'serious' ? 'Serious injury likely' : 'Severe injury likely'} (rough)`],
-    ['Like hitting a wall at', `${(c.vEq * 3.6).toFixed(0)} km/h · front crushed ${(c.crush * 100).toFixed(0)} cm`],
+    ['Like hitting a wall at', `${(c.vEq * 3.6).toFixed(0)} km/h · front crushed ${(c.crush * 100).toFixed(0)} cm${into === 'barrier' ? `, barrier ${(c.barrier * 100).toFixed(0)} cm` : ''}`],
     ['Chest (3 ms) · moved forward', rear ? `${c.chestG.toFixed(0)} g · ${(c.travelMax * 100).toFixed(0)} cm${c.hitSeat ? ', head on the seat in front' : ''}` : `${c.chestG.toFixed(0)} g · ${c.hitWheel ? 'hit the steering wheel' : `${(c.travelMax * 100).toFixed(0)} cm of ${(WHEEL_GAP * 100).toFixed(0)}`}${c.headHit ? ', head on the wheel' : ''}`],
     ['Front airbag', rear ? 'none in the back' : Number.isNaN(c.bagAt) ? (guard === 'none' || guard === 'belt' ? 'none fitted' : 'didn’t fire') : `fired at ${(c.bagAt * 1000).toFixed(0)} ms${c.late ? ' (late)' : ''}${c.slidOff ? ', the head slid off its edge' : ''}`],
     ['Into the cabin', c.intrusion > 0.005 ? `${(c.intrusion * 100).toFixed(0)} cm (footwell and dashboard)` : 'nothing'],
@@ -96,7 +96,7 @@ export function CrashView({ car }: { car: Vehicle }) {
         {side ? <div className="space-y-1"><span className={label}>Hit by</span>
           <Segmented<SideInto> label="Hit by" value={sideInto} onChange={setSideInto} segments={[{ value: 'car', label: 'A car like it' }, { value: 'pole', label: 'Sliding into a pole' }]} />
         </div> : <div className="space-y-1"><span className={label}>Into</span>
-          <Segmented<Into> label="Into" value={into} onChange={setInto} segments={[{ value: 'wall', label: 'A wall' }, { value: 'car', label: 'A car like it, head on' }]} />
+          <Segmented<Into> label="Into" value={into} onChange={setInto} segments={[{ value: 'wall', label: 'A wall' }, { value: 'barrier', label: 'A soft barrier (Euro NCAP)' }, { value: 'car', label: 'A car like it, head on' }]} />
         </div>}
         <div className="space-y-1"><span className={label}>Belt and airbag</span>
           <Segmented<Guard> label="Belt and airbag" value={guard} onChange={setGuard} segments={[{ value: 'none', label: 'Nothing' }, { value: 'belt', label: 'Belt' }, { value: 'bag', label: 'Airbag' }, { value: 'both', label: 'Belt + airbag' }]} />

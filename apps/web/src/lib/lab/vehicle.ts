@@ -403,29 +403,38 @@ export const NCAP_CRUSH = 0.65, BELT_K = 2e5, BELT_LIMIT = 12000, BAG_GAP = 0.2,
 // is thrown into the front seat's back, which pushes the front person into their belt and airbag too (people knocking
 // into each other). The crash is into something rigid (a wall, or a car taken as one), harsher than Euro NCAP's soft
 // barrier. Rough figures.
+// M486n: Euro NCAP's soft barrier ('barrier'): aluminium honeycomb on a rigid block, crushing at a steady ~300 kN per
+// metre of width it is hit over (`BARRIER_N`; the car's width 1.8 m times the overlap) up to `BARRIER_DEPTH` 0.54 m deep,
+// then rigid. It sits in series with the car's front: while the front would push harder than that, the honeycomb
+// gives instead (and keeps its shape: no spring-back).
+export const BARRIER_N = 3e5, BARRIER_DEPTH = 0.54, CAR_WIDTH = 1.8;
 export const FRONT_ROOM = 0.8, SEATBACK_KNEE = 0.25, SEATBACK_HEAD = 0.45, REAR_BELT_LIMIT = 16000, SEATBACK_K = 1.5e5, SEATBACK_MAX = 12000;
-export interface Crash { t: number[]; carG: number[]; personG: number[]; travel: number[]; crush: number; dv: number; bagAt: number; late: boolean; beltPeak: number; hitWheel: boolean; headHit: boolean; chestG: number; travelMax: number; vEq: number; intrusion: number; slidOff: boolean; hitSeat: boolean; backLoad: number; risk: 'low' | 'serious' | 'severe' }
+export interface Crash { barrier: number; t: number[]; carG: number[]; personG: number[]; travel: number[]; crush: number; dv: number; bagAt: number; late: boolean; beltPeak: number; hitWheel: boolean; headHit: boolean; chestG: number; travelMax: number; vEq: number; intrusion: number; slidOff: boolean; hitSeat: boolean; backLoad: number; risk: 'low' | 'serious' | 'severe' }
 /** The front's stiffness share for an overlap (1 is the full width). */
 export const overlapShare = (ov: number) => (ov >= 1 ? 1 : ov >= 0.3 ? 0.5 + (5 / 7) * (ov - 0.3) : (0.5 * ov) / 0.3);
-export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'car'; other?: number; belt?: boolean; bags?: boolean; overlap?: number; seat?: 'front' | 'rear'; behind?: 'none' | 'belted' | 'unbelted' } = {}): Crash {
+export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'car' | 'barrier'; other?: number; belt?: boolean; bags?: boolean; overlap?: number; seat?: 'front' | 'rear'; behind?: 'none' | 'belted' | 'unbelted' } = {}): Crash {
   const m = v.m, m2 = o.other ?? m, belt = o.belt ?? true, rear = o.seat === 'rear', bags = (o.bags ?? true) && !rear, mo = 75, dt = 1e-5, T = 0.25;
   const ov = Math.max(0.1, Math.min(1, o.overlap ?? 1)), share = overlapShare(ov), side = 0.7 * (1 - ov) ** 2;
   // An unbelted person behind the front one (the back seat itself has nobody behind it).
   const pushed = !rear && o.behind === 'unbelted';
   const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k0 = (m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
   let xc = 0, vc = vEq, xo = 0, vo = vEq, xb = 0, vb = vEq, crush = 0, sens = 0, bagAt = NaN, beltPeak = 0, hitWheel = false, travelMax = 0, late = false, backLoad = 0, slidOff = false;
-  const out: Crash = { t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, intrusion: 0, slidOff: false, hitSeat: false, backLoad: 0, risk: 'low' };
+  const out: Crash = { barrier: 0, t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, intrusion: 0, slidOff: false, hitSeat: false, backLoad: 0, risk: 'low' };
   const win = Math.round(0.003 / dt), recent: number[] = [];
   // The front's force for a crush: k·share up to FRONT_ROOM, 2.5 times as stiff past it.
   const kk = k0 * share, front = (x: number) => (x <= FRONT_ROOM ? kk * x : kk * FRONT_ROOM + 2.5 * kk * (x - FRONT_ROOM));
   // Into a seat's back (knees, then the chest), folding at SEATBACK_MAX.
   const seatback = (x: number) => Math.min(SEATBACK_MAX, (x > SEATBACK_KNEE ? Math.min(KNEE_K * (x - SEATBACK_KNEE), KNEE_MAX) : 0) + (x > SEATBACK_HEAD + 0.1 ? SEATBACK_K * (x - SEATBACK_HEAD - 0.1) : 0));
-  let sum = 0;
+  // The barrier's crushing force for the width hit, and the front's crush for a force (its curve turned round).
+  const soft = o.into === 'barrier' ? BARRIER_N * CAR_WIDTH * ov : 0, frontInv = (F: number) => (F <= kk * FRONT_ROOM ? F / kk : FRONT_ROOM + (F - kk * FRONT_ROOM) / (2.5 * kk));
+  let sum = 0, xbar = 0;
   for (let i = 0; i * dt <= T; i++) {
     const t = i * dt;
     // The wall pushes while the front is squeezed: loading on the front's curve, unloading on k/e² from the most crush.
-    let Fw = 0;
-    if (xc >= crush) { crush = xc; Fw = front(xc); } else Fw = Math.max(0, front(crush) - (kk / (e * e)) * (crush - xc));
+    // The soft barrier (M486n) takes up what it crushes; the car's front gets the rest.
+    let Fw = 0, xf = xc - xbar;
+    if (soft && xf >= crush && front(xf) > soft && xbar < BARRIER_DEPTH) { xbar = Math.min(BARRIER_DEPTH, xc - frontInv(soft)); xf = xc - xbar; }
+    if (xf >= crush) { crush = xf; Fw = front(xf); } else Fw = Math.max(0, front(crush) - (kk / (e * e)) * (crush - xf));
     const ac = -Fw / m, intr = Math.max(0, crush - FRONT_ROOM);
     sens += ((-ac / G - sens) * dt) / 0.03;
     if (bags && Number.isNaN(bagAt) && sens > FRONT_G) { bagAt = t; late = xo - xc > 0.125; }
@@ -462,7 +471,7 @@ export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'ca
   const hitSeat = rear && travelMax + 0.15 > SEATBACK_HEAD;
   // Thrown over a folded seat's back (80 cm or more from the back seat) is severe too.
   const risk = hitWheel || out.chestG > 60 || intrusion > 0.25 || (rear && travelMax > 0.8) ? 'severe' : out.chestG > 40 || headHit || hitSeat || intrusion > 0.1 ? 'serious' : 'low';
-  return { ...out, crush, dv: vEq - vc, bagAt, late, beltPeak, hitWheel, headHit, travelMax, intrusion, slidOff, hitSeat, backLoad, risk };
+  return { ...out, crush, barrier: xbar, dv: vEq - vc, bagAt, late, beltPeak, hitWheel, headHit, travelMax, intrusion, slidOff, hitSeat, backLoad, risk };
 }
 
 // M486l: a side crash. Another car (`other` kg, a car like it by default; Euro NCAP's barrier is 1,400 kg at 50 km/h)

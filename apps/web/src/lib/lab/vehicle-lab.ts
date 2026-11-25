@@ -136,7 +136,7 @@ def('vehicleCrash', (a, nout, lab) => {
   const v = vehicleOf(a[0]), sp = toMat(a[1]).d[0], o = pairs(a, 2);
   if (!(sp > 0 && sp <= 45)) throw new LabError('The speed is above 0 up to 45 m/s.');
   const into = o.get('into') ? textOf(o.get('into')!).toLowerCase() : 'wall', other = o.get('othermass') ? toMat(o.get('othermass')!).d[0] : undefined;
-  if (into !== 'wall' && into !== 'car') throw new LabError("'Into' is 'wall' or 'car' (head on, both at the speed).");
+  if (into !== 'wall' && into !== 'car' && into !== 'barrier') throw new LabError("'Into' is 'wall', 'barrier' (Euro NCAP's soft one) or 'car' (head on, both at the speed).");
   if (other !== undefined && !(other >= 100 && other <= 60000)) throw new LabError("'OtherMass' is the other vehicle's mass, 100 to 60,000 kg.");
   const flag = (k: string) => { const x = o.get(k) ? toMat(o.get(k)!).d[0] : 1; if (x !== 0 && x !== 1) throw new LabError("'Belts' and 'Airbags' are 1 or 0."); return x === 1; };
   // M486k: 'Overlap' (the share of the front that hits), 'Seat' 'front' or 'rear', 'Behind' (who sits behind the front person).
@@ -145,7 +145,7 @@ def('vehicleCrash', (a, nout, lab) => {
   if (seat !== 'front' && seat !== 'rear') throw new LabError("'Seat' is 'front' or 'rear'.");
   if (behind !== 'none' && behind !== 'belted' && behind !== 'unbelted') throw new LabError("'Behind' is 'none', 'belted' or 'unbelted'.");
   const c = vd.frontalCrash(v, sp, { into, other, belt: flag('belts'), bags: flag('airbags'), overlap, seat, behind });
-  const info: Struct = { k: 'struct', f: new Map<string, Value>([['WallSpeed', num(c.vEq)], ['Crush', num(c.crush)], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['AirbagLate', num(c.late ? 1 : 0)], ['BeltForce', num(c.beltPeak)], ['ChestG', num(c.chestG)], ['Travel', num(c.travelMax)], ['HitWheel', num(c.hitWheel ? 1 : 0)], ['HeadHitWheel', num(c.headHit ? 1 : 0)], ['Intrusion', num(c.intrusion)], ['SlidOffAirbag', num(c.slidOff ? 1 : 0)], ['HitFrontSeat', num(c.hitSeat ? 1 : 0)], ['BackLoad', num(c.backLoad)], ['Injury', str(c.risk)]]) };
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['WallSpeed', num(c.vEq)], ['Crush', num(c.crush)], ['BarrierCrush', num(c.barrier)], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['AirbagLate', num(c.late ? 1 : 0)], ['BeltForce', num(c.beltPeak)], ['ChestG', num(c.chestG)], ['Travel', num(c.travelMax)], ['HitWheel', num(c.hitWheel ? 1 : 0)], ['HeadHitWheel', num(c.headHit ? 1 : 0)], ['Intrusion', num(c.intrusion)], ['SlidOffAirbag', num(c.slidOff ? 1 : 0)], ['HitFrontSeat', num(c.hitSeat ? 1 : 0)], ['BackLoad', num(c.backLoad)], ['Injury', str(c.risk)]]) };
   if (nout > 0) return [table([['Time', col(c.t)], ['CarG', col(c.carG)], ['PersonG', col(c.personG)], ['Travel', col(c.travel)]]), info];
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.carG), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.personG), str('LineWidth'), num(2)); call(lab, 'hold', str('off'));

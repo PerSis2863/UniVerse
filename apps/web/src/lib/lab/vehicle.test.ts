@@ -278,4 +278,16 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(seats).toBeTruthy();
     expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'Middle', 2)")).toThrow(/Middle/);
   });
+  it('Euro NCAP\'s soft barrier (M486n)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, wall = vd.frontalCrash(car, 64 / 3.6, { overlap: 0.4 }), soft = vd.frontalCrash(car, 64 / 3.6, { overlap: 0.4, into: 'barrier' });
+    // The offset test at 64 km/h: the honeycomb crushes all its depth, the front less, nothing into the cabin.
+    expect(soft.barrier).toBeCloseTo(vd.BARRIER_DEPTH, 6); expect(soft.crush).toBeLessThan(wall.crush); expect(soft.intrusion).toBe(0); expect(wall.intrusion).toBeGreaterThan(0);
+    expect(soft.risk).toBe('low'); expect(wall.barrier).toBe(0);
+    // Full width at 56 km/h: the car's front is about as stiff as the honeycomb, so it barely gives.
+    const full = vd.frontalCrash(car, 56 / 3.6, { into: 'barrier' });
+    expect(full.barrier).toBeLessThan(0.1); expect(full.crush).toBeLessThanOrEqual(vd.NCAP_CRUSH);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleCrash(vehicle(), 64/3.6, 'Into', 'barrier', 'Overlap', 0.4);");
+    expect(toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get('BarrierCrush')!).d[0]).toBeCloseTo(vd.BARRIER_DEPTH, 6);
+  });
 });

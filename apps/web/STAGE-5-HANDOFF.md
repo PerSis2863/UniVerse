@@ -13416,6 +13416,17 @@ hardly; 5 m of wet clay over dry rock ~sits between them and agrees with its own
 Language 'Topsoil', [resistivity depth]. Window: Several trains → 25 kV → The soil → "5 m of clay over rock" (also the
 telephone cable's soil). Not built: more than two layers, the layers' effect on DC stray current.
 
+## M486n (25 Nov): Hyperion vehicles, Euro NCAP's soft barrier
+
+The owner, 25 Nov (M486k's left-out). `vehicle.ts` `frontalCrash(…, { into: 'barrier' })`: aluminium honeycomb on a rigid
+block, crushing at `BARRIER_N` 300 kN per metre of the width hit (`CAR_WIDTH` 1.8 m × overlap) up to `BARRIER_DEPTH`
+0.54 m, then rigid; in series with the front (while the front would push harder, the honeycomb gives: `frontInv`, the
+front's curve turned round); no spring-back. `Crash.barrier` is its crush. Checked: the offset test (64 km/h, 40%)
+crushes the honeycomb its whole depth, the front less, nothing into the cabin, low risk (against ~16 cm in from a
+rigid wall); full width at 56 km/h it barely gives (the front is about as stiff). Language: vehicleCrash 'Into'
+'barrier', info.BarrierCrush. Window: Crash → Into → "A soft barrier (Euro NCAP)". Not built: the newer moving
+barrier (MPDB), the honeycomb's stiffer bumper row.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
