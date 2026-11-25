@@ -323,4 +323,59 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(f('Spin')).toBeCloseTo(go({ angle: 30, row: 'rear' }).spin, 6); expect(f('Ribs')).toBeGreaterThan(0);
     expect(() => lab.run("vehicleSideCrash(vehicle(), 10, 'Angle', 80)")).toThrow(/Angle/);
   });
+  it('a side crash: where the car slides after the blow (M486q)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, go = (o: Parameters<typeof vd.sideCrash>[2], sp = 50) => vd.sideCrash(car, sp / 3.6, o);
+    // Hit at the centre, square on: it slides straight the way it was shoved, as far as v²/2μg, without turning.
+    const c = go({ hitAt: 0 }), p = c.path;
+    expect(p.turned).toBeCloseTo(0, 9); expect(Math.max(...p.x.map(Math.abs))).toBeLessThan(1e-9);
+    expect(p.y[p.y.length - 1]).toBeCloseTo(c.dv ** 2 / (2 * car.mu * vd.G), 1);
+    // Hit at the front seat it turns; at 30° it is carried along too.
+    const sq = go({}), ang = go({ angle: 30 });
+    expect(sq.path.turned).toBeGreaterThan(5); expect(ang.path.x[ang.path.x.length - 1]).toBeGreaterThan(0.2);
+    // A pole stops it: it hardly moves after (a little rebound); aimed at the back seat, the front's door isn't reached.
+    const pole = go({ into: 'pole' }, 32);
+    expect(pole.path.distance).toBeLessThan(1); expect(go({ into: 'pole', hitAt: vd.SEAT_X.rear }, 32).reach).toBe(0);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleSideCrash(vehicle(), 50/3.6, 'Angle', 30);");
+    const f = (k: string) => (lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!;
+    expect(toMat(f('SlideDistance')).d[0]).toBeCloseTo(ang.path.distance, 6); expect(f('Path')).toBeTruthy();
+  });
+  it('Euro NCAP\'s moving barrier (M486r)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, go = (v: typeof car, o: Parameters<typeof vd.frontalCrash>[2] = {}) => vd.frontalCrash(v, 50 / 3.6, { into: 'mpdb', ...o });
+    const c = go(car);
+    // The honeycomb gives, not past its depth; the trolley slows as the car does (momentum shared).
+    expect(c.barrier).toBeGreaterThan(0.05); expect(c.barrier).toBeLessThanOrEqual(vd.MPDB_DEPTH + 1e-9);
+    expect(c.trolleyDv).toBeGreaterThan(0); expect(car.m * c.dv).toBeCloseTo(vd.MPDB_MASS * c.trolleyDv, -2);
+    // Half the front in it by default; a heavier car crushes the barrier deeper (Euro NCAP marks it down).
+    expect(c.trolleyDv).toBeCloseTo(go(car, { overlap: 0.5 }).trolleyDv, 9);
+    expect(go({ ...car, m: 2400 }).barrier).toBeGreaterThan(c.barrier);
+    // Other crashes don't move a trolley.
+    expect(vd.frontalCrash(car, 50 / 3.6, { into: 'barrier' }).trolleyDv).toBe(0);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleCrash(vehicle(), 50/3.6, 'Into', 'mpdb');");
+    const f = (k: string) => toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('TrolleySpeedChange')).toBeCloseTo(c.trolleyDv, 6); expect(f('BarrierCrush')).toBeCloseTo(c.barrier, 6);
+  });
+  it('arms and legs in a rollover, and people piled on the roof (M486s)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, tb = vd.kerbTrip(car, 12, 0.15), calm = vd.kerbTrip(car, 9, 0.15);
+    // Arms flail harder than the knees and from the far side harder; a belt holds the hips (the legs), not the arms.
+    const near = vd.inside(car, tb, { seat: 'near' }), far = vd.inside(car, tb, { seat: 'far' }), loose = vd.inside(car, tb, { seat: 'near', belt: false });
+    expect(near.armForce).toBeGreaterThan(0); expect(far.armForce).toBeGreaterThan(near.armForce);
+    expect(loose.armForce).toBeCloseTo(near.armForce, 9); expect(loose.legForce).toBeGreaterThan(near.legForce);
+    // Two half turns on its roof: the near arm goes out of its broken window and is crushed; curtains keep it in.
+    expect(near.armOut).toBeGreaterThan(0); expect(near.armCrushed).toBe(true); expect(near.risk).toBe('severe');
+    expect(Number.isNaN(vd.inside(car, tb, { seat: 'near', curtains: true }).armOut)).toBe(true);
+    expect(Number.isNaN(vd.inside(car, tb, { seat: 'middle' }).armOut)).toBe(true);
+    // Unbelted and upside down they pile on the roof, the near one at the bottom with the rest of the row on top.
+    const all = vd.everyone(car, tb, { belt: false, middle: true }), back = all.filter((x) => x.row === 'rear');
+    expect(back.map((x) => x.onTop)).toEqual([2, 1, 0]);
+    expect(back[0].pileLoad).toBeCloseTo((75 * 2 * vd.G * vd.PILE_FALL) / (2 * vd.BODY_STOP) + 2 * 75 * vd.G, 6);
+    // Belted, or landing on its side, nobody piles up.
+    expect(vd.everyone(car, tb, { belt: true }).every((x) => x.pileLoad === 0)).toBe(true);
+    expect(vd.everyone(car, calm, { belt: false }).every((x) => x.pileLoad === 0)).toBe(true);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleTrip(vehicle(), 12, 'Belts', 0, 'Middle', 1);");
+    const f = (k: string) => (lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!;
+    expect(toMat(f('ArmForce')).d[0]).toBeGreaterThan(0); expect(f('Seats')).toBeTruthy();
+  });
 });

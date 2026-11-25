@@ -330,4 +330,20 @@ describe('Hyperion railways (M491)', () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     expect(() => lab.run("railLine('intercity', trainModel('intercity'), [0], 'Supply', 'ac25', 'Soil', 2000, 'Topsoil', [20 0])")).toThrow(/Topsoil/);
   });
+  it('more than two soil layers (M491q)', () => {
+    // A list of one is the single layer; two equal layers are one of their total depth; a middle layer sits between.
+    const one = rl.soilRho({ soil: 2000, topsoil: { rho: 20, depth: 5 } })!;
+    expect(rl.soilRho({ soil: 2000, topsoil: [{ rho: 20, depth: 5 }] })).toBeCloseTo(one, 9);
+    expect(rl.soilRho({ soil: 2000, topsoil: [{ rho: 20, depth: 2 }, { rho: 20, depth: 3 }] })).toBeCloseTo(one, 9);
+    const three = rl.soilRho({ soil: 2000, topsoil: [{ rho: 20, depth: 3 }, { rho: 300, depth: 30 }] })!;
+    const clayRock = rl.soilRho({ soil: 2000, topsoil: { rho: 20, depth: 3 } })!;
+    expect(three).toBeLessThan(clayRock); expect(three).toBeGreaterThan(20);
+    // It agrees with its own depth.
+    const D = rl.carsonDepth(three);
+    expect(1 / three).toBeCloseTo((3 / D) / 20 + (30 / D) / 300 + (1 - 33 / D) / 2000, 12);
+    // The language takes rows from the top down.
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    expect(() => lab.run("[t, r, s] = railLine('intercity', trainModel('intercity'), [0], 'Supply', 'ac25', 'Soil', 2000, 'Topsoil', [20 3; 300 30]);")).not.toThrow();
+    expect(() => lab.run("railLine('intercity', trainModel('intercity'), [0], 'Supply', 'ac25', 'Topsoil', [20 3 1; 300 30 1])")).toThrow(/Topsoil/);
+  });
 });

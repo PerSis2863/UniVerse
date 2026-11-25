@@ -216,8 +216,8 @@ export interface Supply {
   /** M491n: the soil's resistivity (Ω·m) on AC lines: how deep the ground's return current runs. */
   soil?: number;
   /** M491p: a top layer over it: its resistivity (Ω·m) and depth (m); `soil` is then the ground beneath (100 when
-   * not given). */
-  topsoil?: { rho: number; depth: number };
+   * not given). M491q: or several layers from the top down, each with its own depth. */
+  topsoil?: SoilLayer | SoilLayer[];
   /** Storage on the line (M491g, DC): units at positions (m), each able to take or give `power` (W) and hold
    * `energy` (J); it charges when the line is above `vcharge` (a braking train lifting it) and supports below
    * `vsupport`, each way at `eta`. Batteries or supercapacitors in lineside cabinets. */
@@ -401,13 +401,18 @@ export const railReactance = (rho: number) => 0.0628 * Math.log(carsonDepth(rho)
 /** Two layers (M491p): the return current spreads down to Carson's depth D, and the layers carry it side by side, so
  * the ground acts as one of 1/ρ = (h/D)/ρ_top + (1 − h/D)/ρ_below (all ρ_top once the top layer is deeper than D), D
  * itself found from that ρ (a few rounds settle it). One layer: just `soil`; neither: undefined (the presets' 100). */
+export interface SoilLayer { rho: number; depth: number }
+/** M491q: several layers stack from the top down; each carries the share of Carson's depth it fills. */
 export function soilRho(sup: Pick<Supply, 'soil' | 'topsoil'>): number | undefined {
   const top = sup.topsoil;
-  if (!top) return sup.soil;
-  const below = sup.soil ?? 100;
+  if (!top || (Array.isArray(top) && !top.length)) return sup.soil;
+  const layers = Array.isArray(top) ? top : [top], below = sup.soil ?? 100;
   let rho = below;
   for (let i = 0; i < 40; i++) {
-    const f = Math.min(1, top.depth / carsonDepth(rho)), next = 1 / (f / top.rho + (1 - f) / below);
+    const D = carsonDepth(rho);
+    let z = 0, g = 0;
+    for (const l of layers) { const f = Math.max(0, Math.min(D, z + l.depth) - z) / D; g += f / l.rho; z += l.depth; }
+    const next = 1 / (g + Math.max(0, 1 - z / D) / below);
     if (Math.abs(next - rho) < 1e-9 * rho) { rho = next; break; }
     rho = next;
   }

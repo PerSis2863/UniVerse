@@ -161,6 +161,12 @@ def('aircraftSim6DOF', (a, nout, lab) => {
     if (!(fh > 0 && fh <= 5)) throw new LabError("'FinHeight' is the fin's height above the roll axis, above 0 up to 5 m.");
     if (wind.turbulence) { wind.turbulence.finLag = true; wind.turbulence.finRoll = true; }
   }
+  // M489l: 'DownwashLag', 1 (or dε/dα, 0 to 1): the wing's downwash reaches the tail lt / V late.
+  const dw = num1('downwashlag');
+  if (dw !== undefined && dw !== 0) {
+    if (!(dw > 0 && dw <= 1)) throw new LabError("'DownwashLag' is 1 (the downwash reaches the tail late) or dε/dα itself, above 0 up to 1.");
+    wind.downwashLag = true; if (dw < 1) ac.deda = dw;
+  }
   // Wind shear (M489d): 'Shear', the exponent (1/7 open country; the 'Wind' is then what blows 10 m up), and
   // 'Microburst', [north east (m) radius (m) outflow (m/s) down (m/s)].
   const shx = num1('shear');

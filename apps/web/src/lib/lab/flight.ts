@@ -32,6 +32,9 @@ export interface Aircraft {
   power: number; eta: number; t0: number; deMax: number;
   /** The tail's distance behind the wing (m, M489h); about 3 chords when not given. */
   lt?: number;
+  /** M489l: how much the wing's downwash turns with its angle of attack, dε/dα (about 2·cla / (π·aspect ratio) when
+   * not given). */
+  deda?: number;
   /** The fin's centre of pressure above the roll axis (m, M489k); 0.9 when not given (a light aeroplane's). */
   zf?: number;
 }
@@ -253,6 +256,9 @@ export interface Wind {
   /** `finRoll` (M489k, with `finLag`): the fin sits zf above the roll axis, so the side push that swings the nose also
    * rolls the aeroplane: L = −(zf / lt)·N from the fin. */
   turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number; rotational?: boolean; tailLag?: boolean; finLag?: boolean; finRoll?: boolean };
+  /** `downwashLag` (M489l): the air the wing turns down takes lt / V to reach the tail, so the tail meets the downwash of
+   * the wing's angle a moment ago (the classic Cmα̇), from the aeroplane's own pitching and from gusts alike. */
+  downwashLag?: boolean;
   /** Wind shear with height (M489d): the steady wind is what blows at `ref` metres (10, where it's measured) and grows
    * as (h / ref)^exponent (1/7 over open country, about 0.25 over towns) up to 500 m, steady above. */
   shear?: { exponent?: number; ref?: number };
@@ -432,10 +438,12 @@ export function flight6(ac: Aircraft, T: number, o: {
   let iv = 0, rLow = 0, stalled = false, crashed = false, gustStart = NaN, lastT: Air = [0, 0, 0];
   const rotG: Air = [0, 0, 0];
   // The vertical gusts the wing met, kept for the tail (M489i).
-  const lagN = tb?.tailLag || tb?.finLag ? Math.max(1, Math.round((ac.lt ?? 3 * ac.c) / tr.V / dt)) : 0, wHist: number[] = new Array(lagN).fill(0);
+  const lagN = tb?.tailLag || tb?.finLag || W.downwashLag ? Math.max(1, Math.round((ac.lt ?? 3 * ac.c) / tr.V / dt)) : 0, wHist: number[] = new Array(lagN).fill(0);
   // The side gusts the wing met, kept for the fin (M489j; the fin sits about where the tailplane does).
   const vHist: number[] = new Array(lagN).fill(0);
-  let tailQ = 0, finR = 0;
+  // The wing's angle of attack, kept for the downwash reaching the tail (M489l).
+  const aHist: number[] = new Array(lagN).fill(NaN), deda = ac.deda ?? (2 * ac.cla) / (Math.PI * (ac.b * ac.b) / ac.S);
+  let tailQ = 0, finR = 0, washQ = 0;
   const out: Flight6Run = { t: [], n: [], e: [], h: [], V: [], ground: [], alpha: [], beta: [], phi: [], theta: [], psi: [], p: [], q: [], r: [], nz: [], wind: [], de: [], da: [], dr: [], thr: [], stalled: false, crashed: false };
   for (let k = 0; k <= n; k++) {
     const t = k * dt;
@@ -489,6 +497,12 @@ export function flight6(ac: Aircraft, T: number, o: {
     const wind: Air = [base[0] + turb[0], base[1] + turb[1], base[2] + turb[2] - up];
     if (eng?.fail && t >= eng.fail.at) pw.working = eng.count === 2 ? ((eng.fail.which ?? 1) === 0 ? [0, 1] : [1, 0]) : [0, 0];
     const e = eulerOf(s), f = deriv6(ac, lat, s, { de: 0, da: 0, dr: 0, thr: 0 }, wind, pw);
+    if (W.downwashLag && lagN) {
+      // The point model turns the tail's downwash with the wing's angle now; really it is the angle lt / V ago. The
+      // tail's extra angle −dε/dα·(α_then − α_now), as a pitch gust (the tail's angle from pitching is q·lt / V).
+      const i = k % lagN, then = Number.isNaN(aHist[i]) ? f.alpha : aHist[i];
+      washQ = (f.V * deda * (then - f.alpha)) / (ac.lt ?? 3 * ac.c); aHist[i] = f.alpha;
+    }
     let de = tr.de + (o.elevator ? o.elevator(t) : 0), thr = tr.throttle + (o.throttle ? o.throttle(t) : 0), da = o.aileron ? o.aileron(t) : 0, dr = o.rudder ? o.rudder(t) : 0;
     const hdot = f.d.h;
     if (o.holdHeight) {
@@ -507,7 +521,7 @@ export function flight6(ac: Aircraft, T: number, o: {
     }
     if (o.yawDamper) dr += 1.2 * (s.r - rLow);
     de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
-    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll || upPitch || lagN ? [rotG[0] + upRoll, rotG[1] + upPitch + tailQ, rotG[2] + finR] : undefined, fin: tb?.finLag && tb.finRoll ? { gr: finR, ratio: (ac.zf ?? 0.9) / (ac.lt ?? 3 * ac.c) } : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
+    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll || upPitch || lagN ? [rotG[0] + upRoll, rotG[1] + upPitch + tailQ + washQ, rotG[2] + finR] : undefined, fin: tb?.finLag && tb.finRoll ? { gr: finR, ratio: (ac.zf ?? 0.9) / (ac.lt ?? 3 * ac.c) } : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
     if (g.alpha > ac.alphaStall) stalled = true;
     if (k % every === 0 || k === n) {
       const pos = toEarth(s, [s.u, s.v, s.w]);

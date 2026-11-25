@@ -120,7 +120,9 @@ const peopleOf = (o: Map<string, Value>) => {
   if (rowName !== 'front' && rowName !== 'rear') throw new LabError("'Row' is 'front' or 'rear'.");
   return { belt: flag('belts') !== 0, curtains: flag('curtains') === 1, size: size as keyof typeof vd.SIZES, seat: seat as 'near' | 'far' | 'middle' | undefined, row: rowName as 'front' | 'rear' };
 };
-const peopleFields = (ins: vd.Inside | null): [string, Value][] => [['HeadG', num(ins?.headG ?? 0)], ['ThrownOutAt', num(ins?.thrownOut ?? NaN)], ['PartlyOut', num(ins?.partly ? 1 : 0)], ['WindscreenCracked', num(ins?.screenCracked ?? NaN)], ['WindscreenOut', num(ins?.screenOut ?? NaN)], ['FrontAirbags', num(ins?.frontBags ?? NaN)], ['PersonHeadroom', num(ins?.headroom ?? vd.HEADROOM)], ['Injury', str(ins?.risk ?? 'low')]];
+const peopleFields = (ins: vd.Inside | null): [string, Value][] => [['HeadG', num(ins?.headG ?? 0)], ['ThrownOutAt', num(ins?.thrownOut ?? NaN)], ['PartlyOut', num(ins?.partly ? 1 : 0)], ['WindscreenCracked', num(ins?.screenCracked ?? NaN)], ['WindscreenOut', num(ins?.screenOut ?? NaN)], ['FrontAirbags', num(ins?.frontBags ?? NaN)], ['PersonHeadroom', num(ins?.headroom ?? vd.HEADROOM)],
+  // M486s: arms and legs.
+  ['ArmForce', num(ins?.armForce ?? 0)], ['LegForce', num(ins?.legForce ?? 0)], ['ArmOutAt', num(ins?.armOut ?? NaN)], ['ArmCrushed', num(ins?.armCrushed ? 1 : 0)], ['Injury', str(ins?.risk ?? 'low')]];
 // After a rollover (M486d): how many quarter turns, what it rests on, how far it slid sideways, how long.
 const tumbleFields = (tb: vd.Tumble): [string, Value][] => [['Rolls', num(tb.quarters)], ['RestsOn', str(tb.rests)], ['TumbleDistance', num(tb.slid)], ['TumbleTime', num(tb.time)], ['RoofCrush', num(tb.crush)], ['Spin', num((tb.spin * 180) / Math.PI)], ['WindowsBroken', num(tb.windows.filter((x) => !Number.isNaN(x)).length)], ['PeakG', num(tb.peakG)], ['Headroom', num(tb.headroom)]];
 /** The car's cross-section (wheels and roof) at a tumble's moment, for drawing from behind. */
@@ -136,16 +138,17 @@ def('vehicleCrash', (a, nout, lab) => {
   const v = vehicleOf(a[0]), sp = toMat(a[1]).d[0], o = pairs(a, 2);
   if (!(sp > 0 && sp <= 45)) throw new LabError('The speed is above 0 up to 45 m/s.');
   const into = o.get('into') ? textOf(o.get('into')!).toLowerCase() : 'wall', other = o.get('othermass') ? toMat(o.get('othermass')!).d[0] : undefined;
-  if (into !== 'wall' && into !== 'car' && into !== 'barrier') throw new LabError("'Into' is 'wall', 'barrier' (Euro NCAP's soft one) or 'car' (head on, both at the speed).");
+  // M486r: 'mpdb', Euro NCAP's moving barrier (a 1,400 kg trolley coming the other way at the speed, half the front in it).
+  if (into !== 'wall' && into !== 'car' && into !== 'barrier' && into !== 'mpdb') throw new LabError("'Into' is 'wall', 'barrier' (Euro NCAP's soft one), 'mpdb' (its moving barrier) or 'car' (head on, both at the speed).");
   if (other !== undefined && !(other >= 100 && other <= 60000)) throw new LabError("'OtherMass' is the other vehicle's mass, 100 to 60,000 kg.");
   const flag = (k: string) => { const x = o.get(k) ? toMat(o.get(k)!).d[0] : 1; if (x !== 0 && x !== 1) throw new LabError("'Belts' and 'Airbags' are 1 or 0."); return x === 1; };
   // M486k: 'Overlap' (the share of the front that hits), 'Seat' 'front' or 'rear', 'Behind' (who sits behind the front person).
-  const overlap = o.get('overlap') ? toMat(o.get('overlap')!).d[0] : 1, seat = o.get('seat') ? textOf(o.get('seat')!).toLowerCase() : 'front', behind = o.get('behind') ? textOf(o.get('behind')!).toLowerCase() : 'none';
+  const overlap = o.get('overlap') ? toMat(o.get('overlap')!).d[0] : into === 'mpdb' ? 0.5 : 1, seat = o.get('seat') ? textOf(o.get('seat')!).toLowerCase() : 'front', behind = o.get('behind') ? textOf(o.get('behind')!).toLowerCase() : 'none';
   if (!(overlap >= 0.1 && overlap <= 1)) throw new LabError("'Overlap' is the share of the front that hits, 0.1 to 1 (0.4 Euro NCAP's offset, 0.25 the small overlap).");
   if (seat !== 'front' && seat !== 'rear') throw new LabError("'Seat' is 'front' or 'rear'.");
   if (behind !== 'none' && behind !== 'belted' && behind !== 'unbelted') throw new LabError("'Behind' is 'none', 'belted' or 'unbelted'.");
   const c = vd.frontalCrash(v, sp, { into, other, belt: flag('belts'), bags: flag('airbags'), overlap, seat, behind });
-  const info: Struct = { k: 'struct', f: new Map<string, Value>([['WallSpeed', num(c.vEq)], ['Crush', num(c.crush)], ['BarrierCrush', num(c.barrier)], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['AirbagLate', num(c.late ? 1 : 0)], ['BeltForce', num(c.beltPeak)], ['ChestG', num(c.chestG)], ['Travel', num(c.travelMax)], ['HitWheel', num(c.hitWheel ? 1 : 0)], ['HeadHitWheel', num(c.headHit ? 1 : 0)], ['Intrusion', num(c.intrusion)], ['SlidOffAirbag', num(c.slidOff ? 1 : 0)], ['HitFrontSeat', num(c.hitSeat ? 1 : 0)], ['BackLoad', num(c.backLoad)], ['Injury', str(c.risk)]]) };
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['WallSpeed', num(c.vEq)], ['Crush', num(c.crush)], ['BarrierCrush', num(c.barrier)], ['TrolleySpeedChange', num(c.trolleyDv)], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['AirbagLate', num(c.late ? 1 : 0)], ['BeltForce', num(c.beltPeak)], ['ChestG', num(c.chestG)], ['Travel', num(c.travelMax)], ['HitWheel', num(c.hitWheel ? 1 : 0)], ['HeadHitWheel', num(c.headHit ? 1 : 0)], ['Intrusion', num(c.intrusion)], ['SlidOffAirbag', num(c.slidOff ? 1 : 0)], ['HitFrontSeat', num(c.hitSeat ? 1 : 0)], ['BackLoad', num(c.backLoad)], ['Injury', str(c.risk)]]) };
   if (nout > 0) return [table([['Time', col(c.t)], ['CarG', col(c.carG)], ['PersonG', col(c.personG)], ['Travel', col(c.travel)]]), info];
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.carG), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.personG), str('LineWidth'), num(2)); call(lab, 'hold', str('off'));
@@ -169,7 +172,9 @@ def('vehicleSideCrash', (a, nout, lab) => {
   if (hitAt !== undefined && !(Math.abs(hitAt) <= 3)) throw new LabError("'HitAt' is where the blow lands, metres ahead of the centre of mass (behind: negative), up to 3.");
   if (seatRow !== 'front' && seatRow !== 'rear') throw new LabError("'Row' is 'front' or 'rear'.");
   const c = vd.sideCrash(v, sp, { into, other, belt: flag('belts', 1), bags: flag('airbags', 1), seat, beside: flag('beside', 0), angle, hitAt, row: seatRow });
-  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Intrusion', num(c.intrusion)], ['SpeedChange', num(c.dv)], ['AlongSpeedChange', num(c.along)], ['Spin', num(c.spin)], ['Ribs', num(c.ribs)], ['AirbagAt', num(c.bagAt)], ['ChestG', num(c.chestG)], ['HeadG', num(c.headG)], ['HeadHit', num(c.headHit ? 1 : 0)], ['PersonForce', num(c.hitPerson)], ['Injury', str(c.risk)]]) };
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Intrusion', num(c.intrusion)], ['SpeedChange', num(c.dv)], ['AlongSpeedChange', num(c.along)], ['Spin', num(c.spin)], ['Ribs', num(c.ribs)], ['AirbagAt', num(c.bagAt)], ['ChestG', num(c.chestG)], ['HeadG', num(c.headG)], ['HeadHit', num(c.headHit ? 1 : 0)], ['PersonForce', num(c.hitPerson)], ['Injury', str(c.risk)],
+    // M486q: where it slides after the blow.
+    ['SlideDistance', num(c.path.distance)], ['SlideTurn', num(c.path.turned)], ['Path', table([['Time', col(c.path.t)], ['X', col(c.path.x)], ['Y', col(c.path.y)], ['Turn', col(c.path.psi)]])]]) };
   if (nout > 0) return [table([['Time', col(c.t)], ['CarG', col(c.carG)], ['PersonG', col(c.personG)], ['Gap', col(c.gap)]]), info];
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.carG), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.personG), str('LineWidth'), num(2)); call(lab, 'hold', str('off'));
@@ -195,7 +200,7 @@ def('vehicleTrip', (a, nout, lab) => {
   const mid = o.get('middle') ? toMat(o.get('middle')!).d[0] : 0, fmid = o.get('frontmiddle') ? toMat(o.get('frontmiddle')!).d[0] : 0;
   if ((mid !== 0 && mid !== 1) || (fmid !== 0 && fmid !== 1)) throw new LabError("'Middle' and 'FrontMiddle' are 1 (someone in that middle seat) or 0.");
   const all = vd.everyone(v, tb, { ...who, middle: mid === 1, frontMiddle: fmid === 1 });
-  people.push(['Seats', table([['Row', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.row)) } as Value], ['Side', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.seat)) } as Value], ['HeadG', col(all.map((x) => x.headG))], ['Knock', col(all.map((x) => x.knock))], ['BodyLoad', col(all.map((x) => x.bodyLoad))], ['Headroom', col(all.map((x) => x.headroom))], ['ThrownOutAt', col(all.map((x) => x.thrownOut))], ['PartlyOut', col(all.map((x) => (x.partly ? 1 : 0)))]])]);
+  people.push(['Seats', table([['Row', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.row)) } as Value], ['Side', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.seat)) } as Value], ['HeadG', col(all.map((x) => x.headG))], ['Knock', col(all.map((x) => x.knock))], ['BodyLoad', col(all.map((x) => x.bodyLoad))], ['PileLoad', col(all.map((x) => x.pileLoad))], ['OnTop', col(all.map((x) => x.onTop))], ['ArmForce', col(all.map((x) => x.armForce))], ['LegForce', col(all.map((x) => x.legForce))], ['ArmCrushed', col(all.map((x) => (x.armCrushed ? 1 : 0)))], ['Headroom', col(all.map((x) => x.headroom))], ['ThrownOutAt', col(all.map((x) => x.thrownOut))], ['PartlyOut', col(all.map((x) => (x.partly ? 1 : 0)))]])]);
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ...people, ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
   if (nout > 0) return [table([['Time', col(tb.t)], ['Across', col(tb.y)], ['Height', col(tb.z)], ['Roll', col(tb.th)], ['RollRate', col(tb.w)]]), info];
   call(lab, 'hold', str('on'));
