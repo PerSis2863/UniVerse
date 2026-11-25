@@ -37,6 +37,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
   const [tailLag, setTailLag] = useState(false);
   // M489i: in rough air, the tail meeting the same gusts after the wing.
   const [roughTail, setRoughTail] = useState(false);
+  const [roughFin, setRoughFin] = useState(false);
   const [k, setK] = useState(0);
   const [playing, setPlaying] = useState(false);
   const top = useRef<HTMLCanvasElement>(null), chart = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
@@ -55,9 +56,9 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
     // A microburst 1.5 km ahead at 300 m.
     if (move === 'burst') return flight6(ac, 60, { V0: V, h0: 300, wind: { microburst: { n: 1500, e: 0, radius: 600, outflow: wind * 1.5, down: wind * 0.8 } }, ...(hold === 'hold' ? { holdHeight: () => 300, holdSpeed: V } : {}), points: 1200 });
     // Near the ground (M489e): at 60 m, the turbulence of a wind 6 m up ten times its rms (MIL-F-8785C, by height).
-    if (low) return flight6(ac, 60, { V0: V, h0: 60, wind: { turbulence: { sigma: 0, w20: ROUGH[rough] * 10, seed: 3, rotational: turning, tailLag: roughTail } }, holdHeading: () => 0, holdHeight: () => 60, holdSpeed: V, yawDamper: true, points: 1200 });
-    return flight6(ac, 60, { V0: V, h0, wind: { turbulence: { sigma: ROUGH[rough], seed: 3, rotational: turning, tailLag: roughTail } }, holdHeading: () => 0, ...pilot, points: 1200 });
-  }, [ac, move, hold, wind, rough, feather, propOn, low, turning, front, tailLag, roughTail]);
+    if (low) return flight6(ac, 60, { V0: V, h0: 60, wind: { turbulence: { sigma: 0, w20: ROUGH[rough] * 10, seed: 3, rotational: turning, tailLag: roughTail, finLag: roughFin } }, holdHeading: () => 0, holdHeight: () => 60, holdSpeed: V, yawDamper: true, points: 1200 });
+    return flight6(ac, 60, { V0: V, h0, wind: { turbulence: { sigma: ROUGH[rough], seed: 3, rotational: turning, tailLag: roughTail, finLag: roughFin } }, holdHeading: () => 0, ...pilot, points: 1200 });
+  }, [ac, move, hold, wind, rough, feather, propOn, low, turning, front, tailLag, roughTail, roughFin]);
   const n = run.t.length;
 
   const kNow = useRef(0);
@@ -180,6 +181,7 @@ export function SixBench({ switcher }: { switcher: ReactNode }) {
           <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={low} onChange={(e) => setLow(e.target.checked)} className="h-4 w-4 accent-violet-600" />Near the ground (60 m): smaller, sharper eddies</label>
           <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={turning} onChange={(e) => setTurning(e.target.checked)} className="h-4 w-4 accent-violet-600" />Gusts that turn the air too (rolling the wings)</label>
           <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={roughTail} onChange={(e) => setRoughTail(e.target.checked)} className="h-4 w-4 accent-violet-600" />The tail meets each gust after the wing (pitching)</label>
+          <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={roughFin} onChange={(e) => setRoughFin(e.target.checked)} className="h-4 w-4 accent-violet-600" />The fin meets each side gust after the wing (yawing)</label>
         </div>}
         <button type="button" className={small} onClick={() => { if (k >= n - 1) setK(0); setPlaying((p) => !p); }}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Pause' : 'Replay'}</button>
         <label className={label}>Time <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{run.t[k].toFixed(1)} s</span>

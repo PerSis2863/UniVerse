@@ -13326,6 +13326,16 @@ Off by default. Checked: more pitch rate in the same turbulence, the same seed t
 'TurbulenceTail', 1. Window: All six → Rough → "The tail meets each gust after the wing (pitching)". Not built: the
 fin's lag for side gusts (yaw), the downwash's own lag.
 
+## M489j (25 Nov): Hyperion aeroplanes, the fin meeting side gusts after the wing
+
+The owner, 25 Nov (M489i's left-out). `flight.ts`: `Wind.turbulence.finLag`: the side gusts the wing meets are kept in a
+ring buffer lt / V long (the fin sits about where the tailplane does, `Aircraft.lt`), and the difference makes a yaw
+gust r_g = (v_wing − v_fin) / lt in `Ctl.gust[2]` (the same sign as M489f's smoothed +v̇/V, which it replaces when
+both are on). Off by default (old runs the same). Checked: a different yaw of much the same size (with the real delay
+the nose follows each gust's front and back, not a smoothed rate), the same seed the same, pitch untouched. Language
+'TurbulenceFin', 1. Window: All six → Rough → "The fin meets each side gust after the wing (yawing)". Not built: the
+downwash's own lag, the fin's height above the wing (side gusts rolling it).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

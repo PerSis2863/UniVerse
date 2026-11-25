@@ -160,4 +160,19 @@ describe('Hyperion flight in six directions (M489c)', () => {
     lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'TurbulenceTail', 1);");
     expect(lab.vars.get('tr')).toBeTruthy();
   });
+
+  it('M489j: the fin meets the side gusts after the wing, swinging the nose', { timeout: 60_000 }, () => {
+    const rms = (x: number[]) => Math.sqrt(x.reduce((q, v) => q + v * v, 0) / x.length);
+    const ac = fl.PLANE_DEFAULT;
+    const go = (finLag: boolean) => fl.flight6(ac, 40, { V0: 50, h0: 1000, wind: { turbulence: { sigma: 3, seed: 5, finLag } }, holdHeading: () => 0, holdHeight: () => 1000, holdSpeed: 50, points: 2000 });
+    const off = go(false), on = go(true);
+    // On, the yaw follows the gusts' difference along the aeroplane (a different yaw, of the same size); the same seed
+    // the same; pitch untouched.
+    expect(on.r.some((x, k) => Math.abs(x - off.r[k]) > 1e-3)).toBe(true); expect(go(true).r).toEqual(on.r);
+    expect(rms(on.r) / rms(off.r)).toBeGreaterThan(0.7); expect(rms(on.r) / rms(off.r)).toBeLessThan(1.4);
+    expect(rms(on.q)).toBeCloseTo(rms(off.q), 1);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'TurbulenceFin', 1);");
+    expect(lab.vars.get('tr')).toBeTruthy();
+  });
 });
