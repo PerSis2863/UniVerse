@@ -5,7 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
-import { ARM_BREAK, FRONT_G, LEG_BREAK, GROUNDS, ROLL_DEFAULT, everyone, inside, kerbTrip, shape, tripSpeed, type Vehicle } from '@/lib/lab/vehicle';
+import { ANKLE_BREAK, ARM_BREAK, WRIST_BREAK, FRONT_G, LEG_BREAK, GROUNDS, ROLL_DEFAULT, everyone, inside, kerbTrip, shape, tripSpeed, type Vehicle } from '@/lib/lab/vehicle';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Vehicle → Kerb (M486d): the car sliding sideways into a kerb (or across the ground),
@@ -124,6 +124,8 @@ export function KerbView({ car }: { car: Vehicle }) {
     ['Bodies landing on each other', guard === 'none' ? `up to ${(Math.max(...all.map((x) => x.bodyLoad)) / 1000).toFixed(1)} kN` : 'belts keep them in their seats'],
     // M486s: arms and legs, and the pile on the roof.
     ['Arm · leg (hitting the side)', `${(ins.armForce / 1000).toFixed(1)} kN${ins.armForce > ARM_BREAK ? ' (may break)' : ''} · ${(ins.legForce / 1000).toFixed(1)} kN${ins.legForce > LEG_BREAK ? ' (may break)' : ''}${ins.armCrushed ? ', arm out and crushed under the car' : !Number.isNaN(ins.armOut) ? `, arm out of the window at ${ins.armOut.toFixed(2)} s` : ''}`],
+    // M486v: hands and feet caught in the pedals or the seats' frames.
+    ['Caught: foot · hand', `${Number.isNaN(ins.footCaught) ? 'feet free' : `foot at ${ins.footCaught.toFixed(2)} s, ankle ${(ins.ankleForce / 1000).toFixed(1)} kN${ins.ankleForce > ANKLE_BREAK ? ' (may break)' : ''}`} · ${Number.isNaN(ins.handCaught) ? 'hands free' : `hand at ${ins.handCaught.toFixed(2)} s, wrist ${(ins.wristForce / 1000).toFixed(1)} kN${ins.wristForce > WRIST_BREAK ? ' (may break)' : ''}`}${ins.trapped ? '; trapped until cut free' : ''}`],
     ['Piled on the roof', all.some((x) => x.onTop) ? `${Math.max(...all.map((x) => x.onTop))} on the one beneath, ${(Math.max(...all.map((x) => x.pileLoad)) / 1000).toFixed(1)} kN on them` : guard === 'none' ? 'not upside down' : 'belts keep them in their seats'],
     ['Front airbags', Number.isNaN(ins.frontBags) ? `didn’t fire (blow along the car ${tb.frontG.toFixed(1)} g; they need ${FRONT_G})` : `fired at ${ins.frontBags.toFixed(2)} s`],
     ['Windscreen · injury (rough)', `${!Number.isNaN(ins.screenOut) ? 'out of its frame' : !Number.isNaN(ins.screenCracked) ? 'cracked' : 'whole'} · ${ins.risk}`],

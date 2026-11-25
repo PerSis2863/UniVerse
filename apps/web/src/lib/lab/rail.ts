@@ -402,21 +402,38 @@ export const railReactance = (rho: number) => 0.0628 * Math.log(carsonDepth(rho)
  * the ground acts as one of 1/ρ = (h/D)/ρ_top + (1 − h/D)/ρ_below (all ρ_top once the top layer is deeper than D), D
  * itself found from that ρ (a few rounds settle it). One layer: just `soil`; neither: undefined (the presets' 100). */
 export interface SoilLayer { rho: number; depth: number }
+/** The layers' mix down to depth D (m): each carries the share of D it fills, the ground below the rest. */
+function mixRho(layers: SoilLayer[], below: number, D: number) {
+  let z = 0, g = 0;
+  for (const l of layers) { g += Math.max(0, Math.min(D, z + l.depth) - z) / D / l.rho; z += l.depth; }
+  return 1 / (g + Math.max(0, 1 - z / D) / below);
+}
+const layersOf = (sup: Pick<Supply, 'topsoil'>) => (Array.isArray(sup.topsoil) ? sup.topsoil : sup.topsoil ? [sup.topsoil] : []);
 /** M491q: several layers stack from the top down; each carries the share of Carson's depth it fills. */
 export function soilRho(sup: Pick<Supply, 'soil' | 'topsoil'>): number | undefined {
-  const top = sup.topsoil;
-  if (!top || (Array.isArray(top) && !top.length)) return sup.soil;
-  const layers = Array.isArray(top) ? top : [top], below = sup.soil ?? 100;
+  const layers = layersOf(sup);
+  if (!layers.length) return sup.soil;
+  const below = sup.soil ?? 100;
   let rho = below;
   for (let i = 0; i < 40; i++) {
-    const D = carsonDepth(rho);
-    let z = 0, g = 0;
-    for (const l of layers) { const f = Math.max(0, Math.min(D, z + l.depth) - z) / D; g += f / l.rho; z += l.depth; }
-    const next = 1 / (g + Math.max(0, 1 - z / D) / below);
+    const next = mixRho(layers, below, carsonDepth(rho));
     if (Math.abs(next - rho) < 1e-9 * rho) { rho = next; break; }
     rho = next;
   }
   return rho;
+}
+// M491r: the soil on DC lines. Direct current has no Carson's depth: leaking from the rails it spreads through the
+// ground down to roughly `DC_DEPTH` (100 m; rough), the layers side by side as on AC. Two things follow: (1) getting
+// into the ground costs the spreading resistance of a long strip on it, ρ·ln(2L/w)/π per length (L a km, w the 3 m
+// ballast bed): ~0.2 Ω·km at 100 Ω·m, more than half the leakage of old track on dry rock, nothing much on wet clay;
+// it adds to the rails' leakage resistance. (2) the share of the stray current running in the top `PIPE_DEPTH` 2 m,
+// where pipes, cables and foundations lie (`shallow`): a wet clay top keeps it there, dry sand over clay sends it down.
+export const DC_DEPTH = 100, PIPE_DEPTH = 2;
+export function dcSoil(sup: Pick<Supply, 'soil' | 'topsoil'>) {
+  const layers = layersOf(sup);
+  if (!layers.length && sup.soil === undefined) return undefined;
+  const below = sup.soil ?? 100, rho = mixRho(layers, below, DC_DEPTH), top = mixRho(layers, below, PIPE_DEPTH);
+  return { rho, spread: (rho * Math.log(2000 / 3)) / Math.PI / 1000, shallow: ((PIPE_DEPTH / top) / (DC_DEPTH / rho)) };
 }
 /** The AC line's own feeding impedance per km (M491o): the contact wire with the rails and the ground coming back. The
  * share of the current returning through the ground (the screening factor) runs at Carson's depth, so the soil changes
@@ -455,11 +472,14 @@ export function railVolts(sup: Supply, s: number[], amps: number[]) {
 // rails at both ends, so u = r·I·tanh(γd/2)/γ under the train and the stray current r·I/(r + r_g)·(1 − sech(γd/2)):
 // the short-section forms above when γd is small, and never more than r/(r + r_g) of I however poor the insulation.
 export function dcStray(sup: Supply, s: number[], amps: number[]) {
-  const two = sup.crossBond ? 2 : 1, rr = (0.4 * sup.rline) / two, R = (sup.leak ?? 10) / two, rg = sup.earth;
+  // M491r: the soil's spreading resistance in series with the ballast's leakage; `shallow` the share near the surface.
+  const soil = dcSoil(sup), shallow = soil?.shallow ?? NaN;
+  const two = sup.crossBond ? 2 : 1, rr = (0.4 * sup.rline) / two, R = ((sup.leak ?? 10) + (soil?.spread ?? 0)) / two, rg = sup.earth;
   const d = s.map((x) => Math.min(...sup.subs.map((y) => Math.abs(y - x))) / 1000);
-  if (rg === undefined) return { rail: amps.map((I, k) => (I * rr * d[k]) / 2), stray: amps.reduce((q, I, k) => q + (I * rr * d[k] * d[k]) / (8 * R), 0) };
+  if (rg === undefined) return { shallow, rail: amps.map((I, k) => (I * rr * d[k]) / 2), stray: amps.reduce((q, I, k) => q + (I * rr * d[k] * d[k]) / (8 * R), 0) };
   const gm = Math.sqrt((rr + rg) / R);
   return {
+    shallow,
     rail: amps.map((I, k) => (gm * d[k] > 1e-9 ? (rr * I * Math.tanh((gm * d[k]) / 2)) / gm : (I * rr * d[k]) / 2)),
     stray: amps.reduce((q, I, k) => q + ((rr * I) / (rr + rg)) * (1 - 1 / Math.cosh((gm * d[k]) / 2)), 0),
   };

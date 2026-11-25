@@ -13511,6 +13511,55 @@ in the back row with the near one under. Language: vehicleTrip info ArmForce, Le
 gains PileLoad, OnTop, ArmForce, LegForce, ArmCrushed. Window: Kerb → facts "Arm · leg (hitting the side)" and "Piled on
 the roof". Rough figures. Not built: hands and feet caught in the pedals or the seat frames.
 
+## M486t (25 Nov): Hyperion vehicles, a side crash: the car that hit it, after
+
+The owner, 25 Nov (M486s's list of left-outs). `vehicle.ts` `strikerAfter` and `SideCrash.striker` (a `SidePath` in the
+struck car's picture: x along it from its centre, y the way it was shoved, psi the striker's heading in degrees from
+square, + towards the struck car's front; `null` for a pole). Its nose (`NOSE` 0.9 m past the wheelbase's middle) starts
+at the struck car's side where it aimed; it keeps the square speed the crash left it and the sliding speed less what
+friction rubbed off (Ja / m₂), spins from both pushes on its nose (τ = d·(Ja·cos a − J·sin a), its Iz scaled by mass),
+then brakes at μ·g through `slideAfter`. Checked: square at the centre it rolls straight on, momentum shared; square at
+the front seat the struck car spins but the striker doesn't; at 30° it turns. Language: vehicleSideCrash info
+StrikerDistance, StrikerTurn, StrikerPath. Window: the "After" box draws it dashed red. Not built: the two cars
+touching again as they slide.
+
+## M486u (25 Nov): Hyperion vehicles, the moving barrier's two Euro NCAP scores
+
+The owner, 25 Nov (M486r's left-out). Euro NCAP's own rules (AOP v9.3 §3.3, TB 027): `vehicle.ts` `mpdbScore`, run by
+`frontalCrash` for `into: 'mpdb'`. **OLC** from the trolley's speed (`tv`, every 0.1 ms): a virtual person free for 65 mm,
+then slowed evenly so after 235 mm more they move with the trolley (bisection on the slowing). **The face**: strips 1 cm
+wide across the overlap; the two rails (0.3 m wide, 0.25 m in from each side) carry `RAIL_SHARE` 0.6 of the front's
+stiffness, scaled so the overlap's strips add to the crash's front; each strip and the honeycomb before it push alike at
+the most the car and trolley came together. SD over Euro NCAP's zone (0.2 m in to 45% of the car's width; even in
+height); bottoming out at `MPDB_BOTTOM` (630 of 722 mm) over 4 cm. **Penalty**, our reading of the "two interlinked
+sliding scales" (TB 027 gives no formula): 2·o + s·(2 + 4·o), s and o the SD's (50–150 mm) and OLC's (25–40 g) shares,
++2 bottoming, at most 8. Figures: 1,100 kg 23 g, 98 mm, −1.0; 1,500 kg 29 g, 111 mm, −2.4; 2,200 kg 37 g, 133 mm, −5.9.
+Checked: heavier is worse on all three; a trolley stopped dead gives v²/(2·0.235)/g. Language: vehicleCrash info OLC,
+BarrierSD, BarrierMax, BottomedOut, CompatibilityPenalty. Window: Crash → A moving barrier, two more facts. Rough: the face
+model is ours; the main crash still dents the face evenly (`barrier`).
+
+## M486v (25 Nov): Hyperion vehicles, hands and feet caught in a rollover
+
+The owner, 25 Nov (M486s's left-out). `vehicle.ts` `inside` gains `footCaught`, `handCaught` (s, NaN if not),
+`ankleForce`, `wristForce`, `trapped`. A foot hooks among the pedals (front) or under the front seat's frame (back) when
+the body pulls away from the floor: unbelted, once ω²·r passes g or it falls onto the roof; belted only if the leg flails
+past `HOOK_SPEED` 3 m/s (the model's legs never do: belts keep feet down). A hand hooks when the arm flails past
+`HAND_HOOK` 2 m/s (the far side's in a 12 m/s trip). Hooked: belted, the shin (5 kg) stopped in 1 cm; unbelted, half the
+body at the speed it was thrown or fell, in 5 cm (`ANKLE_BREAK` 3.5 kN); the forearm (1.5 kg) in 1 cm (`WRIST_BREAK` 2
+kN). `trapped`: caught, still inside and resting on its side or roof. Thresholds, not chances. Language: vehicleTrip info
+FootCaughtAt, HandCaughtAt, AnkleForce, WristForce, Trapped; Seats gains AnkleForce, WristForce, Trapped. Window: Kerb →
+"Caught: foot · hand". Not built: a caught foot holding someone half in as they're thrown out.
+
+## M491r (25 Nov): Hyperion railways, the soil on DC lines
+
+The owner, 25 Nov (M491q's left-out). `rail.ts` `dcSoil(sup)` (from `soil` / `topsoil`; undefined when neither): DC has
+no Carson's depth, so the leaking current is taken to spread down `DC_DEPTH` 100 m, the layers side by side (`mixRho`,
+now shared with `soilRho`). (1) The spreading resistance of a long strip on the ground, ρ·ln(2000/3)/π/1000 Ω·km (~0.2
+at 100 Ω·m), is added to the rails' leakage in `dcStray`: dry rock lets out less. (2) `shallow`, the share of the stray
+current in the top `PIPE_DEPTH` 2 m where pipes lie: 2% in even ground, 34% with 5 m of wet clay over rock, under 0.1%
+with dry sand over clay. No soil given: as before. Language: railLine supply struct ShallowShare (DC). Window: Railway →
+Several trains: the soil choice now on DC lines too, and "Stray current in the top 2 m (pipes)". Rough: the 100 m.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

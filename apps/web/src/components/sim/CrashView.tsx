@@ -72,17 +72,22 @@ export function CrashView({ car }: { car: Vehicle }) {
     // M486q: the side crash's slide after the blow, from above, in the top right corner.
     if (side && W > 360) {
       const p = sc.path, bw = 170, bh = 120, bx = W - R - bw - 6, by = T + 4, cl = car.lf + car.lr + 1.6, cw = 1.8;
-      const xs = p.x.flatMap((x) => [x - cl / 2, x + cl / 2]), ys = p.y.flatMap((y) => [y - cl / 2, y + cl / 2]);
+      // M486t: the car that hit it too (long the other way), dashed.
+      const q = sc.striker, qx = q?.x ?? [], qy = q?.y ?? [];
+      const xs = [...p.x, ...qx].flatMap((x) => [x - cl / 2, x + cl / 2]), ys = [...p.y, ...qy].flatMap((y) => [y - cl / 2, y + cl / 2]);
       const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys, -cw), y1 = Math.max(...ys);
       const sc2 = Math.min((bw - 16) / (x1 - x0), (bh - 30) / (y1 - y0)), ox = bx + 8 + ((bw - 16) - sc2 * (x1 - x0)) / 2 - sc2 * x0, oy = by + 22 - sc2 * y0;
       g.fillStyle = dark ? 'rgba(39,39,42,0.92)' : 'rgba(250,250,250,0.92)'; g.strokeStyle = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
       g.beginPath(); g.roundRect(bx, by, bw, bh, 8); g.fill(); g.stroke();
       g.fillStyle = dark ? '#a1a1aa' : '#52525b'; g.fillText(`After: slides ${p.distance.toFixed(1)} m, turns ${Math.abs(p.turned).toFixed(0)}°`, bx + 8, by + 14);
-      const body = (x: number, y: number, deg: number, a: number) => {
-        g.save(); g.translate(ox + sc2 * x, oy + sc2 * y); g.rotate((deg * Math.PI) / 180); g.globalAlpha = a;
-        g.strokeStyle = dark ? '#e4e4e7' : '#3f3f46'; g.lineWidth = 1.5; g.strokeRect((-sc2 * cl) / 2, (-sc2 * cw) / 2, sc2 * cl, sc2 * cw);
+      const body = (x: number, y: number, deg: number, a: number, other = false) => {
+        g.save(); g.translate(ox + sc2 * x, oy + sc2 * y); g.rotate(((other ? -deg : deg) * Math.PI) / 180); g.globalAlpha = a;
+        g.strokeStyle = other ? (dark ? '#f87171' : '#dc2626') : dark ? '#e4e4e7' : '#3f3f46'; g.lineWidth = 1.5;
+        if (other) g.setLineDash([3, 2]);
+        if (other) g.strokeRect((-sc2 * cw) / 2, (-sc2 * cl) / 2, sc2 * cw, sc2 * cl); else g.strokeRect((-sc2 * cl) / 2, (-sc2 * cw) / 2, sc2 * cl, sc2 * cw);
         g.restore();
       };
+      if (q) { const k = q.t.length, st = Math.max(1, Math.floor(k / 4)); for (let i = 0; i < k; i += st) body(q.x[i], q.y[i], q.psi[i], i ? 0.3 : 0.8, true); body(q.x[k - 1], q.y[k - 1], q.psi[k - 1], 0.8, true); }
       const n = p.t.length, step = Math.max(1, Math.floor(n / 5));
       for (let i = 0; i < n; i += step) body(p.x[i], p.y[i], p.psi[i], i ? 0.35 : 1);
       body(p.x[n - 1], p.y[n - 1], p.psi[n - 1], 1);
@@ -112,6 +117,8 @@ export function CrashView({ car }: { car: Vehicle }) {
     ['Chest (3 ms) · moved forward', rear ? `${c.chestG.toFixed(0)} g · ${(c.travelMax * 100).toFixed(0)} cm${c.hitSeat ? ', head on the seat in front' : ''}` : `${c.chestG.toFixed(0)} g · ${c.hitWheel ? 'hit the steering wheel' : `${(c.travelMax * 100).toFixed(0)} cm of ${(WHEEL_GAP * 100).toFixed(0)}`}${c.headHit ? ', head on the wheel' : ''}`],
     ['Front airbag', rear ? 'none in the back' : Number.isNaN(c.bagAt) ? (guard === 'none' || guard === 'belt' ? 'none fitted' : 'didn’t fire') : `fired at ${(c.bagAt * 1000).toFixed(0)} ms${c.late ? ' (late)' : ''}${c.slidOff ? ', the head slid off its edge' : ''}`],
     ['Into the cabin', c.intrusion > 0.005 ? `${(c.intrusion * 100).toFixed(0)} cm (footwell and dashboard)` : 'nothing'],
+    // M486u: Euro NCAP's compatibility scores for the moving barrier.
+    ...(into === 'mpdb' ? [['Barrier face dented · trolley OLC', `${(c.faceSD * 1000).toFixed(0)} mm uneven (deepest ${(c.faceMax * 100).toFixed(0)} cm${c.bottomed ? ', bottomed out' : ''}) · ${c.olc.toFixed(0)} g`], ['Compatibility (Euro NCAP)', `−${c.compat.toFixed(1)} of 8 points${c.compat < 1 ? ': kind to the other car' : c.compat > 5 ? ': hard on the other car' : ''}`]] as [string, string][] : []),
     ['Pushed from behind', seat === 'pushed' ? `${(c.backLoad / 1000).toFixed(1)} kN into the seat's back` : 'nobody unbelted behind'],
   ];
   const facts = side ? sideFacts : frontFacts;
