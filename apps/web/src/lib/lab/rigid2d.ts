@@ -3,6 +3,7 @@
 // sequential impulses with restitution and Coulomb friction, then pushed apart (positions only, so no energy is made).
 // M520: shapes with dents, split by ear clipping and Hertel–Mehlhorn merging into convex parts that collide one by one.
 // M542: rolling resistance, an opposing turn at a circle's contact of at most Crr · push · radius.
+// M543: polygons get it too while they rock or tumble on a corner (the lever their centre's distance to the contact).
 
 /** A polygon's outline `v` (body frame, about its centroid) and the convex parts it is made of. */
 export type Shape = { kind: 'poly'; v: number[][]; parts: number[][][] } | { kind: 'circle'; r: number };
@@ -204,7 +205,8 @@ export function simulate(B: Body[], o: SimOpts) {
       const kn = ia + ib + Ia * cross(ra[0], ra[1], c.n[0], c.n[1]) ** 2 + Ib * cross(rb[0], rb[1], c.n[0], c.n[1]) ** 2;
       const kt = ia + ib + Ia * cross(ra[0], ra[1], t2[0], t2[1]) ** 2 + Ib * cross(rb[0], rb[1], t2[0], t2[1]) ** 2;
       const vn = relN(c, ra, rb, c.n);
-      const radii = [c.a, c.b].filter((i) => i >= 0 && B[i].shape.kind === 'circle').map((i) => (B[i].shape as { r: number }).r);
+      // A circle's lever is its radius; a polygon's (M543: it rocks, tips and tumbles on a corner) its centre's distance to the contact.
+      const radii = [c.a, c.b].filter((i) => i >= 0 && !B[i].fixed).map((i) => (B[i].shape.kind === 'circle' ? (B[i].shape as { r: number }).r : Math.hypot(...(i === c.a ? ra : rb))));
       return { c, ra, rb, t2, mn: 1 / kn, mt: 1 / kt, target: vn < -rest ? -o.e * vn : 0, jn: 0, jt: 0, rad: radii.length ? Math.min(...radii) : 0, jr: 0 };
     });
     for (let k = 0; k < it; k++) for (const q of pre) {

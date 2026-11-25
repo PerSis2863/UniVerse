@@ -317,6 +317,21 @@ figure; kerrOrbit(0, 12, 0, 40, 'Orbits', 3, 'Magnetic', 0.5, 'ParticleCharge', 
 % 4. A black hole's glowing disc, as a camera would see it: light bent over the top, the near side brighter
 figure; kerrDisc(0.9, 80, 'Pixels', 120)
 ` },
+  { name: 'physics7.m', code: `% Physics: boxes that rock to rest, a dented solid split by itself, a hot see-through disc
+% 1. A hexagon tumbles along the floor, then again with rolling resistance: it stops sooner
+hex = [cosd(0:60:300)' sind(0:60:300)'] * 0.5;
+figure; rigidShapes({hex}, [1 0.5 0], [3 0 -6], 'Box', [12 2], 'Time', 4, 'Restitution', 0, 'Friction', 0.8)
+figure; rigidShapes({hex}, [1 0.5 0], [3 0 -6], 'Box', [12 2], 'Time', 4, 'Restitution', 0, 'Friction', 0.8, 'Rolling', 0.1)
+% 2. An L-shaped mesh (an outline pushed up), cut into convex parts by convexSplit, then dropped
+P = [0 0; 2 0; 2 1; 1 1; 1 2; 0 2]; n = 6;
+V = [P zeros(n, 1); P ones(n, 1)];
+F = {n:-1:1, n+1:2*n};                         % the bottom and top faces, then the walls
+for k = 1:n, F{end+1} = [k, mod(k, n)+1, n+mod(k, n)+1, n+k]; end
+parts = convexSplit(V, F)
+figure; rigidShapes3D({parts}, [5 5 3 30 20 0], [], 'Time', 3)
+% 3. A thick, half see-through disc coloured by its temperature: the far side shows through
+figure; kerrDisc(0.9, 80, 'Pixels', 120, 'Thickness', 0.05, 'Opacity', 0.6, 'Colour', 'temperature')
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north

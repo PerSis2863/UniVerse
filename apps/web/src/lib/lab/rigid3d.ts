@@ -7,6 +7,8 @@
 // M542: solids with dents as several convex parts glued together (`compound`: their mass, centre and inertia added up
 // by the parallel-axis rule; contacts part by part), and rolling resistance (an opposing turn at a ball's contact, at
 // most Crr · push · radius).
+// M543: rolling resistance for solids too (rocking or tipping on an edge or corner, the lever their centre's distance
+// to the contact), and `convexSplit`: a closed dented mesh cut into convex parts by itself.
 
 export type V3 = number[];
 const add = (a: V3, b: V3) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -34,9 +36,9 @@ export interface Hull { v: V3[]; faces: number[][]; n: V3[]; edges: [number, num
 
 /** The convex hull of up to 40 points (every plane through three that has all on one side; coplanar triangles merged
  * into one face), its volume, centroid and inertia per unit mass, by tetrahedra from an inside point. */
-export function hull(pts: V3[]): Hull & { centroid: V3 } {
+export function hull(pts: V3[], max = 40): Hull & { centroid: V3 } {
   const n = pts.length;
-  if (n < 4 || n > 40) throw new Error('A solid needs 4 to 40 corners.');
+  if (n < 4 || n > max) throw new Error(`A solid needs 4 to ${max} corners.`);
   const size = Math.max(...pts.map((p) => norm(sub(p, pts[0])))), tol = 1e-9 * size;
   const planes: { n: V3; d: number; ids: Set<number> }[] = [];
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) for (let k = j + 1; k < n; k++) {
@@ -105,6 +107,159 @@ export function compound(parts: (Hull & { centroid: V3 })[]) {
   }
   return { parts: parts.map((h) => ({ ...h, v: h.v.map((x) => add(x, sub(h.centroid, c))) })), volume: vol, J, centroid: c };
 }
+/** Whether p is inside the closed triangle mesh (V, T): crossings of a slightly skewed ray (Möller–Trumbore). */
+function insideMesh(V: V3[], T: number[][], p: V3) {
+  const d = [0.31234, 0.54217, 0.78011];
+  let k = 0;
+  for (const [i, j, l] of T) {
+    const e1 = sub(V[j], V[i]), e2 = sub(V[l], V[i]), h = cross(d, e2), a = dot(e1, h);
+    if (Math.abs(a) < 1e-14) continue;
+    const s = sub(p, V[i]), u = dot(s, h) / a;
+    if (u < 0 || u > 1) continue;
+    const q = cross(s, e1), v = dot(d, q) / a;
+    if (v < 0 || u + v > 1) continue;
+    if (dot(e2, q) / a > 0) k++;
+  }
+  return k % 2 === 1;
+}
+/** A flat face (dents allowed) cut into triangles, keeping its turn: ear clipping in the face's own plane. */
+function earClip(V: V3[], f: number[]) {
+  if (f.length === 3) return [f.slice()];
+  let nn = [0, 0, 0];
+  f.forEach((i, k) => { nn = add(nn, cross(V[i], V[f[(k + 1) % f.length]])); });
+  const u = unit(Math.abs(nn[0]) < 0.9 * norm(nn) ? cross(nn, [1, 0, 0]) : cross(nn, [0, 1, 0])), w = cross(unit(nn), u);
+  const P = f.map((i) => [dot(V[i], u), dot(V[i], w)]), c2 = (a: number[], b: number[], c: number[]) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const idx = f.map((_, k) => k), out: number[][] = [];
+  while (idx.length > 3) {
+    let cut = false;
+    for (let k = 0; k < idx.length && !cut; k++) {
+      const a = idx[(k + idx.length - 1) % idx.length], b = idx[k], c = idx[(k + 1) % idx.length];
+      if (c2(P[a], P[b], P[c]) <= 1e-14) continue;
+      if (idx.some((j) => j !== a && j !== b && j !== c && c2(P[a], P[b], P[j]) >= 0 && c2(P[b], P[c], P[j]) >= 0 && c2(P[c], P[a], P[j]) >= 0)) continue;
+      out.push([f[a], f[b], f[c]]); idx.splice(k, 1); cut = true;
+    }
+    if (!cut) throw new Error('A face of the mesh crosses itself.');
+  }
+  out.push(idx.map((k) => f[k]));
+  return out;
+}
+type Plane = { n: V3; d: number };
+/** A closed dented mesh cut into convex parts by itself (M543). V its corners, F its faces (triangles or polygons,
+ * turned the same way round). A part is a convex cell (planes) met with the mesh: its corners are the mesh's corners
+ * inside the cell, mesh edges through the cell's faces, cell edges through the mesh, and cell corners inside it. A part
+ * is kept when grid points inside its hull are (nearly) all inside the mesh; otherwise it is cut by the plane of a face
+ * beside a dent (an edge where the solid folds inwards) that loses the least volume, up to `maxParts` parts. Returns
+ * each part's corners (world frame), ready for `hull` and `compound`. shortcut: the volume test samples a 12³ grid. */
+export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?: number } = {}) {
+  const maxParts = o.maxParts ?? 12, tol = o.tol ?? 0.02;
+  if (V.length < 4 || V.length > 400 || F.length < 4 || F.length > 800) throw new Error('A mesh needs 4 to 400 corners and 4 to 800 faces.');
+  if (F.some((f) => f.length < 3 || f.some((i) => !(i >= 0 && i < V.length) || !Number.isInteger(i)))) throw new Error('Each face lists 3 or more corner numbers of the mesh.');
+  let T = F.flatMap((f) => earClip(V, f));
+  // Closed: every edge used by exactly two triangles, once each way round.
+  const use = new Map<string, number>();
+  for (const t of T) for (let k = 0; k < 3; k++) { const key = `${t[k]},${t[(k + 1) % 3]}`; use.set(key, (use.get(key) ?? 0) + 1); }
+  for (const [key, c] of use) { const [a, b] = key.split(','); if (c !== 1 || use.get(`${b},${a}`) !== 1) throw new Error('The mesh must be closed, with its faces all turned the same way round.'); }
+  const vol6 = T.reduce((s, [i, j, l]) => s + dot(V[i], cross(V[j], V[l])), 0);
+  if (Math.abs(vol6) < 1e-14) throw new Error('The mesh encloses no volume.');
+  if (vol6 < 0) T = T.map(([i, j, l]) => [i, l, j]);
+  const size = Math.max(...V.map((p) => norm(sub(p, V[0])))), eps = 1e-9 * size;
+  const planeOf = ([i, j, l]: number[]): Plane => { const n = unit(cross(sub(V[j], V[i]), sub(V[l], V[i]))); return { n, d: dot(n, V[i]) }; };
+  // Candidate cuts: the planes of the faces beside each fold inwards.
+  const opp = new Map<string, number>();
+  T.forEach((t, ti) => { for (let k = 0; k < 3; k++) opp.set(`${t[k]},${t[(k + 1) % 3]}`, ti); });
+  const cuts: Plane[] = [];
+  const addCut = (P: Plane) => { if (P.n.every(Number.isFinite) && !cuts.some((C) => dot(C.n, P.n) > 1 - 1e-9 && Math.abs(C.d - P.d) < eps * 10)) cuts.push(P); };
+  T.forEach((t) => {
+    const P = planeOf(t);
+    for (let k = 0; k < 3; k++) {
+      const tj = opp.get(`${t[(k + 1) % 3]},${t[k]}`)!, other = T[tj].find((x) => x !== t[k] && x !== t[(k + 1) % 3])!;
+      if (dot(P.n, V[other]) - P.d > 1e-7 * size) { addCut(P); addCut(planeOf(T[tj])); }
+    }
+  });
+  const lo = [0, 1, 2].map((k) => Math.min(...V.map((p) => p[k])) - 1e-3 * size), hi = [0, 1, 2].map((k) => Math.max(...V.map((p) => p[k])) + 1e-3 * size);
+  const box: Plane[] = [0, 1, 2].flatMap((k) => [{ n: [0, 1, 2].map((m) => (m === k ? 1 : 0)), d: hi[k] }, { n: [0, 1, 2].map((m) => (m === k ? -1 : 0)), d: -lo[k] }]);
+  const inCell = (C: Plane[], p: V3, e = eps * 100) => C.every((P) => dot(P.n, p) <= P.d + e);
+  const segs: [V3, V3][] = [];
+  { const seen = new Set<string>(); for (const t of T) for (let k = 0; k < 3; k++) { const a = t[k], b = t[(k + 1) % 3], key = a < b ? `${a},${b}` : `${b},${a}`; if (!seen.has(key)) { seen.add(key); segs.push([V[a], V[b]]); } } }
+  const segTri = (p: V3, q: V3, [i, j, l]: number[]): V3 | null => {
+    const d = sub(q, p), e1 = sub(V[j], V[i]), e2 = sub(V[l], V[i]), h = cross(d, e2), a = dot(e1, h);
+    if (Math.abs(a) < 1e-14) return null;
+    const s = sub(p, V[i]), u = dot(s, h) / a; if (u < -1e-9 || u > 1 + 1e-9) return null;
+    const w = cross(s, e1), v = dot(d, w) / a; if (v < -1e-9 || u + v > 1 + 1e-9) return null;
+    const t = dot(e2, w) / a; return t >= -1e-9 && t <= 1 + 1e-9 ? add(p, mul(d, t)) : null;
+  };
+  // The corners of (cell ∩ mesh), merged when closer than a hair.
+  const cornersOf = (C: Plane[]) => {
+    const out: V3[] = [], push = (p: V3) => { if (inCell(C, p) && !out.some((x) => norm(sub(x, p)) < eps * 1000)) out.push(p); };
+    for (const p of V) push(p);
+    for (const [p, q] of segs) for (const P of C) { const a = dot(P.n, p) - P.d, b = dot(P.n, q) - P.d; if (a * b < 0) push(add(p, mul(sub(q, p), a / (a - b)))); }
+    const cv: { p: V3; ids: number[] }[] = [];
+    for (let i = 0; i < C.length; i++) for (let j = i + 1; j < C.length; j++) for (let k = j + 1; k < C.length; k++) {
+      const [A, B2, D] = [C[i], C[j], C[k]], det = dot(A.n, cross(B2.n, D.n));
+      if (Math.abs(det) < 1e-12) continue;
+      const p = mul(add(add(mul(cross(B2.n, D.n), A.d), mul(cross(D.n, A.n), B2.d)), mul(cross(A.n, B2.n), D.d)), 1 / det);
+      if (inCell(C, p)) cv.push({ p, ids: [i, j, k] });
+    }
+    for (const c of cv) if (insideMesh(V, T, c.p)) push(c.p);
+    for (let x = 0; x < cv.length; x++) for (let y = x + 1; y < cv.length; y++) {
+      if (cv[x].ids.filter((i) => cv[y].ids.includes(i)).length < 2) continue;
+      for (const t of T) { const h = segTri(cv[x].p, cv[y].p, t); if (h) push(h); }
+    }
+    // Drop points that only touch the part as a flat sliver (a corner on a cut plane but outside the solid beyond it):
+    // a step from each towards the middle must land inside the mesh.
+    if (out.length < 4) return out;
+    // The middle: the mean of grid points inside both the cell and the mesh (inside the part when it is convex).
+    const a = [0, 1, 2].map((k) => Math.min(...out.map((p) => p[k]))), b = [0, 1, 2].map((k) => Math.max(...out.map((p) => p[k])));
+    let c = [0, 0, 0], m = 0;
+    for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) for (let k = 0; k < 9; k++) {
+      const p = [a[0] + ((i + 0.5) / 9) * (b[0] - a[0]), a[1] + ((j + 0.5) / 9) * (b[1] - a[1]), a[2] + ((k + 0.5) / 9) * (b[2] - a[2])];
+      if (inCell(C, p, 0) && insideMesh(V, T, p)) { c = add(c, p); m++; }
+    }
+    if (!m) return [];
+    c = mul(c, 1 / m);
+    return out.filter((p) => insideMesh(V, T, add(p, mul(sub(c, p), 1e-5))));
+  };
+  // A part's hull and how much of it is solid (grid points at cell centres, never on a face).
+  const judge = (C: Plane[]) => {
+    const pts = cornersOf(C);
+    if (pts.length < 4) return null;
+    let h: Hull & { centroid: V3 };
+    try { h = hull(pts, 64); } catch { return null; }
+    if (h.volume < 1e-9 * size ** 3) return null;
+    const W = h.v.map((v) => add(v, h.centroid)), a = [0, 1, 2].map((k) => Math.min(...W.map((p) => p[k]))), b = [0, 1, 2].map((k) => Math.max(...W.map((p) => p[k])));
+    const N = 12, planes = h.faces.map((f, i) => ({ n: h.n[i], d: dot(h.n[i], W[f[0]]) }));
+    let inH = 0, inM = 0;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) for (let k = 0; k < N; k++) {
+      const p = [a[0] + ((i + 0.5) / N) * (b[0] - a[0]), a[1] + ((j + 0.5) / N) * (b[1] - a[1]), a[2] + ((k + 0.5) / N) * (b[2] - a[2])];
+      if (!inCell(planes, p, 0)) continue;
+      inH++; if (insideMesh(V, T, p)) inM++;
+    }
+    const full = inH ? inM / inH : 1;
+    return { pts: W, volume: h.volume, full, lost: h.volume * (1 - full) };
+  };
+  const done: V3[][] = [], todo: { C: Plane[]; j: NonNullable<ReturnType<typeof judge>> }[] = [];
+  const first = judge(box);
+  if (!first) throw new Error('The mesh is too thin to split.');
+  todo.push({ C: box, j: first });
+  while (todo.length) {
+    todo.sort((x, y) => y.j.lost - x.j.lost);
+    const cur = todo.shift()!;
+    if (cur.j.full >= 1 - tol || done.length + todo.length + 2 > maxParts) { done.push(cur.j.pts); continue; }
+    let best: { lost: number; kids: typeof todo } | null = null;
+    for (const P of cuts) {
+      const s = cur.j.pts.map((p) => dot(P.n, p) - P.d);
+      if (!(Math.max(...s) > 1e-6 * size && Math.min(...s) < -1e-6 * size)) continue;
+      const kids = [[...cur.C, P], [...cur.C, { n: mul(P.n, -1), d: -P.d }]].map((C) => ({ C, j: judge(C) })).filter((k) => k.j) as typeof todo;
+      if (!kids.length) continue;
+      const lost = kids.reduce((x, k) => x + k.j.lost, 0);
+      if (!best || lost < best.lost - 1e-12) best = { lost, kids };
+    }
+    if (!best || best.lost >= cur.j.lost) { done.push(cur.j.pts); continue; }
+    todo.push(...best.kids);
+  }
+  return done;
+}
+
 /** A body: a ball's radius, a hull, or a compound's parts, at p, turned by the rotation vector rot, moving at v and
  * spinning at w. */
 export function body3(shape: number | Hull | { parts: Hull[]; J: number[][] }, p: V3, rot: V3, v: V3, w: V3, m: number, fixed = false): Body3 {
@@ -268,8 +423,8 @@ export function simulate3(B: Body3[], o: SimOpts3) {
     const pre = C.map((c) => {
       const rel = sub(vel(c.b, c.p), vel(c.a, c.p)), vn = dot(rel, c.n);
       const t1 = unit(Math.abs(c.n[0]) < 0.9 ? cross(c.n, [1, 0, 0]) : cross(c.n, [0, 1, 0])), t2 = cross(c.n, t1);
-      // A ball in the contact rolls: its radius sets the most the resistance can turn it back by.
-      const radii = [c.a, c.b].filter((i) => i >= 0 && B[i].shape.kind === 'ball').map((i) => (B[i].shape as { r: number }).r);
+      // A solid (M543: rocking or tipping on an edge or corner) uses its centre's distance to the contact as the lever.
+      const radii = [c.a, c.b].filter((i) => i >= 0 && !B[i].fixed).map((i) => (B[i].shape.kind === 'ball' ? (B[i].shape as { r: number }).r : norm(sub(c.p, B[i].p))));
       return { c, t1, t2, mn: 1 / kOf(c, c.n), m1: 1 / kOf(c, t1), m2: 1 / kOf(c, t2), target: vn < -rest ? -o.e * vn : 0, jn: 0, j1: 0, j2: 0, rad: radii.length ? Math.min(...radii) : 0, H: [0, 0, 0] };
     });
     for (let k = 0; k < it; k++) for (const q of pre) {

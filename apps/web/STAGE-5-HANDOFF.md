@@ -13178,3 +13178,30 @@ particle's cos θ held on Poincaré's cone to 1e-7; a face-on disc's shadow pixe
 approaching half more than twice as bright edge-on; the language bits. Not built: rolling resistance for boxes' edges
 (they don't roll), automatic splitting of a dented 3D mesh into convex parts, the disc's thickness and colour by
 temperature, and light that passes through the disc (it's opaque).
+
+## M543 (25 Nov): Hyperion physics, M542's left-outs (boxes that rock, dented meshes split, the disc's thickness, colour and see-through)
+
+The owner sent M542's "left out on purpose" list back. **Rolling resistance for any shape** (`rigid2d.ts`, `rigid3d.ts`):
+the same capped angular impulse, but a polygon or solid gets it too, its lever the distance from its centre to the
+contact (a circle or ball keeps its radius); fixed bodies give no lever. Resting flat it does nothing (no relative turn);
+rocking, tipping or tumbling on a corner it takes the energy out. **`convexSplit(V, F)`** (`r3.convexSplit`): a closed
+mesh (faces of any size, dents allowed in a face: `earClip` in the face's plane; closed and turned one way round is
+checked, a negative volume flipped). Parts are convex cells (planes) met with the mesh; a cell's corners are mesh corners
+inside it, mesh edges through its planes, cell corners inside the mesh and cell edges through mesh triangles; a point
+that only touches as a flat sliver is dropped (a 1e-5 step towards the middle, the mean of a 9³ grid inside both, must be
+inside the mesh: the corners' own mean can sit on the dent's edge, the bug met while building). A part is kept when ≥ 98%
+of a 12³ grid inside its hull is inside the mesh (`insideMesh`: ray parity along a skewed direction); otherwise it is cut
+by the plane of a face beside a fold inwards (a reflex edge) that leaves the least empty volume, worst part first, up to
+12 parts. `hull` takes a `max` (64 for these parts and in `rigidShapes3D`). **The disc** (`discImage`): `thick` = h/r
+(0–0.3) makes its faces the cones |cos θ| = h/r, entered from above or below, the gas taken at the cylinder radius;
+`opacity` < 1 adds each later crossing times (1 − opacity)ᵏ (stops under 1e-3), so the far side and the thin ring show
+through; `T` is g · (F/F_peak)^¼, brightness-weighted (F peaks at 49/36 rIn). `blackbodyRGB(T)`: Planck through Wyman,
+Sloan and Shirley's CIE fit, to sRGB, brightest channel 1. In the language: 'Thickness', 'Opacity', 'Colour'
+'temperature' (an RGB `image`, colour × brightness^¼), 'Temperature' (hottest gas, K), a 4th output T in kelvin.
+Example `physics7.m`. Tests (`physics-m543.test.ts`): a tumbling hexagon stops sooner, a box resting flat isn't moved, a
+tipped cube settles; a cube one part, an L two, a U three with their volumes; the split L glued back has the L's centre
+and rests; an open mesh refused; blackbody colours at 2000, 6500, 20 000 K; the plain disc unchanged; see-through adds
+light; a thick disc edge-on covers more. Not built: a smooth curved mesh is split into many flat-cut parts (12 at most;
+the rest stay a little hollow-hulled), the disc's own thickness doesn't shadow its far side's glow (the light passes
+the slab once per entry), and no light from the disc's inner edge wall.
+

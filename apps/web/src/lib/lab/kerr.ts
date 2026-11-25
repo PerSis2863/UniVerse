@@ -8,6 +8,7 @@ import { rk45 } from './sci-num';
 // magnetic charge g too (Δ gains g²; a charged particle then feels it in θ: P_θ = aE sin²θ − Lz − εg cos θ, so its
 // orbits leave the equator and ride Poincaré's cones). R doesn't feel εg, so `circular` and `constants` still give
 // the radial motion asked for; only the tilt then wobbles.
+// M543: the disc with a thickness, see-through, and its colour by temperature (`blackbodyRGB`).
 
 /** The hole's charge q and the particle's charge per mass ε (Gaussian units, G = c = M = 1). */
 export interface Charge { q?: number; eps?: number; g?: number }
@@ -235,10 +236,14 @@ export function imageRay(a: number, thO: number, alpha: number, beta: number) {
  * where it first crosses the equator between rIn (the ISCO unless given) and rOut. Each hit shines with
  * Novikov–Thorne's shape F ∝ r⁻³(1 − √(rIn/r)) times g⁴, g = 1 / (uᵗ(1 − Ωξ)) the shift of light from gas circling at
  * Ω (with the spin). Rows run from the top of the picture down; α across, β up, both in GM/c². `q` is the metric
- * charge √(q² + g²). */
-export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number } = {}) {
-  const q = o.q ?? 0, n = o.n ?? 80, rOut = o.rOut ?? 20, rIn = o.rIn ?? isco(a, q ? { q } : {}), half = o.half ?? rOut * 1.1, rh = horizon(a, q), r0 = 1000;
+ * charge √(q² + g²). M543: `thick` h/r makes it a flared slab (light enters through its faces |cos θ| = h/r, the gas
+ * taken at the cylinder radius), and `opacity` below 1 lets light through: each crossing adds its glow times what is
+ * left, (1 − opacity) per crossing, so the hole's far side and the thin ring of light shine through. `T` is each pixel's
+ * colour temperature, g · (F/F_peak)^¼ relative to the hottest gas, weighted by brightness. */
+export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number; thick?: number; opacity?: number } = {}) {
+  const H = o.thick ?? 0, op = o.opacity ?? 1, q = o.q ?? 0, n = o.n ?? 80, rOut = o.rOut ?? 20, rIn = o.rIn ?? isco(a, q ? { q } : {}), half = o.half ?? rOut * 1.1, rh = horizon(a, q), r0 = 1000;
   if (!(rOut > rIn)) throw new Error('The disc\'s outer edge must lie outside its inner edge.');
+  if (!(H >= 0 && H <= 0.3 && op > 0 && op <= 1)) throw new Error('The disc\'s thickness h/r is 0 to 0.3 and its opacity more than 0, up to 1.');
   // The gas's Ω and uᵗ on a table of radii (log-spaced), from its circular orbit's E and L.
   const NT = 300, tr: number[] = [], tOm: number[] = [], tUt: number[] = [];
   for (let i = 0; i < NT; i++) {
@@ -247,7 +252,10 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
     tr.push(r); tOm.push(dp / dt); tUt.push(dt / (r * r));
   }
   const look = (r: number, t: number[]) => { const x = (Math.log(r / rIn) / Math.log(rOut / rIn)) * (NT - 1), i = Math.max(0, Math.min(NT - 2, Math.floor(x))), f = x - i; return t[i] * (1 - f) + t[i + 1] * f; };
-  const I = new Float64Array(n * n), G = new Float64Array(n * n).fill(NaN), Rh = new Float64Array(n * n).fill(NaN);
+  // The hottest gas's F^¼ (temperatures are given relative to it): F peaks at r = (49/36) rIn.
+  const Fof = (r: number) => (1 - Math.sqrt(rIn / r)) / r ** 3, Tpk = Fof(Math.min(rOut, (49 / 36) * rIn)) ** 0.25;
+  const I = new Float64Array(n * n), G = new Float64Array(n * n).fill(NaN), Rh = new Float64Array(n * n).fill(NaN), Tm = new Float64Array(n * n).fill(NaN);
+  const zc = H; // the disc's faces: |cos θ| = h/r (a disc that flares, its height growing with r)
   const so = Math.sin(thO), co = Math.cos(thO);
   for (let py = 0; py < n; py++) for (let px = 0; px < n; px++) {
     const al = -half + (2 * half * (px + 0.5)) / n, be = half - (2 * half * (py + 0.5)) / n;
@@ -256,16 +264,27 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
     let r = r0, u = co, rv = -Math.sqrt(Math.max(0, Rf(r, a, 1, L, Q, 0, q))), uv = (be > 0 ? 1 : -1) * Math.sqrt(Math.max(0, Uf(u, a, 1, L, Q, 0)));
     const F = (y: number[]) => [y[1], dR(y[0], a, 1, L, Q, 0, q) / 2, y[3], dU(y[2], a, 1, L, Q, 0) / 2];
     const scale = Math.sqrt(Math.max(0, Q) + L * L) + 1;
+    let tr2 = 1, Isum = 0, Tsum = 0;
     for (let k = 0; k < 20000; k++) {
       const h = 0.02 / (r + scale), y = [r, rv, u, uv];
       const k1 = F(y), k2 = F(y.map((v, j) => v + (h / 2) * k1[j])), k3 = F(y.map((v, j) => v + (h / 2) * k2[j])), k4 = F(y.map((v, j) => v + h * k3[j]));
       const ny = y.map((v, j) => v + (h / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
       if (ny[0] < rh * 1.01) break;
-      if (u * ny[2] <= 0 && u !== ny[2]) {
-        const f = u / (u - ny[2]), rc = r + f * (ny[0] - r);
+      // Entering the disc through its top face (cos θ = h/r from above) or its bottom (−h/r from below).
+      let hit = -1;
+      for (const sf of zc ? [zc, -zc] : [0]) {
+        const a0 = u - sf, a1 = ny[2] - sf;
+        const enter = sf > 0 ? a0 > 0 && a1 <= 0 : sf < 0 ? a0 < 0 && a1 >= 0 : a0 * a1 <= 0 && a0 !== 0;
+        if (enter) { hit = a0 / (a0 - a1); break; }
+      }
+      if (hit >= 0) {
+        const rc = (r + hit * (ny[0] - r)) * Math.sqrt(1 - zc * zc);
         if (rc >= rIn && rc <= rOut) {
-          const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), flux = (1 - Math.sqrt(rIn / rc)) / rc ** 3;
-          I[py * n + px] = g ** 4 * flux; G[py * n + px] = g; Rh[py * n + px] = rc; break;
+          const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * op * g ** 4 * Fof(rc);
+          Isum += w; Tsum += w * g * (Fof(rc) ** 0.25 / Tpk);
+          if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = rc; }
+          tr2 *= 1 - op;
+          if (tr2 < 1e-3) break;
         }
       }
       [r, rv, u, uv] = ny;
@@ -273,6 +292,24 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
       rv = Math.sign(rv) * Math.sqrt(Math.max(0, Rf(r, a, 1, L, Q, 0, q))); uv = Math.sign(uv) * Math.sqrt(Math.max(0, Uf(u, a, 1, L, Q, 0)));
       if (r > r0 * 1.01 && rv > 0) break;
     }
+    if (Isum > 0) { I[py * n + px] = Isum; Tm[py * n + px] = Tsum / Isum; }
   }
-  return { I, g: G, r: Rh, n, half };
+  return { I, g: G, r: Rh, T: Tm, n, half };
+}
+
+/** The colour of a black body at T kelvin (sRGB 0–1, brightest channel 1): Planck's law through the CIE 1931 matching
+ * functions (Wyman, Sloan and Shirley's fit), XYZ to linear sRGB, then the sRGB curve. 1000 K is deep orange, 6500 K
+ * white, 20 000 K blue. */
+export function blackbodyRGB(T: number) {
+  const g = (x: number, m: number, s1: number, s2: number) => { const t = (x - m) / (x < m ? s1 : s2); return Math.exp(-0.5 * t * t); };
+  let X = 0, Y = 0, Z = 0;
+  for (let l = 380; l <= 780; l += 5) {
+    const lm = l * 1e-9, B = 1 / (lm ** 5 * (Math.exp(1.438777e-2 / (lm * Math.max(T, 100))) - 1));
+    X += B * (1.056 * g(l, 599.8, 37.9, 31) + 0.362 * g(l, 442, 16, 26.7) - 0.065 * g(l, 501.1, 20.4, 26.2));
+    Y += B * (0.821 * g(l, 568.8, 46.9, 40.5) + 0.286 * g(l, 530.9, 16.3, 31.1));
+    Z += B * (1.217 * g(l, 437, 11.8, 36) + 0.681 * g(l, 459, 26, 13.8));
+  }
+  const lin = [3.2406 * X - 1.5372 * Y - 0.4986 * Z, -0.9689 * X + 1.8758 * Y + 0.0415 * Z, 0.0557 * X - 0.204 * Y + 1.057 * Z].map((v) => Math.max(0, v));
+  const top = Math.max(...lin) || 1;
+  return lin.map((v) => { const x = v / top; return x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055; });
 }
