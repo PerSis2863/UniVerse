@@ -244,7 +244,9 @@ export interface Wind {
   /** Dryden turbulence: its strength (m/s rms in each direction; about 1.5 light, 3 moderate, 6 severe), the length
    * scale (m, 533 at medium heights) and a seed so a run repeats. */
   /** `rotational` (M489f): the gusts turn the air too (MIL-F-8785C's p, q, r gusts over the wing and tail). */
-  turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number; rotational?: boolean };
+  /** `tailLag` (M489i): the tail flies through the same vertical gusts lt / V after the wing (a real delay, not
+   * MIL-F-8785C's smoothed pitch gust): the difference over lt pitches the aeroplane. */
+  turbulence?: { sigma: number; scale?: number; seed?: number; w20?: number; rotational?: boolean; tailLag?: boolean };
   /** Wind shear with height (M489d): the steady wind is what blows at `ref` metres (10, where it's measured) and grows
    * as (h / ref)^exponent (1/7 over open country, about 0.25 over towns) up to 500 m, steady above. */
   shear?: { exponent?: number; ref?: number };
@@ -420,6 +422,9 @@ export function flight6(ac: Aircraft, T: number, o: {
   const tb = W.turbulence, rnd = normals(tb?.seed ?? 1), Lt = tb?.scale ?? 533, turb: Air = [0, 0, 0];
   let iv = 0, rLow = 0, stalled = false, crashed = false, gustStart = NaN, lastT: Air = [0, 0, 0];
   const rotG: Air = [0, 0, 0];
+  // The vertical gusts the wing met, kept for the tail (M489i).
+  const lagN = tb?.tailLag ? Math.max(1, Math.round((ac.lt ?? 3 * ac.c) / tr.V / dt)) : 0, wHist: number[] = new Array(lagN).fill(0);
+  let tailQ = 0;
   const out: Flight6Run = { t: [], n: [], e: [], h: [], V: [], ground: [], alpha: [], beta: [], phi: [], theta: [], psi: [], p: [], q: [], r: [], nz: [], wind: [], de: [], da: [], dr: [], thr: [], stalled: false, crashed: false };
   for (let k = 0; k <= n; k++) {
     const t = k * dt;
@@ -454,6 +459,13 @@ export function flight6(ac: Aircraft, T: number, o: {
       rotG[2] = ar * rotG[2] + (1 - ar) * ((turb[1] - lastT[1]) / dt / Vt);
       lastT = [turb[0], turb[1], turb[2]];
     }
+    if (lagN) {
+      // The tail meets what the wing met lagN steps ago: q_g = (up_wing − up_tail) / lt with up = −w.
+      const lt = ac.lt ?? 3 * ac.c, wTail = wHist[k % lagN];
+      tailQ = (wTail - turb[2]) / lt; wHist[k % lagN] = turb[2];
+      // It replaces the smoothed pitch gust (the same effect, now delayed for real).
+      rotG[1] = 0;
+    }
     const base = W.shear || W.microburst ? windField(W, s.n, s.e, s.h) : steady;
     const wind: Air = [base[0] + turb[0], base[1] + turb[1], base[2] + turb[2] - up];
     if (eng?.fail && t >= eng.fail.at) pw.working = eng.count === 2 ? ((eng.fail.which ?? 1) === 0 ? [0, 1] : [1, 0]) : [0, 0];
@@ -476,7 +488,7 @@ export function flight6(ac: Aircraft, T: number, o: {
     }
     if (o.yawDamper) dr += 1.2 * (s.r - rLow);
     de = clamp(de, ac.deMax); da = clamp(da, lat.daMax); dr = clamp(dr, lat.drMax); thr = Math.max(0, Math.min(1, thr));
-    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll || upPitch ? [rotG[0] + upRoll, rotG[1] + upPitch, rotG[2]] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
+    const c: Ctl = { de, da, dr, thr, gust: tb?.rotational || upRoll || upPitch || lagN ? [rotG[0] + upRoll, rotG[1] + upPitch + tailQ, rotG[2]] : undefined }, g = deriv6(ac, lat, s, c, wind, pw);
     if (g.alpha > ac.alphaStall) stalled = true;
     if (k % every === 0 || k === n) {
       const pos = toEarth(s, [s.u, s.v, s.w]);

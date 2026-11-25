@@ -150,6 +150,8 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   if (wind.gust && num1('gusttail')) wind.gust.tail = true;
   // M489f: 'TurbulenceRotation', 1 makes the gusts turn the air too.
   if (wind.turbulence && num1('turbulencerotation')) wind.turbulence.rotational = true;
+  // M489i: 'TurbulenceTail', 1: the tail meets the vertical gusts after the wing.
+  if (wind.turbulence && num1('turbulencetail')) wind.turbulence.tailLag = true;
   // Wind shear (M489d): 'Shear', the exponent (1/7 open country; the 'Wind' is then what blows 10 m up), and
   // 'Microburst', [north east (m) radius (m) outflow (m/s) down (m/s)].
   const shx = num1('shear');

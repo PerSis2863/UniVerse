@@ -13317,6 +13317,15 @@ The owner, 25 Nov (M491m's left-out). `rail.ts`: `Supply.soil` (Ω·m, AC): `car
 trains → 25 kV → "The soil" (Wet clay / Normal / Dry rock), which also sets the telephone cable's soil. Not built:
 the soil in the AC line's own feeding impedance (`solveAc` keeps its fixed reactance), layered soils.
 
+## M489i (25 Nov): Hyperion aeroplanes, the tail lagging the wing in turbulence
+
+The owner, 25 Nov (M489h's left-out). `flight.ts`: `Wind.turbulence.tailLag`: the vertical gusts the wing meets are
+kept in a ring buffer lt / V long (`Aircraft.lt`, 3 chords by default), and the tail's delayed one makes a pitch gust
+(w_tail − w_wing) / lt in `Ctl.gust[1]`; it takes the place of M489f's smoothed −ẇ/V pitch gust when both are on.
+Off by default. Checked: more pitch rate in the same turbulence, the same seed the same, roll untouched. Language
+'TurbulenceTail', 1. Window: All six → Rough → "The tail meets each gust after the wing (pitching)". Not built: the
+fin's lag for side gusts (yaw), the downwash's own lag.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

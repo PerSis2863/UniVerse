@@ -148,4 +148,16 @@ describe('Hyperion flight in six directions (M489c)', () => {
     lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 12, 'Gust', [2 60 5], 'GustTail', 1);");
     expect(lab.vars.get('tr')).toBeTruthy();
   });
+  it('the tail lagging the wing in turbulence (M489i)', { timeout: 60_000 }, () => {
+    const rms = (x: number[]) => Math.sqrt(x.reduce((q, v) => q + v * v, 0) / x.length);
+    const go = (tailLag: boolean) => fl.flight6(ac, 40, { V0: 50, h0: 1000, wind: { turbulence: { sigma: 3, seed: 5, tailLag } }, holdHeading: () => 0, holdHeight: () => 1000, holdSpeed: 50, yawDamper: true, points: 2000 });
+    const off = go(false), on = go(true);
+    // Off unchanged; on, the nose is pitched by the gusts' difference along the aeroplane: more pitch rate, the same seed the same.
+    expect(rms(on.q)).toBeGreaterThan(rms(off.q)); expect(go(true).q).toEqual(on.q);
+    // Rolling is untouched by it (only pitch).
+    expect(rms(on.p)).toBeCloseTo(rms(off.p), 1);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'TurbulenceTail', 1);");
+    expect(lab.vars.get('tr')).toBeTruthy();
+  });
 });
