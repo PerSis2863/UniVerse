@@ -14,7 +14,7 @@ describe('the science and industry examples (M492–M505)', () => {
       const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
       expect(() => lab.run(ex.code)).not.toThrow();
       expect(out).not.toMatch(/^Error/m);
-    });
+    }, 30_000); // the physics examples simulate for a few seconds on a busy test machine
   }
 });
 
