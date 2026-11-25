@@ -282,4 +282,14 @@ describe('Hyperion railways (M491)', () => {
     const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('b', 'MaxRailVolts')).toBeLessThan(f('a', 'MaxRailVolts')); expect(f('b', 'StrayCurrent')).toBeLessThan(f('a', 'StrayCurrent'));
   });
+  it('the ground\'s own resistance on AC lines (M491m)', () => {
+    const ac = rl.SUPPLIES.ac25(100000), plain = rl.railVolts(ac, [30000], [300])[0], gr = rl.railVolts({ ...ac, earth: rl.CARSON_50HZ }, [30000], [300])[0];
+    // By hand: |z_r|·√(r_e / |z_r + r_g|)/2 · screening · I; a little lower than without it.
+    const zt = Math.hypot(0.15 + rl.CARSON_50HZ, 0.55);
+    expect(gr).toBeCloseTo(((rl.RAIL_Z * Math.sqrt(rl.RAIL_RE / zt)) / 2) * 0.5 * 300, 9); expect(gr).toBeLessThan(plain); expect(gr).toBeGreaterThan(0.9 * plain);
+    expect(rl.railVolts({ ...ac, earth: 0 }, [30000], [300])[0]).toBeCloseTo(plain, 9);
+    // Further from the train it dies away faster (a larger |z|).
+    const far = (e?: number) => rl.railVolts({ ...ac, earth: e }, [30000, 32000], [300, 0])[1] / rl.railVolts({ ...ac, earth: e }, [30000, 32000], [300, 0])[0];
+    expect(far(rl.CARSON_50HZ)).toBeLessThan(far());
+  });
 });

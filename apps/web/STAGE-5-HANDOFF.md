@@ -13265,6 +13265,16 @@ WindscreenOut, FrontAirbags, Injury. Window: Kerb → "Who" (Small / Average / T
 Other side), fact "Front airbags"; Vehicle → Hook's result adds the belted people's head g and injury. Not built:
 front and rear rows apart, two people at once, a frontal crash (the only way front airbags would fire).
 
+## M491m (25 Nov): Hyperion railways, the ground's own resistance on 25 kV lines
+
+The owner, 25 Nov (M491l's left-outs). `rail.ts` `railVolts`: with `Supply.earth` the rails and the ground are two
+conductors joined by the leakage, as on DC (M491l): Z0 = |z_r|·√(r_e / |z_r + r_g|), decay √(|z_r + r_g| / r_e)
+(magnitudes, as the rest of the model). `CARSON_50HZ` 0.0493 Ω/km is the ground's resistance at 50 Hz (Carson: it
+depends on the frequency, not the soil). Unset or 0 is unchanged. Checked by hand: ~3% lower under the train and dying
+away sooner. Language: 'EarthResistance' now acts on AC lines too. Window: Several trains → 25 kV → "Count the
+ground's own resistance (0.05 Ω/km at 50 Hz)". Not built: the soil's depth of return (Carson's reactance is already in
+the rails' 0.55 Ω/km).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

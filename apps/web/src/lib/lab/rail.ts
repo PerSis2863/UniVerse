@@ -209,7 +209,8 @@ export interface Supply {
   /** DC rails' leakage to earth (Ω·km, M491k): 10 new track, 1–3 old or wet; the rails' own resistance is 0.4 of rline. */
   leak?: number;
   /** M491l: the two tracks' rails tied together every few hundred metres (cross-bonded), sharing the return current;
-   * and the ground's own resistance along the line (Ω/km, DC), which the stray current must flow through. */
+   * and the ground's own resistance along the line (Ω/km), which the stray current must flow through (on AC lines too,
+   * M491m: Carson's 0.0493 Ω/km at 50 Hz, `CARSON_50HZ`). */
   crossBond?: boolean;
   earth?: number;
   /** Storage on the line (M491g, DC): units at positions (m), each able to take or give `power` (W) and hold
@@ -386,11 +387,14 @@ export function faultEmf(sup: Supply, c: Cable) {
 // z (Ω/km) and leakage resistance r_e (Ω·km): a current I put in at one point lifts the rails there by I·Z0 / 2,
 // Z0 = √(|z|·r_e), dying away as e^(−d·√(|z| / r_e)). Rails 0.15 + j0.55 Ω/km on ballast leaking about 5 Ω·km (typical
 // figures). EN 50122-1 allows 60 V where people can touch the rails for long.
-export const RAIL_Z = Math.hypot(0.15, 0.55), RAIL_RE = 5, RAIL_LIMIT = 60;
+export const RAIL_Z = Math.hypot(0.15, 0.55), RAIL_RE = 5, RAIL_LIMIT = 60, CARSON_50HZ = 0.0493;
 export function railVolts(sup: Supply, s: number[], amps: number[]) {
   // Cross-bonded (M491l): both tracks' rails in parallel, half the impedance and half the leakage resistance: the same
   // decay, half the voltage.
-  const k = sup.ac?.screen ?? 0.5, z0 = Math.sqrt(RAIL_Z * RAIL_RE) / (sup.crossBond ? 2 : 1), g = Math.sqrt(RAIL_Z / RAIL_RE) / 1000;
+  // The ground's own impedance (M491m, `earth` Ω/km, Carson's ~0.05 at 50 Hz): as on DC, the rails and the ground are
+  // two conductors joined by the leakage: Z0 = |z_r|·√(r_e / |z_r + r_g|), decaying as √(|z_r + r_g| / r_e).
+  const zt = sup.earth ? Math.hypot(0.15 + sup.earth, 0.55) : RAIL_Z;
+  const k = sup.ac?.screen ?? 0.5, z0 = (RAIL_Z * Math.sqrt(RAIL_RE / zt)) / (sup.crossBond ? 2 : 1), g = Math.sqrt(zt / RAIL_RE) / 1000;
   // Bonded to earth at each substation (M491k): an image current there holds the rails at 0 at the bond nearest
   // each train (the one feeding it).
   const bond = (x: number) => sup.subs.reduce((b, y) => (Math.abs(y - x) < Math.abs(b - x) ? y : b), sup.subs[0]);
