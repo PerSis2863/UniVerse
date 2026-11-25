@@ -13293,6 +13293,21 @@ runs the four outer seats (`SEATS`: front/rear × near/far) at once. Language: '
 person's own) and Seats (a table: Row, Side, HeadG, Headroom, ThrownOutAt, PartlyOut). Window: Kerb → fact "Four
 seats: head g (thrown out ✕)". Rough figures. Not built: the middle seats, people hitting each other.
 
+## M486j (25 Nov): Hyperion vehicles, a head-on crash with belts, knees and front airbags
+
+The owner, 25 Nov (M486h's left-out "no head-on crash"). `vehicle.ts` `frontalCrash(v, speed, { into, other, belt,
+bags })`: the front a spring tuned to `NCAP_CRUSH` 0.65 m at 56 km/h, unloading on k/e² (e 0.1); into a car head on,
+the wall-equivalent 2v·m₂/(m + m₂). The front person, 75 kg as one body: belt slack 2 cm (pretensioner, when the airbag
+fires) or 6 cm, then lap + shoulder 200 kN/m up to 12 kN; knees on the dashboard after 12 cm up to 9 kN; the airbag
+fired by the same sensor as M486h (`FRONT_G` on the 30 ms-smoothed deceleration), full 30 ms later, 6 kN from 20 cm
+over 30 cm; the wheel at 55 cm (1 MN/m). Chest g is the 3 ms average (60 allowed); `headHit` when there is no
+airbag and the chest came within 15 cm; late firing after 12.5 cm; `risk` bands. Tuned by eye to NCAP-like results:
+at 56 km/h belt + airbag ~37 g and 40 cm, belt only the head reaches the wheel, nothing hits the wheel at ~150 g; 10
+km/h doesn't fire the airbag. Language `vehicleCrash` (help, an example). Window: Vehicle → Crash (`CrashView.tsx`:
+speed, a wall or a car like it, Nothing / Belt / Airbag / Belt + airbag; the car's and the person's deceleration over
+150 ms with the 60 g line and the firing). Rough figures. Not built: offset and side crashes, the back seats, the
+head's own HIC, the steering column collapsing.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

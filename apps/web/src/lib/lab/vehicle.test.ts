@@ -198,4 +198,23 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('a', 'PersonHeadroom')).toBeCloseTo(back.headroom, 9);
   });
+  it('a head-on crash with belts and airbags (M486j)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, ncap = vd.frontalCrash(car, 56 / 3.6);
+    // Tuned: 56 km/h into a wall crushes the front 0.65 m; the sensor fires the airbag within ~40 ms, in time.
+    expect(ncap.crush).toBeCloseTo(vd.NCAP_CRUSH, 2); expect(ncap.bagAt).toBeLessThan(0.04); expect(ncap.late).toBe(false);
+    // Belt and airbag keep the person off the wheel under 60 g; nothing and they hit it.
+    expect(ncap.hitWheel).toBe(false); expect(ncap.chestG).toBeLessThan(60); expect(ncap.risk).toBe('low');
+    const none = vd.frontalCrash(car, 56 / 3.6, { belt: false, bags: false }), belt = vd.frontalCrash(car, 56 / 3.6, { bags: false });
+    expect(none.hitWheel).toBe(true); expect(none.risk).toBe('severe');
+    expect(belt.headHit).toBe(true); expect(belt.travelMax).toBeGreaterThan(ncap.travelMax);
+    // A car like it head on at the same speed is the same as the wall; a heavier one is worse; slow, no airbag.
+    expect(vd.frontalCrash(car, 56 / 3.6, { into: 'car' }).chestG).toBeCloseTo(ncap.chestG, 6);
+    expect(vd.frontalCrash(car, 56 / 3.6, { into: 'car', other: 3000 }).vEq).toBeGreaterThan(56 / 3.6);
+    expect(Number.isNaN(vd.frontalCrash(car, 10 / 3.6).bagAt)).toBe(true);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[t, i] = vehicleCrash(vehicle(), 56/3.6); figure; vehicleCrash(vehicle(), 15, 'Into', 'car', 'Belts', 0);");
+    const f = (k: string) => toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('ChestG')).toBeCloseTo(ncap.chestG, 9);
+    expect(() => lab.run("vehicleCrash(vehicle(), 15, 'Into', 'tree')")).toThrow(/wall/);
+  });
 });

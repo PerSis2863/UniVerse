@@ -359,6 +359,54 @@ export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?:
   return SEATS.map(([row, seat]) => ({ row, seat, ...inside(v, tb, { ...o, row, seat }) }));
 }
 
+// M486j: a head-on crash. The car's front is a spring tuned so 56 km/h into a rigid wall crushes it ~0.65 m (Euro NCAP
+// cars), giving back 1% of the energy on the rebound (restitution 0.1). Into another car head on, both at `speed`, each
+// car sees the wall-equivalent 2v·m₂/(m + m₂). The front person (75 kg as one body) flies on until the belt takes up its
+// slack (2 cm once the pretensioner fires with the airbag, else 6 cm), then the belt (lap and shoulder, 200 kN/m) up to 12 kN (the
+// shoulder's load limiter); the knees meet the padded dashboard after 12 cm (up to 9 kN); a front airbag fired by the crash sensor (FRONT_G on the car's deceleration smoothed over 30 ms) is full
+// 30 ms later and pushes ~6 kN once the chest has moved 0.2 m, over 0.3 m (it vents); past 0.55 m the chest strikes
+// the steering wheel (stiff: 1 MN/m). Chest g is the 3 ms average (FMVSS 208 allows 60 g); late firing (after 12.5 cm
+// of travel, the "5 inches less 30 ms" rule) is flagged. Rough figures.
+export const NCAP_CRUSH = 0.65, BELT_K = 2e5, BELT_LIMIT = 12000, BAG_GAP = 0.2, BAG_N = 6000, BAG_STROKE = 0.3, WHEEL_GAP = 0.55, KNEE_GAP = 0.12, KNEE_K = 2e5, KNEE_MAX = 9000;
+export interface Crash { t: number[]; carG: number[]; personG: number[]; travel: number[]; crush: number; dv: number; bagAt: number; late: boolean; beltPeak: number; hitWheel: boolean; headHit: boolean; chestG: number; travelMax: number; vEq: number; risk: 'low' | 'serious' | 'severe' }
+export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'car'; other?: number; belt?: boolean; bags?: boolean } = {}): Crash {
+  const m = v.m, m2 = o.other ?? m, belt = o.belt ?? true, bags = o.bags ?? true, mo = 75, dt = 1e-5, T = 0.2;
+  const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k = (m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
+  let xc = 0, vc = vEq, xo = 0, vo = vEq, crush = 0, sens = 0, bagAt = NaN, beltPeak = 0, hitWheel = false, travelMax = 0, late = false;
+  const out: Crash = { t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, risk: 'low' };
+  const win = Math.round(0.003 / dt), recent: number[] = [];
+  let sum = 0;
+  for (let i = 0; i * dt <= T; i++) {
+    const t = i * dt;
+    // The wall pushes while the front is squeezed: loading on k, unloading on k/e² from the most crush.
+    let Fw = 0;
+    if (xc >= crush) { crush = xc; Fw = k * xc; } else Fw = Math.max(0, k * crush - (k / (e * e)) * (crush - xc));
+    const ac = -Fw / m;
+    sens += ((-ac / G - sens) * dt) / 0.03;
+    if (bags && Number.isNaN(bagAt) && sens > FRONT_G) { bagAt = t; late = xo - xc > 0.125; }
+    const xr = xo - xc, fired = !Number.isNaN(bagAt);
+    const slack = fired ? 0.02 : 0.06;
+    const Fb = belt && xr > slack ? Math.min(BELT_K * (xr - slack), BELT_LIMIT) : 0;
+    const Fa = fired && t > bagAt + 0.03 && xr > BAG_GAP && xr < BAG_GAP + BAG_STROKE ? BAG_N : 0;
+    // The knees reach the padded dashboard below it (the seat and legs carry much of the body; ~4.5 kN a thigh).
+    const Fk = xr > KNEE_GAP ? Math.min(KNEE_K * (xr - KNEE_GAP), KNEE_MAX) : 0;
+    const Fh = xr > WHEEL_GAP ? 1e6 * (xr - WHEEL_GAP) : 0;
+    if (Fh > 0) hitWheel = true;
+    const F = Fb + Fa + Fh + Fk, ao = -F / mo;
+    beltPeak = Math.max(beltPeak, Fb); travelMax = Math.max(travelMax, xr);
+    // The chest's 3 ms average.
+    recent.push(-ao / G); sum += -ao / G; if (recent.length > win) sum -= recent.shift()!;
+    out.chestG = Math.max(out.chestG, sum / recent.length);
+    if (i % 100 === 0) { out.t.push(t); out.carG.push(-ac / G); out.personG.push(-ao / G); out.travel.push(xr); }
+    vc += ac * dt; vo += ao * dt; xc += vc * dt; xo += vo * dt;
+    if (vc < 0 && Fw === 0 && vo <= vc + 1e-3 && t > 0.05) break;
+  }
+  // The head nods ~15 cm further than the chest: with no airbag in front of it, it reaches the wheel sooner.
+  const headHit = Number.isNaN(bagAt) && travelMax + 0.15 > WHEEL_GAP;
+  const risk = hitWheel || out.chestG > 60 ? 'severe' : out.chestG > 40 || headHit ? 'serious' : 'low';
+  return { ...out, crush, dv: vEq - vc, bagAt, late, beltPeak, hitWheel, headHit, travelMax, risk };
+}
+
 // ——— Steady state ———
 /** The understeer gradient K (rad per m/s² of side acceleration; above 0 understeers), the yaw-rate gain at a speed
  * (r/δ = u / (L + K u²)), and the characteristic speed (the most yaw gain, understeer) or critical speed (unstable past

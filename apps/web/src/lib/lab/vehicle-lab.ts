@@ -130,6 +130,24 @@ const section = (v: vd.Vehicle, y: number, z: number, th: number) => {
 };
 // vehicleTrip(car, speed, 'Kerb', 0.15, 'Ground', 'tarmac'): sliding sideways at `speed` m/s into a kerb (or, with
 // 'Kerb', 0, across the ground: 'tarmac', 'grass' or 'soil'). Drawn from behind, or [table, info].
+// M486j: a head-on crash into a wall or another car, the front person with belts and airbags.
+def('vehicleCrash', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError("vehicleCrash needs the vehicle and its speed (m/s): vehicleCrash(car, 15.6, 'Into', 'wall').");
+  const v = vehicleOf(a[0]), sp = toMat(a[1]).d[0], o = pairs(a, 2);
+  if (!(sp > 0 && sp <= 45)) throw new LabError('The speed is above 0 up to 45 m/s.');
+  const into = o.get('into') ? textOf(o.get('into')!).toLowerCase() : 'wall', other = o.get('othermass') ? toMat(o.get('othermass')!).d[0] : undefined;
+  if (into !== 'wall' && into !== 'car') throw new LabError("'Into' is 'wall' or 'car' (head on, both at the speed).");
+  if (other !== undefined && !(other >= 100 && other <= 60000)) throw new LabError("'OtherMass' is the other vehicle's mass, 100 to 60,000 kg.");
+  const flag = (k: string) => { const x = o.get(k) ? toMat(o.get(k)!).d[0] : 1; if (x !== 0 && x !== 1) throw new LabError("'Belts' and 'Airbags' are 1 or 0."); return x === 1; };
+  const c = vd.frontalCrash(v, sp, { into, other, belt: flag('belts'), bags: flag('airbags') });
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['WallSpeed', num(c.vEq)], ['Crush', num(c.crush)], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['AirbagLate', num(c.late ? 1 : 0)], ['BeltForce', num(c.beltPeak)], ['ChestG', num(c.chestG)], ['Travel', num(c.travelMax)], ['HitWheel', num(c.hitWheel ? 1 : 0)], ['HeadHitWheel', num(c.headHit ? 1 : 0)], ['Injury', str(c.risk)]]) };
+  if (nout > 0) return [table([['Time', col(c.t)], ['CarG', col(c.carG)], ['PersonG', col(c.personG)], ['Travel', col(c.travel)]]), info];
+  call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.carG), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
+  call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.personG), str('LineWidth'), num(2)); call(lab, 'hold', str('off'));
+  call(lab, 'grid', str('on')); call(lab, 'xlabel', str('time (ms)')); call(lab, 'ylabel', str('deceleration (g)'));
+  call(lab, 'legend', str('car'), str('person')); call(lab, 'title', str(`Chest ${c.chestG.toFixed(0)} g, ${c.hitWheel ? 'hit the wheel' : `moved ${(c.travelMax * 100).toFixed(0)} cm`}: ${c.risk}`));
+  return [];
+});
 def('vehicleTrip', (a, nout, lab) => {
   if (a.length < 2) throw new LabError("vehicleTrip needs the vehicle and its sideways speed (m/s): vehicleTrip(car, 10, 'Kerb', 0.15).");
   const v = vehicleOf(a[0]), vlat = toMat(a[1]).d[0], o = pairs(a, 2), kerb = o.get('kerb') ? toMat(o.get('kerb')!).d[0] : 0.15;

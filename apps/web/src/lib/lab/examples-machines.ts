@@ -165,6 +165,10 @@ fprintf('A 15 cm kerb trips it from %.0f km/h sideways\\n', kb.TripSpeed*3.6)
 [~, nb] = vehicleTrip(vehicle('Roll', true), 18, 'Belts', 0);
 [~, bc] = vehicleTrip(vehicle('Roll', true), 18, 'Belts', 1, 'Curtains', 1);
 fprintf('Unbelted: thrown out at %.2f s, head %.0f g; belted with curtains: head %.0f g\\n', nb.ThrownOutAt, nb.HeadG, bc.HeadG)
+% A head-on crash at 56 km/h (Euro NCAP's speed): belt and airbag against nothing at all
+[~, ok] = vehicleCrash(vehicle(), 56/3.6);
+[~, bad] = vehicleCrash(vehicle(), 56/3.6, 'Belts', 0, 'Airbags', 0);
+fprintf('Belt + airbag: chest %.0f g, moved %.0f cm; nothing: chest %.0f g, hit the wheel = %d\\n', ok.ChestG, ok.Travel*100, bad.ChestG, bad.HitWheel)
 figure; vehicleTrip(vehicle('Roll', true), 15, 'Kerb', 0, 'Ground', 'soil')
 ` },
   { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead
