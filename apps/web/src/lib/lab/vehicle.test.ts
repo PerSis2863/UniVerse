@@ -290,4 +290,18 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     lab.run("[~, i] = vehicleCrash(vehicle(), 64/3.6, 'Into', 'barrier', 'Overlap', 0.4);");
     expect(toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get('BarrierCrush')!).d[0]).toBeCloseTo(vd.BARRIER_DEPTH, 6);
   });
+  it('a front middle seat and bodies landing on each other (M486o)', { timeout: 60_000 }, () => {
+    const v = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, tb = vd.kerbTrip(v, 18, 0.15);
+    const six = vd.everyone(v, tb, { middle: true, frontMiddle: true });
+    expect(six).toHaveLength(6); expect(six.filter((x) => x.row === 'front').map((x) => x.seat)).toEqual(['near', 'middle', 'far']);
+    // Belted, bodies stay put; unbelted they land on each other (75 kg · (0.7 v)² / 2 · 0.1 m).
+    expect(six.every((x) => x.bodyLoad === 0)).toBe(true);
+    const loose = vd.everyone(v, tb, { belt: false, middle: true, frontMiddle: true }), farF = loose.find((x) => x.row === 'front' && x.seat === 'far')!;
+    expect(farF.bodyLoad).toBeCloseTo((75 * (vd.BODY_SHARE * farF.headSide) ** 2) / (2 * vd.BODY_STOP), 6);
+    expect(loose.every((x) => x.bodyLoad > 0)).toBe(true);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, i] = vehicleTrip(vehicle('Roll', true), 18, 'Belts', 0, 'Middle', 1, 'FrontMiddle', 1);");
+    expect((lab.vars.get('i') as unknown as { f: Map<string, unknown> }).f.get('Seats')).toBeTruthy();
+    expect(() => lab.run("vehicleTrip(vehicle('Roll', true), 18, 'FrontMiddle', 3)")).toThrow(/FrontMiddle/);
+  });
 });

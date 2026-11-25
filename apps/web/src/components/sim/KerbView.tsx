@@ -16,7 +16,7 @@ type Kerb = '0' | '10' | '15' | '25';
 type GroundName = 'tarmac' | 'grass' | 'soil';
 type Guard = 'none' | 'belts' | 'both';
 type Size = 'small' | 'average' | 'tall';
-type Seat = 'near' | 'far' | 'middle';
+type Seat = 'near' | 'far' | 'middle' | 'frontMiddle';
 
 export function KerbView({ car }: { car: Vehicle }) {
   const dark = useDarkMode(), still = useMedia('(prefers-reduced-motion: reduce)');
@@ -33,10 +33,12 @@ export function KerbView({ car }: { car: Vehicle }) {
   // Without body roll chosen, the saloon's.
   const v = useMemo(() => (car.roll ? car : { ...car, roll: ROLL_DEFAULT }), [car]), hk = Number(kerb) / 100;
   const tb = useMemo(() => kerbTrip(v, kmh / 3.6, hk, GROUNDS[ground]), [v, kmh, hk, ground]);
-  const ins = useMemo(() => inside(v, tb, { belt: guard !== 'none', curtains: guard === 'both', size, seat, row: seat === 'middle' ? 'rear' : 'front' }), [v, tb, guard, size, seat]);
+  const ins = useMemo(() => inside(v, tb, { belt: guard !== 'none', curtains: guard === 'both', size, seat: seat === 'frontMiddle' ? 'middle' : seat, row: seat === 'middle' ? 'rear' : 'front' }), [v, tb, guard, size, seat]);
   // M486i: all four outer seats at once (the seat chosen above shows in detail); M486m: a full car, the back's middle
   // seat too, and heads knocking together.
-  const all = useMemo(() => everyone(v, tb, { belt: guard !== 'none', curtains: guard === 'both', size, middle: true }), [v, tb, guard, size]);
+  // M486o: a bench's front middle seat when it is the one chosen.
+  const all = useMemo(() => everyone(v, tb, { belt: guard !== 'none', curtains: guard === 'both', size, middle: true, frontMiddle: seat === 'frontMiddle' }), [v, tb, guard, size, seat]);
+  const front = all.filter((x) => x.row === 'front'), back = all.filter((x) => x.row === 'rear');
   const n = tb.t.length, sh = shape(v);
 
   const kNow = useRef(0);
@@ -117,8 +119,9 @@ export function KerbView({ car }: { car: Vehicle }) {
     ['Roof in · windows broken', `${(tb.crush * 100).toFixed(0)} cm · ${tb.windows.filter((x) => !Number.isNaN(x)).length} side${tb.windows.filter((x) => !Number.isNaN(x)).length === 1 ? '' : 's'}`],
     ['People inside: most g · headroom', `${tb.peakG.toFixed(0)} g · ${ins.headroom >= 0 ? `${(ins.headroom * 100).toFixed(0)} cm left` : 'the roof reached them'}`],
     ['Heads · thrown out', `${ins.headG.toFixed(0)} g · ${!Number.isNaN(ins.thrownOut) ? `at ${ins.thrownOut.toFixed(2)} s` : ins.partly ? 'head and arms out' : 'kept inside'}`],
-    ['Five seats: head g (thrown out ✕)', `front ${all.slice(0, 2).map((x) => `${x.headG.toFixed(0)}${Number.isNaN(x.thrownOut) ? '' : '✕'}`).join(' · ')}, back ${all.slice(2).map((x) => `${x.headG.toFixed(0)}${Number.isNaN(x.thrownOut) ? '' : '✕'}`).join(' · ')}`],
+    [`${all.length === 6 ? 'Six' : 'Five'} seats: head g (thrown out ✕)`, `front ${front.map((x) => `${x.headG.toFixed(0)}${Number.isNaN(x.thrownOut) ? '' : '✕'}`).join(' · ')}, back ${back.map((x) => `${x.headG.toFixed(0)}${Number.isNaN(x.thrownOut) ? '' : '✕'}`).join(' · ')}`],
     ['Heads knocking together', `up to ${Math.max(...all.map((x) => x.knock)).toFixed(0)} g (the person on the side it tips to is hit)`],
+    ['Bodies landing on each other', guard === 'none' ? `up to ${(Math.max(...all.map((x) => x.bodyLoad)) / 1000).toFixed(1)} kN` : 'belts keep them in their seats'],
     ['Front airbags', Number.isNaN(ins.frontBags) ? `didn’t fire (blow along the car ${tb.frontG.toFixed(1)} g; they need ${FRONT_G})` : `fired at ${ins.frontBags.toFixed(2)} s`],
     ['Windscreen · injury (rough)', `${!Number.isNaN(ins.screenOut) ? 'out of its frame' : !Number.isNaN(ins.screenCracked) ? 'cracked' : 'whole'} · ${ins.risk}`],
   ];
@@ -141,7 +144,7 @@ export function KerbView({ car }: { car: Vehicle }) {
           <Segmented<Size> label="Who" value={size} onChange={setSize} segments={[{ value: 'small', label: 'Small' }, { value: 'average', label: 'Average' }, { value: 'tall', label: 'Tall' }]} />
         </div>
         <div className="space-y-1"><span className={label}>Seat</span>
-          <Segmented<Seat> label="Seat" value={seat} onChange={setSeat} segments={[{ value: 'near', label: 'Side it tips to' }, { value: 'far', label: 'Other side' }, { value: 'middle', label: 'Back middle' }]} />
+          <Segmented<Seat> label="Seat" value={seat} onChange={setSeat} segments={[{ value: 'near', label: 'Side it tips to' }, { value: 'far', label: 'Other side' }, { value: 'middle', label: 'Back middle' }, { value: 'frontMiddle', label: 'Front middle (bench)' }]} />
         </div>
         <button type="button" className={small} onClick={() => { if (k >= n - 1) setK(0); setPlaying((q) => !q); }}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Pause' : 'Replay'}</button>
       </div>

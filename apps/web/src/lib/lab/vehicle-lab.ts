@@ -186,10 +186,11 @@ def('vehicleTrip', (a, nout, lab) => {
   const who = peopleOf(o), tb = vd.kerbTrip(v, vlat, kerb, ground, { swr, r: yr, vf }), people = peopleFields(vd.inside(v, tb, who));
   // M486i: all four outer seats at once (info.Seats: a table); M486m: 'Middle', 1 adds the back's middle seat, and
   // Knock is the g of heads meeting.
-  const mid = o.get('middle') ? toMat(o.get('middle')!).d[0] : 0;
-  if (mid !== 0 && mid !== 1) throw new LabError("'Middle' is 1 (someone in the back's middle seat) or 0.");
-  const all = vd.everyone(v, tb, { ...who, middle: mid === 1 });
-  people.push(['Seats', table([['Row', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.row)) } as Value], ['Side', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.seat)) } as Value], ['HeadG', col(all.map((x) => x.headG))], ['Knock', col(all.map((x) => x.knock))], ['Headroom', col(all.map((x) => x.headroom))], ['ThrownOutAt', col(all.map((x) => x.thrownOut))], ['PartlyOut', col(all.map((x) => (x.partly ? 1 : 0)))]])]);
+  // M486o: 'FrontMiddle', 1 a bench's front middle seat too; BodyLoad the force of an unbelted body landing (N).
+  const mid = o.get('middle') ? toMat(o.get('middle')!).d[0] : 0, fmid = o.get('frontmiddle') ? toMat(o.get('frontmiddle')!).d[0] : 0;
+  if ((mid !== 0 && mid !== 1) || (fmid !== 0 && fmid !== 1)) throw new LabError("'Middle' and 'FrontMiddle' are 1 (someone in that middle seat) or 0.");
+  const all = vd.everyone(v, tb, { ...who, middle: mid === 1, frontMiddle: fmid === 1 });
+  people.push(['Seats', table([['Row', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.row)) } as Value], ['Side', { k: 'cell', r: all.length, c: 1, d: all.map((x) => str(x.seat)) } as Value], ['HeadG', col(all.map((x) => x.headG))], ['Knock', col(all.map((x) => x.knock))], ['BodyLoad', col(all.map((x) => x.bodyLoad))], ['Headroom', col(all.map((x) => x.headroom))], ['ThrownOutAt', col(all.map((x) => x.thrownOut))], ['PartlyOut', col(all.map((x) => (x.partly ? 1 : 0)))]])]);
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Tripped', num(tb.tripped ? 1 : 0)], ...tumbleFields(tb), ...people, ['PeakRollRate', num(tb.peakRate)], ['TripSpeed', num(kerb > 0 ? vd.tripSpeed(v, kerb) : NaN)]]) };
   if (nout > 0) return [table([['Time', col(tb.t)], ['Across', col(tb.y)], ['Height', col(tb.z)], ['Roll', col(tb.th)], ['RollRate', col(tb.w)]]), info];
   call(lab, 'hold', str('on'));

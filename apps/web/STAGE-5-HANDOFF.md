@@ -13427,6 +13427,17 @@ rigid wall); full width at 56 km/h it barely gives (the front is about as stiff)
 'barrier', info.BarrierCrush. Window: Crash → Into → "A soft barrier (Euro NCAP)". Not built: the newer moving
 barrier (MPDB), the honeycomb's stiffer bumper row.
 
+## M486o (25 Nov): Hyperion vehicles, a bench's front middle seat and bodies landing on each other
+
+The owner, 25 Nov (M486m's left-outs). `vehicle.ts` `everyone(…, { frontMiddle })` adds a bench's front middle seat (the
+rows are near, middle, far in order). Unbelted, whole bodies slide across with the roll (their middle 0.7 of the
+head's swing, `BODY_SHARE`) and land on the next person on the side it tips to, stopped over 10 cm (`BODY_STOP`):
+`bodyLoad` = 75 kg·v²/2s on both (ribs break from about 3–4 kN; over 4 kN serious, 8 kN severe in the risk). Belted
+bodies stay in their seats. The model's rollover swing speeds are a few m/s, so the loads come out about 1–3 kN.
+Language: vehicleTrip 'FrontMiddle', 1; info.Seats gains BodyLoad. Window: Kerb → Seat → "Front middle (bench)" (six
+seats then), the fact "Bodies landing on each other". Rough figures. Not built: people's arms and legs, a person
+landing on the roof lining with others on top.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

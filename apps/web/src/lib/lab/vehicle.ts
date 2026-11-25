@@ -364,20 +364,29 @@ export const SEATS = [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['r
 // pillar), so they meet at the swinging one's speed, heads stopped in 5 cm (`HEADS_STOP`), and both feel it. Unbelted,
 // the body comes behind the head: 1.5× the blow. The near person is hit; the far one hits; the middle one both.
 export const HEADS_STOP = 0.05;
-export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; middle?: boolean } = {}) {
-  const { middle, ...who } = o;
-  const seats: (readonly ['front' | 'rear', 'near' | 'far' | 'middle'])[] = middle ? [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['rear', 'middle'], ['rear', 'far']] : [...SEATS];
-  const all = seats.map(([row, seat]) => ({ row, seat, knock: 0, ...inside(v, tb, { ...who, row, seat }) }));
-  const order = { near: 0, middle: 1, far: 2 } as const;
+// M486o: a bench's front middle seat too (`frontMiddle`), and bodies, not only heads: unbelted, the whole body slides
+// across with the roll (its middle nearer the roll axis than the head: 0.7 of the head's swing) and lands on the next
+// person on the side it tips to, stopped over 10 cm of the other's body (`BODY_STOP`): `bodyLoad`, the force (N) between
+// them, 75 kg·v²/2s (ribs break from about 3–4 kN). Belted bodies stay in their seats (only heads meet).
+export const BODY_STOP = 0.1, BODY_SHARE = 0.7;
+export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; middle?: boolean; frontMiddle?: boolean } = {}) {
+  const { middle, frontMiddle, ...who } = o;
+  const seats: (readonly ['front' | 'rear', 'near' | 'far' | 'middle'])[] = [['front', 'near'], ...(frontMiddle ? [['front', 'middle'] as const] : []), ['front', 'far'], ['rear', 'near'], ...(middle ? [['rear', 'middle'] as const] : []), ['rear', 'far']];
+  const all = seats.map(([row, seat]) => ({ row, seat, knock: 0, bodyLoad: 0, ...inside(v, tb, { ...who, row, seat }) }));
+  const order = { near: 0, middle: 1, far: 2 } as const, loose = o.belt === false;
   for (const row of ['front', 'rear'] as const) {
     const line = all.filter((x) => x.row === row).sort((a, b) => order[a.seat] - order[b.seat]);
     for (let i = 1; i < line.length; i++) {
-      const sp = line[i].headSide, g = ((sp * sp) / (2 * HEADS_STOP) / G) * (o.belt === false ? 1.5 : 1);
-      for (const x of [line[i], line[i - 1]]) { x.knock = Math.max(x.knock, g); x.headG = Math.max(x.headG, g); }
+      const sp = line[i].headSide, g = ((sp * sp) / (2 * HEADS_STOP) / G) * (loose ? 1.5 : 1);
+      const bs = BODY_SHARE * sp, bf = loose ? (75 * bs * bs) / (2 * BODY_STOP) : 0;
+      for (const x of [line[i], line[i - 1]]) { x.knock = Math.max(x.knock, g); x.headG = Math.max(x.headG, g); x.bodyLoad = Math.max(x.bodyLoad, bf); }
     }
   }
-  // The rough bands again with the knocks counted.
-  for (const x of all) if (x.headG > 150) x.risk = 'severe'; else if (x.headG > 80 && x.risk === 'low') x.risk = 'serious';
+  // The rough bands again with the knocks counted (a body landing on you with over 4 kN is serious, 8 kN severe).
+  for (const x of all) {
+    if (x.headG > 150 || x.bodyLoad > 8000) x.risk = 'severe';
+    else if ((x.headG > 80 || x.bodyLoad > 4000) && x.risk === 'low') x.risk = 'serious';
+  }
   return all;
 }
 
