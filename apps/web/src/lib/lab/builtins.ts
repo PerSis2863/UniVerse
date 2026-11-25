@@ -3,6 +3,7 @@ import { cexp, clog, cmap, csqrt, eigvals } from './complex';
 import { cmat, imOf, bool, empty, fmtNum, inline, isScalar, kind, mat, num, numel, page, pages, render, row, stack, scalar, sizeOf, str, toMat, truthy, type Cell, type Mat, type Struct, type Value } from './values';
 import type { Lab } from './interp';
 import { concat, eye, inv, map1, matmul, range, solve, textOf, transpose, zip } from './interp';
+import { svd } from './dsp';
 import { cast, CLASSES, isInt, isNumClass, RANGE, type NumClass } from './types';
 
 // Hyperion's built-in functions (M374): written for UniVerse from the functions' documented behaviour (no code
@@ -456,9 +457,20 @@ def('histc', (a) => { const m = M(a[0]), edges = M(a[1]); const out = new Array(
 // ——— Linear algebra ———
 def('transpose ctranspose', (a) => [transpose(a[0])]);
 def('inv', (a) => [inv(M(a[0]))]);
-def('pinv', (a) => { const m = M(a[0]); const mt = transpose(m) as Mat; return [m.r >= m.c ? matmul(inv(matmul(mt, m)), mt) : matmul(mt, inv(matmul(m, mt)))]; });
 def('det', (a) => [num(det(M(a[0])))]);
 def('trace', (a) => { const m = M(a[0]); let s = 0; for (let i = 0; i < Math.min(m.r, m.c); i++) s += m.d[i + i * m.r]; return [num(s)]; });
+// M535: pinv through the SVD (σ below max(size)·eps(σ₁) counts as zero), so a rank-deficient A has one too; lsqminnorm
+// of plain numbers is pinv(A) * B (codegen-lab).
+def('pinv', (a) => {
+  const m = M(a[0]);
+  if (m.im) throw new LabError('pinv here works on real matrices.');
+  if (m.r === 0 || m.c === 0) return [mat(m.c, m.r)];
+  const r = svd(Array.from({ length: m.r }, (_, i) => Array.from({ length: m.c }, (_, j) => m.d[i + j * m.r])));
+  const tol = a[1] ? M(a[1]).d[0] : Math.max(m.r, m.c) * 2 ** (Math.floor(Math.log2(r.S[0] || 1)) - 52);
+  const o = mat(m.c, m.r);
+  r.S.forEach((s, k) => { if (s > tol) for (let i = 0; i < m.c; i++) for (let j = 0; j < m.r; j++) o.d[i + j * m.c] += (r.V[i][k] * r.U[j][k]) / s; });
+  return [o];
+});
 def('rank', (a) => [num(rank(M(a[0])))]);
 def('dot', (a) => { const x = M(a[0]), y = M(a[1]); if (x.d.length !== y.d.length) throw new LabError('dot needs two vectors of the same length.'); return [num(x.d.reduce((s, v, i) => s + v * y.d[i], 0))]; });
 def('cross', (a) => { const x = M(a[0]).d, y = M(a[1]).d; if (x.length !== 3 || y.length !== 3) throw new LabError('cross needs two 3-element vectors.'); const out = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]]; return [M(a[0]).r === 1 ? row(out) : mat(3, 1, out)]; });

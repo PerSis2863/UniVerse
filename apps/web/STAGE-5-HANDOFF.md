@@ -12437,6 +12437,174 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+
+## M472 (23 Nov): Hyperion, the filter designer and signal analyser
+
+The owner (23 Nov): "help me to build what is left", group 5's signal analyser and filter designer. Three sessions build
+the rest in parallel: this branch (`claude/hyperion-signals-capabilities`) M472–M481, machines and vehicles M482–M491,
+sciences and industries M492–M505. Pure maths in `src/lib/lab/filters.ts`, the language in `filters-lab.ts` (loaded by
+`lab.worker.ts` and the tests): analog prototypes (Butterworth, Chebyshev I and II, elliptic by Landen's transform,
+after Orfanidis' notes), the low/high/band-pass/band-stop transformations and the bilinear transform with prewarping (fs
+= 2, as MATLAB, so edges are fractions of Nyquist); order estimates; `fir1` (windowed sinc, gain 1 in the first
+passband), `fir2` (frequency sampling), `firpm` (our own Remez exchange with barycentric interpolation, orders odd and
+even; no Hilbert or differentiator types); `freqz` moved here from `signal.ts` (draws magnitude and unwrapped phase
+without outputs; takes fs), `grpdelay`, `filtfilt` (odd reflection of 3·order samples, steady-state initial conditions),
+`designfilt` (a plain struct with Numerator and Denominator in place of MATLAB's digitalFilter object; `filter`,
+`filtfilt`, `freqz`, `grpdelay` take it; `filter` is wrapped here so `signal.ts` stays as it was), `pwelch` and
+`spectrogram` (MATLAB's defaults: 8 Hamming segments overlapping by half, nfft ≥ 256; one-sided PSD scaling).
+The window: Hyperion's new **Signals** page (`/hyperion/signals`, `SignalsTabs.tsx`, menu and phone tabs), its first
+tab `FilterDesigner.tsx`: designs on the page's thread (microseconds to milliseconds), edges dragged on the SVG
+(pointer capture, the neighbours' order kept) or moved with ‹ › buttons, Open in Code by `shareFragment`. The worked
+examples for this branch live in `src/components/lab/examples-signals.ts` (spread into `LabApp`'s list, so the three
+branches don't edit the same lines) and every one runs in `examples-signals.test.ts`. Browser check:
+`scripts/checks/hyperion-signals-ui.mjs` (TABS=… names the tabs to open). Not built: second-order sections (`sos`),
+`zplane`, `iirnotch`, filter quantisation, MATLAB's filterDesigner's import/export.
+
+## M473 (23 Nov): Hyperion, test and measurement (the microphone, a tone generator, recording, data logging)
+
+Signals → **Audio** (`src/components/lab/AudioBench.tsx`, a lazily loaded tab of `SignalsTabs`). Web Audio only, free
+and on the computer: the input is the microphone (`getUserMedia` with echoCancellation, noiseSuppression and
+autoGainControl off, so the real sound is measured; the site's Permissions-Policy already allows `microphone=(self)`)
+or a generator (OscillatorNode, or a looping buffer of white noise) → a gain → an AnalyserNode (8192 points, −140 … 0
+dB) and, for the generator only and when ticked, the speakers (never the microphone: it would howl). A canvas scope
+(triggered on the first rising zero crossing) and a log-frequency spectrum are drawn by requestAnimationFrame only
+while running; readings (level dBFS, the strongest frequency refined by a parabola, THD) come from `src/lib/lab/audio.ts`.
+**Recording is lossless**: an AudioWorklet (`public/hyperion/pcm-tap.js`, a static file because the CSP's script-src
+has no blob:) posts the samples in blocks of 4096; they are written as a 24-bit WAV with `keep()` into Hyperion's files
+(IndexedDB, `lab-files.ts`) and Open in Code reads it with `audioread`. The data logger keeps up to 100,000 readings
+(CSV download, or a CSV in Hyperion's files read with `readtable`). In the language (`audio-lab.ts`): `audioread`
+(with a sample range), `audiowrite` ('BitsPerSample' 8/16/24/32, 64 for floats), `audioinfo`, `sound` / `soundsc`
+(the engine's worker has no speakers: a new optional `Host.sound` posts `{ sound }` and `LabApp`'s `playSound` plays it),
+`thd` (dB). WAV reading takes PCM and float, WAVE_FORMAT_EXTENSIBLE, any channel count. The browser check
+(`hyperion-signals-ui.mjs`) uses the generator (no microphone in the test browser). Not built: two-channel inputs,
+choosing the input device, calibration to sound pressure (dB SPL needs a calibrated microphone), MATLAB's
+audioDeviceReader/audioPlayer objects (System objects the engine doesn't have).
+
+## M474 (23 Nov): Hyperion, serial devices and Arduino (Web Serial, Firmata, a simulated board)
+
+Signals → **Devices** (`SerialBench.tsx`). The connection is `serialLink` in `src/components/lab/serial-link.ts`, a
+module-level object, so it stays open while the person moves between Signals and the Code window (client-side
+navigation keeps modules). Web Serial (`navigator.serial.requestPort` shows the browser's chooser; Chrome, Edge, Opera
+on computers and the Electron app; Firefox and Safari have none: the page says so and the simulated board still works;
+the site's Permissions-Policy leaves `serial` at its default, self). **Text** mode decodes lines (keeps the last 10,000)
+and plots the Serial Plotter format (`parsePlotLine`: named "a:1,b:2" or plain "1 2 3", up to 6 series, last 300
+points); **Firmata** mode speaks StandardFirmata 2.x (`src/lib/lab/firmata.ts`: `encode`, a `Parser` that takes bytes
+in any pieces, sysex capability / analog-mapping / firmware / string replies), asks the board its pins and reports all
+three digital ports; analog reporting starts when a pin is set to analog. `SimBoard` is a byte-level simulated Uno
+running Firmata (pin 7 wired to pin 8, a button on pin 2, made-up sensors on A0–A5, A5 follows pin 9's PWM), and the text
+simulation prints `temp:…,light:…,knob:…,led:…` 20 times a second and answers `LED ON` / `LED OFF`.
+**Scripts** (`serial-lab.ts`): the engine can't hold a port (only the page can, and the engine runs a script straight
+through on its worker), so the window keeps the engine told (`bridgeToEngine` in `LabApp`, a `{ serial }` message:
+the device's state and new lines, between runs) and a script's writes go out through a new optional `Host.serial` →
+`{ serialOut }` → `applySerialOut`. So `readline` returns lines that arrived before the run (empty when none), pin reads
+return the last report; writes happen as the script runs. MATLAB's serialport and arduino objects are plain structs
+here. Not built: two devices at once, binary protocols beyond Firmata (I2C, SPI, Servo libraries' extras), USB (WebUSB is
+off by the site's policy), Bluetooth, an Arduino compiler/uploader (upload sketches with the Arduino IDE).
+
+## M475 (23 Nov): Hyperion, the Internet of Things (channels, write keys, live dashboards)
+
+Signals → **IoT** (`IotBench.tsx`). Database update **0260** (`iot_channels`, `iot_entries`; 0259 was already M445's on
+main). Server: `src/server/iot.ts`, the platform API module `src/server/modules/iot.ts` (registered in `app.ts`), so the
+routes are `/api/core/iot/…`: `GET/POST channels`, `PATCH/DELETE channels/:id`, `POST channels/:id/key`,
+`GET channels/:id/entries?after=&limit=` (owner only, `own()` checks `userId`), and the public `POST`/`GET
+write/:key` (listed in `route-gates.test.ts`'s PUBLIC_MODULE: the key is the password, as Trace's carrier key). The write
+key (20 characters, about 100 bits) is returned once; only its SHA-256 (`keyHash`, unique) and its first 4 characters are
+kept. Fields are numbers through `num()` (±1e15), field1…field8 (or f1…f8); one reading a second claimed with a
+conditional `updateMany` (no transactions in D1); every 200th insert trims the channel to its newest 20,000. Each reading
+`publish`es a refresh of `/iot/channels/<id>*` to the owner's tabs (the window also refreshes every 20 s when live
+updates are off). Sample answers in `src/lib/sample/iot.ts`; erased with the account (`account-deletion.ts`). The
+simulated device posts from the browser to the same public address every 2 s (making a new key if none is in memory).
+Not built: public (shared) channels, alerts on a threshold, reading a channel from a script (the engine runs scripts
+without waiting on the network: Open in Code saves the readings as a CSV in Hyperion's files), MQTT (browsers can't
+open raw TCP; HTTPS only).
+
+## M476 (23 Nov): Hyperion, unit tests and checks for scripts
+
+`src/lib/lab/verify.ts` (`differs`: why two values differ, down into cells and struct fields, with 'AbsTol' / 'RelTol';
+`sections`: a script's set-up and %% sections) and `verify-lab.ts`: `runScriptTests` (each section after the set-up in a
+fresh child `Lab` sharing the host and the script's functions; a section holding only function definitions isn't a test),
+`runFunctionTests` (local functions named test…, with setupOnce / setup / teardown / teardownOnce, each given a test case
+struct with TestName and IsTestCase), `runtests` (a file in Hyperion's files, or the test functions; prints the report,
+returns a table). `assertX` throws `AssertionFailed` (stops the test); `verifyX` adds to the running test's list and goes
+on (outside a test both stop the code); both take an optional test case first (MATLAB's verifyEqual(tc, …) and our
+assertEqual(…)). The window: a **Test** button beside Time it (`run(code, 'test')` → the worker's run with `test: name`
+→ `runScriptTests`); every report also goes to `testReports.onReport` → `{ tested }` → `TestResults.tsx`, shown in the
+figure's place (like Sweep). Browser check: `scripts/checks/hyperion-tests-ui.mjs`. MATLAB's matlab.unittest classes
+(class-based tests, TestData, parameterised tests, assume…, fixtures beyond the four functions) aren't here.
+
+## M477 (23 Nov): Hyperion, parallel computing (parfor, parfeval on Web Workers)
+
+`src/lib/lab/parallel-lab.ts`. The engine runs a script synchronously on its worker, and a thread can block on another
+only on a cross-origin-isolated site (this one isn't: no COEP; don't add it, it would break embeds), so parallel work
+**pauses** the run: `Flow` (now exported) has a new kind `'pause'`; `Pause` carries `wait()` and whether to re-run the
+statement. `runResumable(lab, src)` (used by `lab.worker.ts` for plain runs; Watch, Time it, Test and the command
+window's other paths stay synchronous, so parfor runs in order there) executes the top-level statements one at a time
+(`Lab.execTop`) and on a pause awaits, then goes on. **parfor** (parser: `parfor` keyword, `{ s: 'for', par: true }`,
+`parfor (i = …, M)` reads and ignores M; interp: `parHook.parfor` at depth 0) works only for top-level statements
+(`topLevel` set): `classify` sorts the body's assignments (indexed → merged element by element against the value before
+the loop by `mergeSliced`, so new arrays and cells grow to the largest size; `x = x + …`, `-`, `*`, `.*`, `&`, `|`,
+`[x, …]` / `[x; …]` → reductions started at their identity in each worker and combined in order; other names →
+temporaries, dropped). Iterations are split into one chunk per worker (`par.worker.ts`: a whole engine with the
+toolboxes, no files and no figures). **parfeval** posts the call at once; a future is its number (MATLAB's Future
+objects aren't in the engine, so `F(k) = parfeval(…)` makes a numeric array); `fetchOutputs` / `fetchNext` / `wait` on an
+unfinished one pauses with `rerun`, waits for every outstanding future, then runs that top-level statement again (so
+fetches belong in their own loop; side effects before the fetch in that statement repeat once). With no pool (tests, the
+Learn and health workers, 2 cores or fewer) parfeval runs the call at once and parfor in order. The pool
+(`WorkerPool` in `lab.worker.ts`) starts on first use and stays; Stop ends it with the engine. Browser check:
+`scripts/checks/hyperion-parallel-ui.mjs`. Not built: spmd, distributed arrays, parfor's sliced inputs (the whole
+workspace is sent), backgroundPool, afterEach / afterAll.
+
+## M478 (23 Nov): Hyperion, GPU computing (gpuArray and gather on WebGPU)
+
+`src/lib/lab/gpu.ts` (WebGPU: `initGpu` asks for an adapter once, from `lab.worker.ts` at start; WGSL compute shaders for
+the tiled matrix product, element-wise ops with scalar broadcasting, unary maths, column sums and transpose; column-major
+f32 buffers; `readBack` copies to a MAP_READ buffer and awaits `mapAsync`; with no device every op runs on the CPU in
+double precision, and a matrix made before the device was ready moves to it on first use, `onDevice`) and `gpu-lab.ts`.
+A gpuArray is a `Struct` with `gpu: true` (fields Size, Where, ID; `kind` says gpuArray, `sizeOf` its size, `show` a
+one-line summary): the engine's `binop` asks `opHooks.binop` first when either side is one, and `exp`, `sqrt`, `abs`,
+`sin`, `cos`, `tanh`, `log`, `sum`, `transpose`, `ctranspose`, `numel` are wrapped. **gather** throws
+`pauseFor(readBack)` (M477's pause, re-running the statement), so every operation is **memoised** by (op, operand ids,
+scalar values): the re-run gets the same handles and finds the numbers back. Buffers are freed when no handle refers to
+them (`FinalizationRegistry` with a count per id); a matrix uploaded as an operand keeps its buffer (a `shortcut:`
+comment). Unary minus, indexing and anything else need gather first (a clear error says so). WebGPU is in Chrome and
+Edge (desktop), not yet in Firefox or Safari by default: there gpuArray is still correct, just not faster. Browser
+check: `scripts/checks/hyperion-gpu-ui.mjs` (launches Chromium with its software WebGPU adapter, so it runs anywhere).
+
+## M479 (23 Nov): Hyperion, discrete-event simulation (Simulate → Queues and queuesim)
+
+Built both as a Simulate bench and a toolbox: a process is easiest to describe by clicking stations together and
+watching it run, and experiments (many seeds, a sweep of servers) are scripts. The engine `src/lib/sim/des.ts`:
+next-event time advance with a binary heap (ties in scheduling order), a seeded generator (mulberry32), distributions
+(exponential, constant, uniform, normal truncated at 0, Erlang), stations with c servers, an optional queue capacity
+(turned away when full) and FIFO queues, routing by a probability matrix (the rest leave; a straight line by default),
+a warm-up left out of the statistics, time-weighted queue length and utilisation, waits, throughput, work in progress, a
+timeline of up to ~600 snapshots and the first 60 entities' journeys; `mmc` is Erlang C. The bench
+`src/components/sim/QueuesBench.tsx` (a new kind in `SimulateApp`) reruns on every change on the page's thread (capped
+at 50,000 arrivals: milliseconds), plays the timeline with requestAnimationFrame only while playing. The language
+(`des-lab.ts`): `queuesim(arrivals, {{name, servers, service, capacity?}…}, T, 'Seed', 'Warmup', 'Route')` and
+`mmcqueue(λ, μ, c)`; MATLAB's SimEvents block diagrams aren't here. Browser check: `scripts/checks/hyperion-queues-ui.mjs`.
+Not built: priorities, other queue orders (LIFO, shortest job), resources shared between stations, schedules (staff by
+hour), batching.
+
+## M480 (23 Nov): Hyperion, C code generation and fixed point
+
+`src/lib/lab/codegen.ts` (`generate(fns, entry, argTypes)`): walks a function's syntax tree with the types the example
+inputs fix (class and r×c; every variable keeps one size: growing arrays, ranges in indexes, cells, text, structs,
+function handles, recursion and changed array inputs are refused with the function's name and the reason). Scalars are
+C locals; arrays fixed-size, column-major (`x[(i-1) + (j-1)*r]`); element-wise array expressions become one loop;
+a matrix product, a transpose or a matrix literal inside one is made first into a temporary (`tN`); reductions of
+vectors (sum, prod, mean, min, max) are hoisted before the statement. Whole-number classes compute in double and go
+through `sat_<class>()` (rounding halves away from zero, clamping, NaN → 0: MATLAB's rules). `fprintf` becomes printf
+(%d → %.0f). Outputs: one scalar → the return value; otherwise out-parameters (scalars by pointer: the body is written
+on a local name and the uses rewritten to `(*name)`). Other functions of the script become `static` functions,
+specialised per set of input types. `codegen-lab.ts`: `codegen('name', {examples})` writes `name.c` / `name.h` to
+Hyperion's files (MATLAB Coder's `codegen name -args {…}` command form isn't read). `codegen.test.ts` compiles the C with
+the machine's `cc -std=c99 -Wall -Werror` and compares with the engine (skipped where there is no compiler).
+**Fixed point**: `fixed.ts` (round to nearest with halves up, saturate, best-precision fraction length, MATLAB's
+full-precision word growth for sums and products, bits and hex by BigInt) and `fi` in `codegen-lab.ts`: a `Struct` with
+`fi: true` (Value, Signed, WordLength, FractionLength; `kind` embedded.fi, its own display and `sizeOf`); arithmetic
+through `opHooks.binop`, now a chain (gpu-lab and codegen-lab each pass on what isn't theirs). Not built: fixed-point C
+(generate on intN types from `storedInteger` instead), fimath settings (other rounding and overflow modes), HDL / VHDL.
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
@@ -12590,3 +12758,475 @@ window, and by a browser), and Firebase's popup skips the chooser unless asked. 
 prompt: 'select_account' })` on the Google provider in `login/page.tsx` and `register/page.tsx` (Microsoft already had
 it). Not set inside `popupSignIn`: `setCustomParameters` replaces the whole object and would drop Microsoft's `tenant`.
 Web only: the computer app loads the live site, so it needs no new build, only the merge.
+
+## M481 (23 Nov): Hyperion, embedded AI (models made small and written out as C)
+
+`src/lib/lab/embedded.ts` and `embedded-lab.ts`, for the toolbox's neural networks (ClassificationNeuralNetwork,
+RegressionNeuralNetwork) and trees (ClassificationTree, RegressionTree); other learners are refused with the reason.
+**Quantisation** is weight-only: each layer's weights become int8 with one symmetric scale (max |w| / 127), biases and
+the standardisation in float; activations stay in floating point (integer-only inference, with quantised activations
+and calibration data, isn't built). `quantizemodel(m, p)` returns a copy whose LayerWeights / CutPoint hold the
+round-tripped numbers, so `predict`, `loss` and the rest work unchanged and measure the real effect; `modelsize` counts
+the bytes on a chip; `embedreport` tries double, single and int8 (trees: double and single) through `loss`.
+`exportmodel(m, 'name', 'Precision', p)` writes `name.c` / `name.h` (row-major weight arrays, one predict function:
+classification returns the class's number in ClassNames' order and fills softmax scores; a tree walks `pred` / `cut` /
+`left` / `right` as `ml.treeLeaf` does, `x < cut` going left). `embedded.test.ts` compiles both with `cc -Wall -Werror`
+and checks every iris flower's class against Hyperion's. MATLAB's own names (quantize, dlquantizer, Coder's
+saveLearnerForCoder) work on its deep-network and learner objects; these are our names for the toolbox's plain models.
+Not built: SVMs, k-NN, ensembles and linear models in C; CMSIS-NN / TensorFlow Lite formats; pruning.
+
+**This branch's work is complete (M472–M481).** Shared files touched, kept to small added lines: `interp.ts` (the
+`Flow` pause, `execTop`, `parHook`, `opHooks`, `Host.sound` / `Host.serial`), `values.ts` (`gpu` and `fi` structs),
+`parse.ts` (`parfor`), `help.ts` (new sections after Signals), `lab.worker.ts`, `LabApp.tsx` (examples spread from
+`examples-signals.ts`, the Test button and results panel, sound, the serial bridge), `SimulateApp.tsx` (Queues),
+`Sidebar.tsx` / `app-tabs.ts` (Signals), `app.ts` (the iot module), `route-gates.test.ts`, `account-deletion.ts`.
+
+## M521 (24 Nov): Hyperion scripts wait for live data mid-run
+
+The owner, 24 Nov, on M472–M481's left-outs: "please work on this". Before, the engine ran a script straight through on
+its thread: a device read gave what had arrived before the run, and only a top-level `parfor` could pause for the pool.
+Now **Hyperion's pages are cross-origin isolated** (`security-headers.ts` `isolationHeaders`: COOP `same-origin`, COEP
+`credentialless`, by `next.config.ts` on `/hyperion` and `/hyperion/:path*`), so the engine's worker may sleep on a
+`SharedArrayBuffer` with `Atomics.wait` until the page (or a pool worker) writes the answer (`src/lib/lab/wait.ts`:
+`newSlot`, `answer`, `sleepOn`, `pack` / `unpack` keep NaN, ±Inf, −0, typed arrays and Maps exact; `waits.page`,
+`askPage`).
+
+- **Traps:** a worker started by an isolated page refuses a script that doesn't send COEP: the built scripts get it
+  (`/_next/static/*` in `next.config.ts` and `public/_headers`; without it the engine never starts and every command
+  stays "running…"). The sealed Python/R frame sends it too (`sandboxHeaders` and `_headers`). Isolation is decided when
+  a page loads: `components/lab/Isolated.tsx` (in Hyperion's layout) reloads a page entered by an in-app link once
+  (`sessionStorage` `uv-isolation`: `trying`, `ok`, `failed`; Safari has no `credentialless` and is tried once a tab), and
+  reloads when the person leaves Hyperion, so the other pages keep their popups (Google sign-in) and framed pages.
+- **The page side:** the engine posts `{ channel: sab }` once and `{ ask: { kind, body, ms, n } }` per question;
+  `components/lab/page-answers.ts` answers by kind (`answers('serial', …)`, `answers('iot', …)`) in the slot, only the
+  newest `n`. A thread that sleeps can't start workers or receive messages: everything it needs comes in the answer
+  (serial lines are held in `heldLines` for an engine that asks, instead of being posted, so none arrive twice).
+- **Serial:** `readline` waits for the next line up to the port's `Timeout` (`serialport(…, 'Timeout', t)`, 10 s);
+  `readVoltage` waits for the next analog report (≤ 300 ms); `readDigitalPin`, `serialport`, `flush`, `arduino` take
+  what's there. The engine's own pin modes and outputs stand; inputs take the page's values.
+- **parfor:** `parHook` no longer needs depth 0: inside a function or a loop it uses the pool's waiting engines
+  (`WorkerPool.warm()` starts them before a run whose code says `parfor`, `runNow` hands out the chunks with a 32 MB slot
+  each). A top-level `parfor` still pauses as before (and prints the speed-up). `parfeval`'s futures are unchanged.
+- **Checked:** `wait.test.ts` (packing, slots, readline inside a function in a loop, the in-function parfor); in Chromium,
+  `scripts/checks/hyperion-wait-ui.mjs`: the headers, isolation, 20 lines from the simulated Arduino read inside a
+  function (1.5 s), a parfor in a function; entering from `/hub` and leaving reload once each; the sealed runner says
+  ready under isolation.
+- **Left out:** Safari waits as before (no isolation there); `pause` is left to the sciences branch (M506); a pool
+  answer over 32 MB is refused with a message.
+
+## M522 (24 Nov): Hyperion IoT in scripts and IoT alerts
+
+- **In scripts** (`src/lib/lab/iot-lab.ts`): `[data, t, names] = iotread(channel, 'NumPoints', n, 'Fields', f)` reads a
+  channel's newest readings mid-run by name or id: asked of the signed-in page (`answers('iot')` in `page-answers.ts`
+  calls `/iot/channels` and `/entries` with the person's own sign-in), so it needs M521's waiting (a clear message
+  otherwise). `r = iotwrite(key, values)` posts to the public `/iot/write/:key` with a synchronous request from the
+  engine's thread (allowed in workers: every browser), so the script goes on once the channel answered.
+- **Alerts** (database update **0261**, `iot_alerts`, `IotAlert`): field, op (`>`, `<`, `>=`, `<=`), value, note,
+  quietMinutes (15), lastFiredAt, fired. `writeEntry` checks the channel's rules after storing the reading; a broken
+  rule is claimed with a conditional `updateMany` (lastFiredAt older than the quiet time) and tells the owner with
+  `notify(…, { email: false })` and `pushService.sendToMany` (no emails, per the rules). Routes: `GET`/`POST
+  /iot/channels/:id/alerts`, `DELETE /iot/alerts/:id` (owner only, at most 10 a channel; sample answer
+  `sampleIotAlerts`). The window: `IotAlerts.tsx` under the charts; the notification links to `/hyperion/signals?tab=iot`
+  (`SignalsTabs` reads `?tab=`). Account erasure takes alerts with their channels (cascade).
+- **Checked:** `iot.test.ts` (fires only when broken, once per quiet time, owner only), `iot-lab.test.ts`; in Chromium
+  `hyperion-signals-ui.mjs` (an alert added, the simulated device breaks it, "told 1×", notifications stored, axe clean
+  light and dark) and `hyperion-wait-ui.mjs` (`iotread` of a channel mid-run).
+
+## M523 (24 Nov): Hyperion class-based tests
+
+MATLAB's object-based tests, without classes in the engine: `src/lib/lab/testclass.ts` `readTestClass(code)` finds a
+`classdef Name < matlab.unittest.TestCase` file's properties and methods blocks (a small scanner: `end`s inside
+brackets, after a dot, in strings and comments don't count; `endfunction` and friends do); any other `classdef` is
+refused with a message. `verify-lab.ts` `runClassTests` parses each methods block's functions with the engine's own
+parser and runs them; `runScriptTests` hands a class to it, so the Test button, Run (`lab.worker.ts`: code starting
+with `classdef`) and `runtests('Name')` all work.
+
+- **Handle-like test case:** a method without outputs is registered with its first parameter as its output, so what a
+  set-up stores (`tc.Data = magic(4)`) comes back and goes on; each test gets a copy of the class set-up's test case
+  (`TestName` is `Class/method(param=value)`).
+- **`tc.method(…)`:** `interp.ts` `methodHook` (a struct without that field, when the hook says so): a test case calls
+  the class's own helper or the builtin with itself first (`verifyEqual`, `addTeardown`…); `x.f(…)` on other structs is
+  unchanged (the field is read once). `interp.ts` also now keeps a `LabError`'s subclass when it adds the line number
+  (`new (e.constructor)(…)`): the assertion and skip kinds survive a function call.
+- **New:** `addTeardown` (last added runs first, also after a failure), `fatalAssert…` (as `assert…`), `assume…` (the
+  test is skipped: "(skipped)", counted as passed, MATLAB's Incomplete). TestParameter values: a cell (labels from short
+  values, else `value1`…) or a struct (its field names); several parameters run every combination.
+- **Checked:** `testclass.test.ts` (blocks, 13 tests from one class, set-up kept, parameters, teardown, skip, runtests
+  from Hyperion's files); `examples-signals.test.ts` runs `RootsTest.m`; in Chromium `hyperion-tests-ui.mjs` (Run on
+  RootsTest.m: "All 6 passed", the GPU test skipped without a chip; axe clean light and dark). The checks now press the
+  editor's Run (the toolstrip from PR #156 has one too).
+- **Left out:** class-level attributes beyond the test kinds (TestTags, shared fixtures, `applyFixture`), `log`, and
+  classes that aren't tests.
+
+## M524 (24 Nov): Hyperion fixed-point C code
+
+`codegen.ts` now takes fixed-point inputs (`Ty.cls === 'fixed'` with `fx: Nt` from `fixed.ts`): a value is its stored
+whole number in `int8_t` … `int64_t` (unsigned when the type is), chosen by word length (`fxC`); every fixed type in
+generated code has at most 62 bits (`MAX_FX`), so the 64-bit work below never overflows.
+
+- **Rules (the engine's fi, M480):** a sum keeps the finer fraction and one more integer bit (`sumType`), a product
+  adds both (`productType`), a matrix product adds log2 of the inner size; operands are aligned by multiplying by a
+  power of two (never `<<` on a signed value: undefined in C). A number written in the code that meets a fi takes the
+  fi's word and sign with its own best fraction (as the engine's `asFi`); a double variable meeting a fi is refused
+  (make it fi). `fi(x, s, w, f)` (all four, known when generating) and `y(:) = …`, `y(i) = …` convert with
+  `fx_shift` (towards fewer fraction bits: floor of (v + half) / 2^d, MATLAB's Nearest; more: multiply, saturating) or
+  `fx_from_double`; `−x` saturates with `fx_sat`; `double(x)` is `ldexp`. Helpers are emitted only when used
+  (`-Wall -Werror` refuses unused ones).
+- **A variable keeps one type:** `acc = acc + x(k)` in a loop changes its fixed type each time and is refused, naming
+  the fix (`acc(:) = …`), as MATLAB Coder does. The function's comment gives every fixed input's and output's type.
+- **The engine:** `interp.ts` gained `indexHooks` (get / set for values it doesn't know; `codegen-lab.ts` makes
+  `a(i)` keep a fi's type and `a(i) = v`, `a(:) = v` round and saturate into it) and `opHooks.neg`; fi comparisons give
+  logical arrays; `fi(b, …)` of a fi recasts it.
+- **Checked:** `codegen.test.ts` compiles a fixed-point FIR filter and a saturating function with `cc -std=c99 -Wall
+  -Werror` and gets exactly the engine's stored integers; the type-change refusal; `embedded.m` (examples test) runs
+  the filter in fixed point and writes `movavgfx.c`.
+- **Left out:** fixed types over 62 bits in C, rounding modes other than Nearest and overflow modes other than saturate
+  (`fimath`), fixed-point division.
+
+## M525 (24 Nov): Hyperion more AI models to C, networks wholly in 8 bits
+
+`embedded.ts` gained four model kinds (`SvmSpec`, `KnnSpec`, `EnsSpec`, `LinSpec`, written by `otherC`) and a wholly
+8-bit network (`planFullInt`, `runFullInt`, `fullIntC`); `embedded-lab.ts` reads them from the toolbox's structs
+(`specOf`) and accepts them in every function.
+
+- **Same answers as the engine:** each C mirrors `ml.ts` operation for operation: the SVM sums `(α·y)·K` with the
+  kernel's own order (`kernelOf`), k-NN keeps the k nearest with an earlier row winning a tie (the engine sorts by
+  distance, then row), ensembles add a bagged forest's leaf probabilities or a boosted one's weighted votes (first
+  maximum wins, as `argmax`), LSBoost starts from `Init`; a linear model adds `x·β` then the intercept. Compiled in
+  double, every iris row matches (`embedded.test.ts`). These kinds take 'single' or 'double' (8 bits would move their
+  support vectors and split points); a forest's equal weights aren't written (`-Wall -Werror` refuses unused arrays).
+- **'int8full':** scales from the model's training rows (`X`): the input's largest standardised value / 127, each
+  layer's weights / 127, each hidden layer's outputs / 127 (tanh / sigmoid: their sums, then a 256-entry table to 1/127
+  steps). Between layers `requant(acc, m, sh)` = floor((acc·m + 2^(sh−1)) / 2^sh) with m of 15 bits, so it is exact in
+  JavaScript's numbers and in C's int64 alike; biases are int32 in the sum's scale. `name_predict_q(int8 xq[])` is
+  the integer core; `name_predict(float x[])` standardises and quantises first (the only floating point; a regression's
+  answer is one last multiply). `embedreport` adds the 'int8full' row from `runFullInt`, the integer twin of the C.
+- **Checked:** `embedded.test.ts` (all four kinds in double against `predict`; three 8-bit networks, ReLU, tanh and a
+  regression, compiled and agreeing with the engine; the tanh table present); `embedded_ai.m` exports a forest and the
+  all-8-bit network.
+- **Left out:** SVMs with more than two classes (`fitcecoc`) and naive Bayes / discriminant models in C, int8 SVMs and
+  k-NN, per-channel scales, CMSIS-NN / TensorFlow Lite files.
+
+## M526 (24 Nov): Hyperion Bluetooth and USB devices
+
+- **The page side:** `components/lab/wireless-link.ts` (`wirelessLink`, one for the visit like `serialLink`): Web
+  Bluetooth asks for any device with the common GATT services named (`SERVICES`: heart rate, battery, device
+  information, environmental sensing, thermometer, cycling and running, Nordic UART, HM-10; Web Bluetooth only opens
+  services named when asking) plus any the person types; it lists every characteristic, starts notifications and keeps
+  each latest value. WebUSB opens the device, takes the first interface with endpoints both ways and claims it (a device
+  the computer's own driver holds is refused with a message: USB serial devices belong in Devices). Simulations: a
+  heart-rate sensor (a pulse notification every 0.5 s, a readable battery) and a USB echo device.
+- **Scripts** (`src/lib/lab/wireless-lab.ts`): every call asks the page (`answers('wireless')` in `page-answers.ts`)
+  and waits (M521), so these need Chrome or Edge (the browsers with Web Bluetooth and WebUSB, both isolated there) or the
+  computer app. `read(c)` waits for the next notification (`read(c, 'latest')` doesn't) or reads; `read(u, n)` waits
+  up to 4.5 s for bytes. `write` keeps the serial port's meaning (M474) and also takes a characteristic or a USB device;
+  `wireless-lab.ts` imports `serial-lab.ts` first so its `write` is wrapped, not lost.
+- **Headers:** `isolationHeaders` (Hyperion's pages only) adds `usb=(self), serial=(self), bluetooth=(self)` to the
+  Permissions-Policy; the rest of the site keeps `usb=()` (`wireless-lab.test.ts` checks both). The person always picks
+  the device in the browser's own chooser.
+- **Checked:** `wireless-lab.test.ts`; in Chromium `scripts/checks/hyperion-wireless-ui.mjs` (pulse and battery shown,
+  the echo device answers "hello", a script reads three pulses in a loop and the USB echo; axe clean light and dark).
+- **Left out:** Bluetooth Classic (browsers don't offer it), HID devices (WebHID), isochronous USB transfers and choosing
+  among several interfaces; subscribing a script to notifications as callbacks (MATLAB's DataAvailableFcn).
+
+## M527 (24 Nov): Hyperion IoT alert emails, behind the owner's switch
+
+The owner (24 Nov: "do email alert but give that as a option in owner console so that i can switch email whenever i
+needed"). `feature-switches.ts` gained `iot-email`, "Hyperion IoT alert emails", **opt-in** (off until the owner turns it
+on; stored as `iot-email:on`). `iot.ts` `checkAlerts` reads it once per reading (`featureOff`, cached a minute) and passes
+`email` to `notify`, so a broken rule also emails the channel's owner: only people with email notifications on, inside the
+routine daily email allowance (`claimEmails`), at most once per rule per quiet time (the same claim as the in-app note).
+In-app and push stay as M522 made them. Checked: `iot.test.ts` (off: `email: false`; on: `email: true`),
+`school-switches.test.ts` (the opt-in list).
+
+## M528 (24 Nov): Hyperion fixed-point division and types over 62 bits in C
+
+- **Division** (engine `codegen-lab.ts` `fiDiv`, C `fx_div`): `a ./ b` (and `a / b` by a scalar) keeps the larger word,
+  signed if either, fraction a's minus b's (`quotientType`); `divide(T, a, b)` puts the answer in T, a fi value or
+  `numerictype(s, w, f)` (now also a type maker; `numerictype(a)` still gives the text). The stored quotient is rounded
+  to the nearest step, halves up (floor((2·a·2^s + b) / 2b) after making b positive), held in range; dividing by zero
+  gives the top (or bottom) of the range, 0 / 0 gives 0. The engine works it in BigInt, so it matches the C exactly.
+  A plain number written in the code meets a fi as for the other operators.
+- **Wide types:** up to 62 bits everything is as M524 (int64_t). Past it (to 126 bits, `MAX_FX`) the generator sets
+  `wide`: the working type `fxw_t` (a typedef in the .c) becomes `fx128_t` (`__int128`, typedef'd in the .h with
+  `__extension__` and an `#error` for compilers without it), stored types over 64 bits are `fx128_t` / `ufx128_t`, and
+  ranges and powers of two past 2^52 are written as shifts (`lim`, `p2`) and big literals as m·2^e (`bigX`), never as
+  rounded decimals. A division whose working needs more than 62 bits also turns `wide` on. Every former `(int64_t)` in
+  fixed-point code is `(fxw_t)`.
+- **Checked:** `codegen.test.ts`: the engine's ./ type and values, divide by zero, an 81-bit a·b + c; compiled with
+  `cc -std=c99 -Wall -Werror`, ./ and divide on seven pairs (zeros included) give exactly the engine's stored integers and
+  the 81-bit result is exact in 128 bits.
+- **Left out:** small chips without 128-bit integers (the `#error` says to keep 62 bits), `fimath` rounding and
+  overflow modes, matrix division (`A \ b`, `/` by a fi matrix).
+
+## M529 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants to C
+
+`embedded.ts` gained `EcocSpec`, `BayesSpec`, `DiscrSpec` (`ecocC`, `scoreC`); `embedded-lab.ts` `specOf` reads them from
+`fitcecoc`, `fitcnb` and `fitcdiscr` models, and `quantizemodel` rounds each ECOC learner's own numbers.
+
+- **Same answers as predict:** ECOC runs every pair's SVM with its own standardising (`MU`/`SIGMA` per learner), then
+  hinge-loss decoding (each class's average of max(0, 1 − c·f) / 2 over the learners that know it; the smallest loss
+  wins, an earlier class on a tie). Naive Bayes keeps log prior − Σ log spread per class (`BASE`) and subtracts
+  ½((x − μ)/σ)²; the discriminant's w_k = Σ⁻¹μ_k and c_k = −½ w_k·μ_k + log prior_k are worked out in Hyperion (Σ itself
+  when it can't be inverted, as predict does), so the chip only multiplies and adds. All three return the class and,
+  if asked, scores (ECOC: minus the losses; the others: softmax chances).
+- **Checked:** `embedded.test.ts` compiles four models on iris (ECOC with an RBF kernel standardised, ECOC linear, naive
+  Bayes in double, the discriminant in single): every row in double gives `predict`'s class; single at most one near tie
+  apart.
+- **Left out:** 8-bit versions of these (their numbers are 'single' or 'double'), quadratic discriminants (not in the
+  toolbox), ECOC with learners other than SVMs, one-vs-all coding.
+
+
+## M530 (24 Nov): Hyperion fimath, fixed-point matrix division, 128-bit C on small chips, 8-bit many-class models
+
+The owner pasted M528–M529's "left out" list after them; this builds all three.
+
+- **fimath** (`fixed.ts`: `Rm`, `Om`, `roundBy`, `wrapInt`, `rdivBig`, `fitBig`, `fmOf`): a type (`Nt`) may carry `rm`
+  (Nearest, Floor, Ceiling, Zero, Round, Convergent) and `om` (Saturate, Wrap); left out they are Nearest and Saturate,
+  so everything before is unchanged. A fi keeps them as the fields `RoundingMethod` / `OverflowAction` only when set.
+  Sums and products stay full precision and take the first operand's fimath (`fmOf`); the methods act where a value is
+  put into a type: `fi(…)`, `x(:) = …`, `x(i) = …`, division, `−x`. `fi(v, s, w, f, F)` or name–value pairs; `fimath`,
+  `setfimath`, `removefimath`, `fimath(x)`. `divide(T, a, b)` uses T's fimath, else a's. In codegen `F = fimath(…)` is
+  kept at generation time (`fmVars`, no C) and read by `fi` / `setfimath`.
+- **Matrix division** (`codegen-lab.ts` `fiSolve`, `solveStored`; codegen `solveInto`): `A \ B`, `B / A` (as
+  `(A.' \ B.').'`), `mldivide(A, B, T)`, `mrdivide(B, A, T)` for a square fi A. Fraction-free Gauss–Jordan on the stored
+  integers (every division exact, checked on 200 random systems) leaves det·x; each answer is then one `fx_div`, so it is
+  rounded once. Singular A gives zeros. The answer's type is ./'s rule (`quotientType(B, A)`: fraction B's less A's,
+  often 0: pass T). The working needs 2·(n·w + ⌈n/2·log2 n⌉) + 2 bits (Hadamard; `solvePlan`): a 2×2 of 16 bits already
+  needs 128-bit working; past 128 it's refused naming shorter words. `y'` of a fi now works (`opHooks.post`).
+- **The C** (`codegen.ts`): the helpers are one text written with `fxw_` operations (`fx_rdiv` rounds t/m by the method,
+  `fx_fit` holds or wraps, `fx_shift`, `fx_div`, `fx_from_double`), the method and action passed as `FX_FLOOR` …,
+  `FX_WRAP`. Up to 62 bits the expressions stay plain int64_t operators and `fxw_` is static inline on int64_t. Past it
+  generation runs twice (`generate` → `emit(…, W)`): the first pass finds `wide`, the second writes every expression with
+  `fxw_add`, `fxw_mul`, `fxw_cmp` … (`fxEmit`). The header's `FX128_H` (guarded, so several headers go together) makes
+  `fx128_t` `__int128` (`HYPERION_FX128_NATIVE`) or, without it or with `-DHYPERION_FX_PORTABLE`, a struct of two
+  uint64_t with its own add, multiply (32-bit pieces), shift-and-subtract division and correctly rounded double
+  conversion. Every stored type over 64 bits is `fx128_t` (no `ufx128_t` now); a 63–64-bit unsigned one is `uint64_t`
+  via `fxw_ofu` / `fxw_lou`. Scalars of `fx128_t` start `= {0}`; a variable only ever set (a type holder for divide)
+  gets `(void)v;` for `-Wall -Werror`. fprintf of a fi prints its value. A fixed `sum` works (its temp had no type).
+- **8 bits for fitcecoc, fitcnb, fitcdiscr** (`embedded.ts` `eightOf`, `classOf`): ECOC's support vectors and
+  coefficients int8 with a scale per learner (`SVS`, `CS`); naive Bayes' means and 1 / spread int8 (1 / spread never 0:
+  `quantizePositive`) with BASE worked from the spreads as held; the discriminant's weights int8 with one scale. The
+  arithmetic stays float, as a network's 'int8'. `classOf` is the C's twin in doubles; `embedreport` adds its 'int8' row
+  with it, `exportmodel(…, 'Precision', 'int8')` writes it; `quantizemodel(…, 'int8')` refuses (a discriminant's predict
+  works from Mu and Sigma, not its weights). `specOf` is exported for the tests.
+- **Checked:** `codegen.test.ts` (each method by hand, wrap, setfimath, A \ b, b / A, mldivide with a type, singular;
+  the elimination on random systems; the too-big refusal; 12 method × overflow functions, a 2×2 8-bit solve in 64-bit
+  working, 3×3 16-bit `mldivide` and `/` and a 100-bit Convergent divide in 128-bit working, compiled native and with
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers or BigInt); `embedded.test.ts` (four 8-bit models in
+  C against `classOf`, at most one near tie, over 90% right, within 3 points of double); `embedded.m` and
+  `embedded_ai.m` show both.
+- **Left out:** fimath's ProductMode / SumMode other than full precision (MATLAB's KeepLSB etc.), least-squares `A \ b`
+  for a non-square A, per-class or per-channel 8-bit scales, 8-bit arithmetic inside these models (only their numbers).
+
+## M531 (24 Nov): Hyperion fixed-point matrix division by any matrix, past 128 bits
+
+The owner pasted M530's "left out" list and chose "build all of them"; this is the matrix-division part.
+
+- **Any A** (`codegen-lab.ts` `fiSolve`, `solveAny`, `elimStored`): a square A is solved as before (fraction-free
+  Gauss–Jordan on the stored integers); if a column has no pivot (singular), or A isn't square, the same elimination runs on
+  the normal equations AᵀA x = AᵀB, exact, so the answer is the least-squares one; an unknown whose column has no pivot is
+  0 (MATLAB's basic solution: a wide system gives a sparse answer, not the minimum-norm one). An all-zero A gives zeros.
+  `B / A` is `(A.' \ B.').'` for any shape (B needs A's columns). The elimination skips pivot-less columns; every division
+  stays exact (checked on 300 random square, tall, wide and rank-deficient systems: the normal equations hold exactly).
+- **The working's size** (`codegen.ts` `solveBits`): Hadamard's bound per order k, D(k); a step's difference is the old
+  pivot times the new number (D(k)·D(k+1)), and the products inside it may wrap (`fxw_mulw`, `fxw_subw`, `fxw_addw` wrap
+  through unsigned, defined behaviour), so a 2×2 of 16 bits is now worked in int64 (it needed 128 before). Least squares
+  uses AᵀA's bounds (about twice the bits).
+- **Past 128 bits** (`fxbC`): `fxb_t`, k 32-bit pieces (two's complement), with add, multiply, shift-and-subtract division,
+  and `fxb_rdiv` / `fxb_fit` / `fxb_divfit` made from the fx_ helpers' text by renaming; `fxb_ofw` / `fxb_tow` to and from
+  fxw_t (64 or 128). `solvePlan` picks per path: fxw_t when it fits (the square path may turn the file wide; the
+  least-squares fallback never does, it takes fxb_t instead), else fxb_t, to `FXB_MAX` 4096 bits (refused past it, naming
+  shorter words). The C per solve: a direct block for a square A, then `if (!sv_done)` the least-squares block;
+  `fxw_elim` / `fxb_elim` and `_normal` are `static inline` helpers (all fixed-point helpers are `static inline` now, so an
+  unused one doesn't fail `-Wall -Werror`).
+- **Checked:** `codegen.test.ts` M531: square 16-bit (int64), tall 4×2 least squares, a singular 3×3, a right division by a
+  wide A, a 3×3 of 40 bits (fxb_t in a 64-bit file) and of 70 bits (fxb_t in a 128-bit file), compiled native and
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers.
+- **Left out:** the minimum-norm answer for wide or rank-deficient systems (MATLAB's `\` doesn't give it either; `pinv`
+  does), refusing past 4096 bits.
+
+## M532 (24 Nov): Hyperion fimath's ProductMode and SumMode
+
+The second part of M530's "left out" list (the owner: "build all of them").
+
+- **Types** (`fixed.ts`): `Nt.ps` (`PS`: `pm`, `pwl`, `pfl`, `pmax`, `sm`, `swl`, `sfl`, `smax`, `cbs`), kept only when it
+  differs from MATLAB's defaults (`PS0`: full precision, 32-bit words, 30 fraction bits, cast before sum; Max… 128 here,
+  Hyperion's limit). `productType` / `sumType` narrow the full-precision type by the mode (`byMode`: KeepLSB keeps the
+  fraction, KeepMSB the whole part, SpecifyPrecision both lengths); a full-precision result over Max…WordLength is a
+  `LabError` (never a `RangeError`: the interpreter reads those as runaway recursion). `accType(t, n)` is a running sum's
+  type (⌈log2 n⌉ more bits, then the SumMode); `accStep` one step (cast first if CastBeforeSum, then into the type);
+  `plain(t)` drops the modes (the full result before narrowing).
+- **Hyperion** (`codegen-lab.ts`): `fimath` / `setfimath` / `fi(…, F)` take the new names (fmFrom); a fi shows the fields
+  (`psFields`, read back by `psOf`); `setfimath` replaces the whole fimath, `removefimath` drops it. `+`/`−` with
+  CastBeforeSum put each side into the sum type first; a matrix product with modes (`matProduct`) and `sum` of a fi vector
+  (new: it wasn't there for fi) add step by step as the C does.
+- **C** (`codegen.ts`): `fmArgs` reads the modes (numbers or `true` / `false` written in the code); the function key
+  includes them; `.*` writes the full product then `toFx` into the narrower type; `+` with CastBeforeSum `fx_fit`s the
+  sum of the two cast sides, without it `toFx`s the full sum; `accStepC` is the C twin of `accStep` for matrix products
+  and `sum`. **Fixed on the way:** the matrix product's loop used C locals `s` and `p`, which an output of the same name
+  (a pointer, `(*p)`) rewrote: they are `mp_s`, `mp_p` now. (Other loops still use `i`, `j`, `k`: an output called that
+  would clash the same way.)
+- **Checked:** `codegen.test.ts` M532: each mode by hand (3.375 KeepMSB to 3, KeepLSB wrapped to 96, SpecifyPrecision
+  216; cast-before-sum 0 against 1), the field shown, the Max…WordLength error; then a function with all of them on 20
+  random inputs compiled native and portable, equal to Hyperion.
+
+## M533 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants wholly in whole numbers
+
+The last part of M530's "left out" list (the owner: "build all of them"): in 'int8' these three kept only their numbers
+in 8 bits and did the arithmetic in float; `'int8full'` now runs them wholly in whole numbers, as the networks' (M525).
+
+- **The plan** (`embedded-int.ts` `planInt`): each input gets a centre and a step from the model's training rows
+  (`X`; xq = round((x − centre) / step), the range in ±127). Every unit gives a whole number F on one shared scale S
+  (twice the largest unit value on the training rows, as 2^24): a discriminant's class score and a linear SVM are
+  **linear** units (the centre, the step and the learner's standardising folded into weights quantized per class or
+  learner, a bias); naive Bayes is a **distance** unit (8-bit means as steps from the centre, step / spread per class as
+  8-bit positive numbers, `BASE` from the spreads as held); a Gaussian SVM sums coef · `EXPQ[t]` (e^(−i/32) in 15 bits, 512
+  entries; t the distance to each support vector, worked the same way); a polynomial one (1 + t)^order in Q16, clamped
+  to twice the largest value seen in training (order ≤ 6). Multipliers are m · 2^−sh with m short enough that the sum
+  times m stays in 62 bits (`multiplier(M, accBits)`). Classes: the largest F (Bayes, discriminant), or the smallest
+  hinge sum per learner count, compared by cross-multiplying (ECOC; ONE = round(1 / S)).
+- **Twin and C:** `runInt` (BigInt) is the C's integer core exactly; `intModelC` writes `name_predict_q(xq, sums, n)`
+  (no floating point) and `name_predict(x, scores)` (the inputs made 8-bit and the optional scores are the only float).
+  `exportmodel(…, 'Precision', 'int8full')` and `embedreport`'s new 'int8full' row (sizes from `intBytes`). `num`, `list`,
+  `head`, `header`, `classNote` and `quantizePositive` in `embedded.ts` are exported for it.
+- **Checked:** `embedded.test.ts` M533: on iris, ECOC Gaussian (standardised), linear and polynomial (order 2), naive Bayes
+  and the discriminant compiled with `-Wall -Werror`: the integer core's class and sums equal the twin's on all 150 rows;
+  from float inputs at most two rows apart (input rounding); over 90% right; embedreport's int8full within 4 points of
+  double. A test bug on the way: C doesn't fix the order of a call's arguments, so read outputs after the call.
+- **Left out:** regression models (these three only classify), polynomial kernels past order 6, more than 256 inputs.
+
+## M534 (24 Nov): Hyperion's C, the script's names never clash with the C's own
+
+The owner pasted M531–M533's "left out" list and chose "build all of them"; this is the C names part.
+
+- **What was wrong:** the C's own loops count with `i`, `j`, `k`, its temporaries are `t1`, `t2`…, and a scalar output is
+  rewritten as `(*name)` everywhere in the body: an output called `i` turned the loops' `i` into `(*i)`, a variable called
+  `t1` or `int` broke the file.
+- **The fix** (`codegen.ts` `cSafe`, `cClash`): before writing, each function's variables (inputs, outputs, anything
+  assigned, loop variables, `try` / `global` names) that match the C's own names (`i j k`, `t<number>`, `si sj sc`, `sv_…`,
+  `mp_…`, `fx…_…`, `sat_…`, `intN_t`) or C's words (`int`, `double`, `for`, `bool`, `abs`, `exp`, `round`…) get a `_`
+  (more if that's taken). Only `id` nodes and those names are renamed; field names, lambdas and function names aren't.
+  The header shows the new names (`double t1_`); the order of inputs and outputs is unchanged, so callers are unaffected.
+- **Checked:** `codegen.test.ts` M534: outputs `i`, `j`, `k` and variables `t1`, `int`, `abs` compiled with `-Wall -Werror`,
+  equal to Hyperion. `smooth3`'s input `k` is now `k_` in its header.
+
+## M535 (24 Nov): Hyperion lsqminnorm, the smallest answer, exact for fi and in C
+
+- **Hyperion** (`codegen-lab.ts` `minNormStored`, `fiMinNorm`): `lsqminnorm(A, B[, T])` for fi values, exact on the stored
+  integers: G = AᵀA and C = AᵀB; P, the columns of G with a pivot (fraction-free elimination), span A's row space; the
+  smallest answer is G_P z with (G_Pᵀ G_P) z = C_P, solved fraction-free, so x = G_P·(det·z) / det, each answer rounded
+  once into its type (the default type is `\`'s). For plain numbers it is `pinv(A) * B`.
+- **pinv** (`builtins.ts`): now through the SVD (`dsp.ts` `svd`; σ below max(size)·eps(σ₁) is zero, or `pinv(A, tol)`):
+  the old one inverted AᵀA and failed on a rank-deficient A.
+- **C** (`codegen.ts`): `lsqminnorm(A, B, T)` of fi values (`isSolve`, `solveArgs` now gives a fourth "smallest" flag;
+  `solvePlan`'s `minNormBits`: AᵀA's and H's Hadamard bounds, the numerators G_P·(det·z)); `fx…_minnorm` writes the steps
+  (`static inline`, P passed in, no variable-length arrays). It always takes the H path (the answer is the same exact
+  number rounded once, whichever way it is found).
+- **Checked:** `codegen.test.ts` M535: x + y = 2 gives [1; 1] (`\` gives [2; 0]); a singular 3×3 within a step of
+  double `pinv(A) * b`; pinv of a rank-1 matrix; in C a wide, a singular, a tall and an all-zero system, native and
+  `-DHYPERION_FX_PORTABLE`, equal to Hyperion.
+- **Left out:** `lsqminnorm`'s tolerance and `'warn'` inputs; plain-number (double) lsqminnorm in C.
+
+## M536 (24 Nov): Hyperion's C matrix division past 4096 bits
+
+- **Faster big numbers** (`codegen.ts` `fxbC`): `fxb_div` is long division on the 32-bit pieces (Knuth's algorithm D,
+  normalised, two-digit estimate, add back), not bit by bit; carries of signed steps use `FXB_HI` (an exact division,
+  never a shift of a negative number).
+- **The limits:** `FXB_MAX` 65,536 bits (4096 before), and the working memory at most `FXB_MEM` 16 MB, refused past it
+  with the size named; a working over `FXB_STACK` 64 KB is declared `static` (not on the stack; the function is then not
+  re-entrant, like the rest of the generated code's fixed buffers). In practice the memory limit comes first.
+- **Checked:** `codegen.test.ts` M536: a 20×20 system of 120-bit values (about 4,700 bits of working, `static fxb_t`)
+  native and portable, equal to Hyperion; a 60×60 of 126 bits refused for memory, a 300×300 for bits. M531's tests (the
+  fxb_t paths) pass with the new division.
+
+## M537 (24 Nov): Hyperion 'int8full' for linear models, polynomial kernels of any order, 65,536 inputs
+
+The last part of M533's "left out" list (the owner: "build all of them").
+
+- **Linear models** (`embedded-int.ts`): a `LinSpec` (fitlm) is one linear unit (centre and step folded in, 8-bit weights,
+  a 32-bit sum, a multiplier); `intModelC` writes `int64_t name_predict_q(xq)` (the answer as F, the answer is F × S) and
+  `float name_predict(x)`. `exportmodel(lm, …, 'Precision', 'int8full')` and embedreport's int8full row (RMSE); `'int8'`
+  for a linear model is refused, naming `'int8full'`.
+- **Polynomial kernels:** the base (1 + t) is worked as a fraction of its largest value in Q30 (`ZQ`, its own multiplier
+  `mz`/`shz`), each power kept in Q30, and vmax^order goes into the unit's multiplier: no order grows past 62 bits, so the
+  order-6 limit is gone. An order-8 kernel loses accuracy in 8 bits ('int8' too, 100% → 86% on iris): the rounding of the
+  8-bit numbers, not the whole-number working.
+- **Inputs:** up to 65,536 (127 · 127 · 65,536 stays inside a 32-bit sum).
+- **Checked:** `embedded.test.ts` M537: fitlm on 80 rows, int8full RMSE within 0.15 of double, the C core equal to the
+  twin on every row and the float answer F · S; an order-8 ECOC equal to its twin, within 4 points of 'int8'; 300 inputs
+  planned, 70,000 refused.
+- **Left out:** trees and ensembles in whole numbers (they compare, they don't add), GLM links (as the single/double C).
+
+## M538 (24 Nov): Hyperion lsqminnorm of plain numbers in C, its tolerance and 'warn'
+
+The owner pasted M534–M537's "left out" list (as before: build all of them); this is the first of the three.
+
+- **Hyperion** (`codegen-lab.ts`): `lsqminnorm(A, B, tol)` for plain numbers is `pinv(A, tol) * B` (singular values at or
+  below tol count as zero); `'warn'` / `'nowarn'` last: `'warn'` prints a warning when A's rank is below its smaller size
+  (for fi the exact rank, `minNormStored` now returns it). A tolerance with fi values is refused (their rank is exact).
+- **C** (`codegen.ts` `minNormType`, `minNormInto`, `minNormC`): `lsqminnorm(A, B[, tol])` of double or single values
+  becomes `lsq_minnorm_d` / `_f`: the SVD by one-sided Jacobi on the tall form, the same rotations and stops as
+  Hyperion's `svd` (`dsp.ts`), then x = Σ v_k (w_kᵀ B) / s_k² without forming pinv; a negative tol (none given) is
+  max(R, N) · eps(largest), as pinv's default. Fixed-size working arrays in a block (`mn_w`, `mn_v`); an input that is
+  also the target goes through a temporary. `isSolve` now counts every lsqminnorm; whole-number types are refused.
+  `'warn'` in C prints nothing.
+- **Checked:** `codegen.test.ts` M538: the tolerance and the warning in Hyperion; in C a wide, a singular, a tall and an
+  all-zero system, a run-time tolerance and single, with `-Wall -Werror`, equal to Hyperion (1e-10; single 1e-5).
+
+## M539 (24 Nov): Hyperion trees and tree ensembles wholly in whole numbers
+
+The second of M534–M537's "left out" list.
+
+- **How** (`embedded-trees.ts`): inputs become 8-bit as in M533 (each its centre and step from the training rows, the
+  same `floor(… + 0.5)` rounding); each split point x < cut becomes xq < cq with cq the cut rounded the same way, kept in
+  `int16_t` (−128 and 128 mean always right / always left), so a walk only compares whole numbers. A class tree's leaves
+  are class numbers already. A bagged forest's leaf chances are 0–255 and summed into `int32_t` votes; a boosted one
+  (AdaBoostM1/M2) adds each tree's weight, 15 bits of the largest. Regression leaves are `int32_t` on one scale S
+  (at most 2^23; LSBoost's weights folded in, Init on the same scale), summed in 64 bits, the answer F · S (a bagged
+  forest's mean folded into S).
+- **The C:** `name_predict_q(xq[, votes])` (the class, or F for a regression), `name_predict(x[, scores])` from float
+  inputs (scores: each class's share of the votes). `runTree` is the C's twin (plain numbers: every sum stays far
+  inside 2^53). `exportmodel(…, 'Precision', 'int8full')` and embedreport's int8full row; 'int8' for trees is refused,
+  naming 'int8full'.
+- **Checked:** `embedded.test.ts` M539: on iris a class tree, a bagged forest (15), AdaBoostM2 (12), a regression tree,
+  LSBoost (20) and a bagged regression (10): the C's class, votes and F equal the twin on every row; int8full within 3
+  points of double accuracy, RMSE within 0.05.
+- **Trap:** in a C test's `printf("%d %ld", f(q, v), v[0])` the order arguments are worked out isn't fixed; call first.
+
+## M540 (24 Nov): Hyperion lsqminnorm's tolerance for fi values, and 'warn' in its C
+
+The owner pasted M538–M539's "left out" list and "push all": both parts built.
+
+- **A tolerance for fi** (`codegen-lab.ts` `tolCols`, `codegen.ts` `tolParts`): `lsqminnorm(A, B, tol, T)` (tol and T in
+  either order) keeps a column of A only when the part of it the earlier kept columns don't explain is longer than tol:
+  QR's |R(k,k)|, as MATLAB's lsqminnorm compares. On G = AᵀA in stored units that is pivot / previous pivot > tol² ·
+  2^(2·fa) in a fraction-free elimination with each diagonal as its pivot (every number left is a minor of G over the
+  kept columns, so it stays exact). tol is kept to 16 significant bits (`mt2 · 2^sh`, a power of two costing no
+  multiplier). Without a tolerance nothing changed (`elimStored`'s pivots; the same columns for a positive semi-definite G).
+- **In C:** `fx…_minnorm(…, tol, mt2, sh)` does the same steps and gives the rank; the tolerance must be written in the code
+  (it sets the bits: `minNormBits`' tol term, the larger of −sh and bits(mt2) + sh past G's minors).
+- **'warn' in C:** `lsq_minnorm_d/_f` and `fx…_minnorm` return the rank; with `'warn'` the call is followed by
+  `HYPERION_WARN("lsqminnorm: A's rank is below n: …")`, which prints to stderr unless the file that includes it defines
+  `HYPERION_WARN(msg)` first (a log, a light on a chip).
+- **Checked:** `codegen.test.ts` M540: R(2,2) = 0.001 dropped under 0.01 (Hyperion and C, in 32-bit pieces), a tolerance of
+  0 equal to none, a 4-bit system with tol 2 in 64-bit working (native and `-DHYPERION_FX_PORTABLE`) equal to Hyperion,
+  two warnings on stderr (fixed point and plain).
+- **Trap:** lsqminnorm's working grows fast (H = G_PᵀG_P's minors): even 6-bit values in a 4×3 system go past 64 bits.
+
+## M541 (24 Nov): Hyperion logistic models in C, with their link
+
+The last of M534–M537's "left out" list: a generalised linear model's link step.
+
+- **What was missing:** a logistic model (`fitglm(…, 'Distribution', 'binomial')`) was refused by the embedded tools; a
+  normal one (identity link) was already a linear model. Hyperion's fitglm has only these two, so the logit is the link.
+- **Single / double** (`embedded.ts`): `LinSpec` carries `link: 'logit'` and the two classes; the C is
+  `int name_predict(x, &prob)`: η = B·x, the chance 1 / (1 + e^−η) in `*prob`, class 1 when it is at least ½ (as predict).
+- **Wholly in whole numbers** (`embedded-int.ts`, `logit` on the plan): the same linear unit as M537 gives the log-odds as
+  F (× S); the class is F's sign (no exp, no floating point); the wrapper's chance is the only other float.
+  embedreport's int8full row scores the class from the sign.
+- **Checked:** `embedded.test.ts` M541: versicolor against virginica on petal length and width: the double C's chance within
+  1e-12 of Hyperion's predict and the same class on every row, single within 1e-5, the whole-number core equal to the twin
+  and its class from the sign; int8full within 3 points of double's accuracy.
+- **Left out:** links Hyperion's fitglm doesn't have (Poisson's log, probit…).
+

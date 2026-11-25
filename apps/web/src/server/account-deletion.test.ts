@@ -14,7 +14,7 @@ vi.mock('./email', () => ({ notify: vi.fn(), sendEmail: vi.fn() }));
 describe('eraseAccount', () => {
   it('removes the newer apps’ personal rows and keys', async () => {
     await eraseAccount('u1');
-    for (const c of ['oAuthConnection.deleteMany', 'reliefWatch.deleteMany', 'reliefPost.deleteMany', 'travelDoc.deleteMany', 'travelBoardPost.deleteMany', 'greenAction.deleteMany', 'traceScan.updateMany', 'gameScore.deleteMany', 'user.update']) expect(calls).toContain(c);
+    for (const c of ['oAuthConnection.deleteMany', 'reliefWatch.deleteMany', 'reliefPost.deleteMany', 'travelDoc.deleteMany', 'iotChannel.deleteMany', 'travelBoardPost.deleteMany', 'greenAction.deleteMany', 'traceScan.updateMany', 'gameScore.deleteMany', 'user.update']) expect(calls).toContain(c);
     // Under D1's 50 queries a request, with room for the request's own reads and writes around it.
     expect(calls.length).toBeLessThanOrEqual(45);
   });

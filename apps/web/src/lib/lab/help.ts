@@ -19,7 +19,8 @@ minus | minus(a, b) | a − b.
 times | times(a, b) | a .* b, element by element.
 rdivide | rdivide(a, b) | a ./ b, element by element.
 mtimes | mtimes(A, B) | Matrix product A * B.
-mldivide | mldivide(A, b) | Solves A x = b (A \\ b).
+mldivide | mldivide(A, b) | Solves A x = b (A \\ b); for fi values mldivide(A, b, T) gives the answer in type T.
+mrdivide | mrdivide(b, A) | Solves x A = b (b / A); for fi values mrdivide(b, A, T) gives the answer in type T.
 linsolve | linsolve(A, b) | Solves A x = b, as A \\ b.
 round | round(x) | Nearest whole number (halves away from zero).
 floor | floor(x) | Round down.
@@ -163,6 +164,7 @@ isnan | isnan(x) | True for NaN.
 # Linear algebra
 inv | inv(A) | The inverse of a square matrix (A \\ b is better for solving).
 pinv | pinv(A) | The pseudo-inverse (least squares).
+lsqminnorm | x = lsqminnorm(A, B, tol, 'warn') | The smallest least-squares answer (pinv(A) * B); tol: singular values at or below it count as zero; 'warn' says when A's rank is short. For fi values exact on the stored integers, rounded once; lsqminnorm(A, B, tol, T) keeps a column only when its part the earlier columns don't explain is longer than tol (QR's R(k,k)), worked exactly. Both kinds become C (codegen; 'warn' calls HYPERION_WARN, stderr unless you define your own).
 det | det(A) | The determinant.
 rank | rank(A) | How many independent rows.
 trace | trace(A) | The sum of the diagonal.
@@ -273,10 +275,7 @@ nextpow2 | nextpow2(n) | The next power of 2's exponent.
 filter | filter(b, a, x) | Runs x through a digital filter.
 conv2 | conv2(A, K, 'same') | 2D convolution.
 xcorr | [r, lags] = xcorr(x, y) | Cross-correlation.
-freqz | [h, w] = freqz(b, a, n) | A filter's frequency response.
 findpeaks | [pks, locs, w, p] = findpeaks(y, x, 'MinPeakHeight', h, 'MinPeakDistance', d, 'MinPeakProminence', p, 'NPeaks', n, 'SortStr', 'descend') | The local tops of a signal: their heights, places and prominences (how far each stands above its surroundings). Without outputs, drawn.
-butter | [b, a] = butter(n, Wn, 'low') | A Butterworth filter of order n (as flat as possible in the pass band); Wn is the cut-off as a fraction of the Nyquist frequency; 'high', 'bandpass' or 'stop' ([w1 w2]).
-filtfilt | y = filtfilt(b, a, x) | Filters forwards and backwards: no delay (zero phase), the edges started smoothly.
 lowpass | y = lowpass(x, fpass, fs) | Keeps what is slower than fpass (Hz): a Butterworth run both ways. Without outputs, drawn.
 highpass | y = highpass(x, fpass, fs) | Keeps what is faster than fpass (Hz). Without outputs, drawn.
 bandpass | y = bandpass(x, [f1 f2], fs) | Keeps the band between f1 and f2 (Hz). Without outputs, drawn.
@@ -285,6 +284,156 @@ hanning | hanning(n) | Hann window (older name).
 hamming | hamming(n) | Hamming window.
 blackman | blackman(n) | Blackman window.
 rectwin | rectwin(n) | Rectangular window.
+freqz | [h, w] = freqz(b, a, n, fs) | A filter's frequency response at n points (512); drawn (magnitude in dB and phase) without outputs. Takes a designfilt filter too: freqz(d).
+butter | [b, a] = butter(n, Wn, 'high') | Butterworth filter of order n: flattest passband; Wn the −3 dB edge (1 = half the sample rate), two edges for a band ('bandpass', 'stop'); [z, p, k] with three outputs; 's' designs an analog one (Wn in rad/s).
+cheby1 | [b, a] = cheby1(n, Rp, Wp, type) | Chebyshev type I: ripple of Rp dB in the passband for a sharper edge at Wp.
+cheby2 | [b, a] = cheby2(n, Rs, Ws, type) | Chebyshev type II: flat passband, at least Rs dB down from the stopband edge Ws.
+ellip | [b, a] = ellip(n, Rp, Rs, Wp, type) | Elliptic (Cauer) filter: Rp dB ripple in the passband, Rs dB down in the stopband; the sharpest edge for its order.
+buttord | [n, Wn] = buttord(Wp, Ws, Rp, Rs) | The smallest Butterworth order that keeps the passband within Rp dB and the stopband Rs dB down.
+cheb1ord | [n, Wp] = cheb1ord(Wp, Ws, Rp, Rs) | The smallest Chebyshev I order for the specification.
+cheb2ord | [n, Ws] = cheb2ord(Wp, Ws, Rp, Rs) | The smallest Chebyshev II order for the specification.
+ellipord | [n, Wp] = ellipord(Wp, Ws, Rp, Rs) | The smallest elliptic order for the specification.
+fir1 | b = fir1(n, Wn, 'high', win) | Windowed-sinc FIR filter of order n (Hamming window unless given); high-pass and band-stop need an even n.
+fir2 | b = fir2(n, f, m) | FIR filter by frequency sampling: gains m at frequencies f (0 … 1, a repeated f makes a jump).
+firpm | [b, err] = firpm(n, f, a, w) | Equiripple FIR (Parks–McClellan): bands as edge pairs f, gains a at each edge, a weight per band; err is the ripple.
+grpdelay | [gd, w] = grpdelay(b, a, n, fs) | Group delay in samples; drawn without outputs.
+filtfilt | y = filtfilt(b, a, x) | Filters forwards and backwards: no phase shift, the magnitude response squared. Takes a designfilt filter too.
+designfilt | d = designfilt('lowpassiir', 'FilterOrder', 8, 'HalfPowerFrequency', 0.2) | Designs a filter from a description ('lowpassfir', 'bandstopiir'…; 'PassbandFrequency', 'StopbandFrequency', 'PassbandRipple', 'StopbandAttenuation', 'CutoffFrequency', 'DesignMethod', 'SampleRate'); a struct that filter, filtfilt, freqz and grpdelay take.
+pwelch | [pxx, f] = pwelch(x, window, noverlap, nfft, fs) | Welch's power spectral density (averaged, windowed periodograms); drawn without outputs.
+spectrogram | [s, f, t, p] = spectrogram(x, window, noverlap, nfft, fs) | The short-time Fourier transform: how the spectrum changes over time; drawn as a picture without outputs.
+
+# Test and measurement
+audioread | [y, fs] = audioread('take.wav', [first last]) | Reads a WAV file from Hyperion's files: one column per channel, −1 … 1, and its sample rate (Signals → Audio records them).
+audiowrite | audiowrite('out.wav', y, fs, 'BitsPerSample', 24) | Writes a WAV file (8, 16, 24 or 32-bit; 64 for floats); one column per channel.
+audioinfo | info = audioinfo('take.wav') | A WAV file's sample rate, channels, length and bits.
+sound | sound(y, fs) | Plays samples (−1 … 1) through the speakers.
+soundsc | soundsc(y, fs) | Plays samples scaled so the loudest is full volume.
+thd | r = thd(x, fs, n) | Total harmonic distortion in dB against the fundamental (harmonics 2 … n, 6 unless given).
+
+# Hardware: serial devices and Arduino
+serialportlist | serialportlist | The device connected in Signals → Devices (a real port or the simulated Arduino), as a cell of names.
+serialport | s = serialport(port, baudrate, 'Timeout', 10) | The serial device connected in Signals → Devices (connect it there first: browsers let only the page open ports). Timeout: how many seconds readline waits for a line.
+readline | line = readline(s) | The device's next line: waits for it (up to the port's Timeout) in Chrome, Edge, Firefox and the computer app, inside loops and functions too; empty if none came. In Safari, only lines that arrived before the run.
+writeline | writeline(s, 'LED ON') | Sends text and a new line to the device.
+write | write(s, data, 'uint8') | Sends bytes (or 'string' text) to the serial device; write(c, bytes) to a Bluetooth characteristic, write(u, bytes) to a USB device.
+flush | flush(s) | Forgets the lines not read yet.
+arduino | a = arduino() | The Arduino connected in Signals → Devices in Firmata mode (StandardFirmata uploaded), with its pins.
+configurePin | configurePin(a, 'D13', 'DigitalOutput') | Sets a pin's mode: 'DigitalOutput', 'DigitalInput', 'AnalogInput', 'PWM', 'Pullup' or 'Servo'; without a mode, says it.
+writeDigitalPin | writeDigitalPin(a, 'D13', 1) | Switches a digital pin high (1) or low (0).
+readDigitalPin | v = readDigitalPin(a, 'D2') | A digital pin's level, 0 or 1 (its last report before the script started).
+readVoltage | v = readVoltage(a, 'A0') | An analog pin's voltage, 0 to 5 V (10 bits).
+writePWMDutyCycle | writePWMDutyCycle(a, 'D9', 0.5) | PWM on a pin: the share of time it is on, 0 to 1.
+writePWMVoltage | writePWMVoltage(a, 'D9', 2.5) | PWM on a pin as an average voltage, 0 to 5 V.
+blelist | names = blelist | The Bluetooth device connected in Signals → Bluetooth & USB (an empty list when none).
+ble | b = ble | The connected Bluetooth Low Energy device: b.Characteristics lists every service and characteristic with what it can do (read, write, notify). Chrome, Edge or the computer app.
+characteristic | c = characteristic(b, "180D", "2A37") | One of the device's characteristics, by its service and characteristic UUID (full, 16-bit, or a name such as "heart_rate").
+read | data = read(c) | A characteristic's value as bytes: the next notification (read(c, 'latest') for the last one) or a fresh read; from a USB device, read(u, n) takes up to n bytes. The script waits for it.
+usbdevlist | names = usbdevlist | The USB device connected in Signals → Bluetooth & USB.
+usbdev | u = usbdev | The connected USB device (its name, VendorID, ProductID): write(u, bytes) and read(u, n) move data through its endpoints.
+iotread | [data, t, names] = iotread('Greenhouse', 'NumPoints', 100, 'Fields', [1 2]) | A Signals → IoT channel's newest readings, read while the script runs (by its name or id): one row per reading, NaN where a field was missing; t in seconds since 1970. Needs Chrome, Edge, Firefox or the computer app.
+iotwrite | r = iotwrite(key, [21.5 40]) | Sends a reading to a channel with its write key, as a device would (one a second at most); r.ok says whether it was taken. Its alerts are checked.
+
+# Unit tests
+runtests | results = runtests('t_math.m') | Runs tests: a test script's %% sections (each after the set-up code, in its own workspace), a test class (classdef Name < matlab.unittest.TestCase: its Test methods, set-up and teardown methods, TestParameter properties), or with no file the local functions named test… (with setupOnce, setup, teardown, teardownOnce). Prints a report and gives a table (Name, Passed, Failed, Duration, Details). The Test button runs the open script.
+addTeardown | tc.addTeardown(@() delete('out.csv')) | In a class-based test: a function to call after this test, even when it fails (the last added runs first).
+fatalAssertEqual | tc.fatalAssertEqual(…) | As assertEqual: stops the test at a failure.
+assumeEqual | tc.assumeEqual(…) | As verifyEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertNotEqual | tc.fatalAssertNotEqual(…) | As assertNotEqual: stops the test at a failure.
+assumeNotEqual | tc.assumeNotEqual(…) | As verifyNotEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertTrue | tc.fatalAssertTrue(…) | As assertTrue: stops the test at a failure.
+assumeTrue | tc.assumeTrue(…) | As verifyTrue, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertFalse | tc.fatalAssertFalse(…) | As assertFalse: stops the test at a failure.
+assumeFalse | tc.assumeFalse(…) | As verifyFalse, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertEmpty | tc.fatalAssertEmpty(…) | As assertEmpty: stops the test at a failure.
+assumeEmpty | tc.assumeEmpty(…) | As verifyEmpty, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertNotEmpty | tc.fatalAssertNotEmpty(…) | As assertNotEmpty: stops the test at a failure.
+assumeNotEmpty | tc.assumeNotEmpty(…) | As verifyNotEmpty, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertSize | tc.fatalAssertSize(…) | As assertSize: stops the test at a failure.
+assumeSize | tc.assumeSize(…) | As verifySize, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertClass | tc.fatalAssertClass(…) | As assertClass: stops the test at a failure.
+assumeClass | tc.assumeClass(…) | As verifyClass, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertLessThan | tc.fatalAssertLessThan(…) | As assertLessThan: stops the test at a failure.
+assumeLessThan | tc.assumeLessThan(…) | As verifyLessThan, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertLessThanOrEqual | tc.fatalAssertLessThanOrEqual(…) | As assertLessThanOrEqual: stops the test at a failure.
+assumeLessThanOrEqual | tc.assumeLessThanOrEqual(…) | As verifyLessThanOrEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertGreaterThan | tc.fatalAssertGreaterThan(…) | As assertGreaterThan: stops the test at a failure.
+assumeGreaterThan | tc.assumeGreaterThan(…) | As verifyGreaterThan, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertGreaterThanOrEqual | tc.fatalAssertGreaterThanOrEqual(…) | As assertGreaterThanOrEqual: stops the test at a failure.
+assumeGreaterThanOrEqual | tc.assumeGreaterThanOrEqual(…) | As verifyGreaterThanOrEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertError | tc.fatalAssertError(…) | As assertError: stops the test at a failure.
+assumeError | tc.assumeError(…) | As verifyError, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertFail | tc.fatalAssertFail(…) | As assertFail: stops the test at a failure.
+assumeFail | tc.assumeFail(…) | As verifyFail, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+assertEqual | assertEqual(actual, expected, 'AbsTol', 1e-9) | Stops the test unless the values match (size, class and every element; within a tolerance when given). verifyEqual records the failure and goes on.
+verifyEqual | verifyEqual(tc, actual, expected, 'RelTol', 1e-6) | Like assertEqual, but the test goes on after a failure (every failed check is listed).
+assertTrue | assertTrue(condition, 'message') | Stops the test unless the condition is true.
+verifyTrue | verifyTrue(condition) | Records a failure unless the condition is true.
+assertFalse | assertFalse(condition) | Stops the test unless the condition is false.
+verifyFalse | verifyFalse(condition) | Records a failure unless the condition is false.
+assertNotEqual | assertNotEqual(a, b) | Stops the test if the values are the same.
+verifyNotEqual | verifyNotEqual(a, b) | Records a failure if the values are the same.
+assertEmpty | assertEmpty(x) | Stops the test unless x is empty.
+verifyEmpty | verifyEmpty(x) | Records a failure unless x is empty.
+assertNotEmpty | assertNotEmpty(x) | Stops the test if x is empty.
+verifyNotEmpty | verifyNotEmpty(x) | Records a failure if x is empty.
+assertSize | assertSize(x, [2 3]) | Stops the test unless x has that size.
+verifySize | verifySize(x, [2 3]) | Records a failure unless x has that size.
+assertClass | assertClass(x, 'double') | Stops the test unless x is of that class.
+verifyClass | verifyClass(x, 'char') | Records a failure unless x is of that class.
+assertLessThan | assertLessThan(x, limit) | Stops the test unless every element is below the limit.
+verifyLessThan | verifyLessThan(x, limit) | Records a failure unless every element is below the limit.
+assertLessThanOrEqual | assertLessThanOrEqual(x, limit) | Stops the test unless every element is at most the limit.
+verifyLessThanOrEqual | verifyLessThanOrEqual(x, limit) | Records a failure unless every element is at most the limit.
+assertGreaterThan | assertGreaterThan(x, limit) | Stops the test unless every element is above the limit.
+verifyGreaterThan | verifyGreaterThan(x, limit) | Records a failure unless every element is above the limit.
+assertGreaterThanOrEqual | assertGreaterThanOrEqual(x, limit) | Stops the test unless every element is at least the limit.
+verifyGreaterThanOrEqual | verifyGreaterThanOrEqual(x, limit) | Records a failure unless every element is at least the limit.
+assertError | assertError(@() f(x), 'part of the message') | Stops the test unless calling the function stops with an error (containing that text, when given).
+verifyError | verifyError(@() f(x)) | Records a failure unless calling the function stops with an error.
+assertFail | assertFail('why') | Fails the test there.
+verifyFail | verifyFail('why') | Fails the test there.
+
+# Parallel computing
+parfor | parfor i = 1:n … end | A loop whose passes are independent: at a script's top level they are shared among the pool's workers (one fewer than the computer's cores, up to 8) and the speed-up is printed; arrays indexed by i, sums (s = s + …), products and [c, x] joins come back; other variables set inside stay inside. Inside a function it runs in order.
+parfeval | F(k) = parfeval(@f, nout, x, y) | Runs f(x, y) on a pool worker while the script goes on; gives a future (its number). Collect with fetchOutputs or fetchNext (in a loop of their own: the run waits there for every unfinished future, then that statement runs again).
+fetchOutputs | [a, b] = fetchOutputs(F) | The outputs of finished futures (several futures: one row each).
+fetchNext | [k, v] = fetchNext(F) | The next future not read yet: its place in F and its outputs.
+wait | wait(F) | Waits until the futures are finished.
+cancel | cancel(F) | Forgets futures (their results are dropped).
+parpool | p = parpool(4) | How many of the pool's workers parfor uses (the pool starts itself; p.NumWorkers).
+gcp | p = gcp | The pool: p.NumWorkers (gcp('nocreate') is empty when there is none).
+
+# GPU computing
+gpuArray | G = gpuArray(A) | Puts a matrix on the graphics chip (WebGPU, single precision; on the CPU where there is none): + − .* ./ .^, * (the matrix product), exp, sqrt, abs, sin, cos, tanh, log, sum and transpose work on it; anything else needs gather first.
+gather | A = gather(G) | Brings a gpuArray's numbers back (the run pauses while they come, then that statement runs again; plain values pass through).
+gpuDevice | d = gpuDevice | The graphics chip in use: d.Name, d.Available, d.Precision.
+gpuDeviceCount | n = gpuDeviceCount | 1 when WebGPU found a graphics chip, else 0.
+isgpuarray | tf = isgpuarray(x) | True for a gpuArray.
+existsOnGPU | tf = existsOnGPU(x) | True for a gpuArray.
+
+# Discrete-event simulation
+queuesim | r = queuesim({'exp', 2}, {{'Desk', 2, {'exp', 3}}, {'Pay', 1, {'const', 1}}}, 480, 'Seed', 1) | Runs entities through a line of stations (name, servers, service time; a 4th number caps the queue) for that long: r.Stations (busy share, waits, queues), r.MeanTimeInSystem, r.Throughput, r.Time and r.Queue over the run. Times are a mean (exponential) or {'exp', m}, {'const', v}, {'uniform', lo, hi}, {'normal', m, sd}, {'erlang', m, k}; 'Route', P sends entities from station i to j with probability P(i, j); 'Warmup', t leaves out the start. Drawn without outputs. Simulate → Queues is the same without code.
+mmcqueue | q = mmcqueue(lambda, mu, c) | Erlang's exact M/M/c answers: q.Rho (busy share), q.PWait, q.Lq and q.Wq (queue length and wait), q.L and q.W (in the system).
+
+# Embedded code and fixed point
+codegen | codegen('myfilter', {zeros(1, 64), 0.5}) | Turns a function of the script into plain C99 (myfilter.c and myfilter.h in Hyperion's files): the example inputs fix every size and type (double, single, int8 … uint64, logical, and fi: fixed-point C on whole-number types, each value its stored integer, sums and products growing as fi's do, ./, divide(T, a, b), A \\ B and B / A by any matrix (exact elimination on whole numbers, least squares for a non-square or singular one, each answer rounded once; past 128 bits worked in 32-bit pieces, to 65,536 bits; lsqminnorm(A, B, T) gives the smallest answer; of plain numbers, lsqminnorm(A, B, tol) through the SVD), fimath's rounding methods, Wrap and product and sum modes, types up to 62 bits in 64-bit integers and up to 126 bits in 128-bit ones (__int128 on 64-bit computers; on small chips without it, or with HYPERION_FX_PORTABLE defined, two 64-bit halves giving the same answers), y(:) = … and fi(x, s, w, f) rounding and saturating as MATLAB's); loops, if, while, switch, element-wise maths, the matrix product, sum / prod / mean / min / max of vectors, sqrt, exp, sin… and calls to the script's other functions. No memory is allocated while it runs; arrays are stored column by column. What can't become fixed-size C is refused with the reason. With an output, gives a struct with the C and H texts.
+fi | a = fi(v, signed, wordLength, fractionLength) | A fixed-point number, as an embedded chip or FPGA holds it: rounded to the nearest step of 2^-fractionLength and held in range (fi(v) is signed 16-bit with the best fraction length); fi(v, s, w, f, F) or fi(v, s, w, f, 'RoundingMethod', 'Floor', 'OverflowAction', 'Wrap') rounds and overflows another way (fimath). A \\ B and B / A solve exactly with any fi matrix: a square one directly, a non-square or singular one by least squares (an unknown that can't be told apart is 0); mldivide(A, B, T) chooses the answer's type. + − .* * grow the word so nothing is lost; a ./ b keeps the larger word with a's fraction less b's (divide(T, a, b) for another type), rounded to the nearest, dividing by zero giving the top or bottom of the range; a.WordLength, a.FractionLength. a(i) keeps the type; a(i) = v and a(:) = v round and hold the range (how a loop keeps an accumulator's type); fi(b, …) of a fi recasts it; −a and comparisons work.
+storedInteger | n = storedInteger(a) | The whole numbers a fi value is stored as (what the chip holds).
+bin | s = bin(a) | A fi value's stored bits, most significant first (two's complement).
+hex | s = hex(a) | A fi value's stored bits in hexadecimal.
+numerictype | t = numerictype(a) | A fi value's sign, word length and fraction length, as text; numerictype(signed, wordLength, fractionLength) makes a type for divide.
+fimath | F = fimath('RoundingMethod', 'Floor', 'OverflowAction', 'Wrap') | How fi values are rounded to a step (Nearest: halves up; Floor; Ceiling; Zero (Fix); Round: halves away from zero; Convergent: halves to even) and what happens past the range (Saturate, or Wrap round it as two's complement). 'ProductMode' and 'SumMode' (FullPrecision, the default: nothing lost; KeepLSB: ProductWordLength / SumWordLength bits keeping the fraction; KeepMSB: that many bits keeping the whole part, rounding the bottom; SpecifyPrecision: the word and ProductFractionLength / SumFractionLength), 'CastBeforeSum' (true: each side put into the sum's type first), MaxProductWordLength / MaxSumWordLength (a full-precision result longer is an error). A matrix product and sum(v) add step by step in the sum's type. Give it to fi(v, s, w, f, F) or setfimath(a, F); it also acts where a value is put into a type: fi(…), a(:) = …, division, −a. fimath(a) gives a fi value's.
+setfimath | a = setfimath(a, F) | The fi value a with the fimath F (or 'RoundingMethod', … pairs); removefimath(a) goes back to Nearest and Saturate.
+removefimath | a = removefimath(a) | The fi value a back on the default fimath (Nearest, Saturate).
+divide | c = divide(T, a, b) | a ./ b of fi values with the answer in type T (numerictype(s, w, f) or a fi value's type): rounded to the nearest step (or by the fimath of T, else a's), held in range; dividing by zero gives the top or bottom of the range (0 / 0 is 0).
+upperbound | u = upperbound(a) | The largest value a fi type can hold.
+lowerbound | l = lowerbound(a) | The smallest value a fi type can hold.
+
+# Embedded AI
+quantizemodel | q = quantizemodel(net, 'int8') | A trained network (fitcnet, fitrnet), tree (fitctree, fitrtree), SVM (fitcsvm, or fitcecoc for many classes), naive Bayes (fitcnb), discriminant (fitcdiscr), k-NN (fitcknn), tree ensemble (fitcensemble, fitrensemble, TreeBagger) or linear model (fitlm, fitglm: a logistic model gives its chance and class; all but networks and trees 'single' or 'double'; many-class SVMs, naive Bayes and discriminants also 'int8' in exportmodel and embedreport) with its numbers as a small chip would hold them: 'int8' (8-bit weights, one scale per layer), 'single' or 'double'. predict and loss work on it as on the original.
+modelsize | b = modelsize(net, 'int8') | The bytes a model's numbers take in that precision.
+embedreport | T = embedreport(net, X, Y) | Size and accuracy (or RMSE) of the model in double, single and int8 (a network also 'int8full': wholly in 8 bits, run exactly as its C; a many-class SVM, naive Bayes or discriminant also 'int8', run as its C, and 'int8full', wholly in whole numbers, run exactly as its C; a linear model (fitlm), a tree or a tree ensemble also 'int8full'), tested on X and Y; drawn as bars without an output.
+exportmodel | exportmodel(net, 'mynet', 'Precision', 'int8') | Writes the model as plain C (any kind quantizemodel takes; 'int8full' writes a network wholly in 8-bit integers: 8-bit activations with scales from its training rows, ReLU as a clamp, tanh and sigmoid as 256-entry tables, mynet_predict_q for 8-bit inputs; many-class SVMs (polynomial kernels of any order), naive Bayes, discriminants and linear models (fitlm: mynet_predict_q gives the answer as a whole number; a logistic fitglm the log-odds, its class their sign, mynet_predict(x, &prob)), trees and tree ensembles (8-bit inputs, whole-number splits; leaf chances, tree weights or values as whole numbers) too, up to 65,536 inputs) (mynet.c, mynet.h in Hyperion's files): its weights as constant arrays and mynet_predict(x, scores), giving the class's number (or the value). Trees take 'single', 'double' or 'int8full'. Many-class SVMs (8-bit support vectors and coefficients, a scale per learner), naive Bayes (8-bit means and 1 / spread) and discriminants (8-bit weights) also take 'int8'. They also take 'int8full': wholly in whole numbers on the chip (each input 8-bit with its own centre and step from the training rows, a scale per class or learner, 32- and 64-bit sums, the Gaussian kernel by a table, hinge decoding compared in whole numbers; mynet_predict_q(xq, sums, n) for 8-bit inputs).
 
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).

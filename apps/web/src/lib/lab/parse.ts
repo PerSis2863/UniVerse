@@ -13,7 +13,7 @@ export type Tok =
   | { t: 'word'; v: string; at: number } // a word after a command (save data.mat x): taken as text
   | { t: 'eof'; v: ''; at: number };
 
-const KEYWORDS = new Set(['if', 'elseif', 'else', 'end', 'endif', 'endfor', 'endwhile', 'endfunction', 'endswitch', 'end_try_catch', 'for', 'while', 'do', 'until', 'break', 'continue', 'return', 'function', 'switch', 'case', 'otherwise', 'try', 'catch', 'global', 'persistent']);
+const KEYWORDS = new Set(['if', 'elseif', 'else', 'end', 'endif', 'endfor', 'endwhile', 'endfunction', 'endswitch', 'end_try_catch', 'for', 'parfor', 'while', 'do', 'until', 'break', 'continue', 'return', 'function', 'switch', 'case', 'otherwise', 'try', 'catch', 'global', 'persistent']);
 const OPS = ['...', '==', '~=', '!=', '<=', '>=', '&&', '||', '.*', './', '.\\', '.^', ".'", '++', '--', '+=', '-=', '*=', '/=',
   '+', '-', '*', '/', '\\', '^', "'", '<', '>', '&', '|', '~', '!', '=', ':', '(', ')', '[', ']', '{', '}', '@', '.', ',', ';'];
 
@@ -148,7 +148,7 @@ export type Stmt =
   | { s: 'expr'; e: Expr; show: boolean; at: number }
   | { s: 'assign'; to: Expr[]; e: Expr; show: boolean; op: string; at: number }
   | { s: 'if'; arms: { cond: Expr; body: Stmt[] }[]; other: Stmt[] | null; at: number }
-  | { s: 'for'; v: Expr; e: Expr; body: Stmt[]; at: number }
+  | { s: 'for'; v: Expr; e: Expr; body: Stmt[]; at: number; par?: boolean }
   | { s: 'while'; cond: Expr; body: Stmt[]; at: number }
   | { s: 'do'; body: Stmt[]; cond: Expr; at: number }
   | { s: 'switch'; e: Expr; cases: { match: Expr; body: Stmt[] }[]; other: Stmt[] | null; at: number }
@@ -214,17 +214,19 @@ export function parse(src: string): Program {
           closeBlock('“if”');
           return { s: 'if', arms, other, at: t.at };
         }
-        case 'for': {
+        case 'for': case 'parfor': {
           take();
           const paren = is('op', '(') && (() => { let d = 0, j = p; for (; j < toks.length; j++) { if (toks[j].v === '(') d++; else if (toks[j].v === ')' && --d === 0) break; } return toks[j + 1]?.t === 'nl'; })();
           if (paren) take();
           const v = postfix();
           expect('op', '=', '“=” after the loop variable');
           const e = expr();
+          // parfor (i = 1:n, M): the most workers to use (M477; the pool's size decides here).
+          if (paren && t.v === 'parfor' && is('op', ',')) { take(); expr(); }
           if (paren) expect('op', ')', '“)”');
           const body = block(ENDS);
-          closeBlock('“for” loop');
-          return { s: 'for', v, e, body, at: t.at };
+          closeBlock(t.v === 'parfor' ? '“parfor” loop' : '“for” loop');
+          return { s: 'for', v, e, body, at: t.at, ...(t.v === 'parfor' ? { par: true } : {}) };
         }
         case 'while': { take(); const cond = expr(); const body = block(ENDS); closeBlock('“while” loop'); return { s: 'while', cond, body, at: t.at }; }
         case 'do': { take(); const body = block(['until']); expect('kw', 'until', '“until”'); return { s: 'do', body, cond: expr(), at: t.at }; }
