@@ -37,7 +37,8 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
   const [earth, setEarth] = useState<'' | '0.01' | '0.1'>('');
   // M491m: on AC lines the ground's own resistance is Carson's (it depends on the frequency, not the soil).
   const [acEarth, setAcEarth] = useState(false);
-  // M491n: the soil (Ω·m) on AC lines: how deep the ground's return current runs (and the cable's coupling).
+  // M491n: the soil (Ω·m) on AC lines: how deep the ground's return current runs (and the cable's coupling; M491o: the
+  // line's own feed too).
   const [soil, setSoil] = useState<'20' | '100' | '2000'>('100');
   const graph = useRef<HTMLCanvasElement>(null), volts = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
 

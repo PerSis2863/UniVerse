@@ -13336,6 +13336,18 @@ the nose follows each gust's front and back, not a smoothed rate), the same seed
 'TurbulenceFin', 1. Window: All six → Rough → "The fin meets each side gust after the wing (yawing)". Not built: the
 downwash's own lag, the fin's height above the wing (side gusts rolling it).
 
+## M491o (25 Nov): Hyperion railways, the soil in the 25 kV line's own feed
+
+The owner, 25 Nov (M491n's left-out). `rail.ts` `feedZ(sup)`: the AC line's feeding impedance per km. The share of the
+current coming back through the ground (the screening factor k) runs at Carson's depth, so `Supply.soil` adds
+k·0.0628·ln(depth(ρ) / depth(100)) Ω/km to the line's reactance (the presets stand for 100 Ω·m), and `Supply.earth`
+adds k times the ground's resistance to its resistance. `solveAc` (voltages, losses) and `faultEmf` (fault current)
+use it; unset or 100 Ω·m is unchanged. Checked: dry rock (2,000 Ω·m) adds ~0.047 Ω/km on rail return (by hand), a
+train 20 km out sags a little more, wet clay a little less, a far-end fault draws less current. Language: 'Soil' and
+'EarthResistance' now reach the feed (help says so). Window: Several trains → 25 kV → "The soil" moves the line
+voltage too. Not built: layered soils, the booster and autotransformer feeds' own return wires as separate
+conductors (they stay in the screening factor).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

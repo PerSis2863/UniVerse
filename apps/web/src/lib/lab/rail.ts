@@ -378,7 +378,7 @@ export function faultEmf(sup: Supply, c: Cable) {
     for (const side of [-1, 1] as const) {
       const end = side === -1 ? (i > 0 ? mids[i - 1] : x0) : i < mids.length ? mids[i] : x0, len = Math.abs(end - x0) / 1000;
       if (len <= 0) continue;
-      const z = cabs([sup.rs + (sup.rline * len), sup.ac!.xs + sup.ac!.xline * len]), I = sup.v0 / z;
+      const fz = feedZ(sup), z = cabs([sup.rs + fz.r * len, sup.ac!.xs + fz.x * len]), I = sup.v0 / z;
       out.push({ sub: i, side, length: len * 1000, current: I, emf: zm * k * I * len });
     }
   });
@@ -395,6 +395,14 @@ export const carsonDepth = (rho: number, f = 50) => 658 * Math.sqrt(rho / f);
 // The rails' equivalent radius (~0.146 m) set so 100 Ω·m gives their usual 0.55 Ω/km.
 const RAIL_GMR = carsonDepth(100) / Math.exp(0.55 / 0.0628);
 export const railReactance = (rho: number) => 0.0628 * Math.log(carsonDepth(rho) / RAIL_GMR);
+/** The AC line's own feeding impedance per km (M491o): the contact wire with the rails and the ground coming back. The
+ * share of the current returning through the ground (the screening factor) runs at Carson's depth, so the soil changes
+ * the loop's reactance by k·0.0628·ln(depth(ρ) / depth(100 Ω·m)) Ω/km (the presets are for 100 Ω·m), and the ground's
+ * own resistance (`earth`, Carson's 0.0493 Ω/km at 50 Hz) adds k times that. Unset: the presets' figures. */
+export function feedZ(sup: Supply): { r: number; x: number } {
+  const ac = sup.ac!, k = ac.screen ?? 0.5;
+  return { r: sup.rline + k * (sup.earth ?? 0), x: ac.xline + (sup.soil ? k * 0.0628 * Math.log(carsonDepth(sup.soil) / carsonDepth(100)) : 0) };
+}
 export function railVolts(sup: Supply, s: number[], amps: number[]) {
   // Cross-bonded (M491l): both tracks' rails in parallel, half the impedance and half the leakage resistance: the same
   // decay, half the voltage.
@@ -452,7 +460,7 @@ function acWithStorage(sup: Supply, s: number[], p: number[], soc: number[], cab
 }
 function solveAc(sup: Supply, s: number[], p: number[], cable: Cable = { sep: 30, rho: 100 }, trainsOnly = s.length) {
   const ac = sup.ac!, mids = neutrals(sup), n = s.length, tanPhi = Math.tan(Math.acos(Math.max(0.3, Math.min(1, ac.pf))));
-  const feeder = s.map((x) => mids.filter((m) => m <= x).length), zl: Cx = [sup.rline / 1000, ac.xline / 1000], zt: Cx = [sup.rs, ac.xs];
+  const feeder = s.map((x) => mids.filter((m) => m <= x).length), fz = feedZ(sup), zl: Cx = [fz.r / 1000, fz.x / 1000], zt: Cx = [sup.rs, ac.xs];
   let V: Cx[] = s.map(() => [sup.v0, 0]);
   const given = p.slice(), I: Cx[] = s.map(() => [0, 0]), subI: Cx[] = sup.subs.map(() => [0, 0]);
   let loss = 0;
@@ -478,7 +486,7 @@ function solveAc(sup: Supply, s: number[], p: number[], cable: Cable = { sep: 30
         let carry: Cx = out.reduce<Cx>((q, i) => [q[0] + I[i][0], q[1] + I[i][1]], [0, 0]), v: Cx = bus, at = x0;
         for (const i of out) {
           const d = cmul(zl, carry), len = Math.abs(s[i] - at);
-          v = [v[0] - d[0] * len, v[1] - d[1] * len]; loss += (sup.rline / 1000) * len * (carry[0] ** 2 + carry[1] ** 2);
+          v = [v[0] - d[0] * len, v[1] - d[1] * len]; loss += (fz.r / 1000) * len * (carry[0] ** 2 + carry[1] ** 2);
           nv[i] = v; carry = [carry[0] - I[i][0], carry[1] - I[i][1]]; at = s[i];
         }
       }

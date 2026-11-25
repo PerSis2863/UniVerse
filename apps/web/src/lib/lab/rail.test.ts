@@ -302,4 +302,16 @@ describe('Hyperion railways (M491)', () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     expect(() => lab.run("railLine('intercity', trainModel('intercity'), [0], 'Supply', 'ac25', 'Soil', 0)")).toThrow(/Soil/);
   });
+  it('the soil in the 25 kV line\'s own feed (M491o)', () => {
+    const ac = rl.SUPPLIES.ac25(100000);
+    // Unset or 100 Ω·m: the preset's figures; by hand, dry rock adds k·0.0628·ln(√(2000/100)) Ω/km.
+    expect(rl.feedZ(ac)).toEqual({ r: ac.rline, x: ac.ac!.xline }); expect(rl.feedZ({ ...ac, soil: 100 }).x).toBeCloseTo(ac.ac!.xline, 12);
+    expect(rl.feedZ({ ...ac, soil: 2000 }).x - ac.ac!.xline).toBeCloseTo(0.5 * 0.0628 * Math.log(Math.sqrt(20)), 12);
+    expect(rl.feedZ({ ...ac, earth: rl.CARSON_50HZ }).r).toBeCloseTo(ac.rline + 0.5 * rl.CARSON_50HZ, 12);
+    // A train 20 km out drawing 6 MW: dry rock sags the line more, wet clay less.
+    const v = (soil?: number) => rl.solveSupply({ ...ac, soil }, [20000], [6e6]).volts[0];
+    expect(v(2000)).toBeLessThan(v()); expect(v(20)).toBeGreaterThan(v()); expect(v(100)).toBeCloseTo(v(), 6);
+    // A fault at the far end draws less current through drier ground.
+    expect(rl.faultEmf({ ...ac, soil: 2000 }, { sep: 30, rho: 100 })[0].current).toBeLessThan(rl.faultEmf(ac, { sep: 30, rho: 100 })[0].current);
+  });
 });
