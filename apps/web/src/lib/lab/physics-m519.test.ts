@@ -18,7 +18,7 @@ describe('rigid shapes (M519)', () => {
   it('a polygon: centroid, area and a square\'s moment s²/6', () => {
     const p = rb.polygon([[0, 0], [0, 2], [2, 2], [2, 0]]);
     expect(p.area).toBeCloseTo(4, 12); expect(p.centroid).toEqual([1, 1]); expect(p.k2).toBeCloseTo(4 / 6, 12);
-    expect(() => rb.polygon([[0, 0], [2, 0], [1, 0.2], [1, 2]])).toThrow(/convex/);
+    expect(rb.polygon([[0, 0], [2, 0], [1, 0.2], [1, 2]]).parts.length).toBe(2); // a dent: split in two (M520)
   });
   it('equal squares meeting face on swap their speeds', () => {
     const B = [rb.body(square(1), 40, 50, 0, [1, 0, 0], 1), rb.body(square(1), 43, 50, 0, [-1, 0, 0], 1)];

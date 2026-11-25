@@ -96,7 +96,13 @@ export function draw3d(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
     if (!r) return [0, 1];
     return r[0] === r[1] ? outward(r[0] - 1, r[1] + 1) : outward(r[0], r[1]);
   };
-  const [x0, x1] = span(all((g) => g.x, (s) => s.x), ax.xlim), [y0, y1] = span(all((g) => g.y, (s) => s.y), ax.ylim), [z0, z1] = span(all((g) => g.z, (s) => s.z ?? [0]), ax.zlim);
+  let [x0, x1] = span(all((g) => g.x, (s) => s.x), ax.xlim), [y0, y1] = span(all((g) => g.y, (s) => s.y), ax.ylim), [z0, z1] = span(all((g) => g.z, (s) => s.z ?? [0]), ax.zlim);
+  // axis equal (M520): one unit the same length along x, y and z, by widening the shorter ranges about their middles
+  // to the box's own proportions (2 : 2 : 2·ZS).
+  if (ax.equal) {
+    const h = Math.max((x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / (2 * ZS)), mid = (a: number, b: number, w: number) => [(a + b) / 2 - w, (a + b) / 2 + w];
+    [x0, x1] = mid(x0, x1, h); [y0, y1] = mid(y0, y1, h); [z0, z1] = mid(z0, z1, h * ZS);
+  }
   const [cl0, cl1] = crange(ax);
   const [az, el] = (ax.view ?? [-37.5, 30]).map((d) => (d * Math.PI) / 180);
   const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);

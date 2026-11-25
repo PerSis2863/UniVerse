@@ -13120,3 +13120,34 @@ of the critical b both ways; a = 0's deflection equal to `lightRay`; the shadow 
 −2 … 7 edge-on at a = 1; a sphere's isosurface closed (every edge in two triangles) holding 4/3 π r³ to 1%. Not built:
 friction between two moving shapes in 3D (2D only), concave shapes (split them), Kerr–Newman (charge), light out of
 the equator in `kerrLight` (the shadow covers it), and a smooth-shaded isosurface coloured by another field.
+
+## M520 (25 Nov): Hyperion physics, M519's left-outs (dents, 3D, charge, light from anywhere)
+
+The owner sent M519's "left out on purpose" list back. **Dents** (`rigid2d.ts`): `polygon` takes any simple outline
+(up to 64 corners; a crossing outline is refused), its area, centroid and ∫r² by the shoelace sums (signed, so dents
+count right), and `convexParts`: ear clipping into triangles, then Hertel–Mehlhorn (a shared diagonal removed while the
+merged piece stays convex). `Shape.poly.parts` collide part by part (`worldParts`); walls still use the outline's corners.
+**3D** (`rigid3d.ts`, `rigidShapes3D`): `hull(points)` by every plane through three points with all on one side, coplanar
+corners merged into one face (ordered round its normal, mid-edge points dropped), volume, centroid and inertia per unit
+mass from tetrahedra (∫xxᵀ = V/20 (Σ vvᵀ + ssᵀ)); `boxHull`; balls. Each body keeps L in space, ω = R J⁻¹ Rᵀ L, the
+quaternion turned by exp(ω dt): a free body keeps L exactly. Contacts: SAT over both face normals and every edge × edge
+(edges biased 5% so faces win ties); the reference face is the one pointing along the axis (opposite faces share an axis:
+the bug fixed while building), the incident face clipped by Sutherland–Hodgman against its sides; edge–edge by the two
+nearest segment points; ball–hull by the deepest face inside or the nearest face / edge point outside. Friction is a disc
+(both tangent impulses scaled to μ jn together). **Charge** (`kerr.ts`): Δ = r² − 2r + a² + q², P = E(r² + a²) − aLz − εqr
+(ε the particle's charge per mass); `circular` keeps Kerr's closed form and otherwise walks Newton in from r = 30 with
+the charge added in 20 steps; `isco` by bisection on R'' < 0; the light orbits and the shadow from the general
+ξ = (r² + a² − 4rΔ/Δ')/a, η = 16r²Δ/Δ'² − (ξ − a)² (equal to Bardeen's at q = 0), their r range where η ≥ 0 (scanned and
+bisected); no spin: a circle r²/√Δ at r = (3 + √(9 − 8q²))/2. The language keeps a² + q² a hair under 1. **Light from
+anywhere**: `imageRay` (Lz = −α sin θo, Q = β² + (α² − a²) cos² θo), traced back from r = 200 with `north = β > 0`;
+`kerrLight(…, 'Inclination', deg, 'Beta', β)` draws it in 3D. **axis equal in 3D** (`draw3d`): the shorter ranges widen
+about their middles to the box's 2 : 2 : 2·ZS, so a ball is round. Example `physics5.m`. Tests (`physics-m520.test.ts`):
+an L's two parts, area and ∫r² against two rectangles; a star rests on the floor without sinking; a ball rests inside a
+fixed U; a cube hull's 6 faces, 12 edges, s²/6, a tetrahedron's 1/6 and centroid; a tumbling box's L to 1e-12; equal cubes
+swapping speeds; a ball bouncing to e²; a tilted cube's corner hit keeping its energy to 1e-7 and spinning; a box sliding
+v²/(2μg) and resting; a cube stacked off-centre staying; RN's horizons, light sphere 2, ISCO 4 at q = 1 and the cubic for
+q = 0.6, the shadow r²/√Δ through the spinning formulas; q → 0 giving Kerr back; a particle with ε = 1 hovering beside an
+extremal hole (the Majumdar–Papapetrou balance) and falling in without its charge; a charged circular orbit staying
+circular to 1e-6; rays 3% inside the shadow's edge caught and 3% outside escaping, at three places round it. Not built:
+rolling resistance (balls roll for ever on a flat floor), concave solids in 3D (split them into convex ones by hand),
+magnetic charge, and a ray-traced picture of a disc round the hole.

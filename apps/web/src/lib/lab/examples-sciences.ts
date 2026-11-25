@@ -289,6 +289,21 @@ figure; schrodinger3D(g, g, g, @(x, y, z) 0.5*(x.^2 + y.^2 + z.^2), 'States', 4)
 [x, y, z] = meshgrid(-2:0.1:2);
 figure; isosurface(x, y, z, x.^2 + y.^2 + z.^2 + sin(3*x), 2)
 ` },
+  { name: 'physics5.m', code: `% Physics: shapes with dents, solids tumbling in 3D, a charged black hole, light from above
+% 1. An L, a star and a ball fall into a fixed cup (dents are split into convex parts by themselves)
+star = [cos(pi/2 + (0:9)*pi/5)' sin(pi/2 + (0:9)*pi/5)'] .* repmat([1; 0.45], 5, 1);
+cup = [0 0; 4 0; 4 2; 3.5 2; 3.5 0.5; 0.5 0.5; 0.5 2; 0 2];
+t = 3;   % slider 0 3
+rigidShapes({cup, [0 0; 2 0; 2 0.7; 0.7 0.7; 0.7 2; 0 2], star, 0.4}, [5 1 0; 4.5 6 30; 5.5 8 0; 5 9.5 0], [], 'Fixed', 1, 'Time', 3, 'At', t)
+% 2. A ball, a box and a pyramid tumble down onto the floor
+figure; rigidShapes3D({0.6, [1.5 1 0.8], [0 0 0; 1.5 0 0; 0 1.5 0; 0 0 1.5]}, [3 5 6 0 0 0; 6 5 4 20 30 0; 5 3 7 0 0 0], [2 0 0 0 0 0; -1 0 0 0 3 0; 0 1 0 0 0 0], 'Time', 3)
+% 3. A charged spinning black hole: its radii shrink, orbits change
+R = kerrRadii(0.6, 0.7)
+figure; kerrShadow([0 0.6], 90, 'Charge', 0.7)
+figure; kerrOrbit(0.6, 9, 0.2, 35, 'Orbits', 4, 'Charge', 0.7, 'ParticleCharge', 0.3)
+% 4. Light reaching someone 70° off the spin axis, traced back past the hole in 3D
+figure; kerrLight(0.9, -8:2:8, 'Inclination', 70, 'Beta', 2)
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north

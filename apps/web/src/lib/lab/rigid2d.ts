@@ -1,37 +1,81 @@
 // Hyperion's 2D rigid bodies of any shape (M519): convex polygons and circles that turn, bounce and rub, in a box and
 // against fixed shapes. Contacts by the separating-axis test with edge clipping (up to two points a pair), solved by
 // sequential impulses with restitution and Coulomb friction, then pushed apart (positions only, so no energy is made).
+// M520: shapes with dents, split by ear clipping and Hertel–Mehlhorn merging into convex parts that collide one by one.
 
-export type Shape = { kind: 'poly'; v: number[][] } | { kind: 'circle'; r: number };
+/** A polygon's outline `v` (body frame, about its centroid) and the convex parts it is made of. */
+export type Shape = { kind: 'poly'; v: number[][]; parts: number[][][] } | { kind: 'circle'; r: number };
 export interface Body { shape: Shape; m: number; I: number; x: number; y: number; a: number; vx: number; vy: number; w: number; fixed: boolean }
 
 const cross = (ax: number, ay: number, bx: number, by: number) => ax * by - ay * bx;
 
-/** A convex polygon about its centroid, counter-clockwise, with its area and second moment per unit mass (∫r² dm / m). */
+const segHit = (p: number[], q: number[], r: number[], s: number[]) => {
+  const d1 = cross(q[0] - p[0], q[1] - p[1], r[0] - p[0], r[1] - p[1]), d2 = cross(q[0] - p[0], q[1] - p[1], s[0] - p[0], s[1] - p[1]);
+  const d3 = cross(s[0] - r[0], s[1] - r[1], p[0] - r[0], p[1] - r[1]), d4 = cross(s[0] - r[0], s[1] - r[1], q[0] - r[0], q[1] - r[1]);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+};
+const convexRing = (P: number[][], tol: number) => P.every((p, i) => { const q = P[(i + 1) % P.length], r = P[(i + 2) % P.length]; return cross(q[0] - p[0], q[1] - p[1], r[0] - q[0], r[1] - q[1]) >= -tol; });
+
+/** A counter-clockwise simple polygon cut into convex parts: ear clipping into triangles, then every diagonal whose
+ * removal leaves a convex piece taken out (Hertel–Mehlhorn: at most four times the fewest parts). */
+export function convexParts(v: number[][], tol = 1e-12): number[][][] {
+  if (convexRing(v, tol)) return [v.map((p) => p.slice())];
+  const idx = v.map((_, i) => i), tris: number[][] = [];
+  const inside = (p: number[], a: number[], b: number[], c: number[]) => cross(b[0] - a[0], b[1] - a[1], p[0] - a[0], p[1] - a[1]) >= 0 && cross(c[0] - b[0], c[1] - b[1], p[0] - b[0], p[1] - b[1]) >= 0 && cross(a[0] - c[0], a[1] - c[1], p[0] - c[0], p[1] - c[1]) >= 0;
+  while (idx.length > 3) {
+    let cut = false;
+    for (let k = 0; k < idx.length; k++) {
+      const i0 = idx[(k + idx.length - 1) % idx.length], i1 = idx[k], i2 = idx[(k + 1) % idx.length], [a, b, c] = [v[i0], v[i1], v[i2]];
+      if (cross(b[0] - a[0], b[1] - a[1], c[0] - b[0], c[1] - b[1]) <= tol) continue;
+      if (idx.some((j) => j !== i0 && j !== i1 && j !== i2 && inside(v[j], a, b, c))) continue;
+      tris.push([i0, i1, i2]); idx.splice(k, 1); cut = true; break;
+    }
+    if (!cut) throw new Error('That outline crosses itself.');
+  }
+  tris.push(idx.slice());
+  // Merge pieces across a shared diagonal while the result stays convex.
+  const pieces = tris;
+  for (let merged = true; merged;) {
+    merged = false;
+    outer: for (let p = 0; p < pieces.length; p++) for (let q = p + 1; q < pieces.length; q++) {
+      const A = pieces[p], B = pieces[q];
+      for (let i = 0; i < A.length; i++) {
+        const a0 = A[i], a1 = A[(i + 1) % A.length], j = B.findIndex((x, k) => x === a1 && B[(k + 1) % B.length] === a0);
+        if (j < 0) continue;
+        // A's ring from a1 round to a0, then B's ring after a0 round to before a1.
+        const ring = [...A.slice(i + 1), ...A.slice(0, i + 1)], rest: number[] = [];
+        for (let k = 2; k < B.length; k++) rest.push(B[(j + k) % B.length]);
+        const C = [...ring, ...rest];
+        if (!convexRing(C.map((x) => v[x]), tol)) continue;
+        pieces.splice(q, 1); pieces[p] = C; merged = true; break outer;
+      }
+    }
+  }
+  return pieces.map((P) => P.map((i) => v[i].slice()));
+}
+
+/** A simple polygon (dents allowed) about its centroid, counter-clockwise, with its area, second moment per unit mass
+ * (∫r² dm / m) and convex parts. */
 export function polygon(pts: number[][]) {
   const n = pts.length;
   if (n < 3) throw new Error('A polygon needs at least 3 corners.');
+  if (n > 64) throw new Error('Up to 64 corners a shape.');
   let A = 0, cx = 0, cy = 0;
   for (let i = 0; i < n; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % n], c = cross(x0, y0, x1, y1); A += c / 2; cx += ((x0 + x1) * c) / 6; cy += ((y0 + y1) * c) / 6; }
   if (Math.abs(A) < 1e-14) throw new Error('The polygon has no area.');
   cx /= A; cy /= A;
   let v = pts.map(([x, y]) => [x - cx, y - cy]);
   if (A < 0) { v = v.reverse(); A = -A; }
-  for (let i = 0; i < n; i++) {
-    const p = v[i], q = v[(i + 1) % n], r = v[(i + 2) % n];
-    if (cross(q[0] - p[0], q[1] - p[1], r[0] - q[0], r[1] - q[1]) < -1e-12 * A) throw new Error('Only convex shapes (split a concave one into convex parts).');
-  }
-  // ∫(x² + y²) over the polygon, by triangles from the centroid.
+  for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) if (!(i === 0 && j === n - 1) && segHit(v[i], v[(i + 1) % n], v[j], v[(j + 1) % n])) throw new Error('That outline crosses itself.');
+  // ∫(x² + y²) over the polygon, by triangles from the centroid (signed, so dents count right).
   let J = 0;
   for (let i = 0; i < n; i++) { const [x0, y0] = v[i], [x1, y1] = v[(i + 1) % n], c = cross(x0, y0, x1, y1); J += (c * (x0 * x0 + x0 * x1 + x1 * x1 + y0 * y0 + y0 * y1 + y1 * y1)) / 12; }
-  return { v, area: A, k2: J / A, centroid: [cx, cy] };
+  return { v, area: A, k2: J / A, centroid: [cx, cy], parts: convexParts(v, 1e-12 * A) };
 }
 
-const world = (b: Body) => {
-  if (b.shape.kind !== 'poly') return [];
-  const c = Math.cos(b.a), s = Math.sin(b.a);
-  return b.shape.v.map(([x, y]) => [b.x + c * x - s * y, b.y + s * x + c * y]);
-};
+const place = (b: Body, pts: number[][]) => { const c = Math.cos(b.a), s = Math.sin(b.a); return pts.map(([x, y]) => [b.x + c * x - s * y, b.y + s * x + c * y]); };
+const world = (b: Body) => (b.shape.kind === 'poly' ? place(b, b.shape.v) : []);
+const worldParts = (b: Body) => (b.shape.kind === 'poly' ? b.shape.parts.map((p) => place(b, p)) : []);
 const normals = (P: number[][]) => P.map((p, i) => { const q = P[(i + 1) % P.length], dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy); return [dy / l, -dx / l]; });
 
 export interface Contact { a: number; b: number; n: number[]; p: number[]; depth: number }
@@ -95,7 +139,7 @@ function polyCircle(P: number[][], c: number[], r: number, ip: number, ic: numbe
 
 /** Every contact between bodies and with the walls of [0, W] × [0, H] (b = −1 for a wall). */
 export function contacts(B: Body[], W: number, H: number): Contact[] {
-  const out: Contact[] = [], P = B.map(world);
+  const out: Contact[] = [], P = B.map(world), PP = B.map(worldParts);
   const walls: [number[], number][] = [[[-1, 0], 0], [[1, 0], W], [[0, -1], 0], [[0, 1], H]]; // outward normal, n·x limit
   B.forEach((b, i) => {
     if (b.fixed) return;
@@ -111,9 +155,10 @@ export function contacts(B: Body[], W: number, H: number): Contact[] {
     const ra = a.shape.kind === 'circle' ? a.shape.r : Math.max(...a.shape.v.map((v) => Math.hypot(v[0], v[1])));
     const rb = b.shape.kind === 'circle' ? b.shape.r : Math.max(...b.shape.v.map((v) => Math.hypot(v[0], v[1])));
     if (Math.hypot(a.x - b.x, a.y - b.y) > ra + rb) continue;
-    if (a.shape.kind === 'poly' && b.shape.kind === 'poly') polyPoly(P[i], P[j], i, j, out);
-    else if (a.shape.kind === 'poly') polyCircle(P[i], [b.x, b.y], rb, i, j, out);
-    else if (b.shape.kind === 'poly') polyCircle(P[j], [a.x, a.y], ra, j, i, out);
+    // Part by part (a convex shape is its own one part).
+    if (a.shape.kind === 'poly' && b.shape.kind === 'poly') { for (const pa of PP[i]) for (const pb of PP[j]) polyPoly(pa, pb, i, j, out); }
+    else if (a.shape.kind === 'poly') { for (const pa of PP[i]) polyCircle(pa, [b.x, b.y], rb, i, j, out); }
+    else if (b.shape.kind === 'poly') { for (const pb of PP[j]) polyCircle(pb, [a.x, a.y], ra, j, i, out); }
     else {
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
       if (d < ra + rb && d > 1e-15) out.push({ a: i, b: j, n: [dx / d, dy / d], p: [a.x + (dx / d) * ra, a.y + (dy / d) * ra], depth: ra + rb - d });
@@ -195,7 +240,7 @@ export function body(shape: number[][] | number, x: number, y: number, a: number
     return { shape: { kind: 'circle', r: shape }, m, I: 0.5 * m * shape * shape, x, y, a, vx: v[0], vy: v[1], w: v[2], fixed };
   }
   const p = polygon(shape);
-  return { shape: { kind: 'poly', v: p.v }, m, I: m * p.k2, x, y, a, vx: v[0], vy: v[1], w: v[2], fixed };
+  return { shape: { kind: 'poly', v: p.v, parts: p.parts }, m, I: m * p.k2, x, y, a, vx: v[0], vy: v[1], w: v[2], fixed };
 }
 export const area = (shape: number[][] | number) => (typeof shape === 'number' ? Math.PI * shape * shape : polygon(shape).area);
 /** Where a body's outline is (for drawing). */
