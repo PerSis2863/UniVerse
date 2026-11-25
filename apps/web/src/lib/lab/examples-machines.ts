@@ -173,6 +173,11 @@ fprintf('Belt + airbag: chest %.0f g, moved %.0f cm; nothing: chest %.0f g, hit 
 [~, off] = vehicleCrash(vehicle(), 64/3.6, 'Overlap', 0.25);
 [~, bk] = vehicleCrash(vehicle(), 56/3.6, 'Behind', 'unbelted');
 fprintf('Small overlap: %.0f cm into the cabin, slid off the airbag = %d; pushed from behind: hit the wheel = %d\\n', off.Intrusion*100, off.SlidOffAirbag, bk.HitWheel)
+% A car into the side at 50 km/h: side and curtain airbags against none; the far side with someone beside
+[~, sa] = vehicleSideCrash(vehicle(), 50/3.6);
+[~, sn] = vehicleSideCrash(vehicle(), 50/3.6, 'Airbags', 0);
+[~, sb] = vehicleSideCrash(vehicle(), 50/3.6, 'Seat', 'far', 'Beside', 1);
+fprintf('Side: head %.0f g with airbags, %.0f g without; far side beside someone: head %.0f g\\n', sa.HeadG, sn.HeadG, sb.HeadG)
 figure; vehicleTrip(vehicle('Roll', true), 15, 'Kerb', 0, 'Ground', 'soil')
 ` },
   { name: 'driving.m', code: `% Automated driving: keeping in lane and following the car ahead

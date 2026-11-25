@@ -239,4 +239,24 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(f('i', 'SlidOffAirbag')).toBe(1); expect(f('i', 'Intrusion')).toBeCloseTo(small.intrusion, 9); expect(f('j', 'HitFrontSeat')).toBe(1);
     expect(() => lab.run("vehicleCrash(vehicle(), 15, 'Overlap', 2)")).toThrow(/Overlap/);
   });
+  it('a side crash: a car or a pole, both sides, the person beside (M486l)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, go = (o: Parameters<typeof vd.sideCrash>[2], sp = 50) => vd.sideCrash(car, sp / 3.6, o);
+    // A car like it at 50 km/h crushes the side ~0.35 m and shoves the car sideways at half the speed, plus the 10% spring-back.
+    const bag = go({}), none = go({ bags: false });
+    expect(bag.intrusion).toBeCloseTo(0.35, 1); expect(bag.dv).toBeCloseTo((1.1 * 50) / 3.6 / 2, 1);
+    // The side airbags fire within ~10 ms and help both the chest and the head; without a curtain the head hits the window side.
+    expect(bag.bagAt).toBeLessThan(0.012); expect(bag.chestG).toBeLessThan(none.chestG); expect(bag.headG).toBeLessThan(none.headG);
+    expect(bag.headHit).toBe(false); expect(none.headHit).toBe(true); expect(none.risk).toBe('severe');
+    // A pole at 32 km/h without airbags: the head on the pole; with them the risk is low.
+    expect(go({ into: 'pole', bags: false }, 32).risk).toBe('severe'); expect(go({ into: 'pole' }, 32).risk).toBe('low');
+    // The far side is safer alone; with someone beside, thrown into them (shoulders, then heads).
+    const far = go({ seat: 'far' }), beside = go({ seat: 'far', beside: true });
+    expect(far.chestG).toBeLessThan(bag.chestG); expect(far.hitPerson).toBe(0);
+    expect(beside.hitPerson).toBeGreaterThan(5000); expect(beside.headHit).toBe(true); expect(beside.risk).toBe('severe');
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[t, i] = vehicleSideCrash(vehicle(), 50/3.6, 'Seat', 'far', 'Beside', 1); figure; vehicleSideCrash(vehicle(), 32/3.6, 'Into', 'pole');");
+    const f = (k: string) => toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('PersonForce')).toBeCloseTo(beside.hitPerson, 6);
+    expect(() => lab.run("vehicleSideCrash(vehicle(), 10, 'Into', 'tree')")).toThrow(/pole/);
+  });
 });

@@ -13364,6 +13364,23 @@ Language: vehicleCrash 'Overlap', 'Seat', 'Behind'; info Intrusion, SlidOffAirba
 Window: Vehicle → Crash → "How much of the front hits" (All / 40% / 25%) and "Who" (The driver / Driver, unbelted
 behind / Back seat). Rough figures. Not built: the head's HIC, a soft deformable barrier, the car's own spin drawn.
 
+## M486l (25 Nov): Hyperion vehicles, a side crash: a car or a pole, both sides, the person beside
+
+The owner, 25 Nov (M486j's left-out). `vehicle.ts` `sideCrash(v, speed, { into, other, belt, bags, seat, beside })`:
+another car (a car like it by default) drives square into the side of this one standing still, or `into: 'pole'` (an
+endless mass, the same as sliding into it). The side crushes like one spring (`SIDE_K` 0.35 m at 50 km/h from a car
+like it, `POLE_K` 0.4 m at 32 km/h), 0.1 spring-back; the door's panel moves with the striker. Near seat: 15 cm to the
+door, its trim 200 kN/m, a thorax airbag (5 g on the car over 3 ms, as a door's pressure sensor; full 8 ms later; 10
+cm, 80 kN/m up to 8 kN, and the trim's push spread to 0.6). The head is 20 cm from the window and leans 1.3× the
+chest: no curtain, stopped in 2 cm (curtain 15 cm). Far seat: thrown across 60 cm, the lap belt (60 kN/m after 10 cm,
+up to 5 kN), into the console and door or, with `beside`, the near person (a body's width, 100 kN/m; heads 10 cm
+after the shoulders, stopped in 5 cm: `hitPerson`). Chest g the 3 ms average; `headHit` only for something hard.
+Checked: 50 km/h car ~0.35 m, airbags lower chest and head g; pole without airbags severe, with them low; far side
+alone milder, beside someone severe (heads). Language `vehicleSideCrash` (help, an example). Window: Vehicle → Crash →
+"Crash" (Head on / Into the side), "Hit by" (A car like it / Sliding into a pole), "Who" (On the struck side / The
+other side / Other side, someone beside). Rough figures. Not built: the car spinning after the blow, a crash at an
+angle, the back seats in a side crash, rib deflection (Euro NCAP's real measure; g here).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
