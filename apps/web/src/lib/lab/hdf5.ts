@@ -214,8 +214,30 @@ export class H5File {
     const n = dims.reduce((s, x) => s * x, 1);
     const raw = d.subarray(q, q + n * type.size);
     if (type.cls === 3) return [name, new TextDecoder().decode(raw).replace(/\0[\s\S]*$/, '')];
-    if (type.cls === 9) throw new LabError('Variable-length attributes are skipped.');
+    if (type.cls === 9) {
+      // A variable-length string (h5py and the NWB tools write text this way): length, the global heap
+      // collection's address and the object's index in it (M517). Only the first element is kept.
+      if (n < 1) return [name, ''];
+      const len = new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getUint32(0, true), col = this.at(this.addrIn(raw, 4)), idx = new DataView(raw.buffer, raw.byteOffset + 4 + this.so, 4).getUint32(0, true);
+      return [name, this.heapObject(col, idx).subarray(0, len).reduce((t, c) => t + String.fromCharCode(c), '')];
+    }
     return [name, numbers(raw, type)];
+  }
+
+  private addrIn(d: Uint8Array, p: number) { let v = 0; for (let i = this.so - 1; i >= 0; i--) v = v * 256 + d[p + i]; return v; }
+  /** Object `idx` of a global heap collection ('GCOL'). */
+  private heapObject(p: number, idx: number): Uint8Array {
+    const b = this.b;
+    if (String.fromCharCode(b[p], b[p + 1], b[p + 2], b[p + 3]) !== 'GCOL') throw new LabError('A global heap is missing.');
+    const end = p + this.len(p + 8);
+    let q = p + 8 + this.sl;
+    while (q + 8 + this.sl <= end) {
+      const i = b[q] | (b[q + 1] << 8), size = this.len(q + 8);
+      if (i === 0) break;
+      if (i === idx) return b.subarray(q + 8 + this.sl, q + 8 + this.sl + size);
+      q += 8 + this.sl + Math.ceil(size / 8) * 8;
+    }
+    throw new LabError('A global heap object is missing.');
   }
 
   private filters(d: Uint8Array): { id: number; values: number[] }[] {

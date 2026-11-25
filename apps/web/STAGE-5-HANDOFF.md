@@ -12437,6 +12437,1134 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+
+## M472 (23 Nov): Hyperion, the filter designer and signal analyser
+
+The owner (23 Nov): "help me to build what is left", group 5's signal analyser and filter designer. Three sessions build
+the rest in parallel: this branch (`claude/hyperion-signals-capabilities`) M472–M481, machines and vehicles M482–M491,
+sciences and industries M492–M505. Pure maths in `src/lib/lab/filters.ts`, the language in `filters-lab.ts` (loaded by
+`lab.worker.ts` and the tests): analog prototypes (Butterworth, Chebyshev I and II, elliptic by Landen's transform,
+after Orfanidis' notes), the low/high/band-pass/band-stop transformations and the bilinear transform with prewarping (fs
+= 2, as MATLAB, so edges are fractions of Nyquist); order estimates; `fir1` (windowed sinc, gain 1 in the first
+passband), `fir2` (frequency sampling), `firpm` (our own Remez exchange with barycentric interpolation, orders odd and
+even; no Hilbert or differentiator types); `freqz` moved here from `signal.ts` (draws magnitude and unwrapped phase
+without outputs; takes fs), `grpdelay`, `filtfilt` (odd reflection of 3·order samples, steady-state initial conditions),
+`designfilt` (a plain struct with Numerator and Denominator in place of MATLAB's digitalFilter object; `filter`,
+`filtfilt`, `freqz`, `grpdelay` take it; `filter` is wrapped here so `signal.ts` stays as it was), `pwelch` and
+`spectrogram` (MATLAB's defaults: 8 Hamming segments overlapping by half, nfft ≥ 256; one-sided PSD scaling).
+The window: Hyperion's new **Signals** page (`/hyperion/signals`, `SignalsTabs.tsx`, menu and phone tabs), its first
+tab `FilterDesigner.tsx`: designs on the page's thread (microseconds to milliseconds), edges dragged on the SVG
+(pointer capture, the neighbours' order kept) or moved with ‹ › buttons, Open in Code by `shareFragment`. The worked
+examples for this branch live in `src/components/lab/examples-signals.ts` (spread into `LabApp`'s list, so the three
+branches don't edit the same lines) and every one runs in `examples-signals.test.ts`. Browser check:
+`scripts/checks/hyperion-signals-ui.mjs` (TABS=… names the tabs to open). Not built: second-order sections (`sos`),
+`zplane`, `iirnotch`, filter quantisation, MATLAB's filterDesigner's import/export.
+
+## M473 (23 Nov): Hyperion, test and measurement (the microphone, a tone generator, recording, data logging)
+
+Signals → **Audio** (`src/components/lab/AudioBench.tsx`, a lazily loaded tab of `SignalsTabs`). Web Audio only, free
+and on the computer: the input is the microphone (`getUserMedia` with echoCancellation, noiseSuppression and
+autoGainControl off, so the real sound is measured; the site's Permissions-Policy already allows `microphone=(self)`)
+or a generator (OscillatorNode, or a looping buffer of white noise) → a gain → an AnalyserNode (8192 points, −140 … 0
+dB) and, for the generator only and when ticked, the speakers (never the microphone: it would howl). A canvas scope
+(triggered on the first rising zero crossing) and a log-frequency spectrum are drawn by requestAnimationFrame only
+while running; readings (level dBFS, the strongest frequency refined by a parabola, THD) come from `src/lib/lab/audio.ts`.
+**Recording is lossless**: an AudioWorklet (`public/hyperion/pcm-tap.js`, a static file because the CSP's script-src
+has no blob:) posts the samples in blocks of 4096; they are written as a 24-bit WAV with `keep()` into Hyperion's files
+(IndexedDB, `lab-files.ts`) and Open in Code reads it with `audioread`. The data logger keeps up to 100,000 readings
+(CSV download, or a CSV in Hyperion's files read with `readtable`). In the language (`audio-lab.ts`): `audioread`
+(with a sample range), `audiowrite` ('BitsPerSample' 8/16/24/32, 64 for floats), `audioinfo`, `sound` / `soundsc`
+(the engine's worker has no speakers: a new optional `Host.sound` posts `{ sound }` and `LabApp`'s `playSound` plays it),
+`thd` (dB). WAV reading takes PCM and float, WAVE_FORMAT_EXTENSIBLE, any channel count. The browser check
+(`hyperion-signals-ui.mjs`) uses the generator (no microphone in the test browser). Not built: two-channel inputs,
+choosing the input device, calibration to sound pressure (dB SPL needs a calibrated microphone), MATLAB's
+audioDeviceReader/audioPlayer objects (System objects the engine doesn't have).
+
+## M474 (23 Nov): Hyperion, serial devices and Arduino (Web Serial, Firmata, a simulated board)
+
+Signals → **Devices** (`SerialBench.tsx`). The connection is `serialLink` in `src/components/lab/serial-link.ts`, a
+module-level object, so it stays open while the person moves between Signals and the Code window (client-side
+navigation keeps modules). Web Serial (`navigator.serial.requestPort` shows the browser's chooser; Chrome, Edge, Opera
+on computers and the Electron app; Firefox and Safari have none: the page says so and the simulated board still works;
+the site's Permissions-Policy leaves `serial` at its default, self). **Text** mode decodes lines (keeps the last 10,000)
+and plots the Serial Plotter format (`parsePlotLine`: named "a:1,b:2" or plain "1 2 3", up to 6 series, last 300
+points); **Firmata** mode speaks StandardFirmata 2.x (`src/lib/lab/firmata.ts`: `encode`, a `Parser` that takes bytes
+in any pieces, sysex capability / analog-mapping / firmware / string replies), asks the board its pins and reports all
+three digital ports; analog reporting starts when a pin is set to analog. `SimBoard` is a byte-level simulated Uno
+running Firmata (pin 7 wired to pin 8, a button on pin 2, made-up sensors on A0–A5, A5 follows pin 9's PWM), and the text
+simulation prints `temp:…,light:…,knob:…,led:…` 20 times a second and answers `LED ON` / `LED OFF`.
+**Scripts** (`serial-lab.ts`): the engine can't hold a port (only the page can, and the engine runs a script straight
+through on its worker), so the window keeps the engine told (`bridgeToEngine` in `LabApp`, a `{ serial }` message:
+the device's state and new lines, between runs) and a script's writes go out through a new optional `Host.serial` →
+`{ serialOut }` → `applySerialOut`. So `readline` returns lines that arrived before the run (empty when none), pin reads
+return the last report; writes happen as the script runs. MATLAB's serialport and arduino objects are plain structs
+here. Not built: two devices at once, binary protocols beyond Firmata (I2C, SPI, Servo libraries' extras), USB (WebUSB is
+off by the site's policy), Bluetooth, an Arduino compiler/uploader (upload sketches with the Arduino IDE).
+
+## M475 (23 Nov): Hyperion, the Internet of Things (channels, write keys, live dashboards)
+
+Signals → **IoT** (`IotBench.tsx`). Database update **0260** (`iot_channels`, `iot_entries`; 0259 was already M445's on
+main). Server: `src/server/iot.ts`, the platform API module `src/server/modules/iot.ts` (registered in `app.ts`), so the
+routes are `/api/core/iot/…`: `GET/POST channels`, `PATCH/DELETE channels/:id`, `POST channels/:id/key`,
+`GET channels/:id/entries?after=&limit=` (owner only, `own()` checks `userId`), and the public `POST`/`GET
+write/:key` (listed in `route-gates.test.ts`'s PUBLIC_MODULE: the key is the password, as Trace's carrier key). The write
+key (20 characters, about 100 bits) is returned once; only its SHA-256 (`keyHash`, unique) and its first 4 characters are
+kept. Fields are numbers through `num()` (±1e15), field1…field8 (or f1…f8); one reading a second claimed with a
+conditional `updateMany` (no transactions in D1); every 200th insert trims the channel to its newest 20,000. Each reading
+`publish`es a refresh of `/iot/channels/<id>*` to the owner's tabs (the window also refreshes every 20 s when live
+updates are off). Sample answers in `src/lib/sample/iot.ts`; erased with the account (`account-deletion.ts`). The
+simulated device posts from the browser to the same public address every 2 s (making a new key if none is in memory).
+Not built: public (shared) channels, alerts on a threshold, reading a channel from a script (the engine runs scripts
+without waiting on the network: Open in Code saves the readings as a CSV in Hyperion's files), MQTT (browsers can't
+open raw TCP; HTTPS only).
+
+## M476 (23 Nov): Hyperion, unit tests and checks for scripts
+
+`src/lib/lab/verify.ts` (`differs`: why two values differ, down into cells and struct fields, with 'AbsTol' / 'RelTol';
+`sections`: a script's set-up and %% sections) and `verify-lab.ts`: `runScriptTests` (each section after the set-up in a
+fresh child `Lab` sharing the host and the script's functions; a section holding only function definitions isn't a test),
+`runFunctionTests` (local functions named test…, with setupOnce / setup / teardown / teardownOnce, each given a test case
+struct with TestName and IsTestCase), `runtests` (a file in Hyperion's files, or the test functions; prints the report,
+returns a table). `assertX` throws `AssertionFailed` (stops the test); `verifyX` adds to the running test's list and goes
+on (outside a test both stop the code); both take an optional test case first (MATLAB's verifyEqual(tc, …) and our
+assertEqual(…)). The window: a **Test** button beside Time it (`run(code, 'test')` → the worker's run with `test: name`
+→ `runScriptTests`); every report also goes to `testReports.onReport` → `{ tested }` → `TestResults.tsx`, shown in the
+figure's place (like Sweep). Browser check: `scripts/checks/hyperion-tests-ui.mjs`. MATLAB's matlab.unittest classes
+(class-based tests, TestData, parameterised tests, assume…, fixtures beyond the four functions) aren't here.
+
+## M477 (23 Nov): Hyperion, parallel computing (parfor, parfeval on Web Workers)
+
+`src/lib/lab/parallel-lab.ts`. The engine runs a script synchronously on its worker, and a thread can block on another
+only on a cross-origin-isolated site (this one isn't: no COEP; don't add it, it would break embeds), so parallel work
+**pauses** the run: `Flow` (now exported) has a new kind `'pause'`; `Pause` carries `wait()` and whether to re-run the
+statement. `runResumable(lab, src)` (used by `lab.worker.ts` for plain runs; Watch, Time it, Test and the command
+window's other paths stay synchronous, so parfor runs in order there) executes the top-level statements one at a time
+(`Lab.execTop`) and on a pause awaits, then goes on. **parfor** (parser: `parfor` keyword, `{ s: 'for', par: true }`,
+`parfor (i = …, M)` reads and ignores M; interp: `parHook.parfor` at depth 0) works only for top-level statements
+(`topLevel` set): `classify` sorts the body's assignments (indexed → merged element by element against the value before
+the loop by `mergeSliced`, so new arrays and cells grow to the largest size; `x = x + …`, `-`, `*`, `.*`, `&`, `|`,
+`[x, …]` / `[x; …]` → reductions started at their identity in each worker and combined in order; other names →
+temporaries, dropped). Iterations are split into one chunk per worker (`par.worker.ts`: a whole engine with the
+toolboxes, no files and no figures). **parfeval** posts the call at once; a future is its number (MATLAB's Future
+objects aren't in the engine, so `F(k) = parfeval(…)` makes a numeric array); `fetchOutputs` / `fetchNext` / `wait` on an
+unfinished one pauses with `rerun`, waits for every outstanding future, then runs that top-level statement again (so
+fetches belong in their own loop; side effects before the fetch in that statement repeat once). With no pool (tests, the
+Learn and health workers, 2 cores or fewer) parfeval runs the call at once and parfor in order. The pool
+(`WorkerPool` in `lab.worker.ts`) starts on first use and stays; Stop ends it with the engine. Browser check:
+`scripts/checks/hyperion-parallel-ui.mjs`. Not built: spmd, distributed arrays, parfor's sliced inputs (the whole
+workspace is sent), backgroundPool, afterEach / afterAll.
+
+## M478 (23 Nov): Hyperion, GPU computing (gpuArray and gather on WebGPU)
+
+`src/lib/lab/gpu.ts` (WebGPU: `initGpu` asks for an adapter once, from `lab.worker.ts` at start; WGSL compute shaders for
+the tiled matrix product, element-wise ops with scalar broadcasting, unary maths, column sums and transpose; column-major
+f32 buffers; `readBack` copies to a MAP_READ buffer and awaits `mapAsync`; with no device every op runs on the CPU in
+double precision, and a matrix made before the device was ready moves to it on first use, `onDevice`) and `gpu-lab.ts`.
+A gpuArray is a `Struct` with `gpu: true` (fields Size, Where, ID; `kind` says gpuArray, `sizeOf` its size, `show` a
+one-line summary): the engine's `binop` asks `opHooks.binop` first when either side is one, and `exp`, `sqrt`, `abs`,
+`sin`, `cos`, `tanh`, `log`, `sum`, `transpose`, `ctranspose`, `numel` are wrapped. **gather** throws
+`pauseFor(readBack)` (M477's pause, re-running the statement), so every operation is **memoised** by (op, operand ids,
+scalar values): the re-run gets the same handles and finds the numbers back. Buffers are freed when no handle refers to
+them (`FinalizationRegistry` with a count per id); a matrix uploaded as an operand keeps its buffer (a `shortcut:`
+comment). Unary minus, indexing and anything else need gather first (a clear error says so). WebGPU is in Chrome and
+Edge (desktop), not yet in Firefox or Safari by default: there gpuArray is still correct, just not faster. Browser
+check: `scripts/checks/hyperion-gpu-ui.mjs` (launches Chromium with its software WebGPU adapter, so it runs anywhere).
+
+## M479 (23 Nov): Hyperion, discrete-event simulation (Simulate → Queues and queuesim)
+
+Built both as a Simulate bench and a toolbox: a process is easiest to describe by clicking stations together and
+watching it run, and experiments (many seeds, a sweep of servers) are scripts. The engine `src/lib/sim/des.ts`:
+next-event time advance with a binary heap (ties in scheduling order), a seeded generator (mulberry32), distributions
+(exponential, constant, uniform, normal truncated at 0, Erlang), stations with c servers, an optional queue capacity
+(turned away when full) and FIFO queues, routing by a probability matrix (the rest leave; a straight line by default),
+a warm-up left out of the statistics, time-weighted queue length and utilisation, waits, throughput, work in progress, a
+timeline of up to ~600 snapshots and the first 60 entities' journeys; `mmc` is Erlang C. The bench
+`src/components/sim/QueuesBench.tsx` (a new kind in `SimulateApp`) reruns on every change on the page's thread (capped
+at 50,000 arrivals: milliseconds), plays the timeline with requestAnimationFrame only while playing. The language
+(`des-lab.ts`): `queuesim(arrivals, {{name, servers, service, capacity?}…}, T, 'Seed', 'Warmup', 'Route')` and
+`mmcqueue(λ, μ, c)`; MATLAB's SimEvents block diagrams aren't here. Browser check: `scripts/checks/hyperion-queues-ui.mjs`.
+Not built: priorities, other queue orders (LIFO, shortest job), resources shared between stations, schedules (staff by
+hour), batching.
+
+## M480 (23 Nov): Hyperion, C code generation and fixed point
+
+`src/lib/lab/codegen.ts` (`generate(fns, entry, argTypes)`): walks a function's syntax tree with the types the example
+inputs fix (class and r×c; every variable keeps one size: growing arrays, ranges in indexes, cells, text, structs,
+function handles, recursion and changed array inputs are refused with the function's name and the reason). Scalars are
+C locals; arrays fixed-size, column-major (`x[(i-1) + (j-1)*r]`); element-wise array expressions become one loop;
+a matrix product, a transpose or a matrix literal inside one is made first into a temporary (`tN`); reductions of
+vectors (sum, prod, mean, min, max) are hoisted before the statement. Whole-number classes compute in double and go
+through `sat_<class>()` (rounding halves away from zero, clamping, NaN → 0: MATLAB's rules). `fprintf` becomes printf
+(%d → %.0f). Outputs: one scalar → the return value; otherwise out-parameters (scalars by pointer: the body is written
+on a local name and the uses rewritten to `(*name)`). Other functions of the script become `static` functions,
+specialised per set of input types. `codegen-lab.ts`: `codegen('name', {examples})` writes `name.c` / `name.h` to
+Hyperion's files (MATLAB Coder's `codegen name -args {…}` command form isn't read). `codegen.test.ts` compiles the C with
+the machine's `cc -std=c99 -Wall -Werror` and compares with the engine (skipped where there is no compiler).
+**Fixed point**: `fixed.ts` (round to nearest with halves up, saturate, best-precision fraction length, MATLAB's
+full-precision word growth for sums and products, bits and hex by BigInt) and `fi` in `codegen-lab.ts`: a `Struct` with
+`fi: true` (Value, Signed, WordLength, FractionLength; `kind` embedded.fi, its own display and `sizeOf`); arithmetic
+through `opHooks.binop`, now a chain (gpu-lab and codegen-lab each pass on what isn't theirs). Not built: fixed-point C
+(generate on intN types from `storedInteger` instead), fimath settings (other rounding and overflow modes), HDL / VHDL.
+
+## M482 (23 Nov): Hyperion toolbox, robot arms
+
+The owner's list, group 6 (machines and vehicles), first item. `src/lib/lab/robot.ts` (pure, no imports): arms as
+standard DH tables (`Link`: a, alpha, d, theta, 'R' or 'P', mass, centre of mass in the link's own frame, principal
+inertias, limits), `frames` / `fkine` (4 × 4 row-major), `jacobian` (6 × n, [ω; v] in the base frame, as MATLAB's
+geometricJacobian), `ikine` (damped least squares, Levenberg–Marquardt with an adaptive λ, joints clamped to their
+limits, up to 6 random restarts; weights orientation first), `rne` (recursive Newton–Euler worked entirely in the base
+frame: forward pass for ω, α and each link's origin and centre accelerations, gravity as a base acceleration of −g;
+backward pass for forces and moments about each joint's origin), `massMatrix` (columns from unit accelerations),
+`gravityTorque`, `velocityProduct`, `forwardDynamics` (M \ (τ − bias)), `manipulability`, the rotations (eul2rotm
+'ZYX' / 'XYZ' / 'ZYZ', axis–angle) and four ready arms (`ARMS`: twolink with 1 kg at each tip in a vertical plane,
+gravity −y; planar3; sixaxis with the PUMA 560's published DH table on a 0.67 m pedestal and rounded masses; scara with
+a sliding quill). Language in `robot-lab.ts`: an arm is a plain struct (Type 'robot', DH, Joints 'RRP', Mass, CoM,
+Inertia, Limits, Gravity) where MATLAB has a rigidBodyTree object; `loadrobot`, `robotDH`, `getTransform`,
+`geometricJacobian`, `robotIK` (our name: MATLAB's inverseKinematics is a System object), `massMatrix`, `gravityTorque`,
+`velocityProduct`, `inverseDynamics`, `forwardDynamics`, `manipulability`, `show`, `robotWorkspace`, and
+eul2rotm / rotm2eul / eul2tform / tform2eul / trvec2tform / tform2trvec / rotm2tform / tform2rotm / axang2rotm /
+rotm2axang / rotx / roty / rotz (degrees). Tests in `robot.test.ts` against the textbook two-link arm (M, g and the
+Coriolis terms by hand), the Jacobian by finite differences, forward dynamics undoing inverse dynamics, IK round trips.
+
+How the branch is laid out (for M483–M491 and for merging): the shared files only gained one line each. Help for the
+whole group is in `help-machines.ts` (appended to help.ts's TEXT), the example scripts in `examples-machines.ts`
+(spread at the end of LabApp's EXAMPLES; `machines.test.ts` runs every one), the registrations in `machines-lab.ts`
+(imported by lab.worker.ts and help.test.ts). The window is Simulate → **Machines** (`MachinesBench.tsx`, one tab per
+toolbox, sessionStorage `uv-sim-machine`); its first tab **Robot arm** (`ArmBench.tsx`, `ArmView.tsx`: three.js set up
+as Sim3DView, z up, planar arms turned so gravity points down): sliders per joint, "Reach a point" (robotIK, the arm
+glides there in 0.5 s, at once with Reduce Motion), tool pose, manipulability and the gravity torques as `<Fill>` bars.
+Browser check `scripts/checks/hyperion-machines-ui.mjs` (axe at 1280, light and dark). Example robot_arm.m. Not built:
+trees with branches (only serial chains), collision checking, joint friction and motor inertia, modified DH, URDF files.
+
+## M483 (23 Nov): Hyperion toolbox, robot motion
+
+`src/lib/lab/robot-motion.ts` (pure): `polyTraj` (cubic or quintic pieces per segment from positions, speeds and for
+quintic accelerations at each waypoint; 0 by default as MATLAB's), `trapTraj` (each segment speeds up, cruises, slows
+and stops; with a peak speed and an acceleration the slowest axis sets the segment's time, a triangle when it can't
+reach the peak; without them 1 s with thirds), maps (`Grid`: rows from the top, metres from the bottom-left corner,
+`res` cells a metre; `sampleMap` 'warehouse', 'rooms' (doors 7 cells wide and furniture different in each room, so
+M484's localisation can tell them apart), 'maze' (seeded recursive backtracker, corridors 1 m)), `inflate` (a disc),
+`lineFree` (quarter-cell steps), `astar` (binary heap, octile heuristic, no cutting blocked corners; returns the cells
+looked at), `rrt` (seeded; RRT stops at the first way, RRT* chooses the cheapest parent within 2 steps and rewires,
+pushing the saving down to descendants), `shortcut`, `driveStep` (exact arcs), `purePursuit` (the circle–segment
+intersection ahead of the closest point; turns on the spot when the target is behind), `followPath`. Language in
+`robot-motion-lab.ts`: `cubicpolytraj`, `quinticpolytraj`, `trapveltraj` (MATLAB's names and shapes), and our own
+names where MATLAB uses objects: a map is a logical matrix with its resolution (binaryOccupancyMap), `robotMap`,
+`inflateMap`, `astarGrid` (plannerAStarGrid), `rrtPlan` (plannerRRT / plannerRRTStar), `shortenPath`, `diffdriveStep`
+(differentialDriveKinematics), `purePursuit` (controllerPurePursuit), `followPath`; `show(map, res)` draws a map (the
+arm's `show` is kept for structs). Window: Machines → **Path planner** (`PlannerBench.tsx`, planning in
+`machines.worker.ts`): draw walls or erase with the mouse (a 2 × 2 brush), place the start and goal, A* / RRT / RRT*,
+the robot's radius (the light band), the cells looked at or the tree, the cut path, Drive it (pure pursuit, 4 × real
+time). Tests in `robot-motion.test.ts`. Example robot_motion.m. Not built: Hybrid A* and car-like (Reeds–Shepp) paths,
+3D maps, dynamic obstacles, model-predictive control, trajectory time-scaling under torque limits.
+
+## M484 (23 Nov): Hyperion toolbox, robot sensing
+
+`src/lib/lab/robot-sense.ts` (pure): `castRay` (Amanatides–Woo through the cells; the map's edge counts as a wall),
+`scan`, `beams`, `distanceField` (two-pass 3–4 chamfer), `simulateRun` (pure pursuit with a 0.5 m look-ahead; odometry
+from each step's turn–drive–turn with a few % slip and a steady heading drift; a step that would enter a wall is held),
+`mcl` (odometry motion model; a likelihood field with a 10 % uniform part; the scan's log-likelihood **tempered** to
+count as about 2 beams, otherwise one scan makes the filter certain at once, often wrongly; resampling only when the
+effective number falls under N/2 (low variance); augmented MCL: a short and a long average of the fit, and when the
+short falls below the long, up to 25 % of the particles thrown anywhere free), occupancy mapping (`addScan` log-odds
++0.85 / −0.4, capped at ±6; the beam's end marked half a cell past it, so a wall met from either side marks the same
+cell: without that the map was a cell off for beams going left or down and SLAM drifted), `buildMap`, `slam` (each
+pose: the odometry's step from the last corrected pose, then a coarse-to-fine search in x, y and heading scoring the
+scan against a distance field of the map so far (−0.5 for an end in space already seen empty) minus a pull towards the
+odometry; no matching when under 60 % of the scan lands on mapped walls, i.e. in a new room). Traps found by the tests:
+a simulated robot clipping a door frame teleports and ruins SLAM (plan with a 0.7 m margin), and a turn on the spot
+gives a meaningless "direction of travel" (under 1 cm of travel it is all second turn). Results on the rooms map (8 %
+slip): the filter finds the robot from nowhere in 6 of 6 seeds with 5,000 particles; SLAM ends ~0.25 m off where
+odometry is 2–3 m off. Language in `robot-sense-lab.ts` (our names; MATLAB uses objects): `lidarSim`, `robotRun`
+(struct True, Odometry, Scans, Angles, MaxRange), `mclLocalize`, `slamGrid`, `buildMap` (MATLAB's name; ranges as rows
+not lidarScan objects). Window: Machines → **Sensing** (`SensingBench.tsx`, the run worked out in machines.worker.ts,
+then replayed 3 × real time): particles closing in on the known map, and the SLAM map growing with its path against
+the odometry's. Tests in `robot-sense.test.ts`. Example robot_sensing.m. Not built: loop closure and pose-graph
+optimisation, landmark (EKF) SLAM, 3D lidar, KLD-adaptive particle counts, the warehouse map's symmetry is left as a
+lesson (the filter can settle in the wrong aisle).
+
+## M485 (23 Nov): Hyperion toolbox, mechatronics
+
+`src/lib/lab/motor.ts` (pure): a DC motor (`DC_DEFAULT` a small 24 V motor; `dcSpeedTf` K / ((Ls + R)(Js + b) + K²);
+`dcSimulate` RK4 with steps a twentieth of the faster time constant, voltage and load as functions of time), the Clarke
+and Park transforms (amplitude-invariant), a PMSM in the rotor's dq frame (`PMSM_DEFAULT` a 1 kW-class servo: 4 pole
+pairs, 0.3 N·m/A, 48 V, 20 A), `focTune` (current PIs Kp = Lω, Ki = Rω cancelling the winding's pole; speed PI
+Kp = Jω/Kt, Ki = Kpω/4), `focSimulate` (a 50 kHz controller: speed PI with the torque current held within Imax and its
+integrator stopped while held, current PIs with the cross terms fed forward, the voltage kept inside the hexagon's
+circle Vdc/√3; semi-implicit Euler; id* = 0, no field weakening), `gearReflect`, `encoder` (4 counts a line, speed by the
+M method over a window). Language in `motor-lab.ts` (motors are structs where MATLAB uses Simscape and Motor Control
+Blockset blocks): `dcmotor`, `dcmotorTF` ('speed', 'position', 'current': a transfer function from the control toolbox,
+M414, so `step`, `bode`, `pid`, `feedback` work on it), `dcmotorSim`, `pmsm`, `focTune`, `focSim` (a table; numbers or
+@(t) handles sampled every 0.1 ms), `clarke`, `invclarke`, `park`, `invpark`, `gearReflect`, `encoderSim`. The DC
+motor's parameters are the same as Circuits' motor (M432: r, l, k, j, fric) so a motor drawn there can be studied here.
+Tests in `motor.test.ts` (steady speed and current by hand, dq of balanced phases, FOC holding speed with
+i_q = T/Kt). Example motors.m. No window of its own: the control toolbox and Circuits (M432) already give the
+point-and-click side. Not built: field weakening and MTPA for salient motors, six-step (trapezoidal) BLDC commutation,
+space-vector PWM inside the motor model, stepper motors, motor heating.
+
+## M482b (23 Nov): Hyperion robot arms, arms that branch and collision checking
+
+The owner, 23 Nov ("please do all the left out work"), M482's left-outs. `robot.ts`: a `Link` may name its `parent`
+(an earlier link, −1 the base; the one before when absent), `parentOf`, `frames` builds each frame on its parent's,
+`chain(arm, tip)`; `fkine`, `jacobian`, `manipulability` and `ikine` (option `tip`) take any link as the tool (joints off
+the tool's chain give zero columns); `rne` runs on trees (each link starts from its parent's ω, α and acceleration; the
+backward pass adds every child's force and moment, all acting at the parent's far end). Collisions: each link a capsule
+round the segment from its parent's end to its own; `segDist` (Ericson's closest points), `boxDist`, a segment–box
+distance (33 samples then a ternary search near the best), `checkCollision` (pairs that share a joint point are skipped,
+so zero-length wrist links don't always "touch"; distances between surfaces). New arm `dualarm` (a turning waist, two
+three-joint arms: links 2–4 and 5–7). Language: `robotDH(..., 'Parent', [0 1 1])`, robot structs carry `Parent` (1-based,
+0 the base), `geometricJacobian(r, q, tool)`, `robotIK(..., 'EndEffector', k)`, `show` draws every branch and each tip's
+axes, `checkCollision(r, q, 'Spheres', …, 'Boxes', …, 'Radius', …)` → [hit, gap, selfPairs, obstacleHits]. Window:
+the arm is chosen from a list (five no longer fit as segments), Two arms with Left / Right hand, "A ball in the way"
+(12 cm, movable), the touching links red and a line naming them. Tests in `robot.test.ts` (each tip's Jacobian by finite
+differences and zero on the other arm, forward/inverse dynamics on the tree, mirrored gravity torques, capsule
+distances). Not built: meshes as collision shapes (capsules only), planning around obstacles in joint space, URDF files.
+
+## M483b (23 Nov): Hyperion car-style route planning (Dubins paths and Hybrid A*)
+
+M483's left-out. `src/lib/lab/car-path.ts` (pure): `dubins` (the six words in the normalised α, β, d form; every
+candidate is driven out with `drive` and kept only if it really ends at the goal, which guards the formulas' branches;
+the shortest wins), `arc` (exact arcs), `clearance` (robot-sense's chamfer distance field with a blocked border, so the
+map's edge is a wall), `carFree` (three discs of half the width + 10 cm along the car from the rear axle, each a look-up
+in the clearance), `hybridAstar` (poses keyed on a ≥ 0.5 m grid and 36 headings; moves of 1 m on five curvatures
+(±1/R, ±0.5/R, 0) forwards and, by default, backwards, reversing costing 2× and each change of direction 3 m; guided
+by the distance to the goal round the walls (Dijkstra on the map with the car's half-width kept clear), plus the Dubins
+length when it may not reverse; a Dubins shot tried every 8 nodes and near the goal; ends within a key cell and a
+heading bin), `parkingMap` (30 × 20 m, two rows of ten 2.6 m bays, bay 7 at the bottom empty). Speed trap: checking the
+car cell by cell made 30 s searches; the clearance look-up and the coarser key grid brought parking to ~2–3 s (in the
+worker). Language in `car-path-lab.ts`: `dubinsPath` (MATLAB has dubinsConnection), `hybridAstar` (plannerHybridAStar;
+rows [x y heading direction], −1 reversing; outlines every 3 m when drawn), `robotMap('parking')`. Window: Path planner
+→ Car (Hybrid A*), Map is a list now with Car park, start and goal headings, the car's outlines, forwards violet and
+backwards orange, Drive it moves the car. The canvas takes the map's shape. Tests in `car-path.test.ts`. Not built:
+Reeds–Shepp curves as the final shot (it uses forward-only Dubins), trailers, smoothing the route afterwards.
+
+## M484b (24 Nov): Hyperion SLAM that closes loops (pose-graph optimisation)
+
+M484's left-out. `src/lib/lab/pose-graph.ts` (pure): `relative`, `compose`, `graphError`, `optimise` (Gauss–Newton on
+SE(2) edges; H kept as one 3 × 3 block per node and per edge, solved by preconditioned conjugate gradients with the
+inverted diagonal blocks; the first pose held by a stiff prior; a 40-pose square with a biased heading goes from 2.7 m
+to 0.13 m off). `robot-sense.ts` `slam`: every step adds an edge (the move as scan matching saw it, info 2500/2500/
+40000); option `recent` matches each scan to a map of the last n scans only (lidar odometry: drifts slowly) instead
+of the whole map; loop closure (on with `recent` unless told otherwise): every 5 steps, at least 15 after the last
+closure, the nearest earlier pose ≥ 60 steps back within 2.5 m; the scan matched (`matchWide`: ±1 m and ±0.3 rad on a
+map of that place's 17 scans, refined on a map twice as fine) and accepted only if ≥ 85 % of its beams land on walls,
+5 % more than where the robot thought it was, and the correction is no bigger than the drift could be (long walls let
+a scan slide along them); the edge (info 150/150/2500: its real error is ~5–10 cm, 1°), the graph re-solved and the
+map redrawn from the new poses. Traps found: (1) `purePursuit` searched the whole path for the closest point, so on a
+path that crosses itself it jumped back and circled for 600 s; it now looks only a little way on from the segment
+reached (always at least the next one) and heads for the next corner when off the path; `followPath` stops only on the
+last segment. (2) With the whole-map front end SLAM barely drifts here, so a closure has little to fix and its own 5–10
+cm error can even add a little: closures pay off with `recent` (4 rooms runs: mean error 0.28 → 0.17 m in the test; in
+runs that hardly drift it can be slightly worse, as expected). Language: `slamGrid(run, 'Recent', 10, 'LoopClosure',
+true)` → a 4th output of closures [from to]; `optimizePoseGraph(poses, edges)` (MATLAB's takes a poseGraph object;
+ours rows [i j dx dy dθ (wx wy wθ)]). Window: Sensing → "Drive round a loop and close it" (the robot drives a loop and
+on past the start; closures as green dashes; "Loops closed: n of m"). Tests in `pose-graph.test.ts`. Not built: robust
+kernels or switchable constraints for wrong closures, place recognition by scan descriptors (it searches near the
+estimate only), 3D pose graphs.
+
+## M485b (24 Nov): Hyperion motors, field weakening, MTPA and stepper motors
+
+M485's left-outs. `motor.ts`: `mtpaId` (the d current for the most torque per amp, (ψ − √(ψ² + 8ΔL²I²)) / 4ΔL, 0 when
+Ld = Lq), `fieldWeakeningId` (the i_d that keeps the steady voltage inside the limit at this speed:
+((√((V/ω)² − (Lq i_q)²) − ψ) / Ld), `focSimulate(..., g, { fieldWeakening, mtpa })` (both on by default: i_d* the lower
+of MTPA and field weakening with 8 % voltage margin, held above −0.95 Imax; i_q's limit shrinks to √(Imax² − i_d²); the
+default servo goes from 138 rad/s (base speed) to 160 rad/s with i_d ≈ −19 A); stepper motors: `STEPPER_DEFAULT` (a
+two-phase hybrid, 50 teeth = 200 full steps, 1.5 Ω, 3 mH, 0.3 N·m/A, a little detent torque, 1.5 A from 24 V),
+`stepperSimulate` (10 µs steps; microstepping by the electrical angle in whole microsteps; each phase's current set by an
+ideal chopper (gain held to ± the supply) against its back-EMF; torque −Km iA sin(Nθ) + Km iB cos(Nθ) − detent; a load
+that only resists motion; `lost` = the gap between commanded and real angle in steps), `pullOut` (the biggest load kept
+without losing steps at each rate after a 0.2 s ramp, by halving). The pull-out curve isn't perfectly smooth (mid-band
+resonance shows as a dip, as in real steppers). Language in `motor-lab.ts`: `focSim(..., 'FieldWeakening', 0/1,
+'MTPA', 0/1)`, `stepper`, `stepperSim` (a table and the steps lost), `stepperPullout`. Tests in `motor.test.ts`.
+Example motors.m. Not built: six-step (trapezoidal) BLDC commutation with Hall sensors, space-vector PWM inside the
+motor model, motor heating, closed-loop steppers.
+## M482c (24 Nov): Hyperion robot arms, cylinders and convex meshes as obstacles
+
+M482b's left-out ("meshes as collision shapes"). `robot.ts`: `convexDist(P, Q)` (GJK on the Minkowski difference of two
+point sets' hulls; the nearest point of each simplex by Ericson's triangle routine, a tetrahedron holding the origin
+means overlap; 64 steps at most; a link is the hull of its segment's two ends), `cylinderPoints` (an upright cylinder
+[x y z1 z2 r] as the 24-sided prism round it, so never smaller), `checkCollision(..., { cylinders, meshes })`: obstacles
+numbered spheres, boxes, cylinders, meshes. A capsule whose core is inside a hull counts as −radius (the depth isn't
+measured: EPA is not built). Language: `checkCollision(r, q, 'Cylinders', [x y z1 z2 r], 'Meshes', {N×3 corners, …})`
+(one matrix or a cell array). Tests in `robot.test.ts` (point–cube distances, GJK against `segDist`, a segment through
+a tetrahedron, cylinder clearance). Example robot_arm.m. Not built: the overlap's depth (EPA), concave meshes split
+into convex parts, STL files, shapes in the Robot arm window (it keeps its ball).
+
+## M483c (24 Nov): Hyperion car routes, Reeds–Shepp curves
+
+M483b's left-out. `car-path.ts`: `reedsShepp(a, b, R)` (Reeds and Shepp's 1990 formulas in OMPL's arrangement: the
+CSC, CCC, CCCC, CCSC and CCSCC families, each base solver run as is, time-flipped (lengths negated), reflected (L ↔ R)
+and both; CCC and CCSC also on the "backwards" pose; candidates sorted by length and the first that `driveRS` really
+brings to b wins, as `dubins` guards its branches), `driveRS` (poses and a reversing flag per pose). `hybridAstar` takes
+a Reeds–Shepp shot when reversing is allowed (Dubins when not), the tail's reversing flags kept: the car-park search
+fell from ~2–3 s to ~0.25 s. Language: `reedsSheppPath(start, goal, R)` → [poses with a ±1 column, length, word,
+signed lengths] or drawn (MATLAB: reedsSheppConnection); `drawCarPath` can skip the outlines. Tests in
+`car-path.test.ts` (300 random pairs: never longer than Dubins, at least the straight distance, the same both ways;
+straight back is a 3 m reverse; a sideways shuffle reverses). Over 2,000 random pairs every one joined. Not built:
+trailers, smoothing the route afterwards, the guide (heuristic) using Reeds–Shepp lengths (each costs a verify drive).
+
+## M484c (24 Nov): Hyperion SLAM guarded against a wrong loop match
+
+M484b's left-out. `pose-graph.ts`: an `Edge` may be `robust`; `dcsWeights` (dynamic covariance scaling: weight
+min(1, 2Φ/(Φ + χ²))²); `optimise(..., { phi })` re-weighs robust edges each step and **anneals** Φ from 10⁴ times its
+value down to it (halving each step, 40 steps when any edge is robust): plain DCS trusts the starting poses, so with a
+2.7 m drift it dismissed the good closure as well (found by the test). `robot-sense.ts` `slam`: closures are robust
+(`CLOSURE_PHI` = 10: a right closure's χ² is ~2), and one left under 0.1 of its weight is dropped (`rejected`).
+Language: `optimizePoseGraph(P, E, 'Robust', true, 'Phi', 1)` (edges between non-neighbours are the robust ones) → [Q, w]
+with each edge's final weight; `slamGrid`'s 5th output the rejected closures. Tests in `pose-graph.test.ts` (a square
+with a true and a 3 m-wrong closure: plain 0.8 m+ off, robust under 0.3 m, the wrong edge's weight under 0.05; the SLAM
+loop test still passes). Example robot_sensing.m. Not built: switchable constraints, place recognition by scan
+descriptors, 3D pose graphs.
+
+## M485c (24 Nov): Hyperion six-step brushless motors and motor heating
+
+M485's left-outs. `motor.ts`: `Bldc` (per-phase r, l, ke, pole pairs, j, b, vdc; `BLDC_DEFAULT` a small 24 V motor,
+0.06 N·m/A, ~400 rad/s free), `trapezoid` (flat ±1 for 120°), `hallSector` (with a sensor offset), `SIX_STEP` (each
+sector's high and low phase, worked out from the back-EMFs at the sector's middle: A+B−, A+C−, B+C−, B+A−, C+A−, C+B−),
+`bldcSimulate` (2 µs steps; the high phase at the PWM average, the low at 0 V; the floating phase carries on through its
+diode, clamped to the opposite rail, with the star point at the terminals' average, until its current crosses zero; a
+fixed duty or a speed PI on the duty with the integrator held at 0 and 1). Motor heating: `Thermal` (winding and housing,
+K/W and J/K, class F 155 °C), `heatSimulate` (copper's 0.393 %/K, a loss factor `k`, extra losses), `heatSteady` (the
+steady winding temperature solved with the resistance's rise, runaway as Infinity, and the continuous current rating).
+Language in `motor-lab.ts`: `bldc` (struct with TorqueConstant, NoLoadSpeed, StallCurrent), `bldcSim` ('Duty' or
+'Speed', 'Load', 'HallOffset' in electrical degrees; table with Sector 1–6), `motorHeat(R, I, T, …)` → table and info
+(Continuous, SteadyWinding, OverLimitAt). Tests in `motor.test.ts` (the commutation table, free speed under Vdc/2Ke,
+torque meets the load, currents sum to 0, misplaced Halls ripple more, the speed loop; the steady temperature by hand,
+the rating gives the limit, the simulation settles there). Example motors.m. Not built: sensorless (back-EMF zero
+crossing) starting, real PWM switching inside the motor model, iron losses from speed, a window of its own.
+
+## M482d and M485d (24 Nov): overlap depth (EPA) and real inverter switching
+
+The owner, 24 Nov, asked for the two left-outs of M482c and M485c. **M482d**, `robot.ts`: `convexDepth(P, Q)` (EPA on
+the Minkowski difference: the start is the four of eight support points that span the most volume, faces turned
+outwards from its centre, the horizon found by edges seen once; 0 for flat shapes); `checkCollision` reports a capsule
+inside a box (its 8 corners), a cylinder or a mesh as −(depth + radius). **M485d**, `motor.ts`: `focSimulate(..., { pwm })`
+runs the controller once a switching period and the motor in 100 steps a period with the legs really switched
+(min–max injection, the same as space-vector PWM; a triangle carrier; phase voltages about the star point through
+clarke/park); `bldcSimulate(..., { pwm })` switches the high side against a sawtooth carrier, its current freewheeling
+through the other leg's diode while off. Language: `focSim(..., 'PWM', f)` (1–50 kHz, up to 1 s), `bldcSim(..., 'PWM',
+f)`. Tests: depths of a point and a segment in a cube, a link 0.1 m into a box; FOC with 10 kHz switching holds speed with
+the same mean i_q and more ripple; six-step with 20 kHz PWM ends within 5 % of the averaged speed. Not built: dead
+time, switching losses, the overlap's direction.
+
+## M486 (24 Nov): Hyperion toolbox, vehicle dynamics
+
+Group 6's vehicles, first item. `src/lib/lab/vehicle.ts` (pure): `Vehicle` (mass, yaw inertia, lf, lr, CG height, each
+axle's cornering stiffness, μ, drag, area, rolling, power, driven axle, 'linear' or 'magic' tyres, steering limit;
+`CAR_DEFAULT` a 1.5 t rear-driven saloon, K ≈ 0.0034 rad/(m/s²) ≈ 1.9°/g), `magic` (Pacejka; C = 1.3, E = −0.6, B set so
+the slope at zero is the cornering stiffness, which scales with the axle's load), `sideForce` (the friction ellipse:
+the peak shrinks to √((μFz)² − Fx²)), the single-track model in the body frame (forward and side speed, yaw rate, where
+it is) by RK4 at 1 ms with the axle loads shifted by last step's acceleration, driving limited by power and the driven
+axle's grip, braking shared by load and capped at grip (ideal ABS), drag, rolling, slope; `vehicleSim` (a speed held by
+a firm P controller on the force, or a force; `spun` when the body slip passes 15°), `handling` (K, yaw gain
+u / (L + K u²), characteristic or critical speed), `steerForCircle`, `accelRun` (0–100 and top speed by bisection),
+`brakingDistance`, the tests `stepSteer`, `rampSteer`, `sineWithDwell` (FMVSS 126 / UN R140 shape). **Trap:** the sine
+with dwell must be run coasting (`force: () => 0`): holding the speed with a rear-driven car spends the rear tyres' grip
+and spins even the understeering car. Lateral load transfer and roll are not modelled (one tyre per axle). Language in
+`vehicle-lab.ts` (MATLAB has Vehicle Dynamics Blockset blocks): `vehicle` (struct, with UndersteerGradient,
+CharacteristicSpeed, CriticalSpeed), `vehicleSim(c, steer, T, …)` (steer a number, @(t) or 'step' / 'ramp' /
+'sinedwell' with 'Amplitude'; 'Speed' or 'Force', 'Grade', 'InitialSpeed') → table and info (Spun, PeakSideSlip,
+PeakLateralAccel), `vehicleHandling`, `magicFormula`, `accelRun`, `brakingDistance`. Window: Machines → **Vehicle**
+(`VehicleBench.tsx`: Sine / Step / Ramp / Circle, Dry / Wet / Snow, Understeer / Neutral / Oversteer by the rear
+stiffness, speed and steering sliders; worked out at once on the page, replayed in real time, at its end with Reduce
+Motion; the path, the car red once spun, steering and yaw rate below; facts). The browser check
+`hyperion-machines-ui.mjs` has the vehicle tab and now waits for a tab's button to load before clicking it. Tests in
+`vehicle.test.ts`. Example vehicles.m. Not built: four wheels with load transfer, roll, suspension, gears, stability
+control itself (M487 drives the car).
+
+## M487 (24 Nov): Hyperion toolbox, automated driving
+
+`src/lib/lab/driving.ts` (pure, on M486's car): `Road` (centreline every 0.5 m with heading and curvature, a lane
+width), `roadFrom(curvature(s), length)` (exact arcs), `ROADS` (straight; curve 150 m; scurve 100 m left then right;
+country, 1/120 m⁻¹ sine bends; lanechange, the ISO 3888 shape 3.5 m across and back, built from y(x)); curvature eased in
+by a raised cosine so steering needn't jump. `locate` (nearest point searched near the last, then **interpolated** to the
+next point: snapping to the half-metre points made the steering chatter on bends, seen in the browser), signed offset
+(left positive), heading error, curvature. Keepers every 10 ms: `stanley` (front axle, k 1.5), `purePursuitSteer`
+(look-ahead max(5, 0.5 v) from the rear axle), `lqrSteer` with `lqrGains` (Rajamani's lateral error model, Euler
+discretised at 10 ms, discrete Riccati iterated; **trap:** it must not stop on the first pass, where K is still 0
+because Q has zeros at the rates) plus curvature feed-forward (L·k + K_us·u²·k). `laneKeep` (speed held, max error, left
+the lane when the car's side passes the edge, time to line crossing). `followSim` (10 ms: ACC gap d0 + th·v with
+0.23·gap error + 0.74·speed difference, the lower of gap and speed control, −3.5…+2 m/s², power and grip; AEB full
+brakes under 1.6 s to collision; 'acc: false' is a driver who doesn't react). Roads that were too tight for the car's
+grip at 25 m/s (60 m country bends, 80 m S-bend) made every keeper fail: keep radius ≳ u²/(0.6 g). Language in
+`driving-lab.ts`: `roadPath` (a name or @(s) curvature, length, width), `laneKeep`, `lqrLateral`, `accFollow`. Window:
+Machines → **Driving** (`DrivingBench.tsx`: Lane keeping with road, keeper, speed, starting offset; Following with the car
+ahead slowing or stopping hard, ACC and AEB switches, time gap; from above, replayed). Tests in `driving.test.ts`.
+Example driving.m. Not built: model-predictive control, traffic with several cars, sensors (radar, camera) and their
+noise, lane changes decided by the car itself.
+
+## M488 (24 Nov): Hyperion toolbox, electric vehicles
+
+`src/lib/lab/ev.ts` (pure): `Ev` (car, one gear and its efficiency, motor limits and losses kc·T² + ki·|ω| + kw·|ω|³ + k0,
+pack series × parallel cells with Ah and Ω, regen share and power cap, accessories; `EV_DEFAULT` 1,800 kg, ~78 kWh
+(96s46p of 4.8 Ah), 150 kW through 9:1), `ocv` (a typical NMC curve 3.0–4.2 V), `packKwh` (3.7 V nominal), `torqueLimit`,
+`motorLoss`, `efficiency`, `packCurrent` (P = (Voc − IR)I), made-up profiles `CYCLES` (city, suburban, motorway,
+mixed: **not** the official WLTP/NEDC tables, said so in help and the window), `evSim` (backward-facing, 1 s steps:
+1.05 rotating-mass factor, gear efficiency each way, regen fading below ~7 km/h and capped at 60 kW, the friction
+brakes the rest; Wh/km at the battery terminals, range on 95 % of the pack), `evCharge` (CC at the charger's power
+solved with the pack's resistance, at most 2C, then CV at 4.2 V a cell until C/20). First numbers were too rosy (88
+Wh/km in town, regen over half the drive energy): the gearbox, larger standing and iron losses and the regen cap and
+fade brought it to ~113 town, ~167 motorway, ~150 mixed, ~490 km range; 10→80 % at 150 kW in ~22 min. Language in
+`ev-lab.ts`: `evModel`, `driveCycle` (or your own [s, km/h]), `evSim`, `evMotorMap` (contourf), `evCharge`. Window:
+Machines → **Electric car** (`EvBench.tsx`: drive, battery size (cells in parallel, its mass with it), people and
+luggage, heating, regen, charger; the drive's speed and battery power, the efficiency map with working points, the
+charge curve; static). The browser check finds a tab's control as a button or a checkbox. Tests in `ev.test.ts`.
+Example electric_car.m. Not built: battery temperature and ageing in the car (M433 has ageing), two motors, gears,
+heat pumps, the official cycles' tables.
+
+## M489 (24 Nov): Hyperion toolbox, flight dynamics
+
+`src/lib/lab/flight.ts`: `isa` (ISA to 32 km: troposphere lapse, isothermal to 20 km, +1 K/km above; matches the
+tables to 4 figures), `Aircraft` (mass, wing, chord, Iyy, lift CL0/CLα/CLδe/CLq with a stall angle past which CL falls
+3/rad to at most 45 % less, drag polar CD0 + k·CL² plus separated drag past the stall, Cm0/Cmα/Cmq/Cmδe, power with
+Gagg–Ferrar lapse, propeller efficiency, static thrust cap; `PLANE_DEFAULT` a light four-seater with textbook-typical
+coefficients, not a maker's data, said so in help and the window), the longitudinal equations in body axes (u, w, q, θ,
+x, h) by RK4 at 10 ms, `trim` (moment zero and lift balance solved for α and δe, thrust from the X balance, iterated;
+`ok` false below the stall, past the throttle or the elevator), `modes` (central-difference Jacobian of [u w q θ],
+`eigvals` from complex.ts; pairs sorted by size: short period ~1.6 s ζ 0.57, phugoid ~27 s ζ 0.1 at 50 m/s, close to
+√2·π·V/g), `flightSim` (elevator and throttle added to the trim, or an autopilot: height → climb rate → pitch → elevator,
+speed by a PI on throttle; `stalled` when α passes the stall), `performance` (stall speed, best glide speed and L/D max,
+best climb by sweeping speed, top speed where climb reaches 0, service ceiling at 0.5 m/s), `turn`. Language in
+`flight-lab.ts` (MATLAB keeps aeroplanes in Aerospace Blockset): `atmosisa` (MATLAB's name and outputs), `aircraft`
+(refuses Cmα ≥ 0), `aircraftTrim`, `aircraftModes` (a table), `aircraftSim`, `aircraftPerformance`, `levelTurn`.
+Window: Machines → **Aeroplane** (`FlightBench.tsx`: Nudge / Power / Climb / Stall, speed and height; a side view
+with heights stretched so metres show, the plane drawn at its real pitch, red while stalled; speed and angle of attack
+below; replayed 4× real time). Tests in `flight.test.ts`. Example flight.m. Not built: the lateral motion (roll, yaw,
+Dutch roll, spiral), wind and gusts, flaps, landing gear and the take-off run.
+
+## M490 (24 Nov): Hyperion toolbox, space flight
+
+`src/lib/lab/space.ts` (pure, km and s; μ, Re, J2, ωE as WGS-84 / EGM): `toState` / `toElements` (classical elements ↔
+ECI; circular or equatorial orbits put the undefined angles at 0), `keplerE` (Newton), `period`, `nuAfter`, `gravity`
+(two-body plus J2), `propagate` (RK4; **the step is shrunk so the last lands exactly at T**: with a whole number of
+steps past T a closed orbit missed by ~4 km in the test; ground track with Greenwich turning at ωE from `gst0`;
+`crashed` below Re), `nodalDrift` and `sunSyncInclination` (98.19° at 700 km), `hohmann` (LEO 300 km → GEO 3.89 km/s),
+`biElliptic`, `planeChange`, `lambert` (universal variables, bisection on z; Vallado's example to 4 figures, and flying
+its answer arrives within 1 km), `rocket` (staged Tsiolkovsky). Language in `space-lab.ts` **in MATLAB's units**
+(metres, m/s, degrees), so `keplerian2ijk(a, ecc, incl, RAAN, argp, nu)` and `ijk2keplerian` (MATLAB's names and order)
+behave as people expect: also `orbitPropagate` (table or drawn: plot3 with a mesh Earth, the ground track with breaks
+at ±180°), `hohmannTransfer`, `biEllipticTransfer`, `lambertSolve` ('LongWay'), `rocketDeltaV`, `sunSyncInclination`,
+`nodalPrecession`. Window: Machines → **Orbit** (`OrbitBench.tsx`: Station / Sun-sync / Molniya / GEO, turns, J2;
+from space, 15° off the north pole turned 50°, the far half faint and the dot faint behind the Earth; the ground track
+over `/geo/earth-2048.jpg` (the landing globe's flat map); facts: height, period, Hohmann cost from 300 km, node drift).
+Tests in `space.test.ts`. Example orbits.m. Not built: the Moon and Sun's pull, drag, eclipses, launch trajectories,
+porkchop plots, the Earth's real rotation angle by date.
+
+## M491 (24 Nov): Hyperion toolbox, railways (group 6 complete)
+
+`src/lib/lab/rail.ts` (pure): `Train` (t, rotating-mass factor, length, Davis A + Bv + Cv², max tractive effort and
+power, top speed, service braking, efficiency, regen share; `TRAINS` metro 200 t / intercity 400 t / freight 2,000 t),
+`curveRes` (Röckl, ‰), `Route` (sections: length, gradient ‰, curve radius, limit; stations; dwell; `ROUTES` metro,
+intercity 100 km, mountain 25 ‰), `railRun` on a 5 m grid: a lower limit holds over the train's length (its tail),
+backward braking curves from every stop and the next point's ceiling (the slope helping), forward full power to the
+lowest of cap and brake; energy-saving style `coast` (0–0.3): cruise at (1 − coast)·limit and coast into each brake,
+the coast curve seeded only where the brake curve is above (1 − 2·coast)·cruise, and **only once the train has
+cruised since the last stop** (first try coasted from standstill: the metro run took twice as long); **stall
+detection** (the freight train can't climb 25 ‰: 490 kN of slope against 400 kN of pull; first try counted the stall
+as zero time) gives `stalled` (m) and time Infinity; energy at the line (traction / η, braking × η × regen). Results:
+metro +4 % time for −23 % energy at coast 0.1; intercity +14 % for −28 %. `headway` (fixed blocks: the larger of n blocks
+and braking + one block, plus overlap and the train, over speed plus reaction; moving block: braking + margin).
+Language in `rail-lab.ts` (our names; MATLAB has no railway toolbox; speeds in km/h and gradients in ‰ as railways
+write them): `trainModel`, `railRoute` (a name or sections and stations), `trainRun` (table or drawn: speed with limits,
+the line's height), `railHeadway`. Window: Machines → **Railway** (`RailBench.tsx`: line, train, driving style; speed
+along the line coloured by power / cruise / coast / brake over the dashed limits, height with curves marked; facts with
+the change against the fastest run; static). Tests in `rail.test.ts`. Example railways.m. Not built: several trains
+on one line, timetables and their conflicts, the power supply (substations, voltage drop), adhesion and wheel slip.
+
+Group 6 is done: M482–M491 and their left-outs (b, c, d). The Machines window has ten tabs (Robot arm, Path planner,
+Sensing, Vehicle, Driving, Electric car, Aeroplane, Orbit, Railway); `hyperion-machines-ui.mjs` checks every one.
+
+
+## M486b (24 Nov): Hyperion vehicles, body roll and load transfer
+
+The owner pasted M491's left-outs (24 Nov), read as "build these". `vehicle.ts`: an optional `roll` (`Roll`: track,
+roll stiffness front and rear, damping, roll inertia, roll-axis height, tyre load sensitivity; `ROLL_DEFAULT`, about
+2.4°/g on the saloon). With it each axle is two tyres (`sideForce(…, share 0.5)`), loads `Fz/2 ± ΔF`, ΔF through the
+springs and damper as the body leans (`kf·φ + c·p` split by stiffness) plus straight through the roll centres
+(`m·lr/L·ay·hr`), divided by the track; φ and p are two more states (`VState.phi`, `p`, optional so `driving.ts` is
+untouched) with `Ix·p' = m·ay·(h − hr) + m·g·(h − hr)·sin φ − (kf + kr)·φ − c·p`. **Load sensitivity is what makes it
+matter:** with grip and stiffness linear in load the two tyres add up to one and roll changes nothing; `sens` makes grip
+and stiffness per newton fall as load rises (clamped at 0.3 of nominal). Without `roll`, `sens` is 0 and every old
+result is unchanged. `vehicleSim` gives `roll[]` and `lift` (an inner tyre's load reached 0; it's held at 0, the car
+doesn't roll over). `rollGradient` (steady lean per m/s², the run matches it to 3 figures) and the rigid lift limit
+t/2h. Checked: stiff front 0.85 g and stays straight in the sine with dwell; stiff rear spins; a 1.1 m-high centre of
+mass lifts a wheel on a 25 m/s step. Language: `vehicle('Roll', true, 'Track', …, 'RollStiffFront', 'RollStiffRear',
+'RollDamping', 'RollInertia', 'RollCentre', 'LoadSensitivity')` (NaN in the struct when off; `RollGradient`),
+`vehicleSim`'s Roll column, `info.PeakRoll`, `info.WheelLift`, roll drawn with the side g. Window: Vehicle → Body roll
+(Off / Saloon / Tall van) and the front's share of roll stiffness. Example vehicles.m. Not built: suspension travel and
+geometry (camber, bump steer), pitch on braking, rollover itself.
+
+
+## M489b (24 Nov): Hyperion aeroplanes, rolling and yawing
+
+`flight.ts`: `Lateral` (Ixx, Izz, Ixz; CYβ, Clβ, Cnβ, Clp, Cnp, Clr, Cnr, Clδa, Cnδa, CYδr, Clδr, Cnδr; aileron and
+rudder travel; `LAT_DEFAULT` textbook-typical for a light high-wing aeroplane, said so in help and the window), the
+small-disturbance sideways equations in stability axes (β, p, r, φ) with gravity's `g/V·sin φ` kept whole so steep
+banks work, the moments through `[Ixx −Ixz; −Ixz Izz]`. `lateralModes` (finite-difference A, `eigvals`: the complex pair
+is the Dutch roll, the fastest real root the roll, the slowest the spiral; at 50 m/s: 2.4 s ζ 0.21, roll 100 ms, spiral
+half in 49 s). `lateralSim` (RK4 at 10 ms): ailerons and rudder (+ aileron rolls right, + rudder yaws left), or an
+autopilot (bank error and roll rate on the ailerons; heading → bank, capped at `maxBank`; −1.5·β on the rudder keeps the
+turn coordinated), and a yaw damper on the yaw rate **washed out over 2 s** (without it the damper fights every turn);
+heading by `r / cos φ` (a level turn's r = ψ̇ cos φ), ground track along heading minus sideslip. Checked: a held 30° bank
+turns at g·tan φ / V to 2 figures, a 90° heading change ends within 0.01 rad, the aileron's roll rate reaches 0.6–1 of
+−(2V/b)·Clδa·δa/Clp (dihedral and the bank take the rest), the damper cuts the rudder kick's leftover sideslip by more
+than half. **Not coupled to the up-and-down motion:** height and speed stay at the trim's (the extra lift and drag of a
+turn aren't modelled). Language (`flight-lab.ts`): `aircraftLateralModes(ac, V, h, 'Lateral', struct(...))`,
+`aircraftLateralSim` (bank and heading in degrees as pilots say them, the controls in radians as `aircraftSim`; a table
+or drawn from above with bank and sideslip). Window: Aeroplane → a Motion switch (Up and down / Turning) at the top of
+the settings: `FlightBench` now wraps `PitchBench` (the old view) and `TurnBench.tsx` (Turn, Rudder kick, Aileron only;
+yaw damper; speed and most bank; from above, the wings drawn shorter as it banks; bank and sideslip below; replayed 2×).
+`hyperion-machines-ui.mjs` takes a third entry per tab, a choice pressed first (`roll`: Tall van, `turning`).
+Example flight.m. Not built: the full six-degree-of-freedom aeroplane, wind and gusts, engine-out yaw.
+
+
+## M490b (24 Nov): Hyperion orbits, the Sun's and Moon's pull
+
+`space.ts`: `julianDate` (Meeus, Gregorian; 1 Jan 2000 12:00 = 2451545), `gmst` (the Earth's rotation angle by date: a
+date given to `propagate` as `jd0` now also places the ground track at real longitudes, unless `gst0` is given),
+`sunPosition` (the Astronomical Almanac's short formula, ~0.01°), `moonPosition` (Montenbruck and Gill's
+low-precision series; Meeus' example 47.a to 0.1° and ~50 km), both rotated from the ecliptic by the obliquity of
+date; `thirdBody` (the pull on the satellite less the pull on the Earth: μ((s − r)/|s − r|³ − s/|s|³)). `propagate`
+takes `sun`, `moon` and `jd0`; their positions are found once at a step's start, middle and end (RK4 needs no more:
+they move ~0.5° an hour). Checked: a geostationary satellite from 1 Jan 2026 tips 0.08–0.18° in 60 days against the
+same run without them (~0.7°/yr; the textbook 0.75–0.95°/yr depends on where the Moon's node is). Language:
+`orbitPropagate(..., 'Sun', 1, 'Moon', 1, 'Epoch', [Y M D h m s] or a Julian date)`, now up to 400 days (the 2-million
+step limit still holds); `juliandate` (MATLAB's name, a vector or separate numbers), `sunPosition`, `moonPosition`
+(metres). Window: Orbit → "The Sun's and Moon's pull (from 1 Jan 2026)" (a fixed date, so a choice always gives the same
+run); with it the last fact is how fast they tip the orbit, from 30 days with and without them scaled to a year (~150
+ms in a LEO, step period/40). Example orbits.m. Not built: air drag, solar radiation pressure, eclipses, the Earth's
+higher gravity terms, precession and nutation (the frame is the equator of date, near enough for these).
+
+
+## M491b (24 Nov): Hyperion railways, several trains on one line
+
+`rail.ts`: `lineFor` (the line as a train sees it every 5 m, taken out of `railRun`, which now uses it), `railLine(route,
+trains, o)`: time steps of 0.5 s; trains in departure order on one track (no passing, so the train ahead is the one
+before in the list); each may run up to its **authority**, the nearer of the next station and the signals: fixed blocks
+(`blocks` every `block` m; up to the entrance of the last block the tail of the train ahead, less the overlap, has
+cleared) or moving block (the tail of the train ahead less `margin`); its speed is the lower of the limit held over its
+length, a service-braking curve to the authority, and what traction (`tractive · volt`, the volt share being M491c's)
+allows; it never brakes harder than service + 0.5 m/s² (a signal it can't stop for is passed only up to the authority).
+Stations: stop, dwell, go. `held` counts the time the signals' curve was the tighter one; `alone` is the same train on an
+empty line **by the same steps** (memoised per train; `railRun`'s 5 m grid differs ~2%, which showed early arrivals as
+negative delays). `power` per step: traction / η, braking × η × regen as negative (for M491c). Checked: 3 minutes apart
+no one waits; a minute apart with 400 m blocks the 4th metro loses >30 s, with moving block less than half that; moving
+block never closer than the margin; an intercity 5 minutes behind a freight train is held >20 minutes. Language
+`railLine(route, train or {trains}, departs, 'Signals', 'Block', 'Margin')` → a table (Delay, Held in minutes) and a cell
+of runs, or the train graph. Window: Railway → a Trains switch (One train / Several trains) wrapping `OneTrainBench`
+(the old view) and `LineBench.tsx` (metro or intercity, signals, 2–8 trains, minutes apart, block length, a slow freight
+train first; the train graph with blocks and stations; static). Browser check tab `line`. Example railways.m. Not built:
+timetables and their conflicts at junctions, two directions on single track with passing loops, the train ahead's own
+delays spreading (each train leaves on time).
+
+
+## M491c (24 Nov): Hyperion railways, the power supply
+
+`rail.ts`: `Supply` (nominal, no-load, lowest and highest voltage, a substation's resistance, the line's Ω/km there and
+back, substation positions), `SUPPLIES` (metro 750 V: 825 no-load, 500–950, 0.02 Ω, 0.03 Ω/km, every 2 km;
+intercity 3 kV: 3,400, 2,000–3,900, 0.08 Ω, 0.04 Ω/km, every 15 km), `spaced`. `solveSupply(sup, s, p)`: nodes
+(substations and trains) sorted by position, Kirchhoff at each, a tridiagonal solve (Thomas) iterated 40 times at most
+with half-step damping: a train's current is `P / max(V, vmin)` (**its current limit: without it, loads past what the
+line can carry have no answer and the voltage collapses to ~0**, seen with substations only at the ends);
+substations through diodes (off while the line is above their no-load voltage, never negative); a braking train's
+**chopper** as a stiff 1,000 S path to vmax when it would lift the line past it (first try scaled the braking power
+down by 0.9 per pass: with nobody to take it the voltage went to 3 MV). Results: volts at each train, each
+substation's power, line loss, the braking actually given. Checked by hand: 1 MW midway between two substations 2 km
+apart, V = 825 − 0.025·P/V (793.5 V). `supplyFor(sup, dt)` gives `railLine`'s `supply` callback (called each step
+with positions and last step's powers; returns each train's share of traction, V/vnom up to 1, 0 under vmin, which
+counts as tripped) and its log (lowest train voltage, substation kW, loss, kWh from substations, lost, braking reused
+and burnt). Checked: closer substations hold the voltage higher with less loss; alone, under 5% of a train's braking
+is reused, with five trains about 40%; substations only at a 5.2 km metro's ends trip trains and make them late.
+Language: `railLine(..., 'Supply', 'metro' | 'intercity' | struct, 'SubstationSpacing', m)` with a third output struct;
+drawn with the lowest voltage under the train graph. Window: Several trains → "The power supply (750 V / 3 kV DC)" and
+"Substations every"; the substations as amber ticks; a voltage chart with the trip line; facts become delay, lowest
+voltage, kWh from substations and lost, braking reused and burnt. Browser check tab `supply`. Example railways.m. Not
+built: AC (25 kV) lines with their reactance and booster transformers, rail-to-earth voltages, storage on the line.
+
+## M490c (24 Nov): Hyperion orbits, air drag
+
+The owner pasted M491c's left-outs (24 Nov), read as "build these" (all five, one commit each). `space.ts`: Vallado's
+exponential atmosphere (table 8-4, 0–1,000 km, average solar activity: the real density swings several times over the
+Sun's cycle, said in help) as `airDensity(h km)`; `dragAccel(r, v, bc)` with the air turning with the Earth (w = v − ω×r)
+and bc = Cd·A/m in m²/kg (units: ½ρ·bc·|w|·w with w in m/s, back in km/s², so the factor is 1000); `propagate`'s
+`drag` (a run with drag ends as crashed at 100 km, where it burns up); `decayTime(h, bc)`: the circular orbit's a
+shrinking by ρ·bc·√(μa) a second, stepped to 120 km. Checked: the numerical run's mean a falls at that rate within
+25% over two days at 400 km; 160 km falls within days; the station (bc 0.008) lasts ~390 days; 800 km decades.
+Language: `orbitPropagate(..., 'Drag', 0.01)`, `airDensity(h m)`, `orbitDecay(h m, bc)` (days). Window: Orbit → "Air
+drag (a small satellite, average Sun)", a fifth orbit **Skimming** (175 km, turns drag on), the fact "Air drag brings it
+down in" in place of "Round in", "burnt up" at the end. Example orbits.m. Not built: the Sun's cycle (F10.7) and
+NRLMSISE-00, a satellite's attitude changing its area, solar radiation pressure.
+
+## M491d (24 Nov): Hyperion railways, 25 kV AC lines
+
+`rail.ts`: `Supply.ac` (`xs` the transformer's reactance, `xline` Ω/km, the trains' power factor, the neutral
+section's length); `SUPPLIES.ac25` (rail return, 0.17 + j0.42 Ω/km), `ac25bt` (booster transformers, 0.21 + j0.6),
+`ac25at` (2 × 25 kV autotransformers, about a third: 0.06 + j0.15), all 27.5 kV no-load, 17.5–29 kV (EN 50163), feeder
+stations every 50 km with a 20 MVA, 10% transformer (0.3 + j3.1 Ω), pf 0.95. These impedances are typical round
+figures, said so in help. `solveSupply` sends AC to `solveAc`: **each substation feeds only its own stretch** out to
+the neutral sections midway to its neighbours (different phases, never paralleled), so each stretch is a radial tree:
+backward sweep (a span carries the currents of every train beyond it), forward sweep (V drops by Z·I span by span),
+`I = conj(S/V)` with S = P + jP·tanφ drawing and unity braking, the current capped at |S|/vmin as in DC, 60 damped
+passes. The grid takes all braking back (negative substation power); braking is cut by 0.9 a pass only past vmax.
+`supplyFor`: trains get no power inside a neutral section (`neutralAt`, logged as `neutral` seconds); **a train stopped
+in one would be stuck**, so after 30 s it's let through and counted in `stuck`. Checked: the resistive drop by hand
+(V = 27.5 kV − 1.7·P/V at 10 km), the far substation gives nothing, reactance more than doubles the drop, pf 0.8 lower
+still, AT above plain above BT, three intercity trains coast through the 50 km neutral section with nothing tripped or
+burnt. Language: `'Supply', 'ac25' | 'ac25bt' | 'ac25at'`, or a struct with Xs, Xline, PowerFactor or Neutral (then
+AC); `NeutralSeconds` in the supply struct. Window: Several trains → intercity → the power supply → 3 kV DC / 25 kV AC
+/ 2 × 25 kV, substations every 20–100 km, neutral sections as red bands on the train graph, kV in the facts, "Braking
+to the grid". Example railways.m. Not built: rail-to-earth voltages and interference, the grid's unbalance from
+single-phase loads, harmonics, storage on the line.
+
+## M491e (24 Nov): Hyperion railways, single track both ways and timetables
+
+`rail.ts`: `reversed(route)` (sections reversed, slopes turned over: what a train going back sees), `railSingle(route,
+trains {train, dir 1 | −1, depart, late?}, {tracks, pad, dt})`. Every station is a passing loop with `tracks` tracks;
+the sections between are single track, held as an **absolute block** (one train either way). A train leaves a station
+no earlier than its timetable, into an empty section, and only when the next station has a free track (taken as it
+leaves, so two trains never meet between stations); the earliest timetable asks first. Each train always stops at
+every station; motion is railLine's (the limit held over its length and a braking curve to the next stop) by 0.5 s
+steps, the last half metre snapped (the square-root brake curve never quite reaches a stop). **The timetable** is the
+train's run alone × (1 + pad) plus the dwells (`plan`, arrivals at each of its own stations); `conflicts` lists pairs
+planned in the same section at overlapping times (`meet` when they face each other). `waits` (where, how long, meet or
+follow), `actual`, `delay` against the plan. **Deadlock**: nothing moved and nobody waiting on the clock for 10
+minutes stops the run (`deadlock` the time; one track per station with trains facing each other does it). Checked:
+both leaving their ends at once clash and one waits; never two trains in a section; a clean meet timetabled at a
+station has no waits; the first train 2 minutes late makes the other wait (the delay spreads), 2½ minutes late moves
+the meet to an earlier station and the late train waits there. Language: `railSingle(route, train or {trains}, dirs,
+departs, 'Tracks', 'Pad', 'Late')` → the table (Delay, Waited, Meets), the clashes, the deadlock minute; drawn: the
+train graph with the timetable dotted. Window: Railway → **Single track** (the switch now One train / Several / Single
+track; `SingleBench.tsx`): metro or intercity, 1–4 trains each way, minutes apart, the return trains' offset, the first
+train late, recovery %, tracks per station; outbound violet, back amber, the timetable dotted, a red line at a lock-up.
+Example railways.m. Not built: passing loops between stations, trains that don't stop everywhere, junctions, a
+dispatcher that reorders meets to cut the total delay (it's first come, first served).
+
+## M486c (24 Nov): Hyperion vehicles, suspension geometry and rollover
+
+`vehicle.ts`: `Roll` gains optional `camber` [f, r] (how far the wheels lean with the body against the road per radian
+of roll), `camberStiff` (camber stiffness as a share of cornering stiffness) and `rollSteer` [f, r] (radians an axle
+steers per radian of roll, **positive = understeer**: the front's sign is flipped inside). Both enter as slip angles:
+`α_f += −sf·φ − cs·camber_f·φ`, `α_r += sr·φ − cs·camber_r·φ` (a wheel leaning out of the turn pushes outwards; going
+through the slip angle keeps the grip limit and the Magic Formula). Without them every result is M486b's exactly
+(tested). **Rollover**: a tip angle θ about the outer wheels' contact line, outside the RK4 (semi-implicit Euler at
+the 1 ms step): `I_o·θ'' = m·|ay|·H − m·g·D` with H = (t/2)·sinθ + h·cosθ, D = (t/2)·cosθ − h·sinθ − (h − hr)·sin(lean)
+(the body's own lean moves the centre outwards), I_o = Ix + m((t/2)² + h²); it starts when that moment turns positive,
+lands back at θ ≤ 0, and **rolls over** once D < 0 while still tipping (the run stops there: `rolled`, the time;
+`tip[]`). While tipped the outer tyres carry the whole load (`forces(…, tip)`). `fishhook(amp)` (NHTSA: 0.8 rad/s at
+the wheels, 0.25 s hold, over to −amp, 3 s). Checked: roll understeer and front camber cut the yaw rate, rear camber
+and roll oversteer raise it; a van (1.2 m on a 1.6 m track, 0.67 g) rolls in the fishhook at 22 m/s, the saloon doesn't
+tip at all, the van on grip 0.55 slides instead. Language: `vehicle(..., 'CamberRoll', [f r], 'CamberStiffness',
+'RollSteer', [f r])`, `vehicleSim(car, 'fishhook', …)` with `info.RolledOver`, `RolledAt`, `PeakTip` and a Tip column.
+Window: Vehicle → a fifth test **Hook**, Body roll → Suspension (Plain / Struts / Wishbones), the Tall van now 1.2 m on
+1.6 m, the lean (green) on the chart, "Up on two wheels" / "Rolled over at …". Example vehicles.m. Not built: pitch and
+dive, the car tumbling after it rolls, kerb trips (only tyre forces tip it), anti-dive and anti-squat.
+
+## M489c (24 Nov): Hyperion aeroplanes, all six directions at once, and wind
+
+`flight.ts`: `flight6(ac, T, o)`, a rigid body in body axes (u, v, w; p, q, r), the attitude as a **quaternion**
+(renormalised each step; `eulerOf`, `quatOf` ZYX), position north, east, height; RK4 at 5 ms. Euler's equations with
+Ixz (Stevens & Lewis); gravity rotated into the body. Aerodynamics from the velocity **relative to the air**: lift, drag
+and Cm as `flightSim` (same `liftCoef`, `dragCoef`, `thrust`), side force, Cl and Cn from `Lateral` (stability-axis
+derivatives used in body axes: fine at a light aeroplane's small α, said so). It starts in trim relative to the air
+(the ground velocity is the trim's plus the steady wind). `Wind`: steady [N E D] (the air's velocity), a vertical
+'1 − cos' gust (flown through at the trim airspeed, `up` + up so the wind's down part is −up), Dryden-like turbulence
+(each direction a first-order filter, time constant L/V, σ, seeded mulberry32 + Box–Muller: repeatable). Autopilots as
+the two separate runs, the height hold's pitch target raised by the turn's extra lift (α_trim·(1/cos φ − 1)). Checked:
+level trim holds 60 s within 2 m; an elevator doublet matches `flightSim` (h to 1 m, V to 0.1 m/s); an aileron pulse's
+bank within 15% of `lateralSim`; a held 90° turn ends within 3° and 30 m, pulls > 1.1 g; hands off it sinks > 20 m; a
+10 m/s crosswind carries it 600 m east in a minute with the airspeed unchanged; a headwind's ground speed; a 1 − cos
+gust's Δn between 0.1 and the sharp-edged formula; turbulence rms near σ and the same seed gives the same flight.
+Language: `aircraftSim6DOF(ac, T, …)` (headings in degrees, controls in radians; 'Wind', 'Gust', 'Turbulence',
+'TurbulenceScale', 'Seed') → a table and info (Stalled, Crashed, Min/MaxHeight, Max/MinLoadFactor), drawn in 3D.
+Window: Aeroplane → a third Motion **All six, wind** (`SixBench.tsx`): Turn (Autopilot holds / Hands off), Crosswind
+(the nose stays north, the track drifts; wind arrows), Gust, Rough (light, moderate, severe); from above, with bank,
+height change and extra g below. Vehicle's Test row now wraps (`className="flex-wrap"`, five choices didn't fit 22 rem).
+Browser check tabs `hook`, `drag`, `single`, `six` (and `Several` for the renamed switch). Example flight.m. Not built:
+engine-out yaw, the propeller's torque and slipstream, wind shear with height, landing gear on the ground.
+
+## M490d (24 Nov): Hyperion orbits, the Sun's cycle in the air's thickness
+
+The owner pasted M489c's left-outs (24 Nov), then: "Build them all and push it". `space.ts`: the air's density now takes the Sun's
+10.7 cm radio flux, `airDensity(h, F)` (150 = the old table exactly). Jacchia's exospheric temperature
+T∞ ≈ 1.15·(379 + 3.24·F); above 150 km each layer's scale height is stretched by √(T∞(F)/T∞(150)) (a fit to MSIS's swing,
+not NRLMSISE-00: at 400 km 0.29× at F 70, 2.2× at F 230; the swing grows with height); below 150 km nothing changes.
+**Trap:** the table's layer bases aren't exactly continuous, so the stretched bases are the table's own moved by what the
+stretched layers below change (`baseDensities`, cached per flux), never chained from the bottom (that moved 100 km's
+density). `solarFlux(year)`: an 11-year sin² cycle from 70 to 180 anchored on Dec 2019. `decayTime(h, bc, flux)`: a fixed
+flux, or a year above 1900 to follow the cycle as it falls (the station at 400 km: ~1,130 days at a quiet Sun, ~390
+average, ~200 active; launched 2025 ~300, 2030 ~1,010). `propagate`'s `flux`. Language: `airDensity(h, F107)`,
+`orbitDecay(h, bc, F107 or year)`, `solarFlux(year)`, `orbitPropagate(..., 'SolarFlux', F)`. Window: Orbit → Air drag →
+The Sun (Quiet / Average / Active) with a line each. Browser check tab `sunact`. Example orbits.m. Not built: the
+day–night bulge, magnetic storms (Ap), a satellite's attitude changing its area, solar radiation pressure.
+
+## M491f (24 Nov): Hyperion railways, passing loops, non-stop trains, junctions and a dispatcher
+
+The owner, 24 Nov: "Build them all and push it" (M489c's left-outs). `rail.ts`: `railSingle` now runs on **places**
+(`nodes`: the stations plus `loops`, positions in metres); a section is the track between two neighbouring places, still
+one train at a time. Each train has a path (forward node indices from `from` to `to`, station indices, default the line's
+ends) and `stops` (its ends and stations not in `skip`); loops and skipped stations are run through. **How a train runs
+through:** its holding ("reservation") is a run of sections; within braking distance + 200 m of a place it needn't stop
+at it asks for the section beyond (`take`: free, room at the far place unless that's a terminal or its own end, and the
+dispatcher's yes); refused, it brakes to stop there and waits like at a station (no dwell; it leaves no earlier than its
+planned passing time). A section is freed when the front passes its far end (**shortcut:** the train's length is left
+out). The timetable (`plan`, one time per place on its path) is its run alone through the non-stops, padded, with dwells
+only at stops. Branch trains (`from` mid-line) appear at their junction when due and a track is free; trains ending
+mid-line (`to`) leave the line there. **The dispatcher** (`dispatch`): 'fcfs' is M491e's rule exactly (old tests and
+results unchanged); with ranks (`singleRun(…, rank)`), a train about to take a section yields when a better-ranked train
+facing it reaches that section (its plan there + its lateness so far) before this one would be through (`yields`, waits
+`for: 'dispatch'`); 'priority' ranks by `priority` then departure, 'best' tries every swap of two ranks (≤ 4 rounds) and
+keeps what cuts Σ priority × lateness (a lock-up costs 1e9). Both fall back to first come when that is no worse ('best')
+or when holding back locked the line up ('priority'); `firstCome` is first come's weighted delay. Checked: intercity, the
+return train 20 min behind is ~17 min late with no loops and ~3 with loops at 21 and 71 km; by priority it's on time and
+the weighted delay drops; an express through four metro stations is >150 s sooner; branch trains start and end at
+station 3. Language: `railSingle(…, 'Loops', m, 'Skip', {…}, 'From', n, 'To', n, 'Priority', w, 'Dispatch', 'fcfs' |
+'priority' | 'best')`, the table's Held and Priority columns, loops dotted on the graph. Window: Single track → Passing
+loops midway between stations, the second train out an express, a branch train joining at the middle station, Who goes
+first (First come / Priority / Best order) with the weighted delay against first come. Browser check tab `loops`.
+Example railways.m. Not built: trains overtaking each other at loops (same direction), a junction's own crossing moves
+(the branch is off the model), the train's length in freeing sections.
+
+## M491g (24 Nov): Hyperion railways, storage on the line and interference from AC lines
+
+`rail.ts`. **Storage** (DC only): `Supply.storage` (`Storage`: positions, power W, energy J, vcharge, vsupport, eta;
+`storageFor(sup, at, W, kWh)`: v0 + 2% of nominal to charge, v0 − 4% to give back, 95% each way). In `solveSupply` each
+unit is a node in the tridiagonal solve: a conductance GS = 20 S to vcharge (charging, not full) or to vsupport (giving,
+not empty), or a fixed current at its power past that; its `mode` is picked from the last pass's voltage like the diodes
+and the chopper. **Traps:** first tried as a damped current outside the solve: it oscillated (stored energy in the
+millions of kWh); the power cap divides by max(V, ½·nominal), never V itself; with storage the solve runs up to 200
+passes (40 was too few for the chopper and the storage to settle: `given` came out 0 for a braking train). `soc` per
+unit (`supplyFor`, starts half full) clamps 0–1; the log gains `soc[]`, `storedKwh`, `returnedKwh`. Checked: by hand a
+unit midway holds a 3 MW train's voltage 50+ V higher and soaks up 1 MW of a 2 MW brake; full it takes nothing, empty it
+gives nothing; on the 5.2 km metro fed only at its ends, two trains take >10% less from the substations and reuse more
+than twice the braking. **Interference** (AC): Carson's mutual impedance `mutualZ({sep, rho})` (0.049 + j0.216 Ω/km at
+30 m, 100 Ω·m), screening `ac.screen` (rail return 0.5, BT 0.15, AT 0.1: typical figures, said so), the EMF in a cable
+along each side of each feeding section = |Zm·k·Σ I·distance from its substation| (`solveAc` now gives `emf`, the
+largest; `supplyFor(sup, dt, cable)` logs `emf[]`, `maxEmf`); `faultEmf` (a short at each section's far end: V0 /
+|Zs + Zline·len|); limits `EMF_LIMIT` 60 V, `EMF_FAULT_LIMIT` 430 V (ITU-T). Checked: the fault by hand; two intercity
+trains induce ~1 kV with rail return at 30 m, BT and AT far less, 300 m less. Language: `railLine(…, 'Storage', m or
+struct(At, Power, Energy, VCharge, VSupport))` → StoredKWh, ReturnedKWh, Charge; `railLine(…, 'Cable', [sep rho])` →
+MaxInducedVolts, FaultInducedVolts, InducedVolts; `inducedVoltage(I, len, sep, rho, k)`. Window: Several trains → the
+power supply → (DC) "Storage between substations" (green ticks; braking reused · burnt · stored), (AC) "A telephone
+cable beside it, at" 10–300 m (running · fault volts, flagged over 60 / 430). Browser check tab `storage`. Example
+railways.m. Not built: rail-to-earth (touch) voltages and stray current, the grid's unbalance and harmonics, storage
+on AC lines, a storage unit's own losses and ageing.
+
+## M489d (24 Nov): Hyperion aeroplanes, engines failing, the propeller and wind shear
+
+`flight.ts` (`flight6`). **Engines** (`Engines`: one on the nose or two `arm` m out, each half the thrust; `fail` at a
+time, which; `feather`): a dead engine's thrust goes, its windmilling propeller drags 0.1·q·πR² unless feathered; on a
+twin the yaw is arm·(T_L − T_R) + arm·(D_R − D_L), towards the dead engine. A single engine stopping just glides (~7–8 to
+one at its trim speed, windmilling). `vmc(ac, lat, arm, h, feather)`: where full rudder balances one engine at full
+power (wings level), by bisection (~31 m/s on the default airframe made a twin, stall 25). **The propeller** (`Prop`:
+dir 1 = clockwise from behind): torque roll −dir·shaft/ω, slipstream on the fin −dir·0.015·T·4.5 m, P-factor
+−dir·T·0.25 m·α; **rigged** by default: the same at the trimmed power is subtracted (aeroplanes are built to cancel it at
+cruise), so only more power or less speed swings it. **The heading autopilot**, when engines or a propeller are given,
+adds an integral of sideslip on the rudder (−0.3·∫β; "dead foot, dead engine"); **trap:** without the yaw damper the
+heading autopilot oscillates and diverges at 35 m/s even with no propeller (an old weakness, unseen at 50 m/s): use
+`yawDamper` with these (the window does). **Wind shear** (`Wind.shear`: the steady wind is what blows at 10 m, ×
+(h/10)^exponent to 500 m) and a **microburst** (`Wind.microburst`: outflow growing with distance to the radius then
+dying, fading over 500 m of height; a bell-shaped downdraught to nothing at the ground; a simple shape, said so, not
+Oseguera–Bowles), both through `windField(W, n, e, h)` taken at the aeroplane each step. Checked: a twin's right engine
+out yaws and rolls right (left mirrors it exactly); held within 5° on left rudder, banked left, sinking, less
+feathered; Vmc's balance by hand; the propeller swings left at climb power (mirror for −1), nothing at trim power; the
+autopilot holds it within 3°; shear's 16^(1/7); the microburst's directions; flying through it: faster then slower,
+>100 m lost hands off, far less with the autopilot. Language: `aircraftSim6DOF(…, 'Engines', 2, 'EngineArm',
+'EngineFail', [t which], 'Feather', 'Propeller', ±1, 'Shear', exp, 'Microburst', [n e R out down])` → info.Vmc,
+MinAirspeed, MaxAirspeed; `aircraftVmc(ac, 'EngineArm', 'Height', 'Feather')`. Window: Aeroplane → All six, wind → three
+more flights (the row wraps): Engine out (autopilot or hands off, Feather), Propeller (on or off), Microburst (its ring
+drawn; the outflow slider; airspeed change in the chart). Example flight.m. Not built: a propeller's gyroscopic
+precession, an engine's own lag, turbulence that changes with height, landing gear on the ground.
+
+## M486d (24 Nov): Hyperion vehicles, tumbling after a rollover and kerb trips
+
+`vehicle.ts`: after `vehicleSim` rolls over it hands on to `tumble` (the car's cross-section: wheels and roof edges,
+`shape`; penalty contact 4e6 N/m with damping, friction per corner, `GROUNDS` tarmac/grass/soil) until it rests:
+`run.tumble` (quarters, rests wheels/side/roof, slid, time). `kerbTrip(car, vlat, kerb, ground)`: angular momentum about
+the kerb's edge kept, a pivot phase about the edge (falls back or passes over), then `tumble` with the pavement kerb high
+past the edge; `tripSpeed` by energy (saloon ~30 km/h sideways over 15 cm, van ~12). Soft soil trips it with no kerb.
+Language: vehicleSim info Rolls, RestsOn, TumbleDistance, TumbleTime; `vehicleTrip(car, v, 'Kerb', 'Ground')`. Window:
+Vehicle → Kerb (`KerbView.tsx`, seen from behind). Not built: the roof crushing, yaw while tumbling. **Full `pnpm check`
+not run** (stopped at the owner's request; types, lint of changed files, the lab tests and lean passed).
+
+## M491h (24 Nov): Hyperion railways, overtaking and the train's length
+
+The owner, 24 Nov: "build them all and push" (M486d's left-outs). `railSingle`'s dispatcher (`yields`) now also holds a
+train for a better-ranked one **behind it going the same way** that would reach the section before it is through: it
+waits in the loop or station and is overtaken (a train standing at the same place counts as behind). Sections are freed
+once the **tail** has left them (`tails`: [section, head position + length]) or when the train stops in the next place
+(a loop or platform holds the whole train). First come is unchanged except for the length. Checked: a freight train
+leaving 20 min ahead of an intercity (priority 3) makes it ~21 min late first come; by priority the freight waits at
+42 km and the intercity is on time and arrives first; a 400 m metro train delays its follower more than a 0 m one.
+Window: Single track → "The first train out is a slow freight train". Not built: loops too short for a long train.
+
+## M491i (24 Nov): Hyperion railways, rail-to-earth voltage and storage on AC lines
+
+`rail.ts`: `railVolts` (the rails' voltage to earth at each train on an AC line: the ground-returning share, the same
+screening factor, of each train's current, through rails as a leaky line, Z0 = √(|z|·r_e) with z 0.15 + j0.55 Ω/km and
+r_e 5 Ω·km, I·Z0/2 decaying as e^(−d·√(|z|/r_e)); typical figures; `RAIL_LIMIT` 60 V, EN 50122-1), returned by
+`solveAc` as `rail` and logged as `maxRail` (~200 V with rail return, far less with BT and AT). **Storage on AC**
+(`acWithStorage`): the units are extra loads at their places (at unity power factor; `solveAc`'s `trainsOnly` keeps
+their Q at 0), each giving below 92% of nominal and refilling (up to 30% of its power) above v0 − 2%, solved 8 times with
+half steps; `storageFor` picks those thresholds for an AC supply. Checked: rail volts by hand, BT and AT lower; fed only
+from the ends, two 4 MW / 200 kWh units hold the lowest voltage >1 kV higher and cut the tripped time. Language:
+'Storage' works on AC; info MaxRailVolts. Window: Several trains → the power supply → Storage on AC too, "Rails to
+earth, most". Not built: the rails' bonding to earth at substations, stray currents on DC lines.
+
+## M489e (24 Nov): Hyperion aeroplanes, the propeller's gyroscopic pull and turbulence by height
+
+`flight.ts`: in `deriv6` a working propeller's angular momentum H = dir·Ip·ω (`Prop.inertia`, 1.6 kg·m²) adds −(ω × H):
+pitch moment −r·H, yaw moment q·H (nose down with a clockwise propeller from behind yaws left). `turbulenceAt(h, w20)`:
+MIL-F-8785C's low-altitude model (feet inside: scales h and h/(0.177 + 0.000823h)^1.2, σw 0.1·W20, σu,v σw /
+(…)^0.4), medium values above 610 m (533 m, 0.1·W20), blended between; `Wind.turbulence.w20` makes `flight6` filter each
+direction with its own σ and L at the current height. Checked: the gyroscopic yaw's sign both ways (against inertia 0),
+the formula at 30 m, the medium values, gustier along the way at 60 m than 800 m. Language: 'PropInertia',
+'TurbulenceWind20'. Window: All six → Rough → "Near the ground (60 m)". Not built: the propeller's gyroscopic load on
+the engine mount, turbulence's rotational parts (p, q, r gusts).
+
+## M486e (24 Nov): Hyperion vehicles, the roof crushing and the car turning as it tumbles
+
+`vehicle.ts` (`tumble`): each roof edge holds at most `swr` × the car's weight (3, FMVSS 216), stiffening as it folds
+(doubling every 10 cm); past that the edge moves in for good (`crushed[side]`, capped at 0.6 of the roof's height) and
+the force is capped there, so the energy goes into crush. **Trap:** first the crush grew by (N − strength)/K with N
+including the damper: at impact speeds it collapsed by centimetres a step; then with a flat strength all vertical energy
+went into the roof (vans to the cap): now only the spring part counts and the roof stiffens. Yaw: the yaw rate goes on
+(`st.r`; from `vehicleSim` the car's own, in the tumble's frame), slowed by body friction × total load × a quarter of the
+car's length over `iz`, and turning the axes (vf += r·vy, vy −= r·vf). `Tumble` gains `psi[]`, `crush`, `spin`.
+Checked: crush falls as the roof gets stronger, none when it rocks back; a yawing trip turns (0.1–1 rad), a still one
+doesn't; the fishhook van turns and its roof edge gives. Language: vehicleTrip 'RoofStrength', 'YawRate',
+'ForwardSpeed'; info RoofCrush, Spin (also in vehicleSim's). Window: Kerb shows "roof crushed"; Hook's result says how
+far. Not built: drawing the crushed roof, the windows breaking, people inside.
+
+## M491j (24 Nov): Hyperion railways, loops too short for a long train
+
+The owner, 24 Nov: "please work on it" (M486e's left-outs). `railSingle(…, { loopLength })`: a train longer than that
+can't stop in a passing loop (stations hold any train). `take` now returns how many sections it took: for a loop the
+train doesn't fit (and doesn't stop at) it must take the section beyond in the same moment (`free` checks each:
+empty, room, the dispatcher), holding the far place's track, or wait where it is. Checked: a 600 m freight meeting an
+intercity with 400 m loops never waits in one and the meet moves to the 42 km station; 1,000 m loops change nothing.
+Language 'LoopLength'; window Single track → "Loops only 400 m long". Shortcut: the dispatcher is asked only about the
+first of the two sections.
+
+## M491k (24 Nov): Hyperion railways, rails bonded to earth, and DC stray currents
+
+`rail.ts`. AC: `Supply.ac.bonded` ties the rails to earth at each substation: `railVolts` subtracts an image current at
+the bond nearest each train (the feeding one), so the rails are at 0 there and lower within a few km (far from the bond
+almost unchanged: e.g. 208 → 207 V for trains tens of km out; 500 m out × (1 − e^(−2g·0.5))). DC: `dcStray` (each
+train's current I = power / its volts, braking left out (shortcut), to its nearest substation d km away; rails 0.4 of
+rline; `Supply.leak` Ω·km, 10 by default): rails at I·r·d/2 under the train, stray current I·r·d²/(8·R); `solveSupply`
+returns `rail` and `stray` for DC too, the log `strayAs` (A·s); `IRON_KG_PER_AYEAR` 9.13. Checked by hand both ways; 2
+Ω·km leaks five times 10. Language 'Leakage', 'Bonded'; info StrayCurrent, IronLossKgPerYear, MaxRailVolts (DC).
+Window: Several trains → power supply → DC "Rails to earth · stray current", AC "Rails bonded to earth at the
+substations". Not built: rails cross-bonded between tracks, drainage bonds, the earth's own resistance.
+
+## M489f (24 Nov): Hyperion aeroplanes, gusts that turn the air
+
+`flight.ts`: `Wind.turbulence.rotational` adds MIL-F-8785C's rotational gusts in `flight6`: roll gust p_g as its own
+filtered noise (σw·√(0.8/V)·(π/4b)^(1/6) / L^(1/3), corner πV/4b), pitch q_g = −ẇ_g/V smoothed over 4b/πV, yaw
+r_g = v̇_g/V over 3b/πV (the vertical and side gusts' change between steps). `deriv6` takes them as `Ctl.gust` and the
+damping terms (Clp, Cnp, Clr, Cnr, Cmq, CLq) use the rates relative to the air. Off by default (old runs unchanged).
+Checked: roll-rate rms >10% higher with them on, bank rms higher, the same seed repeats. Language
+'TurbulenceRotation'; window Rough → "Gusts that turn the air too". Not built: the gust's change along the span
+(a gust front hitting one wing first).
+
+## M486f (24 Nov): Hyperion vehicles, the crushed roof drawn, windows breaking, the people inside
+
+`vehicle.ts` (`tumble`, `kerbTrip`): `crushes[]` (each roof edge's crush per sample, outer then inner), `windows`
+(when each side's glass broke: its roof edge taking over `GLASS_N` 15 kN or folding over `GLASS_CRUSH` 4 cm; a wheel
+corner's contact counts for its side), `peakG` (the ground's push on the body ÷ m·g, without gravity's own 1 g; at a
+kerb the blow is the centre's speed change over ~50 ms), `headroom` (`HEADROOM` 10 cm less the most crush; below 0 the
+roof reached the people). Rough figures, said so in help. Checked: rocking back breaks nothing and keeps the headroom;
+a hard 18 m/s trip breaks both sides and the roof reaches them; crush only grows and ends at the most. Language: info
+WindowsBroken, PeakG, Headroom. Window: Kerb draws the roof sinking in and the side windows (blue, yellow dashed once
+broken); facts "Roof in · windows broken" and "People inside: most g · headroom". Not built: belts and airbags,
+people thrown out, the windscreen.
+
+## M486g (25 Nov): Hyperion vehicles, belts, curtain airbags, people thrown out, the windscreen
+
+The owner, 25 Nov (M486f's left-outs). `vehicle.ts` `inside(v, tumble, { belt, curtains })`, after the tumble (rough
+figures, said so in help): heads ~`r` from the roll axis keep their speed when a landing changes the roll rate (|Δω|
+over 50 ms · r; ×0.6 belted) into the side; upside down an unbelted person falls headroom + 15 cm onto the roof, a
+belted one is hit only by the crushing roof (crush spread over its 0.1 s on the ground); stopped in 2 cm (glass,
+pillar), 3 cm (lining), 10 cm (curtain): `headG`. Thrown out: unbelted, through a broken side window not covered by a
+curtain (`CURTAIN_HOLD` 6 s) or a windscreen out of its frame (only if it also turned over 90°), while ω²·r > g; belted:
+`partly` (head and arms). Windscreen: cracked past 3 cm of crush, out past 15 cm. `risk` bands. Frontal airbags left
+out (they don't fire in a rollover). Checked: unbelted at 18 m/s thrown out after the first window broke, belted only
+partly, curtains keep both in; head g falls with belts and again with curtains; rocking back at 6 m/s is 'low'.
+Language: vehicleTrip 'Belts', 'Curtains'; info HeadG, ThrownOutAt, PartlyOut, WindscreenCracked, WindscreenOut,
+Injury. Window: Kerb → "People inside" (No belts / Belts / Belts + curtains), a red dot leaving when thrown out, the
+screen's state; facts "Heads · thrown out", "Windscreen · injury (rough)". Not built: the same for vehicleSim's
+rollovers (only vehicleTrip), people's own size and seating place.
+
+## M491l (25 Nov): Hyperion railways, tracks cross-bonded and the ground's own resistance
+
+The owner, 25 Nov (M491k's left-outs). `rail.ts`: `Supply.crossBond` puts both tracks' rails in parallel (half the
+resistance and half the leakage resistance): DC rail voltage halves, stray current unchanged; AC `railVolts` halves (Z0
+halves, the decay is the same). `Supply.earth` (Ω/km, DC): rails and ground solved as two conductors joined by the
+leakage, u'' = γ²u, γ = √((r + r_g)/R), all of I in the rails at both ends: rails I·r·tanh(γd/2)/γ under the train,
+stray r·I/(r + r_g)·(1 − sech(γd/2)), which never passes r/(r + r_g) of I. Unset keeps M491k's short-section forms
+(they agree within ~1% under 10 km; old runs unchanged). Checked by hand, and through the language. Language
+'CrossBonded', 'EarthResistance' (0–10). Window: Several trains → power supply → "Both tracks' rails tied together"
+and, on DC, "The ground's own resistance" (Not counted / Wet clay 0.01 / Dry rock 0.1, rough). Not built: drainage
+bonds, the ground's resistance on AC lines (its return is in the rails' impedance already), the earth's resistance
+under each substation.
+
+## M489g (25 Nov): Hyperion aeroplanes, a gust front reaching one wing first
+
+The owner, 25 Nov (M489f's left-outs). `flight.ts`: `Wind.gust.skew` (rad, + the right wing first): each wing tip
+meets the '1 − cos' gust (b/2)·tan(skew) earlier or later than the middle (the gust starts that much before `at`);
+the middle gets the tips' mean and the difference (up_left − up_right)/b goes in as a roll gust (p_g = ∂w/∂y, added to
+M489f's channel in `Ctl.gust`). Square on is unchanged (old runs the same). Checked: square on never rolls; 30° from
+the right rolls left first, mirrored exactly from the left; 60° rolls harder; the push upwards much the same.
+Language: aircraftSim6DOF 'Gust' takes a fourth number, the front's angle in degrees (up to 80). Window: Aeroplane →
+All six → Gust → "The gust's front" (Square on / 30° / 60°). Not built: a front at an angle for turbulence (that is
+M489f's roll gust already), the gust reaching the tail later than the wing (pitch).
+
+## M486h (25 Nov): Hyperion vehicles, a person's size and seat, front airbags, people in steering rollovers
+
+The owner, 25 Nov (M486g's left-outs). `vehicle.ts`: `inside(…, { size, seat })`: `SIZES` small +6 cm, tall −6 cm over
+the head (and the head that much nearer or further from the roll axis); `seat` 'near' (side 0, the way it tips: that
+roof edge's crush and that window) or 'far' (side 1: the other edge's crush, the head swinging across, ×1.3 side
+speed); no seat keeps M486g's worse-of-both (old runs the same). Belted people partly out only through their own
+side's window; unbelted through either. `Inside.headroom` is now per person. Front airbags: `tumble` smooths the blow
+along the car (friction on the forward slide, 30 ms, as a crash sensor) into `frontG` and `frontAt` (past `FRONT_G`
+11 g); `kerbTrip` carries `frontAt` on. Checked: rolling gives ~0–5 g along the car, so they don't fire (as in real
+rollovers). Language: a shared `peopleOf` / `peopleFields` in `vehicle-lab.ts`: vehicleTrip and now vehicleSim (after
+a rollover) take 'Belts', 'Curtains', 'Occupant', 'Seat' and give HeadG, ThrownOutAt, PartlyOut, WindscreenCracked,
+WindscreenOut, FrontAirbags, Injury. Window: Kerb → "Who" (Small / Average / Tall) and "Seat" (Side it tips to /
+Other side), fact "Front airbags"; Vehicle → Hook's result adds the belted people's head g and injury. Not built:
+front and rear rows apart, two people at once, a frontal crash (the only way front airbags would fire).
+
+## M491m (25 Nov): Hyperion railways, the ground's own resistance on 25 kV lines
+
+The owner, 25 Nov (M491l's left-outs). `rail.ts` `railVolts`: with `Supply.earth` the rails and the ground are two
+conductors joined by the leakage, as on DC (M491l): Z0 = |z_r|·√(r_e / |z_r + r_g|), decay √(|z_r + r_g| / r_e)
+(magnitudes, as the rest of the model). `CARSON_50HZ` 0.0493 Ω/km is the ground's resistance at 50 Hz (Carson: it
+depends on the frequency, not the soil). Unset or 0 is unchanged. Checked by hand: ~3% lower under the train and dying
+away sooner. Language: 'EarthResistance' now acts on AC lines too. Window: Several trains → 25 kV → "Count the
+ground's own resistance (0.05 Ω/km at 50 Hz)". Not built: the soil's depth of return (Carson's reactance is already in
+the rails' 0.55 Ω/km).
+
+## M489h (25 Nov): Hyperion aeroplanes, the tail meeting a gust after the wing
+
+The owner, 25 Nov (M489g's left-outs). `flight.ts`: `Aircraft.lt` (the tail's distance behind the wing, 3 chords when
+not given) and `Wind.gust.tail`: the tail meets the '1 − cos' gust lt / V after the wing, and the difference
+(up_wing − up_tail) / lt goes into the pitch-gust channel (`Ctl.gust[1]`, MIL-F-8785C's q_g, through Cmq and CLq): nose
+up while only the wing is in the rising air, nose down as the tail goes through. Off by default (old runs the same).
+Checked: off unchanged; on, more pitch rate just after the wing enters; much the same climb once through. Language
+'GustTail', 1. Window: All six → Gust → "The tail meets it later (the nose pitches)". Not built: the tail's own lag
+for turbulence (M489f's q gust already smooths over the length), the downwash's lag behind the wing.
+
+## M486i (25 Nov): Hyperion vehicles, front and back seats, everyone at once
+
+The owner, 25 Nov (M486h's left-outs). `vehicle.ts`: `inside(…, { row })`: 'rear' has 3 cm less room (the roof slopes)
+and `REAR_CRUSH` 0.7 of the crush (the roof gives most near the windscreen pillars), no front airbags; `everyone()`
+runs the four outer seats (`SEATS`: front/rear × near/far) at once. Language: 'Row'; info PersonHeadroom (that
+person's own) and Seats (a table: Row, Side, HeadG, Headroom, ThrownOutAt, PartlyOut). Window: Kerb → fact "Four
+seats: head g (thrown out ✕)". Rough figures. Not built: the middle seats, people hitting each other.
+
+## M486j (25 Nov): Hyperion vehicles, a head-on crash with belts, knees and front airbags
+
+The owner, 25 Nov (M486h's left-out "no head-on crash"). `vehicle.ts` `frontalCrash(v, speed, { into, other, belt,
+bags })`: the front a spring tuned to `NCAP_CRUSH` 0.65 m at 56 km/h, unloading on k/e² (e 0.1); into a car head on,
+the wall-equivalent 2v·m₂/(m + m₂). The front person, 75 kg as one body: belt slack 2 cm (pretensioner, when the airbag
+fires) or 6 cm, then lap + shoulder 200 kN/m up to 12 kN; knees on the dashboard after 12 cm up to 9 kN; the airbag
+fired by the same sensor as M486h (`FRONT_G` on the 30 ms-smoothed deceleration), full 30 ms later, 6 kN from 20 cm
+over 30 cm; the wheel at 55 cm (1 MN/m). Chest g is the 3 ms average (60 allowed); `headHit` when there is no
+airbag and the chest came within 15 cm; late firing after 12.5 cm; `risk` bands. Tuned by eye to NCAP-like results:
+at 56 km/h belt + airbag ~37 g and 40 cm, belt only the head reaches the wheel, nothing hits the wheel at ~150 g; 10
+km/h doesn't fire the airbag. Language `vehicleCrash` (help, an example). Window: Vehicle → Crash (`CrashView.tsx`:
+speed, a wall or a car like it, Nothing / Belt / Airbag / Belt + airbag; the car's and the person's deceleration over
+150 ms with the 60 g line and the firing). Rough figures. Not built: offset and side crashes, the back seats, the
+head's own HIC, the steering column collapsing.
+
+## M491n (25 Nov): Hyperion railways, how deep the return current runs in the soil
+
+The owner, 25 Nov (M491m's left-out). `rail.ts`: `Supply.soil` (Ω·m, AC): `carsonDepth` 658·√(ρ/f) m and
+`railReactance` 0.0628·ln(depth / `RAIL_GMR`) Ω/km, the radius set so 100 Ω·m gives the rails' usual 0.55 exactly
+(unset or 100 is unchanged). `railVolts` uses it for both the rails' and the loop's impedance. Checked: ~930 m at 100
+Ω·m; dry rock (2,000) raises the rail voltage, wet clay (20) lowers it. Language 'Soil' (1–100,000). Window: Several
+trains → 25 kV → "The soil" (Wet clay / Normal / Dry rock), which also sets the telephone cable's soil. Not built:
+the soil in the AC line's own feeding impedance (`solveAc` keeps its fixed reactance), layered soils.
+
+## M489i (25 Nov): Hyperion aeroplanes, the tail lagging the wing in turbulence
+
+The owner, 25 Nov (M489h's left-out). `flight.ts`: `Wind.turbulence.tailLag`: the vertical gusts the wing meets are
+kept in a ring buffer lt / V long (`Aircraft.lt`, 3 chords by default), and the tail's delayed one makes a pitch gust
+(w_tail − w_wing) / lt in `Ctl.gust[1]`; it takes the place of M489f's smoothed −ẇ/V pitch gust when both are on.
+Off by default. Checked: more pitch rate in the same turbulence, the same seed the same, roll untouched. Language
+'TurbulenceTail', 1. Window: All six → Rough → "The tail meets each gust after the wing (pitching)". Not built: the
+fin's lag for side gusts (yaw), the downwash's own lag.
+
+## M489j (25 Nov): Hyperion aeroplanes, the fin meeting side gusts after the wing
+
+The owner, 25 Nov (M489i's left-out). `flight.ts`: `Wind.turbulence.finLag`: the side gusts the wing meets are kept in a
+ring buffer lt / V long (the fin sits about where the tailplane does, `Aircraft.lt`), and the difference makes a yaw
+gust r_g = (v_wing − v_fin) / lt in `Ctl.gust[2]` (the same sign as M489f's smoothed +v̇/V, which it replaces when
+both are on). Off by default (old runs the same). Checked: a different yaw of much the same size (with the real delay
+the nose follows each gust's front and back, not a smoothed rate), the same seed the same, pitch untouched. Language
+'TurbulenceFin', 1. Window: All six → Rough → "The fin meets each side gust after the wing (yawing)". Not built: the
+downwash's own lag, the fin's height above the wing (side gusts rolling it).
+
+## M491o (25 Nov): Hyperion railways, the soil in the 25 kV line's own feed
+
+The owner, 25 Nov (M491n's left-out). `rail.ts` `feedZ(sup)`: the AC line's feeding impedance per km. The share of the
+current coming back through the ground (the screening factor k) runs at Carson's depth, so `Supply.soil` adds
+k·0.0628·ln(depth(ρ) / depth(100)) Ω/km to the line's reactance (the presets stand for 100 Ω·m), and `Supply.earth`
+adds k times the ground's resistance to its resistance. `solveAc` (voltages, losses) and `faultEmf` (fault current)
+use it; unset or 100 Ω·m is unchanged. Checked: dry rock (2,000 Ω·m) adds ~0.047 Ω/km on rail return (by hand), a
+train 20 km out sags a little more, wet clay a little less, a far-end fault draws less current. Language: 'Soil' and
+'EarthResistance' now reach the feed (help says so). Window: Several trains → 25 kV → "The soil" moves the line
+voltage too. Not built: layered soils, the booster and autotransformer feeds' own return wires as separate
+conductors (they stay in the screening factor).
+
+## M486k (25 Nov): Hyperion vehicles, offset crashes, the back seat and someone unbelted behind
+
+The owner, 25 Nov (M486j's left-outs). `vehicle.ts` `frontalCrash(…, { overlap, seat, behind })`: only `overlap` of
+the front hits (`overlapShare`: with a main rail in it, 30% or more, half the stiffness or more; below, the rail is
+missed). The front has `FRONT_ROOM` 0.8 m; past it the footwell and dashboard come in 2.5× as stiff (`intrusion`,
+taking the knees' room and half of it the wheel's). The car swings round, so the person also moves 0.7·(1 − overlap)²
+of their forward travel sideways; past 12 cm the head slides off the airbag's edge (`slidOff`: half its push, the head
+may meet the pillar). `seat: 'rear'`: no airbag, 6 cm slack and a 16 kN belt (no limiter), knees and chest into the
+front seat's back (`SEATBACK_MAX` 12 kN, where it folds), `hitSeat` for the head. `behind: 'unbelted'`: a second
+person thrown into the front seat's back pushes the front person forward (`backLoad`). Rigid barrier (harsher than
+Euro NCAP's soft one). Checked: full front unchanged; 64 km/h 40% ~16 cm in, 25% ~29 cm in and slides off the bag; the
+back seat belted reaches the seat in front, unbelted goes over it; pushed from behind, the driver reaches the wheel.
+Language: vehicleCrash 'Overlap', 'Seat', 'Behind'; info Intrusion, SlidOffAirbag, HitFrontSeat, BackLoad; an example.
+Window: Vehicle → Crash → "How much of the front hits" (All / 40% / 25%) and "Who" (The driver / Driver, unbelted
+behind / Back seat). Rough figures. Not built: the head's HIC, a soft deformable barrier, the car's own spin drawn.
+
+## M486l (25 Nov): Hyperion vehicles, a side crash: a car or a pole, both sides, the person beside
+
+The owner, 25 Nov (M486j's left-out). `vehicle.ts` `sideCrash(v, speed, { into, other, belt, bags, seat, beside })`:
+another car (a car like it by default) drives square into the side of this one standing still, or `into: 'pole'` (an
+endless mass, the same as sliding into it). The side crushes like one spring (`SIDE_K` 0.35 m at 50 km/h from a car
+like it, `POLE_K` 0.4 m at 32 km/h), 0.1 spring-back; the door's panel moves with the striker. Near seat: 15 cm to the
+door, its trim 200 kN/m, a thorax airbag (5 g on the car over 3 ms, as a door's pressure sensor; full 8 ms later; 10
+cm, 80 kN/m up to 8 kN, and the trim's push spread to 0.6). The head is 20 cm from the window and leans 1.3× the
+chest: no curtain, stopped in 2 cm (curtain 15 cm). Far seat: thrown across 60 cm, the lap belt (60 kN/m after 10 cm,
+up to 5 kN), into the console and door or, with `beside`, the near person (a body's width, 100 kN/m; heads 10 cm
+after the shoulders, stopped in 5 cm: `hitPerson`). Chest g the 3 ms average; `headHit` only for something hard.
+Checked: 50 km/h car ~0.35 m, airbags lower chest and head g; pole without airbags severe, with them low; far side
+alone milder, beside someone severe (heads). Language `vehicleSideCrash` (help, an example). Window: Vehicle → Crash →
+"Crash" (Head on / Into the side), "Hit by" (A car like it / Sliding into a pole), "Who" (On the struck side / The
+other side / Other side, someone beside). Rough figures. Not built: the car spinning after the blow, a crash at an
+angle, the back seats in a side crash, rib deflection (Euro NCAP's real measure; g here).
+
+## M486m (25 Nov): Hyperion vehicles, the middle seat and people knocking into each other in a rollover
+
+The owner, 25 Nov (M486i's left-outs). `vehicle.ts` `inside(…, { seat: 'middle' })`: between both roof edges, so their
+mean crush, `MIDDLE_ROOM` 2 cm more room (the roof is highest there), the head swinging 1.15× (between near 1 and far
+1.3); no window of its own (belted, never partly out; unbelted, either side's). `everyone(…, { middle })` adds the
+back's middle seat, and people knock into each other: along a row each head swings across into the next person on
+the side it tips to; the nearer one is stopped first, so they meet at the swinging one's speed, stopped in 5 cm
+(`HEADS_STOP`; unbelted 1.5× for the body behind), both feel it (`knock`, counted in `headG` and the risk). Note:
+`everyone` now counts the knocks for the four outer seats too (everyone sits there at once). Checked: the middle's
+room and swing between the outer seats', knocks on all three in the back, harder unbelted. The model's head swing
+speeds in a rollover are a few m/s, so knocks are a few g belted, up to ~15 unbelted. Language: vehicleTrip 'Seat'
+'middle', 'Middle', 1 (info.Seats with five rows and a Knock column). Window: Kerb → Seat → "Back middle", the facts
+"Five seats" and "Heads knocking together". Rough figures. Not built: a front middle seat drawn in the window (the
+language takes 'Seat', 'middle', 'Row', 'front'), bodies (not only heads) loading each other in a rollover.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
@@ -12590,3 +13718,1242 @@ window, and by a browser), and Firebase's popup skips the chooser unless asked. 
 prompt: 'select_account' })` on the Google provider in `login/page.tsx` and `register/page.tsx` (Microsoft already had
 it). Not set inside `popupSignIn`: `setCustomParameters` replaces the whole object and would drop Microsoft's `tenant`.
 Web only: the computer app loads the live site, so it needs no new build, only the merge.
+
+## M481 (23 Nov): Hyperion, embedded AI (models made small and written out as C)
+
+`src/lib/lab/embedded.ts` and `embedded-lab.ts`, for the toolbox's neural networks (ClassificationNeuralNetwork,
+RegressionNeuralNetwork) and trees (ClassificationTree, RegressionTree); other learners are refused with the reason.
+**Quantisation** is weight-only: each layer's weights become int8 with one symmetric scale (max |w| / 127), biases and
+the standardisation in float; activations stay in floating point (integer-only inference, with quantised activations
+and calibration data, isn't built). `quantizemodel(m, p)` returns a copy whose LayerWeights / CutPoint hold the
+round-tripped numbers, so `predict`, `loss` and the rest work unchanged and measure the real effect; `modelsize` counts
+the bytes on a chip; `embedreport` tries double, single and int8 (trees: double and single) through `loss`.
+`exportmodel(m, 'name', 'Precision', p)` writes `name.c` / `name.h` (row-major weight arrays, one predict function:
+classification returns the class's number in ClassNames' order and fills softmax scores; a tree walks `pred` / `cut` /
+`left` / `right` as `ml.treeLeaf` does, `x < cut` going left). `embedded.test.ts` compiles both with `cc -Wall -Werror`
+and checks every iris flower's class against Hyperion's. MATLAB's own names (quantize, dlquantizer, Coder's
+saveLearnerForCoder) work on its deep-network and learner objects; these are our names for the toolbox's plain models.
+Not built: SVMs, k-NN, ensembles and linear models in C; CMSIS-NN / TensorFlow Lite formats; pruning.
+
+**This branch's work is complete (M472–M481).** Shared files touched, kept to small added lines: `interp.ts` (the
+`Flow` pause, `execTop`, `parHook`, `opHooks`, `Host.sound` / `Host.serial`), `values.ts` (`gpu` and `fi` structs),
+`parse.ts` (`parfor`), `help.ts` (new sections after Signals), `lab.worker.ts`, `LabApp.tsx` (examples spread from
+`examples-signals.ts`, the Test button and results panel, sound, the serial bridge), `SimulateApp.tsx` (Queues),
+`Sidebar.tsx` / `app-tabs.ts` (Signals), `app.ts` (the iot module), `route-gates.test.ts`, `account-deletion.ts`.
+
+## M521 (24 Nov): Hyperion scripts wait for live data mid-run
+
+The owner, 24 Nov, on M472–M481's left-outs: "please work on this". Before, the engine ran a script straight through on
+its thread: a device read gave what had arrived before the run, and only a top-level `parfor` could pause for the pool.
+Now **Hyperion's pages are cross-origin isolated** (`security-headers.ts` `isolationHeaders`: COOP `same-origin`, COEP
+`credentialless`, by `next.config.ts` on `/hyperion` and `/hyperion/:path*`), so the engine's worker may sleep on a
+`SharedArrayBuffer` with `Atomics.wait` until the page (or a pool worker) writes the answer (`src/lib/lab/wait.ts`:
+`newSlot`, `answer`, `sleepOn`, `pack` / `unpack` keep NaN, ±Inf, −0, typed arrays and Maps exact; `waits.page`,
+`askPage`).
+
+- **Traps:** a worker started by an isolated page refuses a script that doesn't send COEP: the built scripts get it
+  (`/_next/static/*` in `next.config.ts` and `public/_headers`; without it the engine never starts and every command
+  stays "running…"). The sealed Python/R frame sends it too (`sandboxHeaders` and `_headers`). Isolation is decided when
+  a page loads: `components/lab/Isolated.tsx` (in Hyperion's layout) reloads a page entered by an in-app link once
+  (`sessionStorage` `uv-isolation`: `trying`, `ok`, `failed`; Safari has no `credentialless` and is tried once a tab), and
+  reloads when the person leaves Hyperion, so the other pages keep their popups (Google sign-in) and framed pages.
+- **The page side:** the engine posts `{ channel: sab }` once and `{ ask: { kind, body, ms, n } }` per question;
+  `components/lab/page-answers.ts` answers by kind (`answers('serial', …)`, `answers('iot', …)`) in the slot, only the
+  newest `n`. A thread that sleeps can't start workers or receive messages: everything it needs comes in the answer
+  (serial lines are held in `heldLines` for an engine that asks, instead of being posted, so none arrive twice).
+- **Serial:** `readline` waits for the next line up to the port's `Timeout` (`serialport(…, 'Timeout', t)`, 10 s);
+  `readVoltage` waits for the next analog report (≤ 300 ms); `readDigitalPin`, `serialport`, `flush`, `arduino` take
+  what's there. The engine's own pin modes and outputs stand; inputs take the page's values.
+- **parfor:** `parHook` no longer needs depth 0: inside a function or a loop it uses the pool's waiting engines
+  (`WorkerPool.warm()` starts them before a run whose code says `parfor`, `runNow` hands out the chunks with a 32 MB slot
+  each). A top-level `parfor` still pauses as before (and prints the speed-up). `parfeval`'s futures are unchanged.
+- **Checked:** `wait.test.ts` (packing, slots, readline inside a function in a loop, the in-function parfor); in Chromium,
+  `scripts/checks/hyperion-wait-ui.mjs`: the headers, isolation, 20 lines from the simulated Arduino read inside a
+  function (1.5 s), a parfor in a function; entering from `/hub` and leaving reload once each; the sealed runner says
+  ready under isolation.
+- **Left out:** Safari waits as before (no isolation there); `pause` is left to the sciences branch (M506); a pool
+  answer over 32 MB is refused with a message.
+
+## M522 (24 Nov): Hyperion IoT in scripts and IoT alerts
+
+- **In scripts** (`src/lib/lab/iot-lab.ts`): `[data, t, names] = iotread(channel, 'NumPoints', n, 'Fields', f)` reads a
+  channel's newest readings mid-run by name or id: asked of the signed-in page (`answers('iot')` in `page-answers.ts`
+  calls `/iot/channels` and `/entries` with the person's own sign-in), so it needs M521's waiting (a clear message
+  otherwise). `r = iotwrite(key, values)` posts to the public `/iot/write/:key` with a synchronous request from the
+  engine's thread (allowed in workers: every browser), so the script goes on once the channel answered.
+- **Alerts** (database update **0261**, `iot_alerts`, `IotAlert`): field, op (`>`, `<`, `>=`, `<=`), value, note,
+  quietMinutes (15), lastFiredAt, fired. `writeEntry` checks the channel's rules after storing the reading; a broken
+  rule is claimed with a conditional `updateMany` (lastFiredAt older than the quiet time) and tells the owner with
+  `notify(…, { email: false })` and `pushService.sendToMany` (no emails, per the rules). Routes: `GET`/`POST
+  /iot/channels/:id/alerts`, `DELETE /iot/alerts/:id` (owner only, at most 10 a channel; sample answer
+  `sampleIotAlerts`). The window: `IotAlerts.tsx` under the charts; the notification links to `/hyperion/signals?tab=iot`
+  (`SignalsTabs` reads `?tab=`). Account erasure takes alerts with their channels (cascade).
+- **Checked:** `iot.test.ts` (fires only when broken, once per quiet time, owner only), `iot-lab.test.ts`; in Chromium
+  `hyperion-signals-ui.mjs` (an alert added, the simulated device breaks it, "told 1×", notifications stored, axe clean
+  light and dark) and `hyperion-wait-ui.mjs` (`iotread` of a channel mid-run).
+
+## M523 (24 Nov): Hyperion class-based tests
+
+MATLAB's object-based tests, without classes in the engine: `src/lib/lab/testclass.ts` `readTestClass(code)` finds a
+`classdef Name < matlab.unittest.TestCase` file's properties and methods blocks (a small scanner: `end`s inside
+brackets, after a dot, in strings and comments don't count; `endfunction` and friends do); any other `classdef` is
+refused with a message. `verify-lab.ts` `runClassTests` parses each methods block's functions with the engine's own
+parser and runs them; `runScriptTests` hands a class to it, so the Test button, Run (`lab.worker.ts`: code starting
+with `classdef`) and `runtests('Name')` all work.
+
+- **Handle-like test case:** a method without outputs is registered with its first parameter as its output, so what a
+  set-up stores (`tc.Data = magic(4)`) comes back and goes on; each test gets a copy of the class set-up's test case
+  (`TestName` is `Class/method(param=value)`).
+- **`tc.method(…)`:** `interp.ts` `methodHook` (a struct without that field, when the hook says so): a test case calls
+  the class's own helper or the builtin with itself first (`verifyEqual`, `addTeardown`…); `x.f(…)` on other structs is
+  unchanged (the field is read once). `interp.ts` also now keeps a `LabError`'s subclass when it adds the line number
+  (`new (e.constructor)(…)`): the assertion and skip kinds survive a function call.
+- **New:** `addTeardown` (last added runs first, also after a failure), `fatalAssert…` (as `assert…`), `assume…` (the
+  test is skipped: "(skipped)", counted as passed, MATLAB's Incomplete). TestParameter values: a cell (labels from short
+  values, else `value1`…) or a struct (its field names); several parameters run every combination.
+- **Checked:** `testclass.test.ts` (blocks, 13 tests from one class, set-up kept, parameters, teardown, skip, runtests
+  from Hyperion's files); `examples-signals.test.ts` runs `RootsTest.m`; in Chromium `hyperion-tests-ui.mjs` (Run on
+  RootsTest.m: "All 6 passed", the GPU test skipped without a chip; axe clean light and dark). The checks now press the
+  editor's Run (the toolstrip from PR #156 has one too).
+- **Left out:** class-level attributes beyond the test kinds (TestTags, shared fixtures, `applyFixture`), `log`, and
+  classes that aren't tests.
+
+## M524 (24 Nov): Hyperion fixed-point C code
+
+`codegen.ts` now takes fixed-point inputs (`Ty.cls === 'fixed'` with `fx: Nt` from `fixed.ts`): a value is its stored
+whole number in `int8_t` … `int64_t` (unsigned when the type is), chosen by word length (`fxC`); every fixed type in
+generated code has at most 62 bits (`MAX_FX`), so the 64-bit work below never overflows.
+
+- **Rules (the engine's fi, M480):** a sum keeps the finer fraction and one more integer bit (`sumType`), a product
+  adds both (`productType`), a matrix product adds log2 of the inner size; operands are aligned by multiplying by a
+  power of two (never `<<` on a signed value: undefined in C). A number written in the code that meets a fi takes the
+  fi's word and sign with its own best fraction (as the engine's `asFi`); a double variable meeting a fi is refused
+  (make it fi). `fi(x, s, w, f)` (all four, known when generating) and `y(:) = …`, `y(i) = …` convert with
+  `fx_shift` (towards fewer fraction bits: floor of (v + half) / 2^d, MATLAB's Nearest; more: multiply, saturating) or
+  `fx_from_double`; `−x` saturates with `fx_sat`; `double(x)` is `ldexp`. Helpers are emitted only when used
+  (`-Wall -Werror` refuses unused ones).
+- **A variable keeps one type:** `acc = acc + x(k)` in a loop changes its fixed type each time and is refused, naming
+  the fix (`acc(:) = …`), as MATLAB Coder does. The function's comment gives every fixed input's and output's type.
+- **The engine:** `interp.ts` gained `indexHooks` (get / set for values it doesn't know; `codegen-lab.ts` makes
+  `a(i)` keep a fi's type and `a(i) = v`, `a(:) = v` round and saturate into it) and `opHooks.neg`; fi comparisons give
+  logical arrays; `fi(b, …)` of a fi recasts it.
+- **Checked:** `codegen.test.ts` compiles a fixed-point FIR filter and a saturating function with `cc -std=c99 -Wall
+  -Werror` and gets exactly the engine's stored integers; the type-change refusal; `embedded.m` (examples test) runs
+  the filter in fixed point and writes `movavgfx.c`.
+- **Left out:** fixed types over 62 bits in C, rounding modes other than Nearest and overflow modes other than saturate
+  (`fimath`), fixed-point division.
+
+## M525 (24 Nov): Hyperion more AI models to C, networks wholly in 8 bits
+
+`embedded.ts` gained four model kinds (`SvmSpec`, `KnnSpec`, `EnsSpec`, `LinSpec`, written by `otherC`) and a wholly
+8-bit network (`planFullInt`, `runFullInt`, `fullIntC`); `embedded-lab.ts` reads them from the toolbox's structs
+(`specOf`) and accepts them in every function.
+
+- **Same answers as the engine:** each C mirrors `ml.ts` operation for operation: the SVM sums `(α·y)·K` with the
+  kernel's own order (`kernelOf`), k-NN keeps the k nearest with an earlier row winning a tie (the engine sorts by
+  distance, then row), ensembles add a bagged forest's leaf probabilities or a boosted one's weighted votes (first
+  maximum wins, as `argmax`), LSBoost starts from `Init`; a linear model adds `x·β` then the intercept. Compiled in
+  double, every iris row matches (`embedded.test.ts`). These kinds take 'single' or 'double' (8 bits would move their
+  support vectors and split points); a forest's equal weights aren't written (`-Wall -Werror` refuses unused arrays).
+- **'int8full':** scales from the model's training rows (`X`): the input's largest standardised value / 127, each
+  layer's weights / 127, each hidden layer's outputs / 127 (tanh / sigmoid: their sums, then a 256-entry table to 1/127
+  steps). Between layers `requant(acc, m, sh)` = floor((acc·m + 2^(sh−1)) / 2^sh) with m of 15 bits, so it is exact in
+  JavaScript's numbers and in C's int64 alike; biases are int32 in the sum's scale. `name_predict_q(int8 xq[])` is
+  the integer core; `name_predict(float x[])` standardises and quantises first (the only floating point; a regression's
+  answer is one last multiply). `embedreport` adds the 'int8full' row from `runFullInt`, the integer twin of the C.
+- **Checked:** `embedded.test.ts` (all four kinds in double against `predict`; three 8-bit networks, ReLU, tanh and a
+  regression, compiled and agreeing with the engine; the tanh table present); `embedded_ai.m` exports a forest and the
+  all-8-bit network.
+- **Left out:** SVMs with more than two classes (`fitcecoc`) and naive Bayes / discriminant models in C, int8 SVMs and
+  k-NN, per-channel scales, CMSIS-NN / TensorFlow Lite files.
+
+## M526 (24 Nov): Hyperion Bluetooth and USB devices
+
+- **The page side:** `components/lab/wireless-link.ts` (`wirelessLink`, one for the visit like `serialLink`): Web
+  Bluetooth asks for any device with the common GATT services named (`SERVICES`: heart rate, battery, device
+  information, environmental sensing, thermometer, cycling and running, Nordic UART, HM-10; Web Bluetooth only opens
+  services named when asking) plus any the person types; it lists every characteristic, starts notifications and keeps
+  each latest value. WebUSB opens the device, takes the first interface with endpoints both ways and claims it (a device
+  the computer's own driver holds is refused with a message: USB serial devices belong in Devices). Simulations: a
+  heart-rate sensor (a pulse notification every 0.5 s, a readable battery) and a USB echo device.
+- **Scripts** (`src/lib/lab/wireless-lab.ts`): every call asks the page (`answers('wireless')` in `page-answers.ts`)
+  and waits (M521), so these need Chrome or Edge (the browsers with Web Bluetooth and WebUSB, both isolated there) or the
+  computer app. `read(c)` waits for the next notification (`read(c, 'latest')` doesn't) or reads; `read(u, n)` waits
+  up to 4.5 s for bytes. `write` keeps the serial port's meaning (M474) and also takes a characteristic or a USB device;
+  `wireless-lab.ts` imports `serial-lab.ts` first so its `write` is wrapped, not lost.
+- **Headers:** `isolationHeaders` (Hyperion's pages only) adds `usb=(self), serial=(self), bluetooth=(self)` to the
+  Permissions-Policy; the rest of the site keeps `usb=()` (`wireless-lab.test.ts` checks both). The person always picks
+  the device in the browser's own chooser.
+- **Checked:** `wireless-lab.test.ts`; in Chromium `scripts/checks/hyperion-wireless-ui.mjs` (pulse and battery shown,
+  the echo device answers "hello", a script reads three pulses in a loop and the USB echo; axe clean light and dark).
+- **Left out:** Bluetooth Classic (browsers don't offer it), HID devices (WebHID), isochronous USB transfers and choosing
+  among several interfaces; subscribing a script to notifications as callbacks (MATLAB's DataAvailableFcn).
+
+## M527 (24 Nov): Hyperion IoT alert emails, behind the owner's switch
+
+The owner (24 Nov: "do email alert but give that as a option in owner console so that i can switch email whenever i
+needed"). `feature-switches.ts` gained `iot-email`, "Hyperion IoT alert emails", **opt-in** (off until the owner turns it
+on; stored as `iot-email:on`). `iot.ts` `checkAlerts` reads it once per reading (`featureOff`, cached a minute) and passes
+`email` to `notify`, so a broken rule also emails the channel's owner: only people with email notifications on, inside the
+routine daily email allowance (`claimEmails`), at most once per rule per quiet time (the same claim as the in-app note).
+In-app and push stay as M522 made them. Checked: `iot.test.ts` (off: `email: false`; on: `email: true`),
+`school-switches.test.ts` (the opt-in list).
+
+## M528 (24 Nov): Hyperion fixed-point division and types over 62 bits in C
+
+- **Division** (engine `codegen-lab.ts` `fiDiv`, C `fx_div`): `a ./ b` (and `a / b` by a scalar) keeps the larger word,
+  signed if either, fraction a's minus b's (`quotientType`); `divide(T, a, b)` puts the answer in T, a fi value or
+  `numerictype(s, w, f)` (now also a type maker; `numerictype(a)` still gives the text). The stored quotient is rounded
+  to the nearest step, halves up (floor((2·a·2^s + b) / 2b) after making b positive), held in range; dividing by zero
+  gives the top (or bottom) of the range, 0 / 0 gives 0. The engine works it in BigInt, so it matches the C exactly.
+  A plain number written in the code meets a fi as for the other operators.
+- **Wide types:** up to 62 bits everything is as M524 (int64_t). Past it (to 126 bits, `MAX_FX`) the generator sets
+  `wide`: the working type `fxw_t` (a typedef in the .c) becomes `fx128_t` (`__int128`, typedef'd in the .h with
+  `__extension__` and an `#error` for compilers without it), stored types over 64 bits are `fx128_t` / `ufx128_t`, and
+  ranges and powers of two past 2^52 are written as shifts (`lim`, `p2`) and big literals as m·2^e (`bigX`), never as
+  rounded decimals. A division whose working needs more than 62 bits also turns `wide` on. Every former `(int64_t)` in
+  fixed-point code is `(fxw_t)`.
+- **Checked:** `codegen.test.ts`: the engine's ./ type and values, divide by zero, an 81-bit a·b + c; compiled with
+  `cc -std=c99 -Wall -Werror`, ./ and divide on seven pairs (zeros included) give exactly the engine's stored integers and
+  the 81-bit result is exact in 128 bits.
+- **Left out:** small chips without 128-bit integers (the `#error` says to keep 62 bits), `fimath` rounding and
+  overflow modes, matrix division (`A \ b`, `/` by a fi matrix).
+
+## M529 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants to C
+
+`embedded.ts` gained `EcocSpec`, `BayesSpec`, `DiscrSpec` (`ecocC`, `scoreC`); `embedded-lab.ts` `specOf` reads them from
+`fitcecoc`, `fitcnb` and `fitcdiscr` models, and `quantizemodel` rounds each ECOC learner's own numbers.
+
+- **Same answers as predict:** ECOC runs every pair's SVM with its own standardising (`MU`/`SIGMA` per learner), then
+  hinge-loss decoding (each class's average of max(0, 1 − c·f) / 2 over the learners that know it; the smallest loss
+  wins, an earlier class on a tie). Naive Bayes keeps log prior − Σ log spread per class (`BASE`) and subtracts
+  ½((x − μ)/σ)²; the discriminant's w_k = Σ⁻¹μ_k and c_k = −½ w_k·μ_k + log prior_k are worked out in Hyperion (Σ itself
+  when it can't be inverted, as predict does), so the chip only multiplies and adds. All three return the class and,
+  if asked, scores (ECOC: minus the losses; the others: softmax chances).
+- **Checked:** `embedded.test.ts` compiles four models on iris (ECOC with an RBF kernel standardised, ECOC linear, naive
+  Bayes in double, the discriminant in single): every row in double gives `predict`'s class; single at most one near tie
+  apart.
+- **Left out:** 8-bit versions of these (their numbers are 'single' or 'double'), quadratic discriminants (not in the
+  toolbox), ECOC with learners other than SVMs, one-vs-all coding.
+
+
+## M530 (24 Nov): Hyperion fimath, fixed-point matrix division, 128-bit C on small chips, 8-bit many-class models
+
+The owner pasted M528–M529's "left out" list after them; this builds all three.
+
+- **fimath** (`fixed.ts`: `Rm`, `Om`, `roundBy`, `wrapInt`, `rdivBig`, `fitBig`, `fmOf`): a type (`Nt`) may carry `rm`
+  (Nearest, Floor, Ceiling, Zero, Round, Convergent) and `om` (Saturate, Wrap); left out they are Nearest and Saturate,
+  so everything before is unchanged. A fi keeps them as the fields `RoundingMethod` / `OverflowAction` only when set.
+  Sums and products stay full precision and take the first operand's fimath (`fmOf`); the methods act where a value is
+  put into a type: `fi(…)`, `x(:) = …`, `x(i) = …`, division, `−x`. `fi(v, s, w, f, F)` or name–value pairs; `fimath`,
+  `setfimath`, `removefimath`, `fimath(x)`. `divide(T, a, b)` uses T's fimath, else a's. In codegen `F = fimath(…)` is
+  kept at generation time (`fmVars`, no C) and read by `fi` / `setfimath`.
+- **Matrix division** (`codegen-lab.ts` `fiSolve`, `solveStored`; codegen `solveInto`): `A \ B`, `B / A` (as
+  `(A.' \ B.').'`), `mldivide(A, B, T)`, `mrdivide(B, A, T)` for a square fi A. Fraction-free Gauss–Jordan on the stored
+  integers (every division exact, checked on 200 random systems) leaves det·x; each answer is then one `fx_div`, so it is
+  rounded once. Singular A gives zeros. The answer's type is ./'s rule (`quotientType(B, A)`: fraction B's less A's,
+  often 0: pass T). The working needs 2·(n·w + ⌈n/2·log2 n⌉) + 2 bits (Hadamard; `solvePlan`): a 2×2 of 16 bits already
+  needs 128-bit working; past 128 it's refused naming shorter words. `y'` of a fi now works (`opHooks.post`).
+- **The C** (`codegen.ts`): the helpers are one text written with `fxw_` operations (`fx_rdiv` rounds t/m by the method,
+  `fx_fit` holds or wraps, `fx_shift`, `fx_div`, `fx_from_double`), the method and action passed as `FX_FLOOR` …,
+  `FX_WRAP`. Up to 62 bits the expressions stay plain int64_t operators and `fxw_` is static inline on int64_t. Past it
+  generation runs twice (`generate` → `emit(…, W)`): the first pass finds `wide`, the second writes every expression with
+  `fxw_add`, `fxw_mul`, `fxw_cmp` … (`fxEmit`). The header's `FX128_H` (guarded, so several headers go together) makes
+  `fx128_t` `__int128` (`HYPERION_FX128_NATIVE`) or, without it or with `-DHYPERION_FX_PORTABLE`, a struct of two
+  uint64_t with its own add, multiply (32-bit pieces), shift-and-subtract division and correctly rounded double
+  conversion. Every stored type over 64 bits is `fx128_t` (no `ufx128_t` now); a 63–64-bit unsigned one is `uint64_t`
+  via `fxw_ofu` / `fxw_lou`. Scalars of `fx128_t` start `= {0}`; a variable only ever set (a type holder for divide)
+  gets `(void)v;` for `-Wall -Werror`. fprintf of a fi prints its value. A fixed `sum` works (its temp had no type).
+- **8 bits for fitcecoc, fitcnb, fitcdiscr** (`embedded.ts` `eightOf`, `classOf`): ECOC's support vectors and
+  coefficients int8 with a scale per learner (`SVS`, `CS`); naive Bayes' means and 1 / spread int8 (1 / spread never 0:
+  `quantizePositive`) with BASE worked from the spreads as held; the discriminant's weights int8 with one scale. The
+  arithmetic stays float, as a network's 'int8'. `classOf` is the C's twin in doubles; `embedreport` adds its 'int8' row
+  with it, `exportmodel(…, 'Precision', 'int8')` writes it; `quantizemodel(…, 'int8')` refuses (a discriminant's predict
+  works from Mu and Sigma, not its weights). `specOf` is exported for the tests.
+- **Checked:** `codegen.test.ts` (each method by hand, wrap, setfimath, A \ b, b / A, mldivide with a type, singular;
+  the elimination on random systems; the too-big refusal; 12 method × overflow functions, a 2×2 8-bit solve in 64-bit
+  working, 3×3 16-bit `mldivide` and `/` and a 100-bit Convergent divide in 128-bit working, compiled native and with
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers or BigInt); `embedded.test.ts` (four 8-bit models in
+  C against `classOf`, at most one near tie, over 90% right, within 3 points of double); `embedded.m` and
+  `embedded_ai.m` show both.
+- **Left out:** fimath's ProductMode / SumMode other than full precision (MATLAB's KeepLSB etc.), least-squares `A \ b`
+  for a non-square A, per-class or per-channel 8-bit scales, 8-bit arithmetic inside these models (only their numbers).
+
+## M531 (24 Nov): Hyperion fixed-point matrix division by any matrix, past 128 bits
+
+The owner pasted M530's "left out" list and chose "build all of them"; this is the matrix-division part.
+
+- **Any A** (`codegen-lab.ts` `fiSolve`, `solveAny`, `elimStored`): a square A is solved as before (fraction-free
+  Gauss–Jordan on the stored integers); if a column has no pivot (singular), or A isn't square, the same elimination runs on
+  the normal equations AᵀA x = AᵀB, exact, so the answer is the least-squares one; an unknown whose column has no pivot is
+  0 (MATLAB's basic solution: a wide system gives a sparse answer, not the minimum-norm one). An all-zero A gives zeros.
+  `B / A` is `(A.' \ B.').'` for any shape (B needs A's columns). The elimination skips pivot-less columns; every division
+  stays exact (checked on 300 random square, tall, wide and rank-deficient systems: the normal equations hold exactly).
+- **The working's size** (`codegen.ts` `solveBits`): Hadamard's bound per order k, D(k); a step's difference is the old
+  pivot times the new number (D(k)·D(k+1)), and the products inside it may wrap (`fxw_mulw`, `fxw_subw`, `fxw_addw` wrap
+  through unsigned, defined behaviour), so a 2×2 of 16 bits is now worked in int64 (it needed 128 before). Least squares
+  uses AᵀA's bounds (about twice the bits).
+- **Past 128 bits** (`fxbC`): `fxb_t`, k 32-bit pieces (two's complement), with add, multiply, shift-and-subtract division,
+  and `fxb_rdiv` / `fxb_fit` / `fxb_divfit` made from the fx_ helpers' text by renaming; `fxb_ofw` / `fxb_tow` to and from
+  fxw_t (64 or 128). `solvePlan` picks per path: fxw_t when it fits (the square path may turn the file wide; the
+  least-squares fallback never does, it takes fxb_t instead), else fxb_t, to `FXB_MAX` 4096 bits (refused past it, naming
+  shorter words). The C per solve: a direct block for a square A, then `if (!sv_done)` the least-squares block;
+  `fxw_elim` / `fxb_elim` and `_normal` are `static inline` helpers (all fixed-point helpers are `static inline` now, so an
+  unused one doesn't fail `-Wall -Werror`).
+- **Checked:** `codegen.test.ts` M531: square 16-bit (int64), tall 4×2 least squares, a singular 3×3, a right division by a
+  wide A, a 3×3 of 40 bits (fxb_t in a 64-bit file) and of 70 bits (fxb_t in a 128-bit file), compiled native and
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers.
+- **Left out:** the minimum-norm answer for wide or rank-deficient systems (MATLAB's `\` doesn't give it either; `pinv`
+  does), refusing past 4096 bits.
+
+## M532 (24 Nov): Hyperion fimath's ProductMode and SumMode
+
+The second part of M530's "left out" list (the owner: "build all of them").
+
+- **Types** (`fixed.ts`): `Nt.ps` (`PS`: `pm`, `pwl`, `pfl`, `pmax`, `sm`, `swl`, `sfl`, `smax`, `cbs`), kept only when it
+  differs from MATLAB's defaults (`PS0`: full precision, 32-bit words, 30 fraction bits, cast before sum; Max… 128 here,
+  Hyperion's limit). `productType` / `sumType` narrow the full-precision type by the mode (`byMode`: KeepLSB keeps the
+  fraction, KeepMSB the whole part, SpecifyPrecision both lengths); a full-precision result over Max…WordLength is a
+  `LabError` (never a `RangeError`: the interpreter reads those as runaway recursion). `accType(t, n)` is a running sum's
+  type (⌈log2 n⌉ more bits, then the SumMode); `accStep` one step (cast first if CastBeforeSum, then into the type);
+  `plain(t)` drops the modes (the full result before narrowing).
+- **Hyperion** (`codegen-lab.ts`): `fimath` / `setfimath` / `fi(…, F)` take the new names (fmFrom); a fi shows the fields
+  (`psFields`, read back by `psOf`); `setfimath` replaces the whole fimath, `removefimath` drops it. `+`/`−` with
+  CastBeforeSum put each side into the sum type first; a matrix product with modes (`matProduct`) and `sum` of a fi vector
+  (new: it wasn't there for fi) add step by step as the C does.
+- **C** (`codegen.ts`): `fmArgs` reads the modes (numbers or `true` / `false` written in the code); the function key
+  includes them; `.*` writes the full product then `toFx` into the narrower type; `+` with CastBeforeSum `fx_fit`s the
+  sum of the two cast sides, without it `toFx`s the full sum; `accStepC` is the C twin of `accStep` for matrix products
+  and `sum`. **Fixed on the way:** the matrix product's loop used C locals `s` and `p`, which an output of the same name
+  (a pointer, `(*p)`) rewrote: they are `mp_s`, `mp_p` now. (Other loops still use `i`, `j`, `k`: an output called that
+  would clash the same way.)
+- **Checked:** `codegen.test.ts` M532: each mode by hand (3.375 KeepMSB to 3, KeepLSB wrapped to 96, SpecifyPrecision
+  216; cast-before-sum 0 against 1), the field shown, the Max…WordLength error; then a function with all of them on 20
+  random inputs compiled native and portable, equal to Hyperion.
+
+## M533 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants wholly in whole numbers
+
+The last part of M530's "left out" list (the owner: "build all of them"): in 'int8' these three kept only their numbers
+in 8 bits and did the arithmetic in float; `'int8full'` now runs them wholly in whole numbers, as the networks' (M525).
+
+- **The plan** (`embedded-int.ts` `planInt`): each input gets a centre and a step from the model's training rows
+  (`X`; xq = round((x − centre) / step), the range in ±127). Every unit gives a whole number F on one shared scale S
+  (twice the largest unit value on the training rows, as 2^24): a discriminant's class score and a linear SVM are
+  **linear** units (the centre, the step and the learner's standardising folded into weights quantized per class or
+  learner, a bias); naive Bayes is a **distance** unit (8-bit means as steps from the centre, step / spread per class as
+  8-bit positive numbers, `BASE` from the spreads as held); a Gaussian SVM sums coef · `EXPQ[t]` (e^(−i/32) in 15 bits, 512
+  entries; t the distance to each support vector, worked the same way); a polynomial one (1 + t)^order in Q16, clamped
+  to twice the largest value seen in training (order ≤ 6). Multipliers are m · 2^−sh with m short enough that the sum
+  times m stays in 62 bits (`multiplier(M, accBits)`). Classes: the largest F (Bayes, discriminant), or the smallest
+  hinge sum per learner count, compared by cross-multiplying (ECOC; ONE = round(1 / S)).
+- **Twin and C:** `runInt` (BigInt) is the C's integer core exactly; `intModelC` writes `name_predict_q(xq, sums, n)`
+  (no floating point) and `name_predict(x, scores)` (the inputs made 8-bit and the optional scores are the only float).
+  `exportmodel(…, 'Precision', 'int8full')` and `embedreport`'s new 'int8full' row (sizes from `intBytes`). `num`, `list`,
+  `head`, `header`, `classNote` and `quantizePositive` in `embedded.ts` are exported for it.
+- **Checked:** `embedded.test.ts` M533: on iris, ECOC Gaussian (standardised), linear and polynomial (order 2), naive Bayes
+  and the discriminant compiled with `-Wall -Werror`: the integer core's class and sums equal the twin's on all 150 rows;
+  from float inputs at most two rows apart (input rounding); over 90% right; embedreport's int8full within 4 points of
+  double. A test bug on the way: C doesn't fix the order of a call's arguments, so read outputs after the call.
+- **Left out:** regression models (these three only classify), polynomial kernels past order 6, more than 256 inputs.
+
+## M534 (24 Nov): Hyperion's C, the script's names never clash with the C's own
+
+The owner pasted M531–M533's "left out" list and chose "build all of them"; this is the C names part.
+
+- **What was wrong:** the C's own loops count with `i`, `j`, `k`, its temporaries are `t1`, `t2`…, and a scalar output is
+  rewritten as `(*name)` everywhere in the body: an output called `i` turned the loops' `i` into `(*i)`, a variable called
+  `t1` or `int` broke the file.
+- **The fix** (`codegen.ts` `cSafe`, `cClash`): before writing, each function's variables (inputs, outputs, anything
+  assigned, loop variables, `try` / `global` names) that match the C's own names (`i j k`, `t<number>`, `si sj sc`, `sv_…`,
+  `mp_…`, `fx…_…`, `sat_…`, `intN_t`) or C's words (`int`, `double`, `for`, `bool`, `abs`, `exp`, `round`…) get a `_`
+  (more if that's taken). Only `id` nodes and those names are renamed; field names, lambdas and function names aren't.
+  The header shows the new names (`double t1_`); the order of inputs and outputs is unchanged, so callers are unaffected.
+- **Checked:** `codegen.test.ts` M534: outputs `i`, `j`, `k` and variables `t1`, `int`, `abs` compiled with `-Wall -Werror`,
+  equal to Hyperion. `smooth3`'s input `k` is now `k_` in its header.
+
+## M535 (24 Nov): Hyperion lsqminnorm, the smallest answer, exact for fi and in C
+
+- **Hyperion** (`codegen-lab.ts` `minNormStored`, `fiMinNorm`): `lsqminnorm(A, B[, T])` for fi values, exact on the stored
+  integers: G = AᵀA and C = AᵀB; P, the columns of G with a pivot (fraction-free elimination), span A's row space; the
+  smallest answer is G_P z with (G_Pᵀ G_P) z = C_P, solved fraction-free, so x = G_P·(det·z) / det, each answer rounded
+  once into its type (the default type is `\`'s). For plain numbers it is `pinv(A) * B`.
+- **pinv** (`builtins.ts`): now through the SVD (`dsp.ts` `svd`; σ below max(size)·eps(σ₁) is zero, or `pinv(A, tol)`):
+  the old one inverted AᵀA and failed on a rank-deficient A.
+- **C** (`codegen.ts`): `lsqminnorm(A, B, T)` of fi values (`isSolve`, `solveArgs` now gives a fourth "smallest" flag;
+  `solvePlan`'s `minNormBits`: AᵀA's and H's Hadamard bounds, the numerators G_P·(det·z)); `fx…_minnorm` writes the steps
+  (`static inline`, P passed in, no variable-length arrays). It always takes the H path (the answer is the same exact
+  number rounded once, whichever way it is found).
+- **Checked:** `codegen.test.ts` M535: x + y = 2 gives [1; 1] (`\` gives [2; 0]); a singular 3×3 within a step of
+  double `pinv(A) * b`; pinv of a rank-1 matrix; in C a wide, a singular, a tall and an all-zero system, native and
+  `-DHYPERION_FX_PORTABLE`, equal to Hyperion.
+- **Left out:** `lsqminnorm`'s tolerance and `'warn'` inputs; plain-number (double) lsqminnorm in C.
+
+## M536 (24 Nov): Hyperion's C matrix division past 4096 bits
+
+- **Faster big numbers** (`codegen.ts` `fxbC`): `fxb_div` is long division on the 32-bit pieces (Knuth's algorithm D,
+  normalised, two-digit estimate, add back), not bit by bit; carries of signed steps use `FXB_HI` (an exact division,
+  never a shift of a negative number).
+- **The limits:** `FXB_MAX` 65,536 bits (4096 before), and the working memory at most `FXB_MEM` 16 MB, refused past it
+  with the size named; a working over `FXB_STACK` 64 KB is declared `static` (not on the stack; the function is then not
+  re-entrant, like the rest of the generated code's fixed buffers). In practice the memory limit comes first.
+- **Checked:** `codegen.test.ts` M536: a 20×20 system of 120-bit values (about 4,700 bits of working, `static fxb_t`)
+  native and portable, equal to Hyperion; a 60×60 of 126 bits refused for memory, a 300×300 for bits. M531's tests (the
+  fxb_t paths) pass with the new division.
+
+## M537 (24 Nov): Hyperion 'int8full' for linear models, polynomial kernels of any order, 65,536 inputs
+
+The last part of M533's "left out" list (the owner: "build all of them").
+
+- **Linear models** (`embedded-int.ts`): a `LinSpec` (fitlm) is one linear unit (centre and step folded in, 8-bit weights,
+  a 32-bit sum, a multiplier); `intModelC` writes `int64_t name_predict_q(xq)` (the answer as F, the answer is F × S) and
+  `float name_predict(x)`. `exportmodel(lm, …, 'Precision', 'int8full')` and embedreport's int8full row (RMSE); `'int8'`
+  for a linear model is refused, naming `'int8full'`.
+- **Polynomial kernels:** the base (1 + t) is worked as a fraction of its largest value in Q30 (`ZQ`, its own multiplier
+  `mz`/`shz`), each power kept in Q30, and vmax^order goes into the unit's multiplier: no order grows past 62 bits, so the
+  order-6 limit is gone. An order-8 kernel loses accuracy in 8 bits ('int8' too, 100% → 86% on iris): the rounding of the
+  8-bit numbers, not the whole-number working.
+- **Inputs:** up to 65,536 (127 · 127 · 65,536 stays inside a 32-bit sum).
+- **Checked:** `embedded.test.ts` M537: fitlm on 80 rows, int8full RMSE within 0.15 of double, the C core equal to the
+  twin on every row and the float answer F · S; an order-8 ECOC equal to its twin, within 4 points of 'int8'; 300 inputs
+  planned, 70,000 refused.
+- **Left out:** trees and ensembles in whole numbers (they compare, they don't add), GLM links (as the single/double C).
+
+## M538 (24 Nov): Hyperion lsqminnorm of plain numbers in C, its tolerance and 'warn'
+
+The owner pasted M534–M537's "left out" list (as before: build all of them); this is the first of the three.
+
+- **Hyperion** (`codegen-lab.ts`): `lsqminnorm(A, B, tol)` for plain numbers is `pinv(A, tol) * B` (singular values at or
+  below tol count as zero); `'warn'` / `'nowarn'` last: `'warn'` prints a warning when A's rank is below its smaller size
+  (for fi the exact rank, `minNormStored` now returns it). A tolerance with fi values is refused (their rank is exact).
+- **C** (`codegen.ts` `minNormType`, `minNormInto`, `minNormC`): `lsqminnorm(A, B[, tol])` of double or single values
+  becomes `lsq_minnorm_d` / `_f`: the SVD by one-sided Jacobi on the tall form, the same rotations and stops as
+  Hyperion's `svd` (`dsp.ts`), then x = Σ v_k (w_kᵀ B) / s_k² without forming pinv; a negative tol (none given) is
+  max(R, N) · eps(largest), as pinv's default. Fixed-size working arrays in a block (`mn_w`, `mn_v`); an input that is
+  also the target goes through a temporary. `isSolve` now counts every lsqminnorm; whole-number types are refused.
+  `'warn'` in C prints nothing.
+- **Checked:** `codegen.test.ts` M538: the tolerance and the warning in Hyperion; in C a wide, a singular, a tall and an
+  all-zero system, a run-time tolerance and single, with `-Wall -Werror`, equal to Hyperion (1e-10; single 1e-5).
+
+## M539 (24 Nov): Hyperion trees and tree ensembles wholly in whole numbers
+
+The second of M534–M537's "left out" list.
+
+- **How** (`embedded-trees.ts`): inputs become 8-bit as in M533 (each its centre and step from the training rows, the
+  same `floor(… + 0.5)` rounding); each split point x < cut becomes xq < cq with cq the cut rounded the same way, kept in
+  `int16_t` (−128 and 128 mean always right / always left), so a walk only compares whole numbers. A class tree's leaves
+  are class numbers already. A bagged forest's leaf chances are 0–255 and summed into `int32_t` votes; a boosted one
+  (AdaBoostM1/M2) adds each tree's weight, 15 bits of the largest. Regression leaves are `int32_t` on one scale S
+  (at most 2^23; LSBoost's weights folded in, Init on the same scale), summed in 64 bits, the answer F · S (a bagged
+  forest's mean folded into S).
+- **The C:** `name_predict_q(xq[, votes])` (the class, or F for a regression), `name_predict(x[, scores])` from float
+  inputs (scores: each class's share of the votes). `runTree` is the C's twin (plain numbers: every sum stays far
+  inside 2^53). `exportmodel(…, 'Precision', 'int8full')` and embedreport's int8full row; 'int8' for trees is refused,
+  naming 'int8full'.
+- **Checked:** `embedded.test.ts` M539: on iris a class tree, a bagged forest (15), AdaBoostM2 (12), a regression tree,
+  LSBoost (20) and a bagged regression (10): the C's class, votes and F equal the twin on every row; int8full within 3
+  points of double accuracy, RMSE within 0.05.
+- **Trap:** in a C test's `printf("%d %ld", f(q, v), v[0])` the order arguments are worked out isn't fixed; call first.
+
+## M540 (24 Nov): Hyperion lsqminnorm's tolerance for fi values, and 'warn' in its C
+
+The owner pasted M538–M539's "left out" list and "push all": both parts built.
+
+- **A tolerance for fi** (`codegen-lab.ts` `tolCols`, `codegen.ts` `tolParts`): `lsqminnorm(A, B, tol, T)` (tol and T in
+  either order) keeps a column of A only when the part of it the earlier kept columns don't explain is longer than tol:
+  QR's |R(k,k)|, as MATLAB's lsqminnorm compares. On G = AᵀA in stored units that is pivot / previous pivot > tol² ·
+  2^(2·fa) in a fraction-free elimination with each diagonal as its pivot (every number left is a minor of G over the
+  kept columns, so it stays exact). tol is kept to 16 significant bits (`mt2 · 2^sh`, a power of two costing no
+  multiplier). Without a tolerance nothing changed (`elimStored`'s pivots; the same columns for a positive semi-definite G).
+- **In C:** `fx…_minnorm(…, tol, mt2, sh)` does the same steps and gives the rank; the tolerance must be written in the code
+  (it sets the bits: `minNormBits`' tol term, the larger of −sh and bits(mt2) + sh past G's minors).
+- **'warn' in C:** `lsq_minnorm_d/_f` and `fx…_minnorm` return the rank; with `'warn'` the call is followed by
+  `HYPERION_WARN("lsqminnorm: A's rank is below n: …")`, which prints to stderr unless the file that includes it defines
+  `HYPERION_WARN(msg)` first (a log, a light on a chip).
+- **Checked:** `codegen.test.ts` M540: R(2,2) = 0.001 dropped under 0.01 (Hyperion and C, in 32-bit pieces), a tolerance of
+  0 equal to none, a 4-bit system with tol 2 in 64-bit working (native and `-DHYPERION_FX_PORTABLE`) equal to Hyperion,
+  two warnings on stderr (fixed point and plain).
+- **Trap:** lsqminnorm's working grows fast (H = G_PᵀG_P's minors): even 6-bit values in a 4×3 system go past 64 bits.
+
+## M541 (24 Nov): Hyperion logistic models in C, with their link
+
+The last of M534–M537's "left out" list: a generalised linear model's link step.
+
+- **What was missing:** a logistic model (`fitglm(…, 'Distribution', 'binomial')`) was refused by the embedded tools; a
+  normal one (identity link) was already a linear model. Hyperion's fitglm has only these two, so the logit is the link.
+- **Single / double** (`embedded.ts`): `LinSpec` carries `link: 'logit'` and the two classes; the C is
+  `int name_predict(x, &prob)`: η = B·x, the chance 1 / (1 + e^−η) in `*prob`, class 1 when it is at least ½ (as predict).
+- **Wholly in whole numbers** (`embedded-int.ts`, `logit` on the plan): the same linear unit as M537 gives the log-odds as
+  F (× S); the class is F's sign (no exp, no floating point); the wrapper's chance is the only other float.
+  embedreport's int8full row scores the class from the sign.
+- **Checked:** `embedded.test.ts` M541: versicolor against virginica on petal length and width: the double C's chance within
+  1e-12 of Hyperion's predict and the same class on every row, single within 1e-5, the whole-number core equal to the twin
+  and its class from the sign; int8full within 3 points of double's accuracy.
+- **Left out:** links Hyperion's fitglm doesn't have (Poisson's log, probit…).
+
+## M492 (23 Nov): Hyperion toolbox, epidemics (sciences and industries, 1 of 14)
+
+The owner, 23 Nov ("help me to build what is left… as another agent didnt build", with MathWorks' solutions page): the
+Hyperion list's group 7, sciences and industries, is M492–M505 on `claude/hyperion-sciences-industries` (two other
+sessions build signals and capabilities, M472–M481, and machines and vehicles, M482–M491, on their own branches).
+**Shared files for the whole group, so the three branches merge cleanly:** `sciences.ts` (imports every `*-lab.ts`
+of the group; the worker and `help.test.ts` import only it), `help-sciences.ts` (`SCIENCES_HELP`, appended to help.ts's
+TEXT by one line), `examples-sciences.ts` (`SCIENCE_EXAMPLES`, spread into LabApp's EXAMPLES by one line; its test
+runs every example), `sci-kit.ts` (def, call, rows, `options` for name–value pairs, `record` for result structs,
+`lines` for a labelled plot) and `sci-num.ts` (pure: `rk4Grid` on an output grid with an `onStep` hook for doses and
+spikes, `rk45` Dormand–Prince, `ros23` the Rosenbrock 2(3) stiff method behind ode23s, `jacobian`, `sample`, `root`).
+A new toolbox of the group adds its import to `sciences.ts`, its help block and its example, nothing more shared.
+Epidemics, `epi.ts` (pure) and `epi-lab.ts`: `sir`, `seir`, `sirAge` (contact matrix C(i, j), state [S… I… R…]), all
+RK4 at 0.05 day reported daily, with `'Intervention'` rows [from to cut], `'Vaccinate'` (share of S a day) from
+`'VaccineFrom'`, `'Mu'`; the third output is the day's new infections (a hidden cumulative compartment differenced).
+`epiR0` (β/γ, or the spectral radius of K_ij = β C_ij N_i / (γ N_j) by power iteration), `epiFinalSize`
+(z = 1 − e^(−R0 z)), `herdImmunity`, `fitEpidemic` (β, γ, I0 on log scale by Levenberg–Marquardt against
+log(1 + cases), nine starts on a 0.25-day step, polished at 0.05; SEIR's first infected are put in I, not E: seeding E
+made a true SEIR fit land in a false valley), `epiRt` (the renewal equation with a discretised gamma serial interval,
+gamma prior 1 and 5 as Cori et al., normal-approximated 95% band). Names are our own (MATLAB builds these in
+SimBiology as objects). Tests: final size 0.9405 at R0 3 and 0.7968 at 2, the peak at S = N/R0, conservation,
+next-generation R0 for mixed and separate groups, fits recovering β and R0, R_t = e^r for steady growth, the stiff
+solver on a 1000:1 problem in under 400 steps. Not built: stochastic (Gillespie) outbreaks, spatial spread, deaths and
+hospital beds as compartments, fitting with confidence intervals.
+
+## M493 (23 Nov): Hyperion toolbox, pharmacokinetics (sciences and industries, 2 of 14)
+
+`pk.ts` (pure) and `pk-lab.ts`. A linear model is its disposition as exponential modes (`modes`: one compartment
+A = 1/V, λ = CL/V; two compartments α and β from k10, k12, k21 with A_α = (α − k21)/(V(α − β))), so every route has
+a closed form (`single`: bolus Σ A e^(−λt); infusion R Σ A/λ (1 − e^(−λt)) then decaying; oral F D Σ A ka/(ka − λ)
+(e^(−λt) − e^(−ka t)), with the ka = λ limit) and a schedule is a sum of single doses (`simulate`). Saturating
+elimination ('Vmax', 'Km', one compartment plus the gut) is solved by RK4 mark to mark (asked times, doses, infusion
+ends) so a bolus lands at its time; a time asked for at a dose reads after it. `steadyState` sums doses until the
+slowest mode is e^−30 down (at most 100,000); `dosingWindow` bisects the interval whose steady-state peak ÷ trough
+equals MTC ÷ MEC, then picks the longest practical interval (1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 168 h) and a dose aimed
+at the window's geometric middle; `nca` is linear-up log-down AUC and AUMC, λz from the last points after the peak.
+Language: `pkModel` (a struct, Type 'pkModel', with Rates and HalfLife), `pkSimulate` ('Route', 'Duration', 'Every',
+'Doses', 'Times', 'Hours', 'Step', 'Window'), `pkSteadyState`, `pkDosingWindow`, `pkNCA` (our own names; SimBiology's
+are objects). Units are the person's (mg, L, h by default). The example `dosing.m` says it is teaching, not medical
+advice. Tests: the textbook formulas (bolus, infusion end, oral Tmax = ln(ka/k)/(ka − k), AUC = F D/CL), two
+compartments against Dormand–Prince on the equations, the bolus steady state and accumulation 1/(1 − e^(−kτ)),
+the window τ = ln(MTC/MEC)/k with dose V(MTC − MEC), saturating = linear at low levels. Not built: population PK
+(mixed effects), fitting a model to measured levels (use lsqcurvefit on `pkSimulate`'s output), PD (effect) models,
+three compartments, lag times.
+
+## M494 (23 Nov): Hyperion toolbox, DNA and protein tools (sciences and industries, 3 of 14)
+
+`bio.ts` (pure) and `bio-lab.ts`. Sequences: `complement` (ambiguity letters too, case kept), `reverseComplement`,
+`gcContent`, `counts` (U as T), `translate` (the standard code as one 64-letter string in TCAG order; unknown codons
+'X', stops '*'), `orfs` (ATG to the first stop in frame, six frames; positions in the original's coordinates, start >
+stop on the reverse strand; the stop codon in the span, not the protein; longest first). Alignment, `align`: Gotoh's
+three matrices (M a pair, X a letter of a against a gap, Y the other way) with a pointer matrix each (P* = 3 marks
+where a local alignment starts), so the traceback never guesses from floating-point equalities; global or local;
+BLOSUM62 for proteins, +5/−4 (−2 against N) for DNA; gap = open + (L − 1) × extend (MATLAB's defaults 8 and 8 kept).
+Trees: `distance` (p, Jukes–Cantor; gaps skipped), `upgma` (size-weighted average, heights half the distance),
+`neighborJoin` (Saitou–Nei Q matrix; the result is unrooted Newick with three branches at the top, drawn rooted at
+the last join), `treeLayout` (elbow lines, leaves 1…n down the y axis). Language: MATLAB's `seqcomplement`,
+`seqrcomplement`, `seqreverse`, `basecount`, `nt2aa` ('Frame', 'all' a cell), `nwalign`, `swalign` ([score,
+alignment, start, identity]; the alignment a three-line text, since the engine's text has one row), `seqpdist` (a
+pdist row or 'SquareForm'; unequal lengths aligned first), `seqlinkage` ('average' only), `seqneighjoin`; our own
+`gcContent`, `findORFs` (a table) and `plottree` (MATLAB's trees are phytree objects; ours are structs with Type
+'phytree', Newick, Names, Parent, Length). Example `dna.m`: human β-globin, its ORF, the sickle-cell change GAG→GTG
+found by swalign, a five-species tree. Tests: textbook translations, ORFs on both strands, Durbin's HEAGAWGHEE pair
+(the score recomputed from the alignment), a local match and one long affine gap, Wikipedia's UPGMA and
+neighbour-joining examples. Not built: multiple alignment (profiles, ClustalW-style), reading FASTA/GenBank files
+(fastaread), other genetic codes, BLAST-style database search, maximum-likelihood trees, PAM and other matrices.
+
+## M495 (23 Nov): Hyperion toolbox, chemistry and chemical engineering (sciences and industries, 4 of 14)
+
+`chem.ts` (pure) and `chem-lab.ts`. `parseMechanism` reads 'A + B -> C; 2 C <-> D' (arrows ->, =>, <->, <=>, =;
+';' or new lines between reactions; a coefficient before a name), species in the order they first appear; `rates` is
+mass action (a reversible reaction takes forward then backward k); `batch` (= `pfr`: at constant density a plug-flow
+reactor's concentrations at residence time τ are the batch's at t = τ) solved stiffly by `ros23`; `cstr` runs the
+tank's equations 40 τ from the inlet and polishes by Newton with the finite-difference Jacobian; `equilibrium` is damped
+Newton on ln K = Σ ν ln c over the extents, halving the step until every involved concentration stays positive (a
+product starting at zero is first given a hair of extent); `acidPH` bisects the charge-balance cubic with water's ions;
+`arrhenius` and `arrheniusFit` (ln k on 1/T). Language: MATLAB's `odeset` (RelTol, AbsTol; the rest kept but unused),
+`ode15s` and `ode23s` (both the same Rosenbrock 2(3), MATLAB's ode23s method; ode15s's variable-order NDF is not
+built: say so if someone compares step counts); our own `kineticsSim`, `batchReactor`, `pfrReactor`, `cstrReactor`
+(one row per τ), `arrhenius`, `arrheniusFit`, `chemEquilibrium`, `acidPH`. **Fixed in sci-num.ts on the way:** the
+stiff solver's first step came out ~1e-17 when a component started at 0 with a tight AbsTol and it gave up; the first
+step now has a floor of 1e-10 × the span, and both solvers' "step too small" test is relative to the span, not to 1
+(problems in nanoseconds work). Example `reactors.m`. Tests: Robertson's problem to Hairer–Wanner's values (0.7158,
+9.185e-6, 0.2842), first-order batch and CSTR closed forms, the second-order CSTR quadratic, Arrhenius fit, single,
+bimolecular and coupled equilibria, acetic acid pH 2.87. Not built: non-isothermal reactors (energy balances, runaway),
+reactors with pressure drop or changing volume, Langmuir–Hinshelwood or other non-mass-action rate laws, activity
+coefficients, polyprotic acids and buffers, a periodic table and molar masses.
+
+## M496 (23 Nov): Hyperion toolbox, neuroscience (sciences and industries, 5 of 14)
+
+`neuro.ts` (pure; randomness passed in) and `neuro-lab.ts`. `hodgkinHuxley`: the 1952 squid axon with the modern
+voltage convention (rest −65 mV, ENa 50, EK −77, EL −54.387), RK4 at 0.01 ms, the rate functions' 0/0 points
+replaced by their limits, spike times at upward 0 mV crossings (interpolated). `lif`: the exact exponential step
+between inputs and the crossing time solved inside the step, so spike times and the firing rate match `lifRate`'s
+formula 1/(t_ref + τ ln((RI + rest − reset)/(RI + rest − θ))) to 6 digits; the refractory time is carried across steps
+(`quiet`). `izhikevich`: the 2003 model with v in two half steps as in the paper, named types RS, IB, CH, FS, LTS, TC,
+RZ. `izhNetwork`: the paper's network (excitatory c = −65 + 15r², d = 8 − 6r²; inhibitory a = 0.02 + 0.08r, b = 0.25 −
+0.05r; weights 0.5·rand and −rand; thalamic noise 5 and 2 × randn) at 1 ms. `lifNetwork`: W(i, j) mV added to i
+when j fires, after a delay (a ring of steps), noise σ√dt. Spike trains: `spikeTimes`, `poisson` (with dead time),
+`isiStats` (CV), `fano`, `psth` (Hz), `crossCorrelogram`. A spike list is rows [time neuron] everywhere (ms).
+Language (our own names): `hodgkinHuxley`, `lifNeuron`, `lifRate`, `izhikevich`, `izhNetwork`, `lifNetwork`,
+`poissonSpikes`, `spikeTimes`, `isiStats`, `fanoFactor`, `psth`, `rasterPlot`, `spikeXcorr`; a current is a number with
+'Start'/'Stop' or one value per step. Example `neurons.m`. Tests: HH rests at −65, fires 64–72 Hz at 10 µA/cm² and
+not at 2; LIF against its formula at four currents; Izhikevich RS adapts, FS is faster, CH bursts; a network's spikes
+in range; Poisson CV ≈ 1 and Fano ≈ 1, a clock 0; the correlogram's peak at the lag; one neuron driving another.
+Not built: cable and multi-compartment neurons, synaptic conductances with their own time course (synapses are
+instant voltage jumps), plasticity (STDP), spike sorting from recordings, reading electrophysiology files.
+
+## M497 (23 Nov): Hyperion toolbox, physics (sciences and industries, 6 of 14)
+
+`physics.ts` (pure, SI) and `physics-lab.ts`. Mechanics: `projectile` (quadratic drag k = ½ρCdA/m, from a height;
+the landing found by bisection on a re-integration of the last step), `ellipticK` (AGM) and `pendulumPeriod`
+(4√(L/g)K(sin θ0/2)), `pendulum` (θ'' = −(g/L) sin θ − bθ'), `doublePendulum` (the Lagrangian equations for unequal
+masses and rods, energy returned as a check), `nbody` (velocity Verlet, softening, positions every k-th step),
+`chargedParticle` (the Boris push). Waves: `pluckedString` (Fourier series of the triangle, b_n = 2hL² sin(nπp/L) /
+(n²π²p(L − p))), `slits` (single-slit envelope × the N-slit grating term, normalised to 1 at the centre),
+`waveField` (Σ A cos(kr − ωt + φ)/√(r/λ), 2D spreading). Fields: `pointCharges` (Coulomb, NaN inside a small core
+when drawing). **sci-num.ts `rk45` gained `{ at, maxStep }`:** with `at` the steps are shortened to land exactly on
+the asked-for times (no interpolation; a step shortened only for that doesn't shrink the next), which the pendulums
+and the projectile use; `sample` (linear) is still what ode15s uses for given times. Language (our own names):
+`projectile`, `pendulum`, `pendulumPeriod`, `doublePendulum`, `nbody`, `chargedParticle`, `stringWave`, `slitPattern`,
+`waveField`, `efield`. **Animation:** the engine's `drawnow` and `pause` do nothing (a script runs to its end, then
+draws), so every drawing takes the moment to show ('At', t, or t itself for the waves): a `% slider` on t moves it and
+Sweep (M402) films it as a GIF; `physics.m` is built that way. Tests: drag-free range, height and time; a horizontal
+throw from 10 m; K(0) = π/2; T(90°)/T0 = 1.180340599 and the simulated period agreeing; the double pendulum's energy
+to 1e-6; the Earth's year round the Sun with energy to 1e-6; the cyclotron radius and the E×B drift E/B; the plucked
+string's shape, its mirror at half a period and return at a whole one; two-slit maxima and minima; a point charge's
+V and E and a dipole's 2kp/r³. Not built: rigid bodies and collisions, 3D field lines (streamlines), magnetism of
+currents (Biot–Savart), optics with lenses, relativity, quantum wells; real-time animation inside a running script.
+
+## M498 (23 Nov): Hyperion toolbox, geoscience (sciences and industries, 7 of 14)
+
+`geo.ts` (pure; randomness passed in) and `geo-lab.ts`. Seismic: `seismogram` (P and S as Ricker wavelets with
+decaying codas, amplitude falling with distance, noise), `staLta` (trailing windows on cumulative energy), `aicPick`
+(Maeda's AIC by running sums, O(n)), `pick` (STA/LTA's first trigger, then AIC over the 2 s before and 0.5 s after),
+`locate` (Geiger's method by `levenbergMarquardt` from optim.ts, epicentre and origin time, depth bounded 0–700 km when
+asked), `spDistance`, `localMagnitude` (Hutton–Boore anchored at 1 mm, 100 km = ML 3). Globe: `arc` (haversine),
+`bearing`, `destination`, `vincenty` (inverse, on [a e]; NaN when it fails to converge near antipodes). Projections:
+`project` (spherical Mercator, equirectangular, Lambert azimuthal equal-area, orthographic with the far side NaN; x, y
+in sphere radii) and UTM by Krüger's series to n³ (`toUtm`, `fromUtm`; ~1 mm round trip; the northing on the central
+meridian equals k0 × the WGS84 meridian arc to 0.1 mm). Terrain: `fractalTerrain` (diamond-square), `slopeAspect`
+(rows north to south, aspect the way the slope faces, clockwise from north), `hillshade`. Language: MATLAB's Mapping
+Toolbox names `distance` (degrees; a radius gives length; [a e] gives Vincenty), `azimuth`, `reckon`, `deg2km`,
+`km2deg`, `wgs84Ellipsoid` (a vector [a e], not MATLAB's object); our own `seismogram`, `staLta`, `pickArrival`,
+`locateQuake`, `spDistance`, `localMagnitude`, `mapProject`, `ll2utm`, `utm2ll`, `fractalTerrain`, `slopeAspect`,
+`hillshade`. **Merge watch:** `distance`, `azimuth` and `reckon` are general names; the machines-and-vehicles branch
+(aerospace, M482–M491) may define geodesy functions too: a later registration silently wins, so check for duplicate
+`def(` names and help lines when the branches meet. Example `quake.m`. Tests: a P pick within 0.15 s, a quake located
+to 1e-4 km (and its depth), S−P distance, ML 3 anchor, haversine and London–Paris, bearings, destination round trip,
+Vincenty's Flinders Peak–Buninyong 54,972.271 m, Mercator, Lambert's radius-2 disc, UTM meridian arc and round trips
+(north and south), slope and aspect of planes, flat hillshade = sin(altitude). Not built: travel times through a
+layered Earth (only a uniform speed), focal mechanisms, real map data (coastlines, DEM files: GeoTIFF reading),
+gravity and magnetic surveys, well logs.
+
+## M499 (23 Nov): Hyperion toolbox, ECG and biosignals (sciences and industries, 8 of 14)
+
+`biosig.ts` (pure; randomness passed in) and `biosig-lab.ts`. For learning, not diagnosis: said in the help section's
+title, `patientMonitor`'s title, `panTompkins`' drawing and the example. Filters: our own second-order Butterworth
+biquads (bilinear with pre-warping; −3 dB at fc, tested) and `zeroPhase` (forwards and backwards). **Not defined on
+purpose:** `butter`, `filtfilt`, `pwelch`, `findpeaks`: the signals branch (M472–M481, "a signal analyser and filter
+designer") is likely to add them, and two `def`s of one name would silently replace each other at merge; after both
+merge, these toolboxes may switch to theirs. `ecgSynth`: Gaussian P, Q, R, S, T per beat, intervals with respiratory
+sinus arrhythmia (0.25 Hz) and jitter, QT scaled by √RR (Bazett), noise, baseline wander, 50 Hz hum. `panTompkins`:
+band-pass 5–15 Hz, the five-point derivative, squaring, 150 ms moving-window integration, peaks 200 ms apart,
+SPKI/NPKI thresholds learnt on the first 2 s and updated (1/8), search back past 1.66 × the mean of the last 8 RR at
+half the threshold, the R peak placed at the band-passed maximum in the integration window. `hrv`: SDNN, RMSSD,
+pNN50, and LF (0.04–0.15) / HF (0.15–0.4) by resampling the tachogram at 4 Hz and `welch` (Hann, half overlap,
+one-sided, density). `eegBands` (Welch with 2 s segments, five bands), `eegSynth` (AR(1) background + rhythms).
+`wdrc`: a 10 ms mean-square level read as a sine's peak, the gain smoothed with attack and release (an envelope
+follower on |x| was biased high by its fast attack: 1.4 dB too much compression; fixed this way); `hearingAid`:
+bands split at the edges by zero-phase pairs, each band compressed with its own gain, summed. Language (our own
+names): `ecgSynth`, `panTompkins`, `hrvMetrics`, `eegSynth`, `eegBandPower`, `patientMonitor`, `wdrc`, `hearingAid`.
+Example `ecg.m`. Tests: biquads at −3 dB, Pan–Tompkins > 98% of beats within 30 ms at 60 and 110 bpm with noise,
+wander and hum, HRV time measures by hand and HF ≫ LF for breathing-paced RR, a 10 Hz sine is alpha with A²/2,
+2:1 compression 20 dB over gives 10 dB over, unity hearing aid passes through. Not built: arrhythmia
+classification, reading real ECG files (WFDB/EDF), 12-lead views, SpO₂ from red and infrared light, EEG artefact
+removal (ICA), feedback cancellation and noise reduction in the hearing aid, audiogram fitting rules (NAL, DSL).
+
+## M500 (23 Nov): Hyperion toolbox, medical imaging (sciences and industries, 9 of 14)
+
+`medimg.ts` (pure) and `medimg-lab.ts`. For learning, not diagnosis. `readDicom`: Part 10 (preamble + DICM, group
+0002 always explicit, then the transfer syntax decides) or a bare implicit-VR file; only implicit and explicit VR
+little-endian (compressed or big-endian syntaxes are refused by name, encapsulated pixel data too); sequences of
+undefined length and their items are skipped (`skipUndefined` / `walk(…, inItem)`); only the tags in `TAGS` are read
+into `info` (geometry, rescale, window, modality, date, description): **patient identifiers are never read**; 8, 16 or
+32-bit, one sample a pixel, frames as pages. `writeDicom`: explicit VR LE, 16-bit stored values (signed when any value
+is negative), the meta group's length computed first, a random 2.25 UID. `windowed` is DICOM's linear VOI rule;
+`WINDOWS` the usual presets. `headPhantom` (whole HU: skull, brain with a texture, ventricles, a 70 HU lesion),
+`regionGrow` (6-connected, tolerance from the seed's value, iterative stack), `largestComponent` (6-connected).
+Language: MATLAB's `dicominfo`, `dicomread` (int16/uint16 by PixelRepresentation, as MATLAB), `dicomwrite`,
+`dicomreadVolume` (ours takes a cell of names or the start of the names, not a folder; rescale applied: HU; sorted by
+ImagePositionPatient z, else InstanceNumber; returns [dy dx dz]); our own `ctWindow`, `headPhantom`, `orthoSlices`
+(axial, coronal, sagittal at true proportions via imagesc's x/y in mm), `regionGrow`, `segmentHU` (mask and mL).
+Files go through the window's `FileStore` (Files panel), so a person's own uncompressed .dcm uploads open directly.
+Example `ctscan.m` (writes 40 slices, reads them back, four windows, three planes, a lesion and the skull measured,
+`bwlabel` from M428). Tests: write/read round trip with every header field, an old implicit file with a nested
+undefined-length sequence, refusing junk, the windowing rule, the phantom's skull as one component, region growing
+staying outside the head, a series round trip in the language to 0 HU. Not built: compressed DICOM (JPEG, JPEG 2000,
+RLE: needs decoders), DICOMDIR and folders, multi-frame enhanced objects, RGB ultrasound, 3D volume rendering,
+registration, MRI-specific tools.
+
+## M501 (23 Nov): Hyperion toolbox, finance: pricing (sciences and industries, 10 of 14)
+
+`fin.ts` (pure) and `fin-lab.ts`. `ncdf` is Hart's double-precision algorithm (West 2005; ~1e-15 absolute, 1e-8
+relative in the far tail past 7.07); `bs` is Black–Scholes–Merton with a continuous dividend yield, all Greeks
+(theta per year, vega per 1.00 of volatility, as MATLAB's), and the intrinsic limit at T = 0 or σ = 0;
+`impliedVol` is Newton kept in a bracket by bisection (NaN outside what any σ in (1e-6, 10) gives); `crr` the
+Cox–Ross–Rubinstein tree (rows nodes, columns steps; NaN below the diagonal, zeros in the language as MATLAB's);
+`monteCarlo` GBM paths with antithetic pairs, European in one step, Asian (arithmetic average) and knock-out barriers
+(up-and-out when the barrier is above the spot, down-and-out below) on `steps` steps, with the standard error. Bonds
+use per-period compounding at the coupon frequency and whole periods (`flows`): `bondPrice`, `bondYield` (bisection),
+`bondRisk` (Macaulay, modified, convexity), `bootstrap` (par → discount factors → zero rates), `nelsonSiegel` and
+`fitNelsonSiegel` (LM from five τ starts, bounded). Language: MATLAB's `blsprice`, `blsdelta`, `blsgamma`, `blsvega`,
+`blstheta`, `blsrho`, `blsimpv` (name–value 'Yield', 'Class'), `binprice` (American, Flag 1 call / 0 put, MATLAB's
+output layout), all element by element; our own `mcOptionPrice`, `bondPrice`, `bondYield`, `bondDuration`,
+`zeroCurve`, `nelsonSiegel`, `nelsonSiegelFit` (MATLAB's bond functions are date-based and its curves objects; ours
+take years). Example `options.m` (says teaching, not investment advice). Tests: Φ to 14 digits, Hull's 4.76 / 0.81,
+put–call parity with dividends, every Greek against finite differences, implied vol round trip, the tree converging
+to BS, Hull's two-step American put 7.43, no early exercise of a call without dividends, Monte Carlo within 4 standard
+errors, par bonds at 100, a zero's duration = maturity, duration + convexity predicting a 1% move, bootstrapped par
+bonds repricing to 1, Nelson–Siegel recovering a known curve. Not built: day counts and real dates (settlement,
+accrued interest), stochastic volatility (Heston), local volatility, interest-rate trees (Hull–White, BDT), credit
+spreads, exotic payoffs beyond these three.
+
+## M502 (23 Nov): Hyperion toolbox, finance: portfolios and risk (sciences and industries, 11 of 14)
+
+`risk.ts` (pure; uses `ncdf`/`npdf` from fin.ts and `nelderMead`/`solve` from optim.ts) and `risk-lab.ts`.
+`minRisk` is a primal active-set method on the KKT system (2 C_FF w_F − δ1 − γμ_F = 0, 1'w = 1, μ'w = target): the
+most negative weight leaves the free set; an asset at zero whose multiplier is negative rejoins; shorts allowed solves
+once. `frontier` (from the least-risk portfolio to the best single return long-only; a target only a corner reaches can
+be singular and is skipped), `maxSharpe` (200 frontier points, then a golden-section on the target), `ninv` (Acklam +
+one Newton step, 1e-12), `var_` (historical with interpolated quantile and the mean of the tail; normal; Cornish–Fisher
+with skew and excess kurtosis), `kupiec` (POF likelihood ratio, χ²₁ p-value), `garchFit` (normal likelihood; ω = e^p0,
+α + β = 0.9999·logistic, β's share logistic, so α + β < 1 always; Nelder–Mead twice; the variance starts at the
+sample's), `garchSim`, `ewma`, `maxDrawdown`, `backtestMA` (position decided on the previous close: no look-ahead;
+a cost on each switch), `carbonStress` (yearly emissions × price × (1 − pass-through) as a perpetuity at the rate,
+capped at the holding's value: a transparent basic, no scenario data invented). Language: MATLAB's `tick2ret`,
+`ret2tick`, `ewstats` (no decay factor), `portstats`, `portvrisk`, `maxdrawdown`; our own `efficientFrontier`,
+`maxSharpe`, `valueAtRisk`, `varBacktest`, `garchFit`, `garchSim`, `ewmaVol`, `backtestStrategy`, `carbonStress`
+(MATLAB's are Portfolio, varbacktest and garch objects). There is no `chol` in the engine (the example builds correlated
+returns from a market factor instead). Example `portfolio.m`. Tests: the least-risk portfolio's equal marginal risks,
+long-only weights ≥ 0 summing to 1 on a rising frontier, a corner target, the two-asset tangency closed form and its
+Sharpe √(e'C⁻¹e), normal VaR/ES formulas against 200,000 draws and the historical estimate, ninv(0.975), Kupiec
+accept/reject, GARCH recovering α 0.08, β 0.9 and the long-run volatility, returns and prices round trip, drawdown,
+a back-test with one trade, the carbon stress by hand. Not built: Black–Litterman, CVaR optimisation, transaction-cost
+or cardinality constraints, multivariate GARCH and copulas, credit risk (PD, LGD), NGFS climate scenarios with real
+data (the owner would need to choose a data source).
+
+## M503 (23 Nov): Hyperion toolbox, maths teaching (sciences and industries, 12 of 14)
+
+`teach.ts` (pure, on the symbolic `N` of sym.ts) and `teach-lab.ts`. Every step is `{ rule, tex, plain }`; the
+language prints "Step k, rule:" then the maths between `TEX_OPEN`/`TEX_MID`/`TEX_CLOSE`, so the command window sets it
+as real maths and copying keeps the plain text. `diffSteps` walks the expression: constant, the variable, the sum
+rule, the constant multiple rule (constant factors pulled out), the quotient rule (when a product has a factor with a
+negative numeric power), the product rule (first factor against the rest), the power rule and the chain rule with it,
+the exponential rule, the table (derivatives read from sym.ts's own `diff` of f(_u), so the table is never duplicated),
+and a final `simplify`. `intSteps`: constants, linearity, constant multiples, the power rule and ∫1/x = ln|x| by hand,
+otherwise `integrate` from sym-calc.ts with its result checked by differentiating back (the rule then says so), and
+F(b) − F(a) with limits. `solveSteps`: linear (move and divide), quadratic (a, b, c, the discriminant, its sign, the
+formula, the roots; one root when Δ = 0), otherwise `solveFor`. `rrefSteps` (exact fractions; swap, scale, clear the
+column; rank, pivots, the determinant from the pivots and swaps), `eigSteps` (A − λI, its determinant by cofactors,
+its roots). Language (our own names): `diffSteps`, `intSteps`, `solveSteps`, `rrefSteps`, `detSteps`, `eigSteps`, and
+graphs for a class through function handles: `tangentLine`, `riemannSum` (left, right, mid, trap against `integral`),
+`newtonSteps` (a table and the tangents), `taylorPlot` (exact derivatives at the centre). Sliders and Sweep animate them
+(example `teach.m`). Tests: product, chain and quotient rules named and agreeing with `diff`, linearity and a definite
+integral of 9, a linear and a quadratic equation, complex roots flagged, the classic 3 × 3 system to (2, 3, −1), a
+determinant with a swap, eigenvalues 1 and 3, the language run end to end. Not built: limits with L'Hôpital steps,
+integration by parts shown as steps (the integrator does it silently), proofs, differential equations step by step,
+exercises with checking of a student's own answer.
+
+## M504 (23 Nov): Hyperion toolbox, semiconductors and materials (sciences and industries, 13 of 14)
+
+`matsci.ts` (pure) and `matsci-lab.ts`. Semiconductors (silicon; doping cm⁻³, lengths cm, energies eV): `siEg`
+(Varshni 1.17 − 4.73e-4 T²/(T + 636)), `siNi` from Nc, Nv ∝ T^1.5 (6.1e9 at 300 K by these textbook constants; the
+"1e10" often quoted is a rounded measurement), `pnJunction` (depletion approximation: Vbi, W, xn, xp, Emax; refuses
+forward bias at or past Vbi), `bands` (the parabolic potential in each depletion side; Ec, Ev and both Fermi levels),
+`diodeCurrent` (Shockley with Rs solved by Newton from the smaller of the two limits), `mosThreshold` (V_FB + 2φF +
+√(2εqNa·2φF)/Cox), `mosfetId` (square law with λ). Materials (MPa): `MATERIALS` (steel S355, aluminium 6061-T6,
+Ti-6Al-4V, annealed copper; rounded textbook figures, labelled "for teaching, not design data" in help and titles),
+`stressStrain` (Ramberg–Osgood to the UTS, then a necking tail to the elongation), `tensile` (E by a fit below 40% of the
+strength, the 0.2% offset crossing interpolated, UTS, plastic elongation, toughness by trapezoids), `basquinFit`,
+`cyclesToFailure` (Goodman), `rainflow` (ASTM E1049 three-point stack on turning points; the residue counted as halves),
+`minerDamage`. Mining: `variogram` (binned half mean squared differences), `spherical`, `krige` (ordinary kriging,
+the (n+1)² system solved per query point: fine to ~1,000 samples), `idw`. Language (our own names): `siliconNi`,
+`pnJunction` (band diagram), `diodeIV`, `mosfetVth`, `mosfetIV`, `materialCurve`, `tensileTest`, `basquinFit`,
+`fatigueLife`, `rainflowCount` (not `rainflow`: MATLAB's has another layout, and the signals branch may define it),
+`minerDamage`, `variogramExp`, `krigeGrade`, `idwGrade`. Example `materials.m`. Tests: Vbi and W by the formulas,
+charge balance, reverse bias widening, the band bending equal to Vbi, the diode equation satisfied with Rs, square-law
+saturation and continuity, a thinner oxide's lower threshold, the tensile test recovering E and the yield it was built
+with, Basquin round trip, Goodman shortening life, ASTM E1049's own example (ranges 3, 4, 6, 8, 9 counted ½, 1½, ½,
+1, ½), Miner on one cycle, kriging exact at data with zero variance, IDW at a sample. Not built: carrier transport
+(drift–diffusion), MOS capacitance curves, heterojunctions, plasticity in 3D, crack growth (Paris law), strain-life
+(Coffin–Manson), block models and ore reserve classification.
+
+## M505 (23 Nov): Hyperion toolbox, agriculture and energy production (sciences and industries, 14 of 14)
+
+`agri.ts` (pure) and `agri-lab.ts`. `et0` is FAO-56 equation 6 step by step (pressure from elevation, γ, Δ, es from
+Tmax and Tmin, ea from RHmin/RHmax or a mean, Ra and daylight from latitude and day, Rs measured or Ångström from
+sunshine, Rso, Rns at albedo 0.23, Rnl), checked against FAO-56 example 18 (Brussels, 6 July: Ra 41.09, Rs 22.07,
+ea 1.409, Rn 13.28, ET0 3.9); `kcCurve` (the four stages, straight lines between); `waterBalance` (FAO-56 chapter 8:
+depletion, Ks below RAW, rain beyond field capacity drains, irrigation back to field capacity the day depletion passes
+RAW, an application efficiency); `cropGrowth` (degree-days over a base; LAI an S-curve peaking at 35% of the thermal
+time and dying back over the last quarter; RUE × ½Rs × (1 − e^(−k·LAI)) × Ks; harvest index); `dispatch` (bisection on
+λ with every unit clamped to its limits; null when the demand is outside the fleet's range), checked against Wood and
+Wollenberg's example 3A (λ 9.148; 393.2, 334.6, 122.2 MW); `lcoe` with panel degradation. Language (our own names):
+`et0PM`, `kcCurve`, `soilWaterBalance`, `cropGrowth`, `economicDispatch` (many demands at once: a row per demand),
+`lcoe`. The "process optimisation examples using M422" are in `farm_energy.m`: a least-cost feed by `linprog` and the
+most profitable irrigation by `fminbnd`. The examples' test now also loads image-lab and optim-lab (the worker loads
+every toolbox; the test must too when an example uses another toolbox's functions). Not built: crop models of the
+AquaCrop / DSSAT kind (phenology stages, nitrogen), soil layers and capillary rise, unit commitment (start-ups, minimum
+up and down times), transmission losses in dispatch, hourly solar and wind (M434 has those).
+
+**Group 7 (M492–M505) is complete.** No point-and-click window was added: every toolbox draws its own figure and every
+example has live sliders (and Sweep for films), which covered what a window would have given; a window remains possible
+later (Learn's pattern, M421/M465) if the owner wants one for a particular toolbox.
+
+**M505 follow-up (23 Nov): every example's figures rendered and looked at** (46 figures, `renderSvg` to PNG). Fixed:
+`plot(x, y, 'Color', '#22c55e')` (and 'Color', 'r') read the pair's name as a line spec and drew circle markers: the
+engine only treated a pair name as a pair when a number followed it (plot.ts `seriesFrom`, one line; a regression test
+in `examples-sciences.test.ts`). This touched every chart in the app that passes a colour by text. Also: the diode's log
+plot was empty (0 A at 0 V; now left out), the epidemic example's fit drew nothing (it asked for an output), a tree's
+root line hid under the y axis (a little room on the left), the dosing window's top line sat on the frame (more head
+room), PSTH counted only the neurons that fired (now the highest neuron number), shorter "mV" labels for stacked
+neuron traces, the MOSFET title's threshold rounded.
+
+**Checked in a browser (23 Nov):** `scripts/checks/hyperion-sciences-ui.mjs` on a local build runs all 14 examples from
+their tabs in the engine's thread (each must print its line, no error), checks the maths-teaching steps are set as maths
+(MathML) and a figure shows; axe clean at 1280 dark and 1024 light, no sideways scroll, no page errors. It found one
+accessibility fault, fixed: a wide maths line in the command window (a matrix step) scrolls sideways but couldn't take
+the keyboard's focus (`LabText`'s maths span now has `tabIndex={0}`).
+
+## M506 (23 Nov): Hyperion, animation while a script runs
+
+The owner (23 Nov) asked for M492–M505's left-outs ("please work on this"); the first: no live animation while a script
+ran (Hyperion drew when it finished). Now `drawnow` and `pause` call the host's `frame()` (interp.ts `Host.frame`,
+`Host.wait`); the worker (`lab.worker.ts`) posts `{ live: FigOut }` for the current figure when it changed, at most every
+33 ms, and flushes printed text, so a loop plays in the figure pane and the command window fills as it goes. `pause(t)`
+really waits there: a busy wait in the engine's own thread (shortcut: `Atomics.wait` would need a cross-origin-isolated
+page, which the site isn't; the page stays free and Stop ends the worker), capped at an hour. Only runs from the command
+window or Run animate (`ToLab.run.animate`); live controls, notebook sections, Sweep, Watch it run, Time it and the tests
+neither send frames nor wait, so a slider never replays an animation slowly. The window upserts a live figure that
+didn't exist before the run (`'live' in m` in LabApp).
+
+Handles: `h = plot(…)` returns a handle per line (numbers from `HANDLE` = 1000, kept in `Graphics.handles`; figure
+numbers stay small); `set(h, 'XData', x, 'YData', y, 'Color', …)` changes the line (only pair names `isPairName`
+knows are applied: a bare `'Visible'` would otherwise read as a line spec); `animatedline` (respects hold like plot),
+`addpoints(h, x, y[, z])`, `clearpoints(h)`. The example `animate.m` (a pendulum and its angle growing) is in the
+examples list. Tests in `plot.test.ts` (M506). Not built: `getframe` / `movie` / `VideoWriter` (Sweep's GIF film covers
+saving a film), `set` on other objects (text, surfaces), `delete(h)`.
+
+## M507 (23 Nov): Hyperion reads compressed DICOM
+
+M500 left out compressed scans. `dicom-codecs.ts` (pure, written from the standards): `decodeRle` (PS3.5 annex G:
+PackBits segments, most significant byte first, any samples and 8/16/32 bits) and `decodeJpeg` (T.81: baseline and
+extended sequential Huffman, 8 or 12 bits, any sampling factors, interleaved or one-component scans, restart markers;
+lossless process 14, predictors 1–7, point transform, up to 16 bits, components not subsampled). Colour in a DCT JPEG:
+an Adobe APP14 decides, then component ids R, G, B (no change), then JFIF (YCbCr), then the DICOM photometric (`ybr`);
+lossless syntaxes never transform. Subsampled chroma is stretched by centred linear steps (libjpeg's "fancy"
+upsampling), which brought a 4:2:2 ultrasound film from 15 levels off libjpeg to 3 (the rest is libjpeg's integer IDCT).
+
+`readDicom` (medimg.ts) now: reads the meta group, then by transfer syntax: deflated (fflate `inflateSync` on the rest),
+explicit big-endian (`le` flag; 8-bit pixels in a big-endian OW element are swapped in pairs), files without a meta
+header (explicit or implicit guessed from the first element's VR), encapsulated pixel data (basic offset table and
+fragments → frames by the table, one fragment a frame, all for one frame, or JPEG start markers), RGB / YBR_FULL /
+YBR_FULL_422 colour (3 samples, planar or not; YBR turned into RGB), 1-bit, signed values within BitsStored.
+`DicomImage.samples` is new; `pixels` is frame by frame, sample by sample. `dicomread` gives rows × cols × 3 for colour
+(× frames as a 4D array, `nd: [3, F]`); `dicomreadVolume` refuses colour. JPEG-LS, JPEG 2000, HTJ2K and MPEG are
+refused by name. Checked against 27 of pydicom's test files (decoded by pydicom, libjpeg-turbo and imagecodecs, on this
+machine only, not committed): every supported file identical or within 1 level (12-bit extended, colour baseline),
+the 4:2:2 film within 3. Committed tests use `fixtures/dicom-compressed.json` (made with libjpeg-turbo and pydicom's
+RLE encoder: lossless with three predictors, a 4:2:0 colour JPEG, a two-frame lossless and an RLE DICOM). Not built:
+JPEG-LS, JPEG 2000, palette colour, DICOMDIR, enhanced multi-frame's per-frame headers.
+
+## M508 (23 Nov): Hyperion Learn → Sciences, a point-and-click window for every science toolbox
+
+The owner was asked which toolbox should get a window first and answered "all of them". One window serves all 14:
+`src/lib/lab/sci-apps.ts` describes each toolbox as data (`SciApp`: fields of kind num / menu / toggle / text, each
+optionally shown only `when` another field allows, and `script(values)` that writes a Hyperion script). `clean` keeps
+numbers in range, menus to their options and text to its allowed letters before any value reaches a script (nothing
+typed can leave a number or a quoted string). Scripts print their results as `= Label | value` lines (`resultsOf`);
+anything else they print shows under "What it printed". `SciencesApp.tsx` (Learn's third tab, `LearnTabs`) runs the
+script in its own `lab.worker.ts` (prefixed `close('all'); clear;`), the newest values winning while a run goes (a
+queue of one), and shows the run's current figure (light or dark SVG), the result cards, and the script (Copy, Open in
+Code through `shareFragment`). The chosen toolbox is remembered for the visit (sessionStorage `uv-sci-app`).
+
+Windows: epidemics (SIR/SEIR, vaccination, a lockdown), drug dosing (levels, the best schedule), DNA (one-letter
+changes, reading frames, a family tree), chemistry (series reactions, CSTR against PFR, Arrhenius), neurons (HH, LIF,
+Izhikevich), physics (throw, pendulum, double pendulum, slits), geoscience (locate a quake, a lit landscape, distance on
+the globe), ECG (monitor, beat-to-beat rate, EEG bands), medical imaging (window, three planes, measure a range),
+pricing (option price and delta against the spot, a bond against its yield), portfolios (frontier, VaR, a trend rule,
+a carbon price), maths for class (tangent, Riemann sums, Newton, Taylor), materials (junction, MOSFET, tensile,
+fatigue), farms and power (irrigation, dispatch, LCOE). `sci-apps.test.ts` runs every view with its starting values
+(each prints results; each but reading frames draws). Values checked by hand: Wood and Wollenberg's dispatch (393, 335,
+122 MW at 9.148), the junction's 0.80 V, the Riemann exact integral, Newton to √2. The pk "best schedule" view takes
+about 2 s (pkDosingWindow's search). Not built: a window per toolbox beyond these views, files in the window (the
+window's worker has none of the person's files; scripts in Code do).
+
+**M508 checked in a browser (23 Nov):** `scripts/checks/hyperion-windows-ui.mjs` on a local build: all 14 windows show a
+figure and result cards, a slider (R0, by keyboard) changes the results, axe clean at 1280 dark and 1024 light, no
+sideways scroll, no page errors; animate.m (M506) showed 20 different frames while it ran. Fixed from it: pressing the
+toolbox already open wiped its results (`pick` now ignores it); the pendulum in animate.m was drawn in black, invisible
+in dark mode (an orange line now). Open in Code lands on Code's "Someone shared … Open it" banner, as Machine health's
+does.
+
+## M509 (24 Nov): Hyperion, real climate scenarios in the carbon stress test
+
+The owner chose both ways, "focus more on the first": (1) people download NGFS's (or IPCC's) scenario file themselves
+and Hyperion reads it; (2) a few headline numbers ship with credit. NGFS's licence (data.ene.iiasa.ac.at/ngfs/#/license,
+read 23 Nov) is CC BY 4.0 adapted: parts may be shared with attribution, "a substantial portion" may not; so only the
+range NGFS states in its own report ships: Net Zero 2050's global shadow carbon price, 100–260 US$2010/t CO₂ in 2030
+and 500–1,250 in 2050 across its models ("NGFS long-term scenarios, narratives and key findings", Phase V, 2025),
+`NGFS_NZ2050` in risk.ts with its source line. IIASA's explorer and API are blocked from this machine (proxy), so no
+dataset was downloaded; other scenarios come from the person's file.
+
+`readIamc` (risk.ts) reads the IAMC layout (Model, Scenario, Region, Variable, Unit, then a column per year; any order
+and case; empty cells NaN). `ngfsRead(file, 'Variable', …, 'Region', …, 'Scenario', …, 'Model', …)` (risk-lab.ts) goes
+through `rowsOf` (files.ts, now exported) so CSV, .xlsx and .xls all work, and returns a struct (cells of names, Years,
+Values a row per series). `yearly` turns a path into whole years (straight lines; before its first year a line up from
+0 at 'Start'). `carbonStressPath` pays emissions × price × (1 − pass-through) at each year's end, emissions falling by
+'Decline' a year, discounted at 'Rate' to 'Start', the last year's cost carried on as a shrinking perpetuity, capped at
+the value: a flat path gives exactly `carbonStress`'s answer (tested). Several rows of prices are several scenarios;
+without outputs it draws bars. The Portfolios window's carbon view has "Carbon prices": one price, NGFS Net Zero 2050
+low end or high end (with "Emissions cut each year"), and prints the source. Not built: downloading from NGFS inside
+Hyperion (people fetch the file; the explorer needs its own sign-in), GDP or physical-risk variables in the stress.
+
+## M510 (24 Nov): Hyperion epidemics, the left-outs
+
+The owner, 24 Nov: work through "the toolbox gaps from the M492–M505 notes", a few at a time from M510 (the order:
+each note's "Not built" list, M492 first). `epi.ts` / `epi-lab.ts`: `sirGillespie(β, γ, [S I R], days, 'Runs', n)`,
+Gillespie's exact method (one infection or recovery at a time, exponential waits, the state read at whole days, stops
+when nobody is infectious or at 5 million events), random numbers from the engine's `random` (so `rng(seed)` repeats
+it); at most 1,000,000 people and runs × people 20 million. Drawn as grey runs against the smooth SIR, printing how
+many died out early against theory (γ/β)^I0. `seihrd(β, σ, γ, [S E I H R D], days, 'Hospital', 'StayDays',
+'Fatality', 'Beds', 'FatalityNoBed', + sir's 'Intervention' / 'Vaccinate')`: a share of those leaving I goes to H, a
+share of those leaving H dies; patients past the beds die at FatalityNoBed (deaths = 1/stay × (m·min(H, B) + m'·
+(H − B)⁺)); the fourth output is daily admissions. `epiOptions` now takes extra option names (and a parsed map) so a
+model can add its own. `fitEpidemic` gives 95% intervals from the curvature at the best fit (s²(JᵀJ)⁻¹ on the logs,
+Student's t by Hill's expansion, `studentT975`), lopsided after exp; R0's from var(log β − log γ); [NaN NaN] when JᵀJ
+is singular. Tests: half of single-case outbreaks at R0 2 die out, the big ones reach the final size, no person lost;
+SEIHRD without hospital equals SEIR, deaths = fatality × admissions, too few beds means 1.5× the deaths; the intervals
+hold the truth on noisy data. Not built: spatial spread (a metapopulation between cities is the natural next step).
+
+## M511 (24 Nov): Hyperion pharmacokinetics, the left-outs
+
+From M493's "Not built". `pk.ts` / `pk-lab.ts`: `pkModel` takes 'Lag' (hours before a dose by mouth starts; `single`
+shifts oral doses, the saturating solver gets oral doses moved by the lag) and 'Q3', 'V3' (a third compartment, needs
+the second). Three compartments go through `mammillary(V, k10, [[k1j, kj1]…])`, general for any number of peripherals:
+the rates solve k10 + Σk1j − λ = Σ k1j kj1/(kj1 − λ), one root between each pair of poles (bracketed, the top end
+doubled until the sign turns), each mode's weight the residue 1/(V(1 + Σ k1j kj1/(kj1 − λ)²)); equal kj1 are merged.
+Two compartments keep the closed form (the test checks the general route gives the same). Older pkModel structs
+without Q3, V3 or Lag still work (read as 0). `pkEffect(t, C, 'Emax', 'EC50', 'Hill', 'E0', 'ke0')`: Hill's sigmoid
+Emax; with ke0 an effect site Ce' = ke0(C − Ce) solved exactly with C straight between samples (`effectSite`); drawn
+as effect over time and the hysteresis loop. `pkFit(t, C, dose, 'Route', 'Every', 'Doses', 'Times', 'Compartments' 1
+or 2, 'F', 'Lag')`: Levenberg–Marquardt on log parameters against log levels (zero levels left out), starts from NCA
+(CL = dose/AUC, V = CL/λz, ka from Tmax; two compartments try six splits), 95% intervals by the curvature (Student's t
+from `studentT975` in epi.ts, M510); returns a pkModel struct plus RMSE, Fitted and CLCI, VCI, kaCI, QCI, V2CI. Tests:
+three compartments against the equations stepped by RK4, the lag exact, Emax at EC50, the effect site for a steady
+and a ramping level, fits recovering one and two compartments (the interval holds CL). Not built: population PK
+(mixed effects: a model of how parameters vary between people), fitting the effect model's parameters (use lsqcurvefit
+on `pkEffect`).
+
+## M512 (24 Nov): Hyperion DNA tools, the left-outs
+
+From M494's "Not built". `bio.ts` / `bio-lab.ts`. **Data:** NCBI's 27 genetic codes (ids 1–6, 9–16, 21–33: name, the
+64 amino acids in TCAG order, the start codons) and Dayhoff's PAM250 (same 24-letter order as BLOSUM62), both checked
+against Biopython 1.85's copies (its wheel read as text, nothing run; NCBI's FTP is blocked from this machine).
+`translate` / `codonToAA` take a code; `nt2aa(…, 'GeneticCode', n or a name)`; `geneticcode(n)` returns ID, Name,
+AminoAcids, Codons, Starts, Stops, and with nothing prints the list. `nwalign`, `swalign` and `multialign` take
+'ScoringMatrix' ('BLOSUM62', 'PAM250', 'NUC44' = the +5/−4 we had). **Files:** `fileText` / `writeFileText` are now
+exported from files.ts for toolbox readers. `fastaread(file or text starting with '>')`: one output a struct (text for
+one record, cells for several; no struct arrays in the engine), two outputs cells; ';' comment lines and a final '*'
+dropped. `fastawrite(file, headers, seqs | struct | seqs)` appends as MATLAB does, 70 letters a line. `genbankread`
+reads the first record: LOCUS (name, length, molecule), DEFINITION over several lines, ACCESSION, VERSION, ORGANISM,
+FEATURES as a table (type, location joined across lines, first /gene and /product), ORIGIN. **multialign**: distances
+1 − identity from pairwise global alignments, a UPGMA guide tree (`upgma`'s internal nodes come in merge order, so
+children always exist before their parent), then profile against profile by Gotoh's three states, a column pair scored
+as the average of its letters' pair scores (gaps 0); returns a cell of rows and the guide tree; without outputs prints
+blocks of 60 with '*' under columns identical in all. Up to 100 sequences, 60,000 letters. `seqconsensus` gives the
+commonest letter per column and the share agreeing. Not built: refinement after the progressive pass (MUSCLE-style),
+reading several GenBank records at once, BLAST-style database search, maximum-likelihood trees.
+
+
+## M513 (24 Nov): Hyperion chemistry, the left-outs
+
+From M495's "Not built". **Periodic table** (`elements.ts`): 118 elements, IUPAC 2021 standard weights (the conventional
+value where IUPAC gives an interval; mass numbers in brackets for those with no stable isotope, `bracketed`); checked
+against the NIST table in the periodictable package (read as text; only Zn differs, IUPAC revised it in 2007).
+`chem-plus.ts` (pure): `parseFormula` (brackets ( ) and [ ], hydrates after '·', '•', '*' or '.', a leading count per
+hydrate part; charges '^2-', '^{3+}', '{2-}' or bare trailing signs, each one charge, so 'Fe3+' reads as Fe₃⁺: write
+Fe^3+), `molarMass` (electrons ignored); `balance`: species split on ' + ' with spaces (so 'Na+ + Cl-' works), a row per
+element plus one for charge, the null space by elimination must be one-dimensional (else "can't, or two reactions in
+one"), scaled to the smallest whole numbers up to ×10,000. **Acids:** an `Acid` is Ka's from the most protonated form,
+total C, and that form's `charge` (0 for H3PO4, 1 for NH4⁺, so ammonia is NH4⁺'s Ka with charge 1); `solvePH` solves
+the charge balance on log h by `root` over [−20, 3] (it rises with h), strong cations (Na⁺) and anions (Cl⁻) given
+apart; with `activity`, Davies' γ (25 °C, A = 0.509) iterated with the ionic strength, concentration constants
+Kc = Ka γ(z_{j−1})/(γ₁ γ(z_j)), Kw/γ₁², the pH −log(γ₁h). `fractions` in logs (no overflow for H3PO4 at pH 14).
+`titration` dilutes analyte and titrant; equivalence volumes are one per proton the titrant can take or give.
+**Heat:** chem.ts now has `reactionRates(m)(c, k)` (per-reaction net rates, k passed each call) and `stoichiometry`;
+`rates` and `equilibrium` use them. `heatedBatch`: [c…, T] with ρCp dT/dt = Σ(−ΔH)r − UA(T − Tc) by `ros23`.
+`cstrSteadyStates`: the mass balance at each of 300 temperatures (Newton from the previous one, `cstr` as fallback),
+G(T) against R(T) = ρCp(T − Tin)/τ + UA(T − Tc), crossings refined by `root`, stable by the slope test (necessary only:
+said in the help). Units: mol/L, J/mol, J/(L·K), W/(L·K), K, s. Language: `molarMass`, `elementInfo`,
+`balanceEquation`, `polyproticPH`, `bufferPH`, `acidSpecies`, `titrationCurve`, `activityCoeff`, `ionicStrength`,
+`heatedBatch`, `cstrSteadyStates` (in chem-lab.ts). Example `solutions.m`. Tests: molar masses of glucose, the hydrate,
+ferrocyanide; three balances (one ionic); H3PO4 against the quadratic, ammonia, the buffer at pKa and its Davies shift,
+acetic acid's titration (pKa half way, 8.72 at equivalence); the adiabatic rise ΔH·c/ρCp; three CSTR states (cold,
+unstable middle, hot) each checked against c = cin/(1 + kτ) and the energy balance. Not built: reactors with pressure
+drop or changing volume, Langmuir–Hinshelwood and other non-mass-action rate laws, activity models past Davies
+(Pitzer), temperature-dependent Ka, a tank that oscillates (the slope test can't see it).
+
+## M514 (24 Nov): Hyperion neuroscience, the left-outs
+
+From M496's "Not built". `neuro-plus.ts` (pure) and its language part at the end of `neuro-lab.ts`. **Cable**
+(`cable`): n compartments, sealed ends, axial coupling 1000·d/(4·Ri·dx²) mS/cm² (d, dx in cm), the injected nA spread
+over the compartment's side area; each step the HH gates by exponential Euler, then the voltages by backward Euler
+along the cable (Thomas' algorithm), as NEURON does. Passive: leak 1/Rm to the rest; active: HH's own leak and
+channels (Rm is ignored), rates × 3^((°C − 6.3)/10). Recorded at most 4000 times and 2 million values; first arrival
+at 0 mV per compartment, the speed from a line through the middle half. `cableNeuron`'s defaults switch with
+'Active': the squid giant axon (476 µm, 35.4 Ω·cm, 5 cm, 500 compartments, 18.5 °C, 2000 nA for 0.5 ms) against a
+thin passive 1 mm dendrite. **Synapses** (`kernel`, `conductance`): exponential, alpha, or two exponentials normalised
+to peak 1 (the peak at τrτd/(τd − τr) ln(τd/τr)). **STDP** (`stdpChange`, `songNeuron`): Song, Miller and Abbott's
+2000 neuron, conductances relative to the leak; Poisson inputs drawn per step as a Poisson count spread over random
+inputs (the same process as independent trains); each input's potentiation trace decays lazily (stored with its last
+time), so a post spike costs one pass over the weights. **Spike sorting** (`detect`, `sortSpikes`): σ = median|x| /
+0.6745, threshold crossings aligned on the peak within 1 ms, dead time, windows of 'Pre' / 'Post' ms; `pca` and
+`kmeans` from ml.ts; the automatic k (1–6) by the mean silhouette on ≤ 600 spikes, a k counted only if every cluster
+holds 5% (a cluster of noise crossings had won otherwise); units numbered by mean peak size. Language: `cableNeuron`,
+`synapseConductance`, `stdpWindow`, `stdpNeuron`, `detectSpikes`, `spikeSort`. Example `brain.m`. Tests: the passive
+cable's V(L)/V(0) = 1/cosh(L/λ) and its λ, τ; the axon at 18.5 °C between 17.5 and 20 m/s (HH's computed 18.8; 18.6
+here) and slower when cold; the kernels' peaks; the pair rule; Song's neuron fast at first, settling under 40 Hz with
+over 60% of weights near 0 or the maximum after 1000 s (1.4 s to run); two simulated units in noise found (> 90%) and
+told apart (> 95%). Not built: branched morphologies (SWC files), channels other than HH's, synapses on the cable,
+plasticity rules other than pair-based additive STDP, filtering raw recordings before sorting (pass a band-passed
+signal), reading electrophysiology files (ABF, NWB).
+
+## M515 (24 Nov): Hyperion physics, the left-outs
+
+From M497's "Not built". `physics-plus.ts` (pure) and its language part at the end of `physics-lab.ts`. **Currents:**
+`biotSavart` is exact per straight piece (μ0I/(4πd)(sB/√(sB²+d²) − sA/√(sA²+d²)) round u × −d̂), so a polygon of 720
+sides matches a loop to 1e-4; `coulomb3` in 3D; `fieldLine` is RK4 along the unit field direction, stopping on leaving
+the box, near a sink, when the field vanishes or when it closes on its seed. `bfield`'s drawing seeds along a line from
+the wire's middle toward its nearest point (a straight wire on its axis gets an offset), so a loop's lines thread it.
+**Optics:** a system is text ('d L; f F; s R n1 n2; m R'), rays [height; angle], matrices multiplied last-first;
+focal length −1/C, back −A/C, front −D/C, an image at si = −(A so + B)/(C so + D); the mirror is unfolded with the
+matrix [1 0; −2/R 1], so a concave (focusing) mirror is R > 0 with focal length R/2 and 'm -100' is a convex one, f = −50
+(the test checks it). `gaussianBeam` propagates q (complex, written out) through d, f and m only (no index
+changes) and reports the last waist. **Relativity:** `relativisticParticle` is the Boris push on u = γv (the rotation
+with t = qBdt/(2mγ⁻)); the speed is kept exactly in a pure B field and stays below c under any E; `chargedParticle(…,
+'Relativistic', true)`. `lorentz`, `addVelocity`, `relativistic`, `minkowskiDiagram`. **Quantum** (eV, nm, electron
+masses; ħ²/2mₑ = 0.0380998212 eV·nm²): `schrodinger` builds the three-point Hamiltonian (ψ = 0 beyond the grid) and
+`tridiagEigen` finds the lowest states by Sturm bisection and inverse iteration (tridiagonal, any size to 50,000);
+`finiteWell` solves the even and odd transcendental equations branch by branch; `barrier` in closed form (E = V0 as its
+limit); `transmission` walks transfer matrices from the right lead (outgoing wave only) to the left, each region with
+its own local origin so evanescent stretches don't overflow early, regions bounded half way between samples and the
+first and last samples as the leads. **Rigid bodies:** `eulerSpin` (rk45 at 1e-10 on the given times), `collide1d`,
+`disks`: event-driven hard disks (the next wall or contact solved exactly, all pairs each event: n ≤ 300), walls
+elastic, pairs with restitution e along the line of centres, positions at the frame times; `diskCollisions` starts on a
+lattice with directions from the engine's `random` (so `rng` repeats it) and takes 'At' for a slider. Example
+`physics2.m`. Tests: a long wire's 2e-5 T, a loop's centre and axis; a wire's field line closing and a dipole's ending on
+−; two lenses' f1f2/(f1 + f2 − d), the lensmaker's 50 from two surfaces, imaging at 2f, a beam's √2 at zR and its focus
+by the formula; the interval, 0.5c ⊕ 0.5c, an electron's γmv/(qB) at 0.9c, a proton pushed by 1 GV/m never at c; the
+infinite well to 1e-5, the oscillator to 1e-4, the finite well against the grid, `transmission` = `barrier` to 1e-9 and
+resonant tunnelling through two barriers; the middle-axis flip with energy and |L| to 1e-8; head-on exchange, energy
+kept through 30 disks' collisions with no overlaps, energy lost at e = 0.5. Not built: rigid bodies' orientation
+(quaternions) and contact between shapes other than disks, field lines of currents in a chosen plane only, thick-lens
+apertures and aberrations, general relativity, time-dependent quantum wave packets, potentials in 2D and 3D.
+
+## M516 (24 Nov): Hyperion chemistry, more left-outs
+
+From M513's "Not built" (the owner, 24 Nov, the list of what was left out). `chem-more.ts` (pure) and its language part
+at the end of `chem-lab.ts`. **Packed bed** (`packedBed`): isothermal, gas phase, along the catalyst mass W:
+dFᵢ/dW = Σ νᵢⱼ r′ⱼ with Cᵢ = C_T0 (Fᵢ/F_T) y (C_T0 = P0/RT in mol/L), dy/dW = −α/(2y) · F_T/F_T0 (Fogler, isothermal),
+by `ros23`; the gas flow v = v0 (F_T/F_T0)/y is reported; it stops where y < 0.01 (said in the window). α = 0 is a gas
+PFR whose flow grows with the moles (the changing volume). `ergunAlpha` gives α and β0 from the bed (SI units).
+**Rate laws** (`RateLaw`: concentrations and T → one net rate per reaction): `massAction`, `lhRate` (k Π K p of the first
+n species / (1 + Σ K p)^n), `rateLawBatch`; in the language `rateLawSim` and `packedBed` take rate constants or a
+function `@(c) [...]` (called with c only). **Pitzer** (`pitzer`, 25 °C, one salt, molality): Aφ = 0.3915, b = 1.2,
+α1 = 2 (2:2: α1 = 1.4, α2 = 12), ln γ± and φ as Pitzer and Mayorga; 2:1 salts stored from their printed (4/3)β0,
+(4/3)β1, (2^(5/2)/3)Cφ; a_w = exp(−φνmM_w). MgSO4 left out on purpose: the commonly quoted 1974 parameters gave γ±
+10% above Robinson and Stokes' table (0.055 against 0.049 at 1 mol/kg) where CuSO4's matched to 1%; a person can pass
+any salt as a struct. Language: `rateLawSim`, `lhRate`, `ergunAlpha`, `packedBed`, `pitzerActivity` (drawn beside
+Davies'). Example `beds.m`. Tests: NaCl's γ± 0.657 and φ 0.936 at 1 mol/kg, 0.986 at 6; KCl 0.604; CaCl2 0.500; CuSO4
+0.0423; y = √(1 − αW) without reaction and the stop near W = 1/α; A → 2B without pressure drop against Fogler's
+(1 + ε) ln(1/(1 − X)) − εX = kW/v0 and v/v0 = 1 + X; LH by hand; a Michaelis-like batch against its closed form. Not
+built: non-isothermal packed beds, mixed electrolytes in Pitzer's model (θ and ψ terms) and temperatures other than
+25 °C, Pitzer inside `solvePH`.
+
+## M517 (24 Nov): Hyperion neuroscience, more left-outs
+
+From M514's "Not built". `neuro-tree.ts` (pure), `neuro-files.ts` (readers), the language part at the end of
+`neuro-lab.ts`. **Branches:** `parseSWC` (id type x y z radius parent; `#` comments), `buildTree`: the root is a cylinder
+as long as it is wide (a sphere's area), every other point ends a piece from its parent cut to at most 'MaxLength' µm
+(20), breadth-first so a parent always comes before its children; one root only, at most 20,000 compartments.
+`treeNeuron` works in nF, µS, mV, ms and nA: backward Euler, Hines' two sweeps (up the tree eliminating, down it
+substituting), HH by exponential Euler only where `active(type)` says ('none', 'soma', 'axon' = soma and axon, 'all'),
+else a leak of 1/Rm at rest; synapses are one event each (kernel from `neuro-plus.ts`, nS, implicit in V);
+`cableTerms` gives the axial conductance from the two half pieces' resistances. An SWC id names the last piece ending at
+that point. **Cleaning:** Butterworth by RBJ biquads at Q = 1/(2cos((2k−1)π/2N)) (even orders 2–8), notches (Q 30)
+at the mains and its harmonics up to 5× below the band's top, `zeroPhase` with odd reflection at both ends long enough to
+settle (3 periods of the low edge, 5 notch time constants), each section started at its DC steady state;
+`commonAverage` takes the median across channels. detectSpikes and spikeSort take 'Band', 'Notch', 'Order'. **Files:**
+`readAbf`: ABF2 only (ABF 1 refused with how to convert), offsets as pyabf documents them (header: episodes @12, data
+format @30, sections of 16 bytes from @76: protocol, ADC @92, strings @220, data @236; protocol: mode @0, interval µs @2,
+ADC range @110, resolution @118; ADC entry: instrument scale @40, signal gain @48, programmable gain @28, telegraph gain
+@6 when enabled @2, offsets @44 − @52, name and unit string indices @74, @78 counted from the 'clampex'/'clampfit'/
+'axoscope'/'patchxpress' string). Checked against a file laid out the same way in the test, not yet against a real
+Clampex recording. `readNwb`: series under /acquisition and /stimulus/presentation with a numeric `data`, scaled by
+`conversion` and `offset`, `starting_time` and its `rate`, or `timestamps`. **hdf5.ts** now reads variable-length string
+attributes (the global heap, 'GCOL'), which h5py and the NWB tools write; the fixture `fixtures/nwb-small.nwb` was
+written with h5py (gzip chunks, int16, a vlen unit). Language: `swcRead`, `treeNeuron`, `filterRecording`, `abfload`
+(MATLAB's File Exchange name: d, si in µs, h), `nwbRead`. Example `branches.m`. Tests: an unbranched tree equals
+`cable()` to 1e-6; Rall's 3/2 rule (two daughters of the right size and length give the soma the same voltage as one
+cylinder, within 1%); a spike reaching an active axon's end, later than its middle; a distal EPSP over halved at the
+soma; 1 kHz kept and 50 Hz cut by the band-pass, the notch alone killing 50 and keeping 130; spikes under 300 mV of
+4 Hz and 80 mV of hum sorted after filtering (> 85% found, > 90% agreeing); ABF2 and NWB read back. Not built: ABF 1,
+NWB's processing modules and units tables, channel types other than HH's on the tree, 3D views of the morphology (drawn
+from above), spines.
+
+## M518 (24 Nov): Hyperion physics, more left-outs
+
+From M515's "Not built". `physics-more.ts` (pure) and its language part at the end of `physics-lab.ts`.
+**Orientation** (`spinBody`): state [ω (body), q (scalar first, body → space)], Euler's equations with a torque,
+q' = ½ q ⊗ (0, ω), `rk45` at 1e-11, q renormalised on output; gravity for a top on a fixed point as m·g·l with the centre
+of mass on the body's third axis and gravity down space z (body torque = l e3 × (−mg Rᵀẑ)); reports the third axis and
+L in space and the energy. **Real rays** (`traceSurfaces`): surfaces [R t n (Vd)], the first vertex at z = 0, light
+from −z, the stop at the first surface; the sphere's intersection on the vertex's side (−b − √ for R > 0, + for R < 0),
+vector Snell, total reflection drops the ray; n(λ) by two-term Cauchy from nd and Vd (F, d, C lines); `axisCrossing`,
+`paraxialFocus` (a ray at 1e-5 of the aperture), `spot` (hexagonal rings filling the pupil, field angle in y–z), an
+optional `paths` record for drawing. **Schwarzschild** (G = c = M = 1): bound orbits from their turning points
+(1/L² = (u1 + u2)/2 − (u1² + u1u2 + u2²); refused unless the cubic's third root u3 = ½ − u1 − u2 lies above u1);
+u'' = 1/L² − u + 3u² by rk45, perihelia where u' changes sign; light u'' = −u + 3u² from u = 0, u' = 1/b; both
+right-hand sides frozen once u > 0.6 (inside the horizon) so the solver doesn't chase the singularity.
+`perihelionShift` in SI. **Wave packet** (`wavePacket`): Crank–Nicolson in eV, nm, fs (ħ = 0.6582119569 eV·fs,
+ħ²/2m from `HB2M`), ψ = 0 beyond the grid, the tridiagonal complex factorisation done once, |ψ|² saved at the asked
+times. **2D/3D** (`boundStates`): LOBPCG on [X W P] with modified Gram–Schmidt twice (dropping dependent vectors) and
+Rayleigh–Ritz by `symEig` (sim/modal.ts), block size states + 3, deterministic start; preconditioner the exact inverse
+of (−(ħ²/2m)∇² + mean(V − Vmin)) by dense sine transforms along each axis (O(n·N) per axis); stops at residual
+< 1e-6 × scale or when the energies stop moving (< 1e-10 × scale) with residuals under 1e-3 × scale (degenerate states
+converge slowly: a 24³ oscillator takes ~4 s). In the language V is in meshgrid's layout (rows y) or a function; ours
+runs x fastest, converted both ways. Language: `rigidRotation`, `lensAberration`, `spotDiagram`, `realRayTrace`,
+`schwarzschildOrbit`, `lightBending`, `perihelionShift`, `wavePacket`, `schrodinger2D`, `schrodinger3D`. Example
+`physics3.m`. Tests: a free symmetric body's ω1 = A cos((I3 − I1)/I1 ω3 t) to 1e-6 and L in space fixed to 1e-7; a
+fast top precessing at mgl/(I3ω3) within 5% with energy to 1e-7; one refracting surface against the exact
+sine-rule crossing to 1e-9 and nR/(n − 1); a plano-convex lens's aberration negative and growing as h², blue focus
+short of red, best focus spot under half the paraxial one, the image height f tan θ; precession and deflection
+within 1% of 6πM/(a(1 − e²)) and 4M/b far out, capture at b = 5.1 and not 5.3, Mercury's 43″; a free packet's norm
+to 1e-6, its spread σ√(1 + (ħt/2mσ²)²) and speed; a barrier's transmitted share against the plane waves' transmission
+averaged over the packet's momenta (to 0.005); the 2D box against the discrete eigenvalues to 1e-7 (with the (1,2),
+(2,1) pair); the 3D oscillator's 3/2 and threefold 5/2 ħω within 5%. Not built: contact between rigid shapes other than
+disks, aspheres and Seidel coefficients, Kerr (spinning) black holes and orbits out of the plane, time-dependent
+packets in 2D, 3D views of 3D states (slices only).
+
+## M519 (25 Nov): Hyperion physics, the last left-outs (shapes, Kerr, 3D states)
+
+From M518's "Not built" (the owner: "please do this"). **Shapes** (`rigid2d.ts`, `rigidShapes`): convex polygons (any
+corners, centred on their centroid, made counter-clockwise, concave refused) and circles; contacts by the
+separating-axis test with Box2D-style clipping of the incident edge (up to two points), circle–polygon by the nearest
+face or corner, walls as four half-planes; sequential impulses (20 passes) with accumulated clamping, restitution
+targeted from the approach speed only above 2g·dt (slower contacts rest, so nothing jitters) and Coulomb friction within
+μ·jn; afterwards a position-only push apart (80% beyond a slop of 1e-4 of the box) so no energy is made. 'Fixed' bodies
+have infinite mass (ramps, pegs). The step is capped so nothing moves a tenth of its smallest size in one. **Kerr**
+(`kerr.ts`, G = c = M = 1): Boyer–Lindquist, Mino time, r'' = R'/2 and u'' = U'/2 (u = cos θ), re-projected onto
+(dr/dλ)² = R and (du/dλ)² = U after every output step (without it, light from r = 1000 lost the constraint: R ~ r⁴).
+`constants(a, p, e, inc)` solves E, Lz by Newton with Q = Lz² tan² inc (polar orbits solve E, Q with Lz = 0);
+`circular`, `isco` (Bardeen–Press–Teukolsky), `photonOrbit`, `shadow` (Bardeen's ξ, η along the spherical light
+orbits), `precessions` (φ between southward equator crossings, periapsis by a parabola). Pictures in x = √(r² + a²)
+sin θ cos φ. **3D views**: a new figure grid kind `'tri'` (`plot.ts` `Grid.tri` / `face` / `edge`; drawn in `draw3d`
+with the other faces, sorted far first, lit per face or by averaged corner normals under `lighting gouraud`; LaTeX as
+a pgfplots patch); `isosurface.ts` by marching tetrahedra (six a cube along one diagonal, so it has no holes; triangles
+face away from larger values); `isosurface` (meshgrid layout, level the middle of the range when left out, adds a
+camlight and gouraud when the axes have no light) and `patch(fv)` / `patch('Faces', F, 'Vertices', V, …)` (polygons
+as fans; FaceColor, EdgeColor, FaceAlpha, FaceVertexCData). `schrodinger3D` now draws ψ = ±30% of its peak in blue
+and orange ('View', 'slice' for the old middle slice). Example `physics4.m`. Tests (`physics-m519.test.ts`): a square's
+s²/6, equal squares swapping speeds, a tilted square's corner hit keeping its energy to 1e-8 and spinning, a pair's
+momentum to 1e-9, a box sliding v²/(2μg) and resting flat, a ball bouncing to e² its height, a disc rolling down a
+fixed ramp at ⅔ g sin θ with ωr = v; horizon, ISCO 6 / 1 / 9 and light orbits 3 / 1 / 4; a circle's constants against
+the closed form and staying circular to 1e-6; with no spin the periapsis shift equal to M518's Schwarzschild solver;
+a tilted circle's φ per vertical swing 2π Ω_φ/Ω_θ (the exact Kerr vertical frequency) to 1e-4; capture 2% either side
+of the critical b both ways; a = 0's deflection equal to `lightRay`; the shadow a 3√3 circle without spin and
+−2 … 7 edge-on at a = 1; a sphere's isosurface closed (every edge in two triangles) holding 4/3 π r³ to 1%. Not built:
+friction between two moving shapes in 3D (2D only), concave shapes (split them), Kerr–Newman (charge), light out of
+the equator in `kerrLight` (the shadow covers it), and a smooth-shaded isosurface coloured by another field.
+
+## M520 (25 Nov): Hyperion physics, M519's left-outs (dents, 3D, charge, light from anywhere)
+
+The owner sent M519's "left out on purpose" list back. **Dents** (`rigid2d.ts`): `polygon` takes any simple outline
+(up to 64 corners; a crossing outline is refused), its area, centroid and ∫r² by the shoelace sums (signed, so dents
+count right), and `convexParts`: ear clipping into triangles, then Hertel–Mehlhorn (a shared diagonal removed while the
+merged piece stays convex). `Shape.poly.parts` collide part by part (`worldParts`); walls still use the outline's corners.
+**3D** (`rigid3d.ts`, `rigidShapes3D`): `hull(points)` by every plane through three points with all on one side, coplanar
+corners merged into one face (ordered round its normal, mid-edge points dropped), volume, centroid and inertia per unit
+mass from tetrahedra (∫xxᵀ = V/20 (Σ vvᵀ + ssᵀ)); `boxHull`; balls. Each body keeps L in space, ω = R J⁻¹ Rᵀ L, the
+quaternion turned by exp(ω dt): a free body keeps L exactly. Contacts: SAT over both face normals and every edge × edge
+(edges biased 5% so faces win ties); the reference face is the one pointing along the axis (opposite faces share an axis:
+the bug fixed while building), the incident face clipped by Sutherland–Hodgman against its sides; edge–edge by the two
+nearest segment points; ball–hull by the deepest face inside or the nearest face / edge point outside. Friction is a disc
+(both tangent impulses scaled to μ jn together). **Charge** (`kerr.ts`): Δ = r² − 2r + a² + q², P = E(r² + a²) − aLz − εqr
+(ε the particle's charge per mass); `circular` keeps Kerr's closed form and otherwise walks Newton in from r = 30 with
+the charge added in 20 steps; `isco` by bisection on R'' < 0; the light orbits and the shadow from the general
+ξ = (r² + a² − 4rΔ/Δ')/a, η = 16r²Δ/Δ'² − (ξ − a)² (equal to Bardeen's at q = 0), their r range where η ≥ 0 (scanned and
+bisected); no spin: a circle r²/√Δ at r = (3 + √(9 − 8q²))/2. The language keeps a² + q² a hair under 1. **Light from
+anywhere**: `imageRay` (Lz = −α sin θo, Q = β² + (α² − a²) cos² θo), traced back from r = 200 with `north = β > 0`;
+`kerrLight(…, 'Inclination', deg, 'Beta', β)` draws it in 3D. **axis equal in 3D** (`draw3d`): the shorter ranges widen
+about their middles to the box's 2 : 2 : 2·ZS, so a ball is round. Example `physics5.m`. Tests (`physics-m520.test.ts`):
+an L's two parts, area and ∫r² against two rectangles; a star rests on the floor without sinking; a ball rests inside a
+fixed U; a cube hull's 6 faces, 12 edges, s²/6, a tetrahedron's 1/6 and centroid; a tumbling box's L to 1e-12; equal cubes
+swapping speeds; a ball bouncing to e²; a tilted cube's corner hit keeping its energy to 1e-7 and spinning; a box sliding
+v²/(2μg) and resting; a cube stacked off-centre staying; RN's horizons, light sphere 2, ISCO 4 at q = 1 and the cubic for
+q = 0.6, the shadow r²/√Δ through the spinning formulas; q → 0 giving Kerr back; a particle with ε = 1 hovering beside an
+extremal hole (the Majumdar–Papapetrou balance) and falling in without its charge; a charged circular orbit staying
+circular to 1e-6; rays 3% inside the shadow's edge caught and 3% outside escaping, at three places round it. Not built:
+rolling resistance (balls roll for ever on a flat floor), concave solids in 3D (split them into convex ones by hand),
+magnetic charge, and a ray-traced picture of a disc round the hole.
+
+## M542 (25 Nov): Hyperion physics, M520's left-outs (rolling, dented solids, magnetic charge, the disc)
+
+Numbered after the signals branch's M541 (this branch's M492–M520 were used up). **Rolling resistance** ('Rolling',
+`roll` in both `simulate`s): at a contact with a ball or circle, an angular impulse against the relative turning across
+the contact (3D: the part of ω_b − ω_a across n), accumulated and kept within Crr · jn · r (r the smaller radius); boxes
+don't get it. A rolling disc slows at Crr g / 1.5, a ball at Crr g / 1.4. **Glued solids** (`r3.compound`): parts from
+`hull` / `boxHull` with their centroids in one frame; volume summed, centre volume-weighted, J = ∑ V_i (J_i + |d|²1 −
+ddᵀ) / V; `Shape3` is now `{ kind: 'hull'; parts }` (a single hull is one part), `posed(b)` gives each part's corners,
+normals and hull in space, contacts loop over part pairs, and `hullHull` points its axis by the parts' own middles (a
+compound's centre can sit outside a part). In the language a shape may be a cell of parts, each n × 3 corners or a
+placed box [w d h x y z]. Parts that overlap count twice. **Magnetic charge** g (`Charge.g`): Δ gains g² everywhere; the
+θ equation is now the general (du/dλ)² = (1 − u²)(K − μa²u²) − P_θ², K = Q + (Lz − aE)², P_θ = aE(1 − u²) − Lz − εg u
+(`Uf`, `dU` exported; equal to the old one at εg = 0, tested), dt/dλ = −aP_θ + (r² + a²)P/Δ, dφ/dλ = −P_θ/(1 − u²) +
+aP/Δ. R doesn't see εg, so `constants` and `circular` still set the radial motion; a charged body then rides a cone
+(Poincaré), shown in `kerrOrbit`'s title. Light and the shadow use the metric charge √(q² + g²) (`charge()` in the
+language returns q, g and m). **The disc** (`discImage`, `kerrDisc`): fixed-step RK4 in Mino time (h = 0.02 / (r +
+√(Q + Lz²) + 1)), re-projected onto R and U each step, from r = 1000, stopped at the first equator crossing between rIn
+(the ISCO) and rOut, at the horizon (×1.01) or going out past r0; brightness g⁴ (1 − √(rIn/r)) / r³, g = 1/(uᵗ(1 − Ωξ))
+with Ω and uᵗ from the circular orbit's E, L on a 300-radius log table. 80 × 80 takes ~1.3 s; the language allows 16–240
+pixels. Drawn with `imagesc`, `colormap hot`, brightness^¼, `axis xy`. Example `physics6.m`. Tests
+(`physics-m542.test.ts`): the two rolling rates and no slowing without it; an L's centre and I_yy by hand, landing and
+resting on both feet; a ball staying in a U of three glued boxes; the general θ equation against the old; a charged
+particle's cos θ held on Poincaré's cone to 1e-7; a face-on disc's shadow pixel empty and its far shift √(1 − 3/r); the
+approaching half more than twice as bright edge-on; the language bits. Not built: rolling resistance for boxes' edges
+(they don't roll), automatic splitting of a dented 3D mesh into convex parts, the disc's thickness and colour by
+temperature, and light that passes through the disc (it's opaque).
+
+## M543 (25 Nov): Hyperion physics, M542's left-outs (boxes that rock, dented meshes split, the disc's thickness, colour and see-through)
+
+The owner sent M542's "left out on purpose" list back. **Rolling resistance for any shape** (`rigid2d.ts`, `rigid3d.ts`):
+the same capped angular impulse, but a polygon or solid gets it too, its lever the distance from its centre to the
+contact (a circle or ball keeps its radius); fixed bodies give no lever. Resting flat it does nothing (no relative turn);
+rocking, tipping or tumbling on a corner it takes the energy out. **`convexSplit(V, F)`** (`r3.convexSplit`): a closed
+mesh (faces of any size, dents allowed in a face: `earClip` in the face's plane; closed and turned one way round is
+checked, a negative volume flipped). Parts are convex cells (planes) met with the mesh; a cell's corners are mesh corners
+inside it, mesh edges through its planes, cell corners inside the mesh and cell edges through mesh triangles; a point
+that only touches as a flat sliver is dropped (a 1e-5 step towards the middle, the mean of a 9³ grid inside both, must be
+inside the mesh: the corners' own mean can sit on the dent's edge, the bug met while building). A part is kept when ≥ 98%
+of a 12³ grid inside its hull is inside the mesh (`insideMesh`: ray parity along a skewed direction); otherwise it is cut
+by the plane of a face beside a fold inwards (a reflex edge) that leaves the least empty volume, worst part first, up to
+12 parts. `hull` takes a `max` (64 for these parts and in `rigidShapes3D`). **The disc** (`discImage`): `thick` = h/r
+(0–0.3) makes its faces the cones |cos θ| = h/r, entered from above or below, the gas taken at the cylinder radius;
+`opacity` < 1 adds each later crossing times (1 − opacity)ᵏ (stops under 1e-3), so the far side and the thin ring show
+through; `T` is g · (F/F_peak)^¼, brightness-weighted (F peaks at 49/36 rIn). `blackbodyRGB(T)`: Planck through Wyman,
+Sloan and Shirley's CIE fit, to sRGB, brightest channel 1. In the language: 'Thickness', 'Opacity', 'Colour'
+'temperature' (an RGB `image`, colour × brightness^¼), 'Temperature' (hottest gas, K), a 4th output T in kelvin.
+Example `physics7.m`. Tests (`physics-m543.test.ts`): a tumbling hexagon stops sooner, a box resting flat isn't moved, a
+tipped cube settles; a cube one part, an L two, a U three with their volumes; the split L glued back has the L's centre
+and rests; an open mesh refused; blackbody colours at 2000, 6500, 20 000 K; the plain disc unchanged; see-through adds
+light; a thick disc edge-on covers more. Not built: a smooth curved mesh is split into many flat-cut parts (12 at most;
+the rest stay a little hollow-hulled), the disc's own thickness doesn't shadow its far side's glow (the light passes
+the slab once per entry), and no light from the disc's inner edge wall.
+

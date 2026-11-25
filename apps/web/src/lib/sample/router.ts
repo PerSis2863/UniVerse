@@ -14,6 +14,7 @@ import * as biz from './green-business';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
 import * as impact from './impact';
 import * as extra from './new-features';
+import { sampleIotAlerts, sampleIotChannels, sampleIotEntries } from './iot';
 import { localPlan, type AskPlan } from '@/lib/ask';
 
 // Answers the app's API requests from example data while sample mode is on.
@@ -1812,6 +1813,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/trace\/funnel$/, ({ q }) => ok(extra.sampleFunnel(q))],
   // Trace's area alerts (M308).
   [/^\/trace\/watch$/, () => ok(extra.sampleWatch())],
+  [/^\/iot\/channels$/, () => ok(sampleIotChannels())],
+  [/^\/iot\/channels\/[^/]+\/entries$/, () => ok(sampleIotEntries())],
+  [/^\/iot\/channels\/[^/]+\/alerts$/, () => ok(sampleIotAlerts())],
   // Warranty claims (M309).
   [/^\/trace\/claims\/mine$/, () => ok(extra.sampleClaims(true))],
   [/^\/trace\/claims$/, () => ok(extra.sampleClaims(false))],

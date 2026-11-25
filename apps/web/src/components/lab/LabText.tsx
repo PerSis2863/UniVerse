@@ -41,7 +41,8 @@ export function LabText({ text }: { text: string }) {
       // Set at display size but lined up on the left with the rest of the output.
       const html = mathml(katex, tex, true);
       // KaTeX's own MathML (from our own LaTeX, trust off).
-      parts.push(<span key={k++} className="inline-block max-w-full overflow-x-auto align-middle text-[1.15em]" dangerouslySetInnerHTML={{ __html: html }} />);
+      // A wide one (a matrix, a long step) scrolls sideways, so it can take the keyboard's focus to be scrolled (M505).
+      parts.push(<span key={k++} tabIndex={0} className="inline-block max-w-full overflow-x-auto align-middle text-[1.15em]" dangerouslySetInnerHTML={{ __html: html }} />);
     } else parts.push(plain);
     last = m.index + m[0].length;
   }

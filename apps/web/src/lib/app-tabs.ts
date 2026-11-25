@@ -1,4 +1,4 @@
-import { BrainCircuit, Boxes, Sigma, Compass, Luggage, LayoutDashboard, BookOpen, MessageSquare, Globe2, Users, ShieldCheck, ScanLine, Wallet, Map, HandHeart, Building2 } from 'lucide-react';
+import { AudioWaveform, BrainCircuit, Boxes, Sigma, Compass, Luggage, LayoutDashboard, BookOpen, MessageSquare, Globe2, Users, ShieldCheck, ScanLine, Wallet, Map, HandHeart, Building2 } from 'lucide-react';
 import { appFor, inboxFor } from './apps';
 
 // The phone's tab bar for each app (src/lib/apps.ts; UniVersity's by role), and which pages count as top-level screens (no back button:
@@ -53,7 +53,7 @@ export function tabsForRole(role: string, path?: string): { base: string; items:
     messages,
   ] };
   if (app === 'relief') return { base: '/relief', items: [{ href: '/relief', label: 'Map', icon: Map }, { href: '/relief/mine', label: 'Mine', icon: HandHeart }, { href: '/relief/orgs', label: 'Orgs', icon: Building2 }, messages] };
-  if (app === 'lab') return { base: '/hyperion', items: [{ href: '/hyperion', label: 'Code', icon: Sigma }, { href: '/hyperion/simulate', label: 'Simulate', icon: Boxes }, { href: '/hyperion/learn', label: 'Learn', icon: BrainCircuit }, messages] };
+  if (app === 'lab') return { base: '/hyperion', items: [{ href: '/hyperion', label: 'Code', icon: Sigma }, { href: '/hyperion/simulate', label: 'Simulate', icon: Boxes }, { href: '/hyperion/learn', label: 'Learn', icon: BrainCircuit }, { href: '/hyperion/signals', label: 'Signals', icon: AudioWaveform }, messages] };
   if (app === 'travel') return { base: '/travel', items: [{ href: '/travel', label: 'Explore', icon: Compass, match: ['/travel/guide'] }, { href: '/travel/saved', label: 'Trips', icon: Luggage, match: ['/travel/trip'] }, messages] };
   return campusTabs(role);
 }

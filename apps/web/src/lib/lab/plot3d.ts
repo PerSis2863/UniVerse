@@ -5,6 +5,7 @@ import { textOf, type Lab } from './interp';
 import { add, colour, esc, gfx, isPairName, label, markerSvg, outward, PALETTE, points, style, tex, ticks, vec, type Axes, type Box, type Grid, type Ink, type Series } from './plot';
 import { hex, hexAt, MAP_NAMES, mapOf, png, rgbAt } from './colormap';
 import { cast, unitValues } from './types';
+import { isosurface } from './isosurface';
 
 // Hyperion's 3D plots and images (M379): surf, mesh, plot3, scatter3, contour, contourf, imagesc, image, pcolor,
 // colour maps and colour bars, view and shading. Surfaces are drawn as SVG faces sorted far to near (each face whole,
@@ -15,7 +16,7 @@ const finite = (v: number[]) => v.filter(Number.isFinite);
 const minmax = (v: number[]): [number, number] | null => { let lo = Infinity, hi = -Infinity; for (const x of v) if (Number.isFinite(x)) { if (x < lo) lo = x; if (x > hi) hi = x; } return lo <= hi ? [lo, hi] : null; };
 
 /** Whether the axes are drawn in 3D: surfaces, 3D lines, or a turned view. */
-export const is3d = (ax: Axes) => ax.grids.some((g) => g.kind === 'surf' || g.kind === 'mesh') || ax.series.some((s) => s.z) || (!!ax.view && !(ax.view[0] === 0 && ax.view[1] === 90));
+export const is3d = (ax: Axes) => ax.grids.some((g) => g.kind === 'surf' || g.kind === 'mesh' || g.kind === 'tri') || ax.series.some((s) => s.z) || (!!ax.view && !(ax.view[0] === 0 && ax.view[1] === 90));
 
 /** The colour scale: clim / caxis, or the range of everything coloured by value. */
 export function crange(ax: Axes): [number, number] {
@@ -80,19 +81,28 @@ export function colorbarSvg(b: Box, cmap: number[][], c0: number, c1: number, c:
 
 // ——— 3D ———
 
+/** '#rrggbb' as [r, g, b] (0–255). */
+const hexRgb = (h: string): [number, number, number] | null => { const m = /^#?([0-9a-f]{6})$/i.exec(h); if (!m) return null; const n = parseInt(m[1], 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+
 const ZS = 0.8; // the box's height against its width and depth (both 2)
 
 export function draw3d(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
-  const surfs = ax.grids.filter((g) => g.kind === 'surf' || g.kind === 'mesh');
+  const surfs = ax.grids.filter((g) => g.kind === 'surf' || g.kind === 'mesh'), tris = ax.grids.filter((g) => g.kind === 'tri');
   const lines = ax.series;
-  const all = (pick: (g: Grid) => number[], pickS: (s: Series) => number[]) => [...surfs.flatMap((g) => finite(pick(g))), ...lines.flatMap((s) => finite(pickS(s)))];
+  const all = (pick: (g: Grid) => number[], pickS: (s: Series) => number[]) => [...[...surfs, ...tris].flatMap((g) => finite(pick(g))), ...lines.flatMap((s) => finite(pickS(s)))];
   const span = (v: number[], lim: [number, number] | null): [number, number] => {
     if (lim) return lim;
     const r = minmax(v);
     if (!r) return [0, 1];
     return r[0] === r[1] ? outward(r[0] - 1, r[1] + 1) : outward(r[0], r[1]);
   };
-  const [x0, x1] = span(all((g) => g.x, (s) => s.x), ax.xlim), [y0, y1] = span(all((g) => g.y, (s) => s.y), ax.ylim), [z0, z1] = span(all((g) => g.z, (s) => s.z ?? [0]), ax.zlim);
+  let [x0, x1] = span(all((g) => g.x, (s) => s.x), ax.xlim), [y0, y1] = span(all((g) => g.y, (s) => s.y), ax.ylim), [z0, z1] = span(all((g) => g.z, (s) => s.z ?? [0]), ax.zlim);
+  // axis equal (M520): one unit the same length along x, y and z, by widening the shorter ranges about their middles
+  // to the box's own proportions (2 : 2 : 2·ZS).
+  if (ax.equal) {
+    const h = Math.max((x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / (2 * ZS)), mid = (a: number, b: number, w: number) => [(a + b) / 2 - w, (a + b) / 2 + w];
+    [x0, x1] = mid(x0, x1, h); [y0, y1] = mid(y0, y1, h); [z0, z1] = mid(z0, z1, h * ZS);
+  }
   const [cl0, cl1] = crange(ax);
   const [az, el] = (ax.view ?? [-37.5, 30]).map((d) => (d * Math.PI) / 180);
   const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
@@ -201,6 +211,25 @@ export function draw3d(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
       }
     }
   }
+  // Triangle patches (isosurface, patch with Faces and Vertices): one colour a triangle, lit by its normal (or, with
+  // smooth lighting, by its corners' averaged normals).
+  for (const g of tris) {
+    const t = g.tri ?? [], P = g.x.map((x, k) => [nx(x), ny(g.y[k]), nz(g.z[k])]), cv = g.cdata ?? g.z;
+    const alpha = g.alpha < 1 ? ` fill-opacity="${g.alpha}"` : '', fixed = g.face ? hexRgb(g.face) : null;
+    const fn = (a: number, b: number, q: number) => { const u = P[b].map((v, i) => v - P[a][i]), w = P[q].map((v, i) => v - P[a][i]); return [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; };
+    let vn: number[][] | null = null;
+    if (lit && g.smooth) { vn = P.map(() => [0, 0, 0]); for (let k = 0; k + 2 < t.length; k += 3) { const n = fn(t[k], t[k + 1], t[k + 2]); for (const v of [t[k], t[k + 1], t[k + 2]]) for (let i = 0; i < 3; i++) vn[v][i] += n[i]; } }
+    for (let k = 0; k + 2 < t.length; k += 3) {
+      const [a, b, q] = [t[k], t[k + 1], t[k + 2]];
+      if (![a, b, q].every((v) => P[v] && P[v].every(Number.isFinite))) continue;
+      const ps = [a, b, q].map((v) => S(P[v][0], P[v][1], P[v][2]));
+      let rgb = fixed ?? rgbAt(cmap, cl0, cl1, (cv[a] + cv[b] + cv[q]) / 3);
+      if (!rgb) continue;
+      if (lit) rgb = shade(rgb, vn ? [0, 1, 2].map((i) => vn![a][i] + vn![b][i] + vn![q][i]) : fn(a, b, q));
+      const col = hex(rgb), path = `M${ps.map(pt).join(' L')} Z`;
+      faces.push({ d: (ps[0][2] + ps[1][2] + ps[2][2]) / 3, s: `<path d="${path}" fill="${col}"${alpha} stroke="${g.edge ?? col}"${g.edge ? ' stroke-opacity="0.5"' : ''}/>` });
+    }
+  }
   faces.sort((p, q) => p.d - q.d);
   if (faces.length) out.push(`<g stroke-width="0.5" stroke-linejoin="round">${faces.map((f) => f.s).join('')}</g>`);
 
@@ -242,6 +271,11 @@ export function draw3d(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
 
 export function gridTikz(g: Grid, three: boolean): string {
   const p = (v: number) => (Number.isFinite(v) ? +v.toPrecision(6) : NaN);
+  if (g.kind === 'tri') {
+    // pgfplots' patch plot reads each three points as a triangle.
+    const t = g.tri ?? [], pts = t.map((k) => `(${p(g.x[k])},${p(g.y[k])},${p(g.z[k])})`);
+    return `\\addplot3[patch, shader=flat${g.face ? (([r, gg, b]) => `, color={rgb,255:red,${r};green,${gg};blue,${b}}`)(hexRgb(g.face) ?? [0, 0, 0]) : ''}${g.alpha < 1 ? `, opacity=${g.alpha}` : ''}] coordinates {\n${pts.join(' ')}\n};`;
+  }
   if (g.kind === 'surf' || g.kind === 'mesh') {
     // One scan line per column of the grid, blank lines between them (pgfplots' own layout).
     const cols = Array.from({ length: g.c }, (_, j) => Array.from({ length: g.r }, (_, i) => { const k = j * g.r + i; return `(${p(g.x[k])},${p(g.y[k])},${p(g.z[k])})`; }).join(' '));
@@ -686,4 +720,51 @@ def('cylinder', (a, nout, lab) => {
   // cylinder(r, n): r is the radius along the height (one value, or a profile from bottom to top).
   const r = a[0] ? vec(a[0]) : [1, 1], prof = r.length === 1 ? [r[0], r[0]] : r, n = a[1] ? Math.max(3, Math.round(scalar(a[1]))) : 20;
   return shape(lab, nout, prof.length, n + 1, (i, j) => { const th = (2 * Math.PI * j) / n; return [prof[i] * Math.cos(th), prof[i] * Math.sin(th), i / (prof.length - 1)]; });
+});
+
+// ——— Isosurfaces and triangle patches (M519) ———
+
+/** Draws triangles (0-based corners) as a patch on the current axes, without clearing it (as MATLAB's patch). */
+export function triPatch(lab: Lab, verts: number[][], tri: number[], o: { face?: string; edge?: string; alpha?: number; cdata?: number[] } = {}) {
+  const g: Grid = { kind: 'tri', r: verts.length, c: 1, x: verts.map((v) => v[0]), y: verts.map((v) => v[1]), z: verts.map((v) => v[2] ?? 0), tri, edges: false, alpha: o.alpha ?? 1, ...(o.face ? { face: o.face } : {}), ...(o.edge ? { edge: o.edge } : {}), ...(o.cdata ? { cdata: o.cdata } : {}) };
+  const ax = gfx(lab).axes();
+  if (ax.lighting === 'gouraud') g.smooth = true;
+  ax.grids.push(g);
+  gfx(lab).changed();
+}
+/** A field in meshgrid's layout (rows y, columns x, pages z) as x-fastest values with its three axes. */
+function field3(a: Value[]) {
+  const nums = a.filter((v) => v.k !== 'str');
+  const hasXYZ = nums.length >= 4, V = toMat(nums[hasXYZ ? 3 : 0], 'V'), ny = V.r, nx = V.c, nz = pages(V);
+  if (nx < 2 || ny < 2 || nz < 2) throw new LabError('isosurface needs a 3D array V (at least 2 × 2 × 2), as meshgrid lays it out: rows y, columns x, pages z.');
+  const axis = (m: Mat | null, n: number, step: number, what: string) => {
+    if (!m) return Array.from({ length: n }, (_, i) => i + 1);
+    if (m.d.length === n) return [...m.d];
+    if (m.d.length !== nx * ny * nz) throw new LabError(`${what} must match V (a vector of ${n} or the whole meshgrid array).`);
+    return Array.from({ length: n }, (_, i) => m.d[i * step]);
+  };
+  const gx = axis(hasXYZ ? toMat(nums[0]) : null, nx, ny, 'X'), gy = axis(hasXYZ ? toMat(nums[1]) : null, ny, 1, 'Y'), gz = axis(hasXYZ ? toMat(nums[2]) : null, nz, nx * ny, 'Z');
+  const vals = new Float64Array(nx * ny * nz);
+  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) vals[i + nx * (j + ny * k)] = V.d[j + ny * (i + nx * k)];
+  const lv = nums[hasXYZ ? 4 : 1];
+  let level: number;
+  if (lv) level = scalar(lv);
+  else { let lo = Infinity, hi = -Infinity; for (const v of vals) if (Number.isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } level = (lo + hi) / 2; }
+  return { gx, gy, gz, vals, level };
+}
+def('isosurface', (a, nout, lab) => {
+  const { gx, gy, gz, vals, level } = field3(a);
+  const s = isosurface(gx, gy, gz, vals, level);
+  if (s.faces.length > 200_000) throw new LabError('That surface has over 200,000 triangles: a coarser grid.');
+  const F = mat(s.faces.length, 3), Vt = mat(s.verts.length, 3);
+  s.faces.forEach((f, i) => f.forEach((v, j) => { F.d[i + j * s.faces.length] = v + 1; }));
+  s.verts.forEach((p, i) => p.forEach((v, j) => { Vt.d[i + j * s.verts.length] = v; }));
+  if (nout === 1) return [{ k: 'struct', f: new Map<string, Value>([['faces', F], ['vertices', Vt]]) }];
+  if (nout > 1) return [F, Vt];
+  const ax = gfx(lab).axes();
+  if (!ax.hold) add(lab, []);
+  triPatch(lab, s.verts, s.faces.flat(), { face: PALETTE[gfx(lab).axes().grids.length % PALETTE.length] });
+  // A light so the shape reads as 3D (MATLAB leaves it flat until camlight).
+  if (!gfx(lab).axes().lights.length) { BUILTINS.camlight([], 0, lab); BUILTINS.lighting([{ k: 'str', v: 'gouraud' }], 0, lab); }
+  return [];
 });
