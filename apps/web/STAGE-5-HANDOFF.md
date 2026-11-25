@@ -13266,3 +13266,33 @@ body's colour, free–free redder and dust bluer with the brightness unchanged (
 face-on still about the opacity, both options in the language. Not built: `'Search'` stays a local search (no
 V-HACD-style voxel or hierarchical search), the one-cut look-ahead only on a plateau, and scattering (light turned
 aside rather than taken) is not modelled; the spectrum is not one of `kerrDisc`'s outputs.
+
+## M546 (25 Nov): Hyperion physics, M545's left-outs (a fuller split search, scattering in the disc, its spectrum out)
+
+The owner sent M545's "left out on purpose" list back. **`convexSplit(…, { search: 'full' })`** (`rigid3d.ts`;
+`'Search', 'full'` in the language): one cut **ahead at every cut** (not only on a plateau): the best 4 cuts, each
+judged by what its two sides leave after their own best cut (6 fold cuts plus a halving across each axis), taken
+when that is 10% better than looking ahead from the plain best; then V-HACD's last step, **merging** neighbouring parts
+(boxes touching) while their joint hull stays solid within the tolerance and has at most 64 corners, the pair wasting
+least first (`fill`, split out of `judge`, scores any set of corners). Measured on 10 meshes (16 parts allowed): a
+24-step half ring 12 parts at 1.0073 of its volume against 14 at 1.0064 plain, ~10 s against 1.7 s; merging alone
+takes it to 13 and a peanut from 10 to 8, cheaply; the rest unchanged. **Tried and dropped:** free planes in 13
+directions (axes, face and body diagonals) at five places each, always: never a closer fit, 5–15× slower, and on two
+smooth blobs it left parts of over 64 corners (refused) — the note in the code says so. A trap: the peanut's plain
+split sums to 1.0029 of its volume but its merged parts to 0.988, so the plain parts overlapped slightly while leaving
+about 1% uncovered; the volume sum hides that. **The disc** (`kerr.ts`): `scatter` ω, the share of the opacity (at
+the gas's peak colour) that turns light aside, in the **Eddington two-stream** approximation: extinction (1 − ω)f + ω
+times κ at a colour whose absorption is f times the peak's, ε = (1 − ω)f / that, a surface (or deep slab) gives out
+ε_eff = 2√ε / (1 + √ε) of a black body, so the gas is f_col = ε_eff(peak)^−¼ hotter to carry its flux (colour
+correction: ×1.2 at ω = 0.9, ×1.53 at 0.99); a solid disc keeps its bolometric light exactly, its `T` and spectrum
+harden. Inside a see-through slab the source is εB + (1 − ε)J, J = B (1 − e^(−√(3ε) τ) / (1 + √ε)) at the optical
+depth τ to the nearer face (`shortcut:`: a plane-parallel slab at each point, not the light really arriving from the
+whole disc), so a scattering see-through disc dims (light turned away from us: 0.73 of its light at ω = 0.99). ω = 0
+gives M545 exactly. **`kerrDisc`** takes 'Scattering' (0 to 0.99) and gives `[I, g, r, T, S, lam]`: S each pixel's
+spectrum (n × n × 17, arbitrary units, by the picture's rows), lam the wavelengths (380 to 780 nm); asking for S
+computes the spectrum even with 'Colour', 'brightness'. Example `physics10.m` (a half ring plain and full, the
+spectrum without and with scattering, the scattering disc in colour). Tests (`physics-m546.test.ts`): 'full' on a half
+ring (no more parts, within 1%), a box one part, a solid disc's light kept and its temperature raised by exactly
+f_col and bluer, ω = 0 unchanged, the outputs' sizes, both options in the language. Not built: V-HACD's voxel and
+hierarchical search itself (only its merge), and scattered light reaching us from other parts of the disc (no
+Monte Carlo transfer); Compton up-scattering (hot electrons boosting light to X-rays) is not modelled.

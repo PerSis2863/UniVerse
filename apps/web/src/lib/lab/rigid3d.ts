@@ -10,6 +10,8 @@
 // M543: rolling resistance for solids too (rocking or tipping on an edge or corner, the lever their centre's distance
 // to the contact), and `convexSplit`: a closed dented mesh cut into convex parts by itself. M544: cuts across a bend,
 // 26-way corner probes (curved parts kept whole), at most 64 corners a part, faster mesh tests and hulls.
+// M545: thin wedges' corners kept, one cut ahead on a plateau, free planes on request. M546: 'full', looking ahead at
+// every cut and merging neighbours.
 
 export type V3 = number[];
 const add = (a: V3, b: V3) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -167,9 +169,11 @@ const PROBES: V3[] = [-1, 0, 1].flatMap((x) => [-1, 0, 1].flatMap((y) => [-1, 0,
  * inside the cell, mesh edges through the cell's faces, cell edges through the mesh, and cell corners inside it. A part
  * is kept when grid points inside its hull are (nearly) all inside the mesh; otherwise it is cut by the plane of a face
  * beside a dent (an edge where the solid folds inwards) that loses the least volume, up to `maxParts` parts. Returns
- * each part's corners (world frame), ready for `hull` and `compound`. shortcut: the volume test samples a 12³ grid. */
-export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?: number; search?: boolean } = {}) {
-  const maxParts = o.maxParts ?? 16, tol = o.tol ?? 0.02, search = o.search ?? false;
+ * each part's corners (world frame), ready for `hull` and `compound`. shortcut: the volume test samples a 12³ grid.
+ * `search` true adds free planes where the fold cuts do poorly (M545); 'full' also looks one cut ahead at every cut
+ * and then merges neighbouring parts while their joint hull stays solid, as V-HACD's last step does (M546). */
+export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?: number; search?: boolean | 'full' } = {}) {
+  const maxParts = o.maxParts ?? 16, tol = o.tol ?? 0.02, full = o.search === 'full', search = !!o.search;
   if (V.length < 4 || V.length > 400 || F.length < 4 || F.length > 800) throw new Error('A mesh needs 4 to 400 corners and 4 to 800 faces.');
   if (F.some((f) => f.length < 3 || f.some((i) => !(i >= 0 && i < V.length) || !Number.isInteger(i)))) throw new Error('Each face lists 3 or more corner numbers of the mesh.');
   let T = F.flatMap((f) => earClip(V, f));
@@ -251,8 +255,8 @@ export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?
     return out.filter((p) => inside(add(p, mul(sub(c, p), 1e-5))) || PROBES.some((d) => inside(add(p, mul(d, st)))));
   };
   // A part's hull and how much of it is solid (grid points at cell centres, never on a face).
-  const judge = (C: Plane[]) => {
-    const pts = cornersOf(C);
+  // A set of corners' hull and how much of it is solid (grid points at cell centres, never on a face).
+  const fill = (pts: V3[]) => {
     if (pts.length < 4) return null;
     let h: Hull & { centroid: V3 };
     try { h = hull(pts, 256); } catch { return null; }
@@ -268,6 +272,8 @@ export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?
     const full = inH ? inM / inH : 1;
     return { pts: W, volume: h.volume, full, lost: h.volume * (1 - full) };
   };
+  // A part's hull and how much of it is solid.
+  const judge = (C: Plane[]) => fill(cornersOf(C));
   const done: V3[][] = [], todo: { C: Plane[]; j: NonNullable<ReturnType<typeof judge>> }[] = [];
   const first = judge(box);
   if (!first) throw new Error('The mesh is too thin to split.');
@@ -300,29 +306,27 @@ export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?
     const mid = mul(cur.j.pts.reduce(add, [0, 0, 0]), 1 / cur.j.pts.length), tryCuts = foldCuts(cur.C, cur.j.pts);
     const score = (P: Plane) => scoreIn(cur.C, P);
     let best = null as { lost: number; kids: typeof todo; P: Plane } | null, fold = Infinity;
+    const seen: { c: NonNullable<ReturnType<typeof score>>; free: boolean }[] = [];
     // A free plane must beat the best fold cut clearly (by a fifth): the grid's count of empty space is noisy, and a
     // cut along a fold is exact where a free one only looks as good.
-    const take = (c: ReturnType<typeof score>, free = true) => { if (c && (!best || c.lost < best.lost - 1e-12) && (!free || c.lost < 0.8 * fold)) best = c; };
-    const folds = tryCuts.map(score).filter((c) => c !== null);
-    for (const c of folds) take(c, false);
+    const take = (c: ReturnType<typeof score>, free = true) => {
+      if (!c) return;
+      seen.push({ c, free });
+      if ((!best || c.lost < best.lost - 1e-12) && (!free || c.lost < 0.8 * fold)) best = c;
+    };
+    for (const P of tryCuts) take(score(P), false);
     fold = best ? best.lost : Infinity;
-    // M545: on a plateau (no single cut leaves less empty space: a cube with a pyramid pushed into its top, cut along a
-    // diagonal, keeps the same total), look one cut ahead: the cut whose two sides can then be cut best.
-    if (best && best.lost >= cur.j.lost * 0.99 && done.length + todo.length + 4 <= maxParts) {
-      const ahead = (c: NonNullable<ReturnType<typeof score>>) => c.kids.reduce((x, k) => x + Math.min(k.j.lost, ...foldCuts(k.C, k.j.pts).slice(0, 6).map((P) => scoreIn(k.C, P)?.lost ?? Infinity)), 0);
-      let pick: { la: number; c: NonNullable<ReturnType<typeof score>> } | null = null;
-      for (const c of folds.sort((x, y) => x.lost - y.lost).slice(0, 6)) { const la = ahead(c); if (!pick || la < pick.la - 1e-12) pick = { la, c }; }
-      if (pick && pick.la < cur.j.lost * 0.99) { todo.push(...pick.c.kids); continue; }
-    }
-    // Only where the folds' cuts do poorly (leave over half the empty space): elsewhere they are exact and fewer.
-    const free = search && fold > 0.5 * cur.j.lost;
-    // M545: a free search too, as V-HACD does: planes across the part's three axes at a quarter, half and three
-    // quarters of its width, then the best plane so far tilted and slid while that loses less (steps halving).
-    const W = cur.j.pts, plo = [0, 1, 2].map((k) => Math.min(...W.map((p) => p[k]))), phi = [0, 1, 2].map((k) => Math.max(...W.map((p) => p[k])));
+    // M545: free planes where the folds' cuts do poorly (leave over half the empty space; elsewhere they are exact and
+    // fewer), as V-HACD does: across the part's three axes at a quarter, half and three quarters of its width. (M546
+    // tried 13 directions at five places each, always: never closer, 5–15 times slower, and on smooth blobs it left
+    // parts of over 64 corners.)
+    const free = search && fold > 0.5 * cur.j.lost, W = cur.j.pts;
+    const plo = [0, 1, 2].map((k) => Math.min(...W.map((p) => p[k]))), phi = [0, 1, 2].map((k) => Math.max(...W.map((p) => p[k])));
     if (free) for (let k = 0; k < 3; k++) for (const f of [0.25, 0.5, 0.75]) {
       if (phi[k] - plo[k] < 1e-6 * size) continue;
       take(score({ n: [0, 1, 2].map((m) => (m === k ? 1 : 0)), d: plo[k] + f * (phi[k] - plo[k]) }));
     }
+    // Then the best plane so far tilted and slid while that loses less (steps halving).
     if (free && best) {
       const wid = Math.max(...[0, 1, 2].map((k) => phi[k] - plo[k]));
       for (let ang = 0.3, off = 0.1 * wid, round = 0; round < 4; round++, ang /= 2, off /= 2) {
@@ -331,6 +335,25 @@ export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?
         for (const n of [add(P0.n, mul(e1, ang)), sub(P0.n, mul(e1, ang)), add(P0.n, mul(e2, ang)), sub(P0.n, mul(e2, ang))].map(unit)) take(score({ n, d: dot(n, at) }));
         for (const s2 of [1, -1]) take(score({ n: P0.n, d: P0.d + s2 * off }));
       }
+    }
+    // M545: on a plateau (no single cut leaves less empty space: a cube with a pyramid pushed into its top, cut along a
+    // diagonal, keeps the same total), look one cut ahead: the cut whose two sides can then be cut best. M546: 'full'
+    // looks ahead at every cut, among the best 4 (each side then cut by its best fold cut or a halving across an axis).
+    const flat = best && best.lost >= cur.j.lost * 0.99;
+    if (best && (flat || full) && done.length + todo.length + 4 <= maxParts) {
+      const next = (k: (typeof todo)[number]) => {
+        const Ps = foldCuts(k.C, k.j.pts).slice(0, 6);
+        if (full) for (let a = 0; a < 3; a++) {
+          const lo2 = Math.min(...k.j.pts.map((p) => p[a])), hi2 = Math.max(...k.j.pts.map((p) => p[a]));
+          if (hi2 - lo2 > 1e-6 * size) Ps.push({ n: [0, 1, 2].map((m) => (m === a ? 1 : 0)), d: (lo2 + hi2) / 2, at: [] });
+        }
+        return Math.min(k.j.lost, ...Ps.map((P) => scoreIn(k.C, P)?.lost ?? Infinity));
+      };
+      const ahead = (c: NonNullable<ReturnType<typeof score>>) => c.kids.reduce((x, k) => x + next(k), 0);
+      let pick: { la: number; c: NonNullable<ReturnType<typeof score>> } | null = null;
+      const pool = seen.filter((e) => !e.free || e.c.lost < 0.8 * fold).map((e) => e.c).sort((x, y) => x.lost - y.lost).slice(0, full ? 4 : 6);
+      for (const c of pool) { const la = ahead(c); if (!pick || la < pick.la - 1e-12) pick = { la, c }; }
+      if (pick && pick.la < cur.j.lost * 0.99 && (flat || pick.la < ahead(best) * 0.9)) { todo.push(...pick.c.kids); continue; }
     }
     if (many && (!best || best.lost > cur.j.lost + 1e-9 * size ** 3)) {
       // Halve it across its longest side instead.
@@ -342,7 +365,23 @@ export function convexSplit(V: V3[], F: number[][], o: { maxParts?: number; tol?
     if (!best || (!many && best.lost >= cur.j.lost)) { done.push(cur.j.pts); continue; }
     todo.push(...best.kids);
   }
-  return done;
+  if (!full) return done;
+  // M546: V-HACD's last step: neighbouring parts merged while their joint hull stays solid (within the tolerance) and
+  // has at most 64 corners, the pair that wastes least first.
+  const parts = done.map((pts) => fill(pts)!).filter(Boolean), boxOf = (P: V3[]) => [0, 1, 2].map((k) => [Math.min(...P.map((p) => p[k])), Math.max(...P.map((p) => p[k]))]);
+  for (;;) {
+    let pick: { i: number; j: number; f: NonNullable<ReturnType<typeof fill>> } | null = null;
+    for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+      const A = boxOf(parts[i].pts), B = boxOf(parts[j].pts);
+      if (A.some(([lo, hi], k) => lo > B[k][1] + eps * 1000 || hi < B[k][0] - eps * 1000)) continue;
+      const f = fill([...parts[i].pts, ...parts[j].pts]);
+      if (!f || f.full < 1 - tol || f.pts.length > 64) continue;
+      if (!pick || f.lost < pick.f.lost) pick = { i, j, f };
+    }
+    if (!pick) break;
+    parts.splice(pick.j, 1); parts[pick.i] = pick.f;
+  }
+  return parts.map((f) => f.pts);
 }
 
 /** A body: a ball's radius, a hull, or a compound's parts, at p, turned by the rotation vector rot, moving at v and

@@ -357,6 +357,22 @@ fprintf('The dented cube in %d convex parts\\n', numel(parts))
 figure; kerrDisc(0.9, 82, 'Pixels', 70, 'Thickness', 0.15, 'Opacity', 0.5, 'Colour', 'temperature', 'Absorption', 2)
 figure; kerrDisc(0.9, 82, 'Pixels', 70, 'Thickness', 0.15, 'Opacity', 0.5, 'Colour', 'temperature', 'Absorption', -1)
 ` },
+  { name: 'physics10.m', code: `% Physics: a ring split with a look ahead and merging; a disc whose gas scatters light, and its spectrum
+% 1. A half ring: 'full' looks one cut ahead at every cut, then merges neighbours while their hull stays solid
+t = linspace(0, pi, 13)'; P = [2*cos(t) 2*sin(t); flipud(1.4*cos(t)) flipud(1.4*sin(t))]; n = size(P, 1);
+V = [P zeros(n, 1); P 0.5*ones(n, 1)];
+F = nan(n + 2, n); F(1, :) = n:-1:1; F(2, :) = n+1:2*n;
+for i = 1:n, j = mod(i, n) + 1; F(i + 2, 1:4) = [i j n+j n+i]; end
+p1 = convexSplit(V, F); p2 = convexSplit(V, F, 'Search', 'full');
+fprintf('Half ring: %d parts, %d with the full search\\n', numel(p1), numel(p2))
+% 2. The same disc without and with scattering: its spectrum, summed over the picture, hardens
+[I0, ~, ~, ~, S0, lam] = kerrDisc(0.5, 60, 'Pixels', 40);
+[I1, ~, ~, ~, S1] = kerrDisc(0.5, 60, 'Pixels', 40, 'Scattering', 0.99);
+s0 = squeeze(sum(sum(S0, 1), 2)); s1 = squeeze(sum(sum(S1, 1), 2));
+figure; plot(lam, s0 / max(s0), lam, s1 / max(s1)); xlabel('wavelength (nm)'); ylabel('light (peak 1)')
+legend('no scattering', '99% scattering'); title('Scattering hardens a disc''s light')
+figure; kerrDisc(0.5, 60, 'Pixels', 70, 'Colour', 'temperature', 'Scattering', 0.99)
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north

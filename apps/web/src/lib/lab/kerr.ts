@@ -11,6 +11,7 @@ import { rk45 } from './sci-num';
 // M543: the disc with a thickness, see-through, and its colour by temperature (`blackbodyRGB`). M544: a see-through thick
 // disc glows and absorbs all through its gas (it shadows its own far side); a solid one's inner and outer walls shine.
 // M545: lengths in the gas measured by the gas itself, and absorption by colour with each pixel's spectrum (`spectrumRGB`).
+// M546: scattering (`scatter`), in the Eddington approximation: the spectrum hardens by the colour correction f_col.
 
 /** The hole's charge q and the particle's charge per mass ε (Gaussian units, G = c = M = 1). */
 export interface Charge { q?: number; eps?: number; g?: number }
@@ -242,7 +243,7 @@ export function imageRay(a: number, thO: number, alpha: number, beta: number) {
  * taken at the cylinder radius), and `opacity` below 1 lets light through: each crossing adds its glow times what is
  * left, (1 − opacity) per crossing, so the hole's far side and the thin ring of light shine through. `T` is each pixel's
  * colour temperature, g · (F/F_peak)^¼ relative to the hottest gas, weighted by brightness. */
-export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number; thick?: number; opacity?: number; tK?: number; absorb?: number } = {}) {
+export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number; thick?: number; opacity?: number; tK?: number; absorb?: number; scatter?: number } = {}) {
   const H = o.thick ?? 0, op = o.opacity ?? 1, q = o.q ?? 0, n = o.n ?? 80, rOut = o.rOut ?? 20, rIn = o.rIn ?? isco(a, q ? { q } : {}), half = o.half ?? rOut * 1.1, rh = horizon(a, q), r0 = 1000;
   if (!(rOut > rIn)) throw new Error('The disc\'s outer edge must lie outside its inner edge.');
   if (!(H >= 0 && H <= 0.3 && op > 0 && op <= 1)) throw new Error('The disc\'s thickness h/r is 0 to 0.3 and its opacity more than 0, up to 1.');
@@ -266,11 +267,22 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
   // black body at gT (I_ν/ν³ is the same for every observer).
   const S = o.tK ? new Float64Array(n * n * LAM.length) : null, beta = o.absorb ?? 0, trS = new Float64Array(LAM.length);
   if (o.tK !== undefined && !(o.tK >= 100 && o.tK <= 1e6 && Math.abs(beta) <= 4)) throw new Error('The hottest gas is 100 K to 10⁶ K and the absorption\'s power −4 to 4.');
-  const spec = (k: number, g: number, rc: number, takeOf: (f: number) => number) => {
+  // M546: `scatter` ω, the share of the opacity (at the gas's peak colour) that turns light aside instead of taking it,
+  // in the Eddington (two-stream) approximation: at a colour whose absorption is f times the peak's, the extinction is
+  // (1 − ω)f + ω times κ and the share destroyed ε = (1 − ω)f / that. A surface (or a deep slab) gives out ε_eff =
+  // 2√ε / (1 + √ε) of a black body's light, so to carry the flux its gas must be f_col = ε_eff^−¼ hotter: the spectrum
+  // hardens (the known colour correction of discs, about 1.5–1.8 when scattering rules). Inside a see-through slab the
+  // source is ε B + (1 − ε) J, J = B (1 − e^(−√(3ε) τ) / (1 + √ε)) at the optical depth τ to its nearer face.
+  // shortcut: J from a plane-parallel slab at each point, not the light really arriving there from all of the disc.
+  const om = o.scatter ?? 0;
+  if (!(om >= 0 && om <= 0.99)) throw new Error('The scattering share is 0 to 0.99.');
+  const ext = (f: number) => (1 - om) * f + om, epsOf = (f: number) => ((1 - om) * f) / ext(f), effOf = (f: number) => { const e = Math.sqrt(epsOf(f)); return (2 * e) / (1 + e); };
+  const fcol = effOf(1) ** -0.25, srcOf = (f: number, tau: number) => { const e = epsOf(f), se = Math.sqrt(e); return e + (1 - e) * (1 - Math.exp(-Math.sqrt(3 * e) * tau * ext(f)) / (1 + se)); };
+  const spec = (k: number, g: number, rc: number, takeOf: (kr: number) => number, src: (f: number) => number) => {
     const T = o.tK! * (Fof(rc) ** 0.25 / Tpk);
     LAM.forEach((l, b) => {
-      const x = 14387.77 / (l * 1e-3 * g * T) / 2.821, take = takeOf(beta ? x ** -beta : 1);
-      S![k * LAM.length + b] += trS[b] * take * planck(l, g * T); trS[b] *= 1 - take;
+      const x = 14387.77 / (l * 1e-3 * g * T) / 2.821, f = beta ? x ** -beta : 1, take = takeOf(ext(f));
+      S![k * LAM.length + b] += trS[b] * take * src(f) * planck(l, g * fcol * T); trS[b] *= 1 - take;
     });
   };
   const opaque = (t: number) => t < 1e-3 && (!S || trS.every((x) => x < 1e-3));
@@ -298,9 +310,10 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
         const um = (u + ny[2]) / 2, rm = (r + ny[0]) / 2, s2 = Math.max(1e-12, 1 - um * um), rc = rm * Math.sqrt(s2);
         if (Math.abs(um) < zc && rc >= rIn && rc <= rOut) {
           const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), ds = ((rm * rm + a * a * um * um) * h) / g;
-          const kap = -Math.log(1 - op) / (2 * rm * Math.asin(zc)), take = 1 - Math.exp(-kap * ds), w = tr2 * take * g ** 4 * Fof(rc);
-          Isum += w; Tsum += w * g * (Fof(rc) ** 0.25 / Tpk);
-          if (S) spec(py * n + px, g, rc, (f) => 1 - Math.exp(-kap * f * ds));
+          const kap = -Math.log(1 - op) / (2 * rm * Math.asin(zc)), take = 1 - Math.exp(-kap * ds);
+          const tau = kap * rm * (Math.asin(zc) - Math.asin(Math.min(zc, Math.abs(um)))), w = (tr2 * take * g ** 4 * Fof(rc) * srcOf(1, tau)) / effOf(1);
+          Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+          if (S) spec(py * n + px, g, rc, (kr) => 1 - Math.exp(-kap * kr * ds), (f) => srcOf(f, tau));
           // Its shift and radius: where the gas has taken the first 5% (one step takes little).
           if (Number.isNaN(G[py * n + px]) && tr2 * (1 - take) < 0.95) { G[py * n + px] = g; Rh[py * n + px] = rc; }
           tr2 *= 1 - take;
@@ -318,8 +331,8 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
       const wall = !zc || Math.abs(u) >= zc || Math.abs(ny[2]) >= zc ? 0 : c0 < rIn && c1 >= rIn ? Math.min(rOut, rIn * (1 + zc)) : c0 > rOut && c1 <= rOut ? rOut : 0;
       if (wall) {
         const rc = wall, g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * g ** 4 * Fof(rc);
-        Isum += w; Tsum += w * g * (Fof(rc) ** 0.25 / Tpk);
-        if (S) spec(py * n + px, g, rc, () => 1);
+        Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+        if (S) spec(py * n + px, g, rc, () => 1, effOf);
         if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = wall === rOut ? rOut : rIn; }
         break;
       }
@@ -334,8 +347,8 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
         const rc = (r + hit * (ny[0] - r)) * Math.sqrt(1 - zc * zc);
         if (rc >= rIn && rc <= rOut) {
           const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * op * g ** 4 * Fof(rc);
-          Isum += w; Tsum += w * g * (Fof(rc) ** 0.25 / Tpk);
-          if (S) spec(py * n + px, g, rc, (f) => (op >= 1 ? 1 : 1 - (1 - op) ** f));
+          Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+          if (S) spec(py * n + px, g, rc, (kr) => (op >= 1 ? 1 : 1 - (1 - op) ** kr), effOf);
           if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = rc; }
           tr2 *= 1 - op;
           if (opaque(tr2)) break;
