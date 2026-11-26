@@ -15442,3 +15442,148 @@ ms; paused while the tab is hidden; Reduce Motion starts paused). Drag S and L. 
 closed room's lowest three modes within 3% of (c/2)·√((m/W)²+(n/H)²), a wall >5 dB quieter behind it. In the
 browser the resonance study read 34.4, 48.9, 59.9, 84.4 Hz against 34.3, 49.0, 59.8, 84.3. Check:
 `scripts/checks/hyperion-sound-ui.mjs`.
+
+## M552: Hyperion Simulate, parts from STL files (26 Nov)
+
+Simulate → **3D file**, a new tab (`src/lib/sim/stl.ts`, `components/sim/FileBench.tsx`, `stl.worker.ts`): stress in a
+part from an STL file (binary or text; binary when its size matches its triangle count, since text files can start
+with "solid" too). The surface is filled with boxes (a box is inside when the line through its middle along x crosses
+the surface an odd number of times before it; triangles listed per row of the y–z grid), each direction's spacing
+stretched so whole boxes fit the part's extent exactly, each box cut into six tetrahedra along its main diagonal (the
+same cut everywhere, so faces always match), and those made 10-node by `quadraticTets` (moved out of `extrude` in
+`solid.ts`, shared). The file's z is up (CAD's habit; the solver's y is up), and `size` is reported in the file's
+order. The six sides of the box around it are named (Bottom, Top, Left, Right, Front, Back) and each can be free,
+held or pushed (N, down / up / left / right: the 3D solver's loads lie in x and y). About 14,000 unknowns (~3 s for a
+60 × 30 × 15 mm block); the box size is shown ("fine details smaller than that are smoothed out"). The file stays in
+the tab only (reopen it after a reload); a sample bar opens first. Tested: binary and text read alike, a box's volume,
+a bar from a file under tension at F/A within 5% and stretching FL/(EA). Check: `scripts/checks/hyperion-file-ui.mjs`
+(it writes a binary STL and opens it through the picker). Left out: holding or loading a chosen face that isn't one
+of the six sides, loads out of the x–y plane, keeping the file across reloads.
+
+## M553: Hyperion: integral2, integral3 and pdepe (26 Nov)
+
+`src/lib/lab/calc-lab.ts` (loaded by `lab.worker.ts`, `par.worker.ts` and `help.test.ts`): **integral2** and
+**integral3** (nested adaptive Gauss–Legendre, 10 against 20 points per piece, split where they disagree, up to 12
+levels; the inner limits may be functions of the outer variables, so regions that aren't boxes work; the function is
+called with scalars, so `x.*y` and plain `x*y` both work) and **pdepe** (the method of lines: finite volumes around
+xmesh's points with each midpoint's flux from its two neighbours, weighted by xᵐ for cylinders and spheres; each end
+p + q·f = 0, an end with q = 0 held by a fast relaxation (1e-6) that the stiff solver `ros23` from sci-num.ts takes
+in its stride; sol(i, j, k) time × point × component, a times × points matrix for one component). Equations with
+c = 0 (elliptic ones in the system) are refused with a plain message: not supported yet. Tested: ∫∫ x·y² over a box,
+a triangle's area with a function limit, the Gaussian's π, ∫∫∫ x+y+z, the unit sphere's volume, a rod with held
+ends cooling as sin(πx)·e^(−π²t), an insulated rod keeping its average. Help lines added in help.ts.
+
+## M554: Hyperion: your own app windows (uifigure, 26 Nov)
+
+The owner, 26 Nov: "building your own app windows with buttons and sliders (uifigure)". `src/lib/lab/app-lab.ts` (loaded
+by `lab.worker.ts`; it imports `files.ts` first because it wraps that module's `delete`): uifigure, uibutton, uislider,
+uilabel, uieditfield (text or 'numeric'), uicheckbox, uidropdown, uiaxes, uialert (prints). Each part is a numeric
+handle from 50001 up, kept per Lab in a WeakMap; Position is MATLAB's [left bottom width height] in pixels (parts
+stack down the window when none is given). `set` / `get` are wrapped: app handles take Text, Value, Limits, Items,
+Enable, Position and the callbacks (ButtonPushedFcn, ValueChangedFcn); other handles go to plot.ts's set. A uiaxes owns
+a figure; plot, title, xlabel… with an axes handle first draw on it and give the current figure back. The worker sends
+`appsOut(lab)` with every `done`, and takes `{ appEvent: { part, value } }`: the value is set (a slider clamped to its
+Limits), then the callback runs as fn(source, event) with event.Value, event.Source, event.EventName (fewer arguments
+if the function asks for fewer). `AppWindows.tsx` floats the windows at the Code window's bottom end (scaled to fit,
+Close hides one until the next run); sliders and typed fields send on let-go / Enter / blur; the Figure tab skips
+figures that live in an app (`own` in LabApp, memoised for the React compiler). Help lines for each. Tests:
+`app.test.ts` (a slide changes a label through its callback, a button resets the slider, clamping, get, plot into
+uiaxes, a callback's error, delete). Check: `scripts/checks/hyperion-apps-ui.mjs`. Left out: drag-and-drop app designing
+(it is code-built, like MATLAB's programmatic apps), layouts (uigridlayout), tables, tabs and menus inside apps, dot
+syntax (`lbl.Text = …`: use set/get or event.Value).
+
+## M555: Hyperion: the webcam in image processing (26 Nov)
+
+`src/lib/lab/webcam-lab.ts` (loaded by `lab.worker.ts`): **webcamlist**, **webcam** (first, by number or by part of its
+name, 'Resolution' 'WxH', a struct with Name, Resolution, AvailableResolutions) and **snapshot** (rows × columns × 3
+uint8, laid out as `imread` does). The engine's thread has no camera, so it asks the page through M521's waiting
+(`waits.page('camera', …)`: it returns the answer itself, errors come back thrown, undefined on time-out). The page's
+answer is in `components/lab/page-answers.ts` ('camera'): enumerateDevices (labels need one allowed getUserMedia
+first), one stream per camera kept for the visit, a frame drawn to a canvas at the size asked, sent as RGB bytes.
+`camera=(self)` was already in the Permissions-Policy. Help lines added. Tests: `webcam.test.ts` (a stand-in page);
+`scripts/checks/hyperion-webcam-ui.mjs` runs Chromium's fake camera (`--use-fake-device-for-media-stream`): a
+240 × 320 × 3 uint8 picture shown by imshow. Left out: preview(cam) (a live view window) and closing the camera
+(clear cam): the browser's camera light stays on until the tab is left.
+
+## M556: Hyperion: statistics tests and resampling (the Octave packages' first wave, 26 Nov)
+
+The first GNU Octave wave (statistics, statistics-resampling), written from the documented behaviour (no Octave
+code: GPL). `src/lib/lab/stats.ts` (pure): gammaln (Lanczos), gammainc and betainc (Numerical Recipes' series and
+continued fractions, ~1e-12), an accurate normal cdf through gammainc (the older `erf` in signal.ts is a 1e-7
+approximation: left as it is), inverses by bisection to the last bit; t, χ², F, beta, gamma, binomial, Poisson; the
+tests: ttest (one-sample, paired), ttest2 (pooled or Welch), ranksum (exact by counting subsets when ≤ 20 and no
+ties, else normal with tie and continuity corrections), signrank (exact ≤ 15), anova1, anova2 (reps), kruskalwallis
+(tie correction), chi2gof (normal, merging bins under 5 expected), normfit, fitdist (Normal, Exponential, Poisson,
+Lognormal, Gamma by Newton on the shape), bootstrap and bootci (BCa by default, 'per'). `stats-lab.ts` gives them
+MATLAB's names, argument orders and outputs (tables as cell arrays, stats structs; options Alpha, Tail, Vartype,
+NBins, Type), plus the pdfs and tiedrank; random numbers from the engine's `random` (rng repeats a bootstrap).
+Loaded by both workers and help.test.ts; help lines for each. Tests: against printed tables (tinv(0.975,10),
+chi2inv, finv, norminv to 8–10 digits), exact rank tests, worked ANOVA and Kruskal–Wallis. Left out: anovan
+(unbalanced several-factor ANOVA), multcompare, other fitdist families (Weibull, beta…).
+
+## M557: Hyperion: data files (the Octave packages' second wave, 26 Nov)
+
+The second GNU Octave wave (pkg-json, pkg-yaml, netcdf, ncarray, cfitsio, serialize; our own code from their
+documented behaviour). `src/lib/lab/data-lab.ts` (both workers, help.test.ts): **jsondecode / jsonencode**
+(MATLAB's mapping: objects → structs with safe field names, number arrays → column vectors, equal-length rows → a
+matrix, mixed → cells, null → [], NaN → null, 'PrettyPrint'); **yamldecode / yamlencode / yamlread / yamlwrite**
+(block maps and lists, "- key:" items, flow [a, b] and {k: v}, | and > blocks, comments, true/yes/on);
+**readstruct / writestruct** for XML (via `xml-lite`: attributes → fieldAttribute, repeated elements → cells);
+**ncinfo / ncread / ncreadatt** (NetCDF classic CDF-1/2/5 parsed from the spec, record variables, scale_factor,
+add_offset and _FillValue applied, dimensions reversed as MATLAB's ncread gives them; NetCDF-4 read through
+`hdf5.ts`); **fitsinfo / fitsread** (the primary HDU: 8/16/32/64-bit and float images, BSCALE/BZERO, rows of NAXIS1);
+**zip / unzip / gzip / gunzip** (fflate), **base64encode / base64decode**, **hash** (MD5, SHA-1, SHA-256 written out:
+the engine can't wait for crypto.subtle), **getByteStreamFromArray / getArrayFromByteStream** (through the .mat
+writer and reader). `files.ts` gained `fileBytes`, `writeFileBytes`, `hasFile`. Tests: published hash vectors, a
+NetCDF and a FITS file built byte by byte, JSON/YAML/XML round trips. Left out: MIDI files, FITS extensions (tables),
+NetCDF writing (nccreate/ncwrite), XML as a DOM (xmlread).
+
+## M558: Hyperion: special maths (the Octave packages' third wave, 26 Nov)
+
+The third GNU Octave wave (special maths; pkg-funm-schur-parlett, chebfun's basics, octave-miscellaneous; our own
+code). `src/lib/lab/special-lab.ts` (both workers, help.test.ts): **expm** (scaling and squaring, [6/6] Padé),
+**sqrtm** (Denman–Beavers), **logm** (square roots to near I, the log series, ×2^k), **funm** (V·f(D)·V⁻¹ for real
+eigenvalues; a plain error otherwise: the Schur–Parlett general case is left out); **besselj / bessely / besseli /
+besselk** of any real order from their integral representations, integrated by calc-lab's adaptive Gauss–Legendre
+(`integrate`, tol 1e-13; besseli scaled by e^−x inside; the infinite tails cut where e^(νt − x·g(t)) < e^−45),
+**airy** (Ai, Bi from order-1/3 Bessels); **lambertw** (branches 0 and −1, Halley), **erfinv / erfcinv** (through
+stats.ts' norminv), **ellipke** (AGM), **expint** (E₁: series below 1, continued fraction above), **legendre**
+(associated, Condon–Shortley sign like MATLAB); **perms** (MATLAB's reverse order), **rat / rats** (continued
+fractions); **chebcoeffs / chebval / chebroots** (Chebyshev points of the first kind, Clenshaw, the colleague
+matrix's eigenvalues polished by Newton on the series: `eig` alone gave 1e-4). gammainc / betainc came in M556; vpa
+was already there (sym-lab.ts). Tests: tabulated values to 10–14 digits, the J_{5/2} closed form, matrix identities.
+
+## M559: Hyperion: text, dates and maps (the Octave packages' fourth wave, 26 Nov)
+
+The Octave packages' fourth wave (strings, miscellaneous, financial dates, containers), written fresh in `src/lib/lab/text-lab.ts` (no Octave code).
+
+- **Text:** `strjust`, `validatestring`, `dec2base` / `base2dec`, `typecast`, `num2hex` / `hex2num`, `textscan`, `strread`.
+- **Dates:** `datenum` (serial days, day 1 = 1 Jan year 0, as MATLAB), `weekday`, `eomday`, `calendar`, `addtodate`.
+- **Maps:** `containers.Map(keys, values)` and `dictionary`; `m(key)` reads, `m(key) = v` writes (a map is a handle: every copy sees the change), `keys`, `values`, `isKey`, `remove`, `numEntries`, `m.Count`.
+- **How maps hook in:** a `Struct` with `keyed` set; `interp.ts` has `keyHooks` (get/set) checked before ordinary struct indexing, like `indexHooks`. `containers` returns a struct whose `Map` field is the builtin named `containers.Map`, so `containers.Map(...)` works without new syntax. Help needs a line for every builtin key, that one included.
+- Tests: `text.test.ts`.
+
+## M560: Hyperion: the web, MQTT and game controllers (the Octave packages' fifth wave, 26 Nov)
+
+The Octave packages' fifth wave (web, networks and devices), written fresh in `src/lib/lab/net-lab.ts` (no Octave code).
+
+- **Web:** `webread`, `webwrite`, `websave`, `weboptions` (Timeout, ContentType, MediaType, RequestMethod, HeaderFields, Username / Password, KeyName / KeyValue), `urlencode`, `urldecode`. JSON comes back as structs, text as char, pictures as uint8 images, anything else as bytes.
+- **MQTT:** `mqttclient` (secure WebSockets only: a browser can't open other sockets), `subscribe`, `unsubscribe`, `write(mq, topic, text)`, `read(mq)` (waits for messages), `peek(mq)`, `close(mq)`. MQTT 3.1.1 at QoS 0, written in the frame.
+- **Game controllers:** `vrjoystick`, `read(joy)` → axes, buttons, the D-pad as a hat in degrees; `axis(joy, n)`, `button(joy, n)`, `caps(joy)`. `read`, `write`, `axis` and `close` are wrapped: they take these objects first, anything else as before.
+- **Safety (the rule for code that builds on it):** this site's addresses are fetched by the page without cookies. Other sites go only through the **sealed web link** `public/sandbox/net.html` (framed `sandbox="allow-scripts"`, an opaque origin with nothing of the site's, requests without credentials; its own policy `NET_CSP` in `security-headers.ts` and `public/_headers`: `connect-src https: wss:`, nothing loaded). The page asks the person once per site per visit (`net-link.ts`, `mayReach`) before anything is sent, so a script shared by link can't send someone's files or variables away without their yes. The site's own policy is unchanged. `next.config.ts` now names `/sandbox/run` and `/sandbox/net` separately; `sandbox-headers.test.ts` checks both. Never give either frame allow-same-origin.
+- Sites must allow other sites' pages to read them (CORS), as with any browser app.
+- Checked in a real browser: a fetch to a public API through the frame, and MQTT connect, subscribe, publish and receive against a local broker (this container reaches only port 443, so the public brokers weren't tried).
+- Left out: `tcpclient`, `udpport` (no raw sockets in a browser; they'd need the computer app's runner and a new installer), SQLite and MySQL (a database library needs the owner's yes), Raspberry Pi pins.
+- Tests: `net.test.ts`.
+
+## M561: Hyperion: Octave-style tests, doctests, Jupyter notebooks, QR codes and pixel info (the Octave packages' last wave, 26 Nov)
+
+The Octave packages' sixth and last wave, written fresh (no Octave code). With it the six GNU Octave groups planned on 26 Nov are done (M556–M561).
+
+- **Tests inside a function's file** (`src/lib/lab/octtest-lab.ts`): `test('name')` runs the `%!` blocks at the end of `name.m` in Hyperion's files, as Octave writes them: `%!assert (…)`, `%!test`, `%!error <pattern> code`, `%!fail`, `%!shared` (its set-up runs before each test), `%!function … %!endfunction`, `%!xtest` (a known failure). Prints the usual report and "PASSES n out of m tests"; the window's results panel shows it (`testReports`). `demo('name', k)` runs the `%!demo` blocks. `fail(code, pattern)` too. `one` and `files` are now exported from `verify-lab.ts` for this.
+- **doctest('name')**: the help text's examples, `% >> code` and then the lines it should print (spaces don't matter; `...` stands for anything), run in one workspace in order.
+- **Jupyter** (`src/lib/lab/ipynb.ts`): Open in the toolstrip takes `.ipynb` files (up to 20 MB): Markdown cells become `%` text, a heading the part's title, each code cell its own `%%` part, so the notebook view runs them cell by cell. The notebook view's **Jupyter notebook** button saves the script as `.ipynb` (nbformat 4.4, Octave kernel) with each part's printed output, figures (SVG) and errors.
+- **qrcode(text)**: a logical matrix, true where dark (`imshow(~q)`), from the site's own encoder `src/lib/qr.ts`.
+- **impixel(I, cols, rows)** and **impixelinfo**: the figure gets `pixelinfo` (`data-pixelinfo` on its SVG, `data-px="W H flipped"` on each picture); the page reads the pixel under the pointer (`src/components/lab/pixel-info.ts`) and shows "Pixel info: (X, Y) = (c, r) value" under the figure. It shows the colour drawn (for uint8 RGB or grey pictures, their own values). The PNG is decoded through an `<img>`, not `fetch`: the site's policy blocks `data:` connections.
+- Not done: Octave's command form `test sq` (write `test('sq')`; adding the names to the command words would change how `test = 3` reads).
+- Tests: `octtest.test.ts`. Browser check: `scripts/checks/hyperion-octave6-ui.mjs` (light and dark, axe clean, no page errors).

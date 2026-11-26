@@ -63,7 +63,7 @@ export function imageSvg(g: Grid, X: (v: number) => number, Y: (v: number) => nu
   // For a filled contour the pixel centres sit on the data points, so the picture spans exactly the data.
   const [fx0, fx1, fy0, fy1] = g.kind === 'filled' ? [X(g.x[0]), X(g.x[g.c - 1]), Y(g.y[0]), Y(g.y[g.r - 1])] : [x0, x1, y0, y1];
   const ix = Math.min(fx0, fx1), iy = Math.min(fy0, fy1), iw = Math.abs(fx1 - fx0), ih = Math.abs(fy1 - fy0);
-  return `<image x="${ix.toFixed(2)}" y="${iy.toFixed(2)}" width="${iw.toFixed(2)}" height="${ih.toFixed(2)}" preserveAspectRatio="none"${g.kind === 'image' ? ' style="image-rendering:pixelated"' : ''} href="${png(W, H, px)}"/>`;
+  return `<image x="${ix.toFixed(2)}" y="${iy.toFixed(2)}" width="${iw.toFixed(2)}" height="${ih.toFixed(2)}" preserveAspectRatio="none"${g.kind === 'image' ? ` style="image-rendering:pixelated" data-px="${W} ${H} ${flip ? 1 : 0}"` : ''} href="${png(W, H, px)}"/>`;
 }
 
 /** A colour bar in `b` with its scale on the right. */

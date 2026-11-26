@@ -90,9 +90,9 @@ def('assertFail verifyFail fatalAssertFail', (a) => { fail(false, `failed${a[a.l
 def('assumeFail', (a) => { fail('skip', `assumeFail${a[a.length - 1]?.k === 'str' ? `: ${textOf(a[a.length - 1])}` : ''}`); return []; });
 
 // ——— Running tests ———
-const files = (lab: Lab) => { const s = (lab.host as { files?: unknown }).files; return s instanceof FileStore ? s : null; };
+export const files = (lab: Lab) => { const s = (lab.host as { files?: unknown }).files; return s instanceof FileStore ? s : null; };
 /** One test: its own workspace, its failures collected. */
-function one(lab: Lab, name: string, body: (child: Lab) => void, line?: number): TestResult {
+export function one(lab: Lab, name: string, body: (child: Lab) => void, line?: number): TestResult {
   const child = new Lab(lab.host);
   for (const [k, f] of lab.fns) child.fns.set(k, f);
   const was = collecting, details: string[] = [];

@@ -1938,6 +1938,16 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M549 | Ghidra's Aether guide and Hyperion set-up skills (26 Nov) | **Done** (branch) | guide: questions about a place answered from its guide (Aether → a guide → Ask Ghidra); sim-setup: a Structures study from a description (Describe it: Ghidra sets it up); playbooks, exam papers, AI receipts; Ghidra 2's longer run not better (kept). |
 | M550 | Hyperion's Code window: no overlap, the editor and command window full width (26 Nov) | **Done** (branch) | The command window no longer covers the editor (a divider between them); Variables and Files are tabs beside the figure; checked at 1280 and 1920, light and dark, axe clean. |
 | M551 | Hyperion Simulate, Sound: acoustics (26 Nov) | **Done** (branch) | Simulate → Sound: a room or open air, walls and furniture that absorb, a tone or a clap, the wave live, loudness in dB, the listener's level, the room's resonances; textbook-tested; checked in the browser, light and dark, axe clean. |
+| M552 | Hyperion Simulate, parts from STL files (26 Nov) | **Done** (branch) | Simulate → 3D file: open an STL, filled with boxes cut into 10-node tetrahedra, its six sides held or pushed, stress in 3D; textbook-tested; checked in the browser with a real file, light and dark, axe clean. |
+| M553 | Hyperion: integral2, integral3 and pdepe (26 Nov) | **Done** (branch) | Double and triple integrals (regions with function limits too) and 1D partial differential equations by the method of lines with a stiff solver; textbook-tested; help for each. |
+| M554 | Hyperion: your own app windows (uifigure, 26 Nov) | **Done** (branch) | uifigure with buttons, sliders, labels, fields, check boxes, drop-downs and plots; callbacks run in the workspace; floating windows over the Code window; tested in the browser, light and dark, axe clean. |
+| M555 | Hyperion: the webcam in image processing (26 Nov) | **Done** (branch) | webcamlist, webcam and snapshot: a picture from the computer's camera as an image array, asked through the page (the browser asks permission); tested with a fake camera in the browser. |
+| M556 | Hyperion: statistics tests and resampling (the Octave packages' first wave, 26 Nov) | **Done** (branch) | Distributions (t, χ², F, beta, gamma, binomial, Poisson), gammainc/betainc, t-tests, rank tests, ANOVA, Kruskal–Wallis, χ² fit, normfit, fitdist, bootstrap CIs; tested against printed tables. |
+| M557 | Hyperion: data files (the Octave packages' second wave, 26 Nov) | **Done** (branch) | JSON, YAML, XML structs, NetCDF (classic and 4), FITS images, zip/gzip, base64, MD5/SHA hashes and byte streams; tested against published values and files built to the specs. |
+| M558 | Hyperion: special maths (the Octave packages' third wave, 26 Nov) | **Done** (branch) | expm/sqrtm/logm/funm, Bessel J/Y/I/K and Airy of any order, lambertw, erfinv, ellipke, expint, legendre, perms, rat/rats, Chebyshev series with roots; tested against tabulated values. |
+| M559 | Hyperion: text, dates and maps (the Octave packages' fourth wave, 26 Nov) | **Done** (branch) | strjust, textscan, typecast, datenum, calendar, containers.Map and dictionary (text-lab.ts, keyHooks in interp.ts) |
+| M560 | Hyperion: the web, MQTT and game controllers (the Octave packages' fifth wave, 26 Nov) | **Done** (branch) | webread, webwrite, websave, mqttclient, vrjoystick; other sites only through the sealed web link, asked once per site (net-lab.ts, net-link.ts, sandbox/net.html) |
+| M561 | Hyperion: Octave-style tests, doctests, Jupyter notebooks, QR codes and pixel info (the Octave packages' last wave, 26 Nov) | **Done** (branch) | test, demo, doctest, qrcode, impixel, impixelinfo; .ipynb opened and saved (octtest-lab.ts, ipynb.ts, pixel-info.ts) |
 
 ### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
 
@@ -1946,7 +1956,8 @@ it is GPL v3, which would bind the whole app): build each function ourselves fro
 against textbook or published answers, as every toolbox so far. Of the organisation's 74 repositories about 35 are
 function packages; the rest (the website, Docker images, CI, Vim syntax, package installers, archived ones) add nothing.
 1. Simulate: **done** M544 heat and stress together, M545 buckling, M546 fatigue life. Done too: M547 the lightest shape, M548 Fields (electromagnetics), M549 Ghidra's Aether guide and Hyperion set-up
-   skills, M550 the Code window's layout fix, M551 Sound (acoustics). **Next:** STL files into 3D parts.
+   skills, M550 the Code window's layout fix, M551 Sound (acoustics), M552 parts from STL files, M553 integral2/integral3/pdepe, M554 app windows (uifigure), M555 the webcam. **Next:** the
+   Octave waves (3. below), starting with statistics tests.
 2. The language: `pdepe`, `integral2`, `integral3`; an app designer (`uifigure`, `uibutton`, `uislider`, `uiaxes`…:
    a window with controls built from a script); `webcam` / `snapshot` in image processing (asked first).
 3. Octave packages, in six waves: (1) statistics tests and resampling (`ttest`, `ttest2`, `ranksum`, `signrank`,

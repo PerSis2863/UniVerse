@@ -15,3 +15,15 @@
   Cross-Origin-Embedder-Policy: credentialless
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
+
+/sandbox/net
+  Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; connect-src https: wss:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
+  Cross-Origin-Embedder-Policy: credentialless
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+
+/sandbox/net.html
+  Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; connect-src https: wss:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
+  Cross-Origin-Embedder-Policy: credentialless
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer

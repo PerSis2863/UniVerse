@@ -26,7 +26,7 @@ export interface Ref { axis: 'x' | 'y'; v: number; color: string; dash: Series['
 export interface Axes { series: Series[]; grids: Grid[]; title: string; xlabel: string; ylabel: string; zlabel: string; legend: string[] | null; grid: boolean; hold: boolean; xlim: [number, number] | null; ylim: [number, number] | null; zlim: [number, number] | null; equal: boolean; logx: boolean; logy: boolean; next: number; view: [number, number] | null; colorbar: boolean; clim: [number, number] | null; zrange: [number, number] | null; revY: boolean; tight: [number, number, number, number] | null; lights: number[][]; lighting: 'flat' | 'gouraud' | 'none'; material: [number, number, number, number]; clabel: boolean;
   texts: Note[]; refs: Ref[]; pie: { v: number[]; labels: string[]; explode: boolean[] } | null; polar: boolean; twin: Axes | null; side: 'left' | 'right';
   xticks: number[] | null; yticks: number[] | null; xtl: string[] | null; ytl: string[] | null; visible: boolean }
-export interface Figure { id: number; rows: number; cols: number; axes: Map<number, Axes>; current: number; name: string; cmap: number[][]; title: string }
+export interface Figure { id: number; rows: number; cols: number; axes: Map<number, Axes>; current: number; name: string; cmap: number[][]; title: string; pixelinfo?: boolean }
 
 /** Our palette for lines one after another (each readable on white and on near-black). */
 export const PALETTE = ['#2563eb', '#ea580c', '#16a34a', '#9333ea', '#dc2626', '#0891b2', '#ca8a04', '#db2777'];
@@ -353,7 +353,7 @@ const DASH: Record<string, string> = { '': '', '--': '6 4', ':': '1.5 3', '-.': 
 /** One figure as SVG text, `width` × `height` pixels. */
 export function renderSvg(f: Figure, width: number, height: number, dark = false): string {
   const ink = dark ? '#e4e4e7' : '#18181b', soft = dark ? '#a1a1aa' : '#52525b', line = dark ? '#3f3f46' : '#d4d4d8', bg = dark ? '#18181b' : '#ffffff';
-  const parts: string[] = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" font-family="Inter, system-ui, sans-serif"><rect width="${width}" height="${height}" fill="${bg}"/>`];
+  const parts: string[] = [`<svg xmlns="http://www.w3.org/2000/svg"${f.pixelinfo ? ' data-pixelinfo="1"' : ''} viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" font-family="Inter, system-ui, sans-serif"><rect width="${width}" height="${height}" fill="${bg}"/>`];
   const head = f.title ? 30 : 0;
   if (f.title) parts.push(`<text x="${width / 2}" y="21" fill="${ink}" font-size="15" font-weight="600" text-anchor="middle">${esc(tex(f.title))}</text>`);
   const cw = width / f.cols, ch = (height - head) / f.rows;

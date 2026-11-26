@@ -19,7 +19,9 @@ export interface Str { k: 'str'; v: string }
 export interface Cell { k: 'cell'; r: number; c: number; d: Value[] }
 /** `table`: a table (M383): a struct whose fields are equal-height columns, shown as rows. */
 /** `lti`: a transfer function (M414: fields num, den, Ts; control.ts gives it arithmetic and the toolbox). */
-export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean; lti?: true; gpu?: true; fi?: true }
+export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean; lti?: true; gpu?: true; fi?: true;
+  /** M559: a map (containers.Map or dictionary): m(key) and m(key) = v go to `keyHooks` with the key itself. */
+  keyed?: { keys: (string | number)[]; vals: Value[]; type: 'char' | 'double'; handle: boolean } }
 export interface Fn { k: 'fn'; name?: string; params?: string[]; body?: Expr; src?: string; closure?: Map<string, Value> }
 /** A symbolic array (M396): expressions from sym.ts, column by column like a matrix. */
 export interface Sym { k: 'sym'; r: number; c: number; d: SymNode[] }

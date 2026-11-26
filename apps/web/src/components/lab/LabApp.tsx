@@ -5,6 +5,9 @@ import { TestResults } from './TestResults';
 import type { TestReport } from '@/lib/lab/verify-lab';
 import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
 import { asksOf, onAsk, onChannel } from './page-answers';
+import './net-link';
+import { ipynbToScript } from '@/lib/lab/ipynb';
+import { pixelAt } from './pixel-info';
 import { memo, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { MACHINE_EXAMPLES } from '@/lib/lab/examples-machines';
 import { toast } from 'sonner';
@@ -12,6 +15,8 @@ import NextImage from 'next/image';
 import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, FlaskConical, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { Splitter, usePaneSizes } from '@/components/ui/Splitter';
+import { AppWindows } from './AppWindows';
+import type { AppOut } from '@/lib/lab/app-lab';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
@@ -103,6 +108,12 @@ function playSound(channels: Float32Array[], fs: number) {
     const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.onended = () => void ctx.close(); src.start();
   } catch { /* no audio here */ }
 }
+/** A Jupyter notebook opened from the computer becomes a script of %% sections (M561); anything else stays as it is. */
+function fromNotebook(f: { name: string; code: string }): { name: string; code: string } {
+  if (!/\.ipynb$/i.test(f.name)) return f;
+  try { return { name: f.name.replace(/\.ipynb$/i, '.m'), code: ipynbToScript(f.code) }; }
+  catch (e) { return { name: f.name.replace(/\.ipynb$/i, '.txt'), code: `% ${e instanceof Error ? e.message : String(e)}\n` }; }
+}
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
 /** A control moved in the notebook view while something ran: run every section of this script, afterwards. */
 const NOTE_ALL = '\u0000notes\u0000';
@@ -121,6 +132,8 @@ export function LabApp() {
   // Whose variables are listed (M466): Hyperion's engine (they open in the viewer) or another language's (shown only).
   const [varsFrom, setVarsFrom] = useState('MATLAB');
   const [figs, setFigs] = useState<FigOut[]>([]);
+  // M554: the app windows the scripts made (uifigure), as the worker last described them.
+  const [apps, setApps] = useState<AppOut[]>([]);
   const [current, setCurrent] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [cmd, setCmd] = useState('');
@@ -191,6 +204,14 @@ export function LabApp() {
     if (e.figs.length) { const out = e.figs.map((svgText, i) => ({ id: OTHER_FIG + i + 1, light: svgText, dark: svgText, tex: '' })); setFigs(out); setCurrent(out[out.length - 1].id); }
     else if (p) { setFigs([]); setCurrent(null); }
     pending.current = null; busyNow.current = false; setBusy(false);
+  };
+  /** M554: a press, slide or choice in an app window; its callback runs like a command (its output in the command window). */
+  const appEvent = (part: number, value: number | string | boolean | null) => {
+    if (busyNow.current || !worker.current) return;
+    const id = ++seq.current;
+    pending.current = { id, code: '', from: 'tool' };
+    busyNow.current = true; setBusy(true);
+    worker.current.postMessage({ appEvent: { part, value }, id } satisfies ToLab);
   };
   const run = (code: string, from: From) => {
     if (busyNow.current || !code.trim() || !worker.current) return;
@@ -285,6 +306,7 @@ export function LabApp() {
       if (m.files.length) listFiles();
       // Figures only come back when a run changed them (null: keep what's shown).
       if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; }
+      if (m.apps) setApps(m.apps);
       pending.current = null;
       busyNow.current = false;
       setBusy(false);
@@ -382,7 +404,12 @@ export function LabApp() {
   };
   const send = () => { const c = cmd; if (!c.trim()) return; setHist((h) => [...h.filter((x) => x !== c), c].slice(-100)); setHi(-1); setCmd(''); run(c, 'cmd'); };
 
-  const fig = figs.find((f) => f.id === current) ?? figs[figs.length - 1] ?? null;
+  // Figures drawn inside an app's axes show there, not in the Figure tab (M554).
+  const own = useMemo(() => {
+    const inApps = new Set(apps.flatMap((x) => x.parts.flatMap((p) => (p.figure !== null ? [p.figure] : []))));
+    return figs.filter((f) => !inApps.has(f.id));
+  }, [apps, figs]);
+  const fig = own.find((f) => f.id === current) ?? own[own.length - 1] ?? null;
   // The owner, 26 Nov: the editor and the command window take the window's width (the command window was drawn over the
   // editor's last lines), with a divider between them; Variables and Files moved beside the figure, as tabs. A new figure
   // brings its tab forward (no effect needed: the tab chosen remembers the figure it was chosen at).
@@ -390,6 +417,7 @@ export function LabApp() {
   const [side, setSide] = useState<{ tab: 'figure' | 'variables' | 'files'; figId: number | null }>({ tab: 'figure', figId: null });
   // The figure is drawn at its panel's real size (sharp text), again whenever the panel changes size.
   const figBox = useRef<HTMLDivElement | null>(null), asked = useRef('');
+  const pixSeq = useRef(0), [pix, setPix] = useState<string | null>(null);
   const figId = fig?.id;
   useEffect(() => {
     const el = figBox.current;
@@ -798,7 +826,7 @@ export function LabApp() {
     <section className={cn(panel, 'h-full')} aria-label="Figure">
       <div className={cn(head, 'flex-wrap')}>
         <span>Figure</span>
-        {!(sweep && !watching) && figs.length > 1 && figs.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
+        {!(sweep && !watching) && own.length > 1 && own.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
         {sweep && !watching ? <span className="ms-auto text-xs font-normal text-zinc-500 dark:text-zinc-400" translate="no">Sweep of {sweep.name} in {sweep.scriptName}</span> : <span className="ms-auto flex flex-wrap gap-1">
           <button type="button" className={btn} disabled={!fig} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />PNG</button>
           <button type="button" className={btn} disabled={!fig} onClick={() => fig && download(`figure${fig.id}.svg`, fig.light, 'image/svg+xml')}><Download className="h-3.5 w-3.5" aria-hidden />SVG</button>
@@ -816,7 +844,12 @@ export function LabApp() {
         <div key={fig.id} ref={figBox} className="swap relative min-h-0 flex-1 m-2" data-dir="next"><NextImage src={otherUrl} alt={`Figure ${fig.id - OTHER_FIG} from ${lang.name}`} fill unoptimized className="rounded-xl bg-white object-contain" /></div>
       ) : fig ? (
         // Our own SVG (src/lib/lab/plot.ts), its text escaped there.
-        <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
+        <>
+          <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }}
+            onPointerMove={svg.includes('data-pixelinfo') ? (e) => { const n = ++pixSeq.current; void pixelAt(e.target, e.clientX, e.clientY).then((t) => { if (n === pixSeq.current) setPix(t); }); } : undefined}
+            onPointerLeave={() => { pixSeq.current++; setPix(null); }} />
+          {svg.includes('data-pixelinfo') && <p className="shrink-0 px-3 pb-2 font-mono text-[12px] text-zinc-700 dark:text-zinc-200" aria-live="polite">Pixel info: {pix ?? 'point at the picture'}</p>}
+        </>
       ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">{mat ? 'Figures appear here. Try plot(1:10) in the command window.' : `Figures appear here when the ${lang.name} script draws one.`}</p>}
     </section>
   );
@@ -842,7 +875,7 @@ export function LabApp() {
       {/* Computers only (M405): variables and files, the editor over the command window, the figure. */}
       <LabToolstrip busy={busy} matlab={mat} varsAreMatlab={varsFrom === 'MATLAB'} vars={vars} scripts={list} open={open} examples={EXAMPLES} layout={layout} onLayout={setLayout}
         onNew={(id) => { const l = LANGS.find((x) => x.id === id)!; save([...list, { name: `untitled${list.length + 1}${l.ext}`, code: l.starter }]); setOpen(list.length); }}
-        onOpenFiles={(fs) => { void Promise.all([...fs].slice(0, 20).filter((f) => f.size <= 1_000_000).map(async (f) => ({ name: f.name.replace(/[^\w.-]/g, '_'), code: await f.text() }))).then((got) => { if (!got.length) return; save([...list, ...got]); setOpen(list.length + got.length - 1); }); }}
+        onOpenFiles={(fs) => { void Promise.all([...fs].slice(0, 20).filter((f) => f.size <= (/\.ipynb$/i.test(f.name) ? 20_000_000 : 1_000_000)).map(async (f) => fromNotebook({ name: f.name.replace(/[^\w.-]/g, '_'), code: await f.text() }))).then((got) => { if (!got.length) return; save([...list, ...got]); setOpen(list.length + got.length - 1); }); }}
         onJump={(k, line) => { setOpen(k); setNoteView((nv) => ({ ...nv, [k]: false })); setJump((j) => ({ line, n: (j?.n ?? 0) + 1 })); }}
         onImport={() => picker.current?.click()} onCommand={(code) => run(code, 'tool')} onClearLog={() => setLog([])}
         onAnalyze={() => { const probs = lintScript(script.code, isFn).problems; print({ k: 'in', t: `>> analyse ${script.name}` }); print({ k: 'out', t: probs.length ? `${probs.map((q) => `Line ${lineOf(script.code, q.from)}: ${q.message}`).join('\n')}\n` : 'No problems found.\n' }); }}
@@ -875,6 +908,7 @@ export function LabApp() {
         })()}
       </div>
       {viewer}
+      <AppWindows apps={apps} figs={figs} dark={dark} busy={busy} send={appEvent} />
       {bigQr && link?.url && (
         // Big enough to scan from the back of a room (a projector, a shared screen).
         <div role="dialog" aria-modal="true" aria-label={`QR code for ${script.name}`} className="fixed inset-0 z-50 grid place-items-center bg-white p-6" onClick={() => setBigQr(false)} onKeyDown={(e) => { if (e.key === 'Escape') setBigQr(false); }}>

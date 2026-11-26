@@ -8,6 +8,15 @@ import { FileStore, type Pixels } from '@/lib/lab/files';
 import { BUILTINS } from '@/lib/lab/builtins';
 import '@/lib/lab/ml-lab';
 import '@/lib/lab/optim-lab';
+import { appsOut, fireAppEvent, type AppOut } from '@/lib/lab/app-lab';
+import '@/lib/lab/webcam-lab';
+import '@/lib/lab/calc-lab';
+import '@/lib/lab/stats-lab';
+import '@/lib/lab/data-lab';
+import '@/lib/lab/special-lab';
+import '@/lib/lab/text-lab';
+import '@/lib/lab/net-lab';
+import '@/lib/lab/octtest-lab';
 import '@/lib/lab/maint-lab';
 import '@/lib/lab/dsp-lab';
 import '@/lib/lab/energy-lab';
@@ -42,7 +51,7 @@ import type { SweepFrame } from '@/lib/lab/sweep';
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { run: string; id: number; test: string } | { serial: Parameters<typeof serialFeed>[0] } | { run: string; id: number; animate?: boolean } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
+export type ToLab = { appEvent: { part: number; value: number | string | boolean | null }; id: number } | { run: string; id: number; test: string } | { serial: Parameters<typeof serialFeed>[0] } | { run: string; id: number; animate?: boolean } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -51,7 +60,7 @@ export interface FileIn { name: string; bytes: Uint8Array; pixels?: Pixels }
 export interface FileOut { name: string; bytes: Uint8Array | null; pixels?: Pixels }
 export type FromLab =
   | { out: string }
-  | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[]; drawn: number[] }
+  | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[]; drawn: number[]; apps?: AppOut[] }
   | { fig: FigOut }
   | { live: FigOut }
   | { names: string[] }
@@ -235,7 +244,7 @@ self.onmessage = async (e: MessageEvent<ToLab>) => {
   let touched = false;
   // M397: which figures this run drew on (a notebook section shows only its own).
   const drawn = new Set<number>();
-  const code = 'watch' in m ? m.watch : 'profile' in m ? m.profile : m.run;
+  const code = 'appEvent' in m ? '' : 'watch' in m ? m.watch : 'profile' in m ? m.profile : m.run;
   if ('watch' in m) recorder = new Recorder(code, graphics);
   if ('profile' in m) { profiler = new Profiler(code, () => performance.now()); host.fnTimer = profiler; }
   animating = 'animate' in m && !!m.animate; dirty = false; frameAt = 0;
@@ -243,7 +252,9 @@ self.onmessage = async (e: MessageEvent<ToLab>) => {
   try {
     // M476: the Test button runs the script's %% sections (and test functions) as tests.
     // M523: Run on a test class (classdef … < matlab.unittest.TestCase) runs its tests too.
-    if ('test' in m || ('run' in m && /^\s*classdef\b/m.test(code))) { const r = runScriptTests(lab, code, 'test' in m ? m.test : 'tests'); host.out(reportText(r)); testReports.onReport?.(r); } else if ('run' in m) { if (/\bparfor\b/.test(code)) await (parallel.pool as WorkerPool | null)?.warm(); await runResumable(lab, code); } else lab.run(code);
+    // M554: a press, slide or choice in an app window runs its callback.
+    if ('appEvent' in m) fireAppEvent(lab, m.appEvent);
+    else if ('test' in m || ('run' in m && /^\s*classdef\b/m.test(code))) { const r = runScriptTests(lab, code, 'test' in m ? m.test : 'tests'); host.out(reportText(r)); testReports.onReport?.(r); } else if ('run' in m) { if (/\bparfor\b/.test(code)) await (parallel.pool as WorkerPool | null)?.warm(); await runResumable(lab, code); } else lab.run(code);
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;
@@ -264,5 +275,5 @@ self.onmessage = async (e: MessageEvent<ToLab>) => {
   const figs = changed ? graphics.figures.map((f) => figOut(f.id)).filter((f): f is FigOut => !!f) : null;
   const written: FileOut[] = files.takeChanges().map(({ name, file }) => ({ name, bytes: file?.bytes ?? null, pixels: file?.pixels }));
   for (const f of graphics.figures) if (!before.has(f.id)) drawn.add(f.id);
-  postMessage({ done: m.id, error, at, vars, figs, current: graphics.current?.id ?? null, files: written, drawn: [...drawn] } satisfies FromLab);
+  postMessage({ done: m.id, error, at, vars, figs, current: graphics.current?.id ?? null, files: written, drawn: [...drawn], apps: appsOut(lab) } satisfies FromLab);
 };
