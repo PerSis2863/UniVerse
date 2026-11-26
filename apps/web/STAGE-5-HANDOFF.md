@@ -15415,3 +15415,30 @@ measured in M468 (no long task at CPU ×1), so this is the app's window and two 
 - **The command window** (`LabApp`): each printed line has a steady number (`n`) and is a memo'd `LogLine`, so a run's
   streaming output draws only the new line, not up to 800 above it (index keys shifted every row once at the cap).
 - **[owner]:** after merging, GitHub → Actions → "Hyperion desktop" → Run workflow with "publish" ticked (version 1.2.0).
+
+## M550: Hyperion's Code window: no overlap, the editor and command window full width (26 Nov)
+
+The owner, 26 Nov, with a screenshot: in Hyperion's Code window the command window was drawn over the editor's last
+lines, and Variables and Files should move so the editor and the command window fill that space. The middle column is
+now the editor over the command window with a divider between them (`Splitter axis="y"`, kept as `uv-lab-panes`;
+the editor's height is `min(kept, 100% − 9rem)` so the command window always keeps 8 rem), both marked
+`data-no-arrange` (page-arranging could give a card a fixed height that broke the old 1.1 : 1 grid rows). Variables and
+Files left the left column: with the figure they are tabs on the right ("Side panel": Figure, Variables, Files; the
+toolstrip's Layout still hides either part). A new figure brings its tab forward without an effect: the tab chosen
+remembers the figure it was chosen at. Check: `scripts/checks/hyperion-layout-ui.mjs` (no overlap at 1280×800 and
+1920×1080, with Ask Ghidra open too).
+
+## M551: Hyperion Simulate, Sound: acoustics (26 Nov)
+
+Simulate → **Sound**, a new bench (`src/lib/sim/acoustics.ts`, `components/sim/SoundBench.tsx`): acoustics in a floor
+plan by FDTD on a staggered grid (pressure at the cells, velocity on the faces, ~200 cells across, dt = 0.5·h/c).
+Blocks are rigid (faces beside them hold no velocity) and absorb a share at the air cells touching them; the box is a
+room (hard sides) or open (a quadratic sponge at the edges). The source plays a tone (three-cycle soft start) or a
+clap (a Gaussian pulse). Views: the wave (red push, blue pull) and Loudness (RMS dB re 20 µPa once the sound has
+crossed the box twice, the loudest 40 dB). The listener's level over the last 50 ms; after a clap, the room's
+resonances from the listener's spectrum (a Hann-windowed DFT, parabolic peaks, up to 200 Hz) beside the textbook's
+for a plain rectangle. Runs on the page's thread in requestAnimationFrame (~26k cells × up to 60 steps a frame, a few
+ms; paused while the tab is hidden; Reduce Motion starts paused). Drag S and L. Tested: a pulse at c within 4%, a
+closed room's lowest three modes within 3% of (c/2)·√((m/W)²+(n/H)²), a wall >5 dB quieter behind it. In the
+browser the resonance study read 34.4, 48.9, 59.9, 84.4 Hz against 34.3, 49.0, 59.8, 84.3. Check:
+`scripts/checks/hyperion-sound-ui.mjs`.
