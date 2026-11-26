@@ -13645,6 +13645,15 @@ its own cornering stiffness and axle loads), then it skids as one block as befor
 seat, 50 km/h square: slide 4.4 m and 12° braked, 6.3 m and 48° rolling (one axle's tyres grip while it coasts along,
 so it pivots); at 30°: 2.8 m → 8.5 m; a pole at 32 km/h, 30°: 0.03 m → 0.34 m. The default's numbers are unchanged.
 
+## M486zc (26 Nov): Hyperion vehicles, the struck driver's reaction time
+
+The owner (M486zb's left-out: the delay was fixed at 1 s). `sideCrash`'s `react` (s, default `REACT` 1), passed to
+`strikerAfter` and `slideAfter` and on to `ownTyres`: the struck car's wheels roll for that long, then it skids as one
+block. Language: vehicleSideCrash 'StruckReact' (0–3 s; giving it implies 'StruckRolling'). Window: Crash → Into the side →
+"This car's driver wasn't braking" shows a "Brakes after" slider (0–3 s). Aimed at the back seat, 50 km/h square: 0 s
+4.4 m and 12° (as braked), 0.5 s 5.0 m and 39°, 1 s 6.3 m and 48° (as before), 2 s 9.4 m, 3 s 11.6 m. The other driver's
+second (`REACT` in the striker's `a`/`rolls`) is still fixed.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
