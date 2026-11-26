@@ -258,6 +258,9 @@ spline | spline(x, y, xq) | Cubic spline through the points.
 trapz | trapz(x, y) | Area under the points (trapezoids).
 cumtrapz | cumtrapz(x, y) | Running area.
 integral | integral(f, a, b) | Integral of a function from a to b.
+integral2 | integral2(f, xmin, xmax, ymin, ymax) | A double integral of f(x, y); ymin and ymax may be functions of x, for a region that isn't a box: integral2(@(x, y) 1, 0, 1, 0, @(x) x).
+integral3 | integral3(f, xmin, xmax, ymin, ymax, zmin, zmax) | A triple integral of f(x, y, z); the y limits may be functions of x, the z limits functions of x and y.
+pdepe | sol = pdepe(m, @pdefun, @icfun, @bcfun, xmesh, tspan) | Partial differential equations in one space dimension: c·∂u/∂t = x⁻ᵐ∂/∂x(xᵐ·f) + s, with [c, f, s] = pdefun(x, t, u, dudx), u0 = icfun(x), [pl, ql, pr, qr] = bcfun(xl, ul, xr, ur, t) (each end p + q·f = 0); m = 0 slab, 1 cylinder, 2 sphere. sol(i, j, k): time i, point j, component k.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
 fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.

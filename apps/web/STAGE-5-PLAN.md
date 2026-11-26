@@ -1939,6 +1939,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M550 | Hyperion's Code window: no overlap, the editor and command window full width (26 Nov) | **Done** (branch) | The command window no longer covers the editor (a divider between them); Variables and Files are tabs beside the figure; checked at 1280 and 1920, light and dark, axe clean. |
 | M551 | Hyperion Simulate, Sound: acoustics (26 Nov) | **Done** (branch) | Simulate → Sound: a room or open air, walls and furniture that absorb, a tone or a clap, the wave live, loudness in dB, the listener's level, the room's resonances; textbook-tested; checked in the browser, light and dark, axe clean. |
 | M552 | Hyperion Simulate, parts from STL files (26 Nov) | **Done** (branch) | Simulate → 3D file: open an STL, filled with boxes cut into 10-node tetrahedra, its six sides held or pushed, stress in 3D; textbook-tested; checked in the browser with a real file, light and dark, axe clean. |
+| M553 | Hyperion: integral2, integral3 and pdepe (26 Nov) | **Done** (branch) | Double and triple integrals (regions with function limits too) and 1D partial differential equations by the method of lines with a stiff solver; textbook-tested; help for each. |
 
 ### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
 

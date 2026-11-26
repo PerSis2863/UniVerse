@@ -15097,3 +15097,16 @@ the tab only (reopen it after a reload); a sample bar opens first. Tested: binar
 a bar from a file under tension at F/A within 5% and stretching FL/(EA). Check: `scripts/checks/hyperion-file-ui.mjs`
 (it writes a binary STL and opens it through the picker). Left out: holding or loading a chosen face that isn't one
 of the six sides, loads out of the x–y plane, keeping the file across reloads.
+
+## M553: Hyperion: integral2, integral3 and pdepe (26 Nov)
+
+`src/lib/lab/calc-lab.ts` (loaded by `lab.worker.ts`, `par.worker.ts` and `help.test.ts`): **integral2** and
+**integral3** (nested adaptive Gauss–Legendre, 10 against 20 points per piece, split where they disagree, up to 12
+levels; the inner limits may be functions of the outer variables, so regions that aren't boxes work; the function is
+called with scalars, so `x.*y` and plain `x*y` both work) and **pdepe** (the method of lines: finite volumes around
+xmesh's points with each midpoint's flux from its two neighbours, weighted by xᵐ for cylinders and spheres; each end
+p + q·f = 0, an end with q = 0 held by a fast relaxation (1e-6) that the stiff solver `ros23` from sci-num.ts takes
+in its stride; sol(i, j, k) time × point × component, a times × points matrix for one component). Equations with
+c = 0 (elliptic ones in the system) are refused with a plain message: not supported yet. Tested: ∫∫ x·y² over a box,
+a triangle's area with a function limit, the Gaussian's π, ∫∫∫ x+y+z, the unit sphere's volume, a rod with held
+ends cooling as sin(πx)·e^(−π²t), an insulated rod keeping its average. Help lines added in help.ts.
