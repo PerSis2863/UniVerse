@@ -11,7 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Segmented } from '@/components/ui/Segmented';
 import { authedJson } from '@/lib/authed-fetch';
 import { chime } from '@/lib/call-sounds';
-import { fadeUp, spring } from '@/lib/motion';
+import { fadeUp, spring, popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useActivePoll } from '@/lib/realtime-client';
 
@@ -199,7 +199,7 @@ export function OfficeBar({ line, students, onNext }: { line: { waiting: number;
       </div>
       <AnimatePresence>
         {notesOpen && student && (
-          <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }} transition={spring.smooth}
+          <motion.div {...popIn}
             className="rounded-2xl bg-[#151517]/95 backdrop-blur-xl border border-white/10 p-3 shadow-2xl space-y-2" role="dialog" aria-label="Office hours notes">
             {students.length > 1 ? (
               <Segmented label="About" value={student.userId} onChange={setWho} segments={students.map((p) => ({ value: p.userId, label: p.name.split(' ')[0] }))} className="w-full" />

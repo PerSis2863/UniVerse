@@ -8,6 +8,7 @@ import { Sparkles, FileText } from 'lucide-react';
 import { Award, CheckCircle2, ChevronRight, GraduationCap, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -250,7 +251,7 @@ export default function Scholarships() {
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              {...popIn}
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-zinc-800 flex justify-between items-start bg-zinc-900/50 flex-shrink-0">

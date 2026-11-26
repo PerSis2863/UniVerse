@@ -5,6 +5,7 @@ import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { cn } from '@/lib/utils';
@@ -82,10 +83,7 @@ export function MarketingNav() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.2 }}
+            {...popIn}
             className="md:hidden mx-3 mt-2 rounded-3xl bg-[var(--surface)] border border-white/[0.08] p-3 shadow-2xl"
           >
             {[...LINKS, { href: '/login', label: 'Sign in' }].map((l) => (

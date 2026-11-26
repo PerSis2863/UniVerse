@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import {  Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -181,7 +182,7 @@ export default function NGOMarketplacePage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={e => e.target === e.currentTarget && setSelected(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+            <motion.div {...popIn}
               className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
               <button aria-label="Close" onClick={() => setSelected(null)} className="absolute top-4 end-4 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
               

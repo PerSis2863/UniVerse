@@ -7,6 +7,7 @@ import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, Exte
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -239,7 +240,7 @@ export default function StudentInternships() {
       <AnimatePresence>
         {activeApplication && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setActiveApplication(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <motion.div {...popIn} className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                 <div>
                   <h3 className="font-bold text-zinc-900 dark:text-white text-xl">{editingAppId ? 'Edit Application' : 'Apply Now'}</h3>

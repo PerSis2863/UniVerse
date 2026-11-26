@@ -30,6 +30,9 @@ export const pop = {
   spring: { type: 'spring', stiffness: 520, damping: 38, mass: 0.8 } as Transition,
 };
 
+/** M480: `pop` as framer-motion props, for a hand-made menu or pop-up window: `<motion.div {...popIn}>`. */
+export const popIn = { initial: pop.from, animate: pop.to, exit: pop.out, transition: pop.spring };
+
 export const ease = {
   ios: [0.32, 0.72, 0, 1] as const,
   out: [0.22, 1, 0.36, 1] as const,

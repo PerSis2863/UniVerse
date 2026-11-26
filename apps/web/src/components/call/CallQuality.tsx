@@ -6,7 +6,7 @@ import { Activity, Check, Star, WifiOff, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { CALL_ISSUES, grade, rate, type Grade, type Reading } from '@/lib/call-quality';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { spring, popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Call quality (Stage 5 · B8.1; numbers from src/lib/call-quality.ts): the Connection panel (my
@@ -117,7 +117,7 @@ export function RateCall({ callId, onDone }: { callId: string; onDone: () => voi
   };
   const skip = () => { try { localStorage.setItem(ASKED, String(Date.now())); } catch { /* private window */ } onDone(); };
   return (
-    <motion.div role="dialog" aria-labelledby="rate-title" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={spring.snappy}
+    <motion.div role="dialog" aria-labelledby="rate-title" {...popIn}
       className="w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-white/[0.08] border border-white/10 backdrop-blur-2xl p-5 space-y-3 text-center">
       {sent ? <p className="py-4 text-sm inline-flex items-center gap-2 justify-center"><Check className="w-4 h-4 text-emerald-300" aria-hidden />Thanks, that helps us make calls better.</p> : (
         <>

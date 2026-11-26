@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertTriangle, Check, Clock, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, PackageCheck, Plus, Route, Sparkles, Thermometer, Timer, Truck, X } from 'lucide-react';
@@ -326,7 +327,7 @@ export function TrackingMap() {
             </AnimatePresence>
             <AnimatePresence>
               {dest && (
-                <motion.form onSubmit={(e) => void saveDest(e)} initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                <motion.form onSubmit={(e) => void saveDest(e)} {...popIn}
                   className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#111113] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-200">What is this place called?
                     <input autoFocus value={dest.place} maxLength={160} onChange={(e) => setDest({ ...dest, place: e.target.value })} className="input mt-1" placeholder="Milan distribution centre" />

@@ -4,6 +4,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import {
   Shield, ExternalLink, CheckCircle2, Clock, Loader2, Plus, X,
@@ -110,7 +111,7 @@ function RequestCredentialModal({ onClose, onRequested, initial }: { onClose: ()
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
+      <motion.div {...popIn}
         className="dark bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div>

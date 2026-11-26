@@ -12625,3 +12625,25 @@ on most menus (M351, M355, M372); the gaps were closing and four parts with olde
   and closed with Escape: one closing each, no copy left after 0.3 s, no page errors.
 - **Rule:** a new hand-made menu needs nothing for its opening or closing; if it has its own exit (framer-motion's
   `exit`), the layer leaves it alone.
+
+
+## M480 (26 Nov): more menus, pop-up windows and fold-out sections like the search window
+
+The owner, 26 Nov, after M479: "check what else you can make smooth like that". A sweep for parts that opened their
+own way:
+- **`popIn` in `src/lib/motion.ts`** (`pop` as framer-motion props: `<motion.div {...popIn}>`) on 37 hand-made menus and
+  pop-up windows that each had their own sizes and timings, most as framer's `y` / `scale` (the page's thread): the
+  side menu's account menu, Files' menus, the presence picker, Breakout's menu, document mentions, Studio's saves,
+  Boards (its menus and the new-board window), office hours, the theme menu, the website's phone menu, Trace's
+  destination form, and the pop-up windows of credentials, the directory, quizzes, NGO marketplace, start-ups,
+  internships, support, scholarships, accounting, documents, groups, grades, rooms, medical, consents, the age gate,
+  the call's rating and the premium gate. Left alone: list items, badges, step screens, and panels that rise from a
+  button at the bottom (the call bar's, the study assistant): rising is right for them. Never on a part with
+  `layout` (the script that made the change skipped them; M130).
+- **`.spot-up`** in `globals.css`: the search window's opening for a menu that opens above its button (it rises a
+  touch): the side menu's Language row and a trip day's options menu (was `fade-up`).
+- **Fold-out sections (38 `<details>`):** `::details-content` grows to its height (`interpolate-size: allow-keywords`
+  on `details` only) and fades on Apple's curve in 0.34 s, folds away in 0.22 s; browsers without it open at once;
+  none with Reduce Motion.
+- Tried in a browser at 1280: a fold-out section 23 → 222 px over ~0.3 s; Grades' Download Transcript window from 97%
+  to its place on the spring, fading out on Cancel; no page errors.

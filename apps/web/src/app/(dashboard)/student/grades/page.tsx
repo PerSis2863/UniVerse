@@ -8,6 +8,7 @@ import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { GraduationCap, TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -524,7 +525,7 @@ export default function GradesPage() {
             onClick={e => e.target === e.currentTarget && setShowModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              {...popIn}
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl"
             >
               <div className="flex items-center justify-between mb-4">

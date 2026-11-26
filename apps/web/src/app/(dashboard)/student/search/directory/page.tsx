@@ -6,6 +6,7 @@ import { Search, Mail, Filter, Building2, X, User, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import useSWR from 'swr';
 import { LoadError } from '@/components/ui/LoadError';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -119,7 +120,7 @@ export default function StudentDirectory() {
               onClick={() => setActiveModal(null)}
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              {...popIn}
               className="dark relative w-full max-w-md bg-[#151517] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white/[0.02]">

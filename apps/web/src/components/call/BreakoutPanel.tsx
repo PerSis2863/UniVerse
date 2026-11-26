@@ -5,7 +5,7 @@ import { useTick } from '@/lib/use-now';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowLeft, Clock, DoorOpen, LifeBuoy, Megaphone, Minus, Plus, Send, Shuffle, Users, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { spring, popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Breakout rooms (Stage 4 · 2.6): the host splits the call into smaller rooms (shuffled, by hand, or
@@ -223,7 +223,7 @@ function Running({ bo, people, room, send, onJoin }: {
   const roomMenu = (key: string, current: number, pick: (n: number) => void) => (
     <AnimatePresence>
       {moving === key && (
-        <motion.div key="menu" initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={spring.snappy}
+        <motion.div key="menu" {...popIn}
           className="mt-1.5 flex flex-wrap gap-1" role="group" aria-label="Move to">
           {[0, ...bo.rooms.map((r) => r.n)].filter((n) => n !== current).map((n) => (
             <button key={n} type="button" onClick={() => { pick(n); setMoving(null); }} className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[11px] font-semibold">

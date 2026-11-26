@@ -21,7 +21,7 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
 import { MenuPins } from '@/components/ArrangeMode';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { spring } from '@/lib/motion';
+import { spring, popIn } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
 import { useOptimisticPath } from '@/lib/nav-pending';
 import { setSidebarFolded, useSidebarFolded } from '@/lib/sidebar-fold';
@@ -361,7 +361,7 @@ export function AppSwitcher({ app, role, onPick, shown, compact }: { app: AppId 
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div role="menu" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
+          <motion.div role="menu" {...popIn}
             className={cn('absolute top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0f0f11] p-1.5 shadow-2xl', compact ? 'start-0 w-72' : 'side-menu left-3 right-3')}>
             {shown.map((a) => (
               <Link key={a.id} role="menuitem" data-uv-app={a.id} href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">

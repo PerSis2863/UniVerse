@@ -7,6 +7,7 @@ import { HeartPulse, Stethoscope, X, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -171,9 +172,7 @@ export default function MedicalPage() {
         {activeModal === 'profile' && (
           <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              {...popIn}
               className="bg-[#151517] border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">

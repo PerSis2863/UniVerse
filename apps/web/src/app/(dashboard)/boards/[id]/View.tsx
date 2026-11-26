@@ -8,7 +8,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { ArrowLeft, BarChart3, FileDown, History, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { spring } from '@/lib/motion';
+import { spring, popIn } from '@/lib/motion';
 import { Sheet } from '@/components/ui/Sheet';
 import { drawDiagram, drawMindMap, drawSummary, drawThemes, type Diagram } from '@/components/boards/board-ai-draw';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -321,7 +321,7 @@ function BoardPage({ id }: { id: string }) {
           <button onClick={() => setTimerOpen((o) => !o)} disabled={status !== 'live' || !canEdit} className={btn} title="Workshop timer for everyone" aria-expanded={timerOpen}><TimerIcon className="w-4 h-4" /></button>
           <AnimatePresence>
             {timerOpen && (
-              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy} className="absolute end-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+              <motion.div {...popIn} className="absolute end-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
                 {[1, 3, 5, 10, 15].map((m) => <button key={m} type="button" onClick={() => { controls.current?.setTimer(m); setTimerOpen(false); }} className="w-full text-start px-3 py-1.5 rounded-xl text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{m} {m === 1 ? 'minute' : 'minutes'}</button>)}
                 {timer && <button type="button" onClick={() => { controls.current?.setTimer(null); setTimerOpen(false); }} className="w-full text-start px-3 py-1.5 rounded-xl text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-500/10">Stop the timer</button>}
               </motion.div>
@@ -334,7 +334,7 @@ function BoardPage({ id }: { id: string }) {
           </button>
           <AnimatePresence>
             {aiOpen && (
-              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
+              <motion.div {...popIn}
                 className="absolute end-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
                 {canEdit && <button type="button" onClick={() => void runAi('themes')} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Group notes into themes</span><span className="block text-xs text-zinc-500">Adds the sticky notes again, sorted into columns</span></button>}
                 {canEdit && <button type="button" onClick={() => void tidySketch()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Tidy a sketch into a diagram</span><span className="block text-xs text-zinc-500">Select your drawing (or nothing, for the whole board): AI redraws it cleanly beside it</span></button>}
@@ -451,7 +451,7 @@ function TimerPill({ endsAt, by, onDone }: { endsAt: number; by: string; onDone:
     return () => clearTimeout(t);
   }, [left, onDone]);
   return (
-    <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={spring.smooth}
+    <motion.div {...popIn}
       className={cn('pointer-events-auto rounded-full px-4 py-1.5 shadow-xl text-sm font-bold tabular-nums inline-flex items-center gap-2', left === 0 ? 'bg-emerald-600 text-white' : left <= 30 ? 'bg-amber-500 text-white' : 'bg-zinc-900/90 text-white')}
       title={`Timer started by ${by}`} role="timer" aria-live="polite">
       <TimerIcon className="w-4 h-4" />{left === 0 ? 'Time’s up!' : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}

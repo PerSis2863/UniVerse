@@ -2,6 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { m as motion } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { Lock, Sparkles, ArrowRight, Check } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { FEATURE_INFO, PLANS, formatPrice, type PremiumFeature } from '@/lib/plans';
@@ -27,9 +28,7 @@ export function PremiumGate({ feature, children }: { feature: PremiumFeature; ch
   return (
     <div className="flex-1 p-6 md:p-10 overflow-y-auto">
       <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        {...popIn}
         className="relative max-w-2xl mx-auto overflow-hidden rounded-[2rem] border border-indigo-500/20 bg-gradient-to-br from-indigo-50 via-white to-fuchsia-50 dark:from-indigo-950/40 dark:via-zinc-950 dark:to-fuchsia-950/30 p-8 md:p-12 text-center"
       >
         <div aria-hidden className="slow-turn absolute -top-40 -end-40 w-80 h-80 rounded-full bg-conic from-indigo-500/20 via-fuchsia-500/20 to-indigo-500/20 blur-3xl" />
