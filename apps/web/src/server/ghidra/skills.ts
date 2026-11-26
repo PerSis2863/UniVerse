@@ -24,8 +24,10 @@ export const SKILLS = {
   support: { app: 'trace', does: 'Answers a buyer from a product passport’s facts', own: 'agents' },
   travel: { app: 'travel', does: 'Gives practical tips for a trip', own: 'agents' },
   booking: { app: 'travel', does: 'Reads a pasted hotel booking into a trip' },
+  guide: { app: 'travel', does: 'Answers questions about a place (sights, food, areas, getting around, customs) from its guide', own: 'agents' },
   // Hyperion
   hyperion: { app: 'lab', does: 'Writes, explains and fixes MATLAB / Octave code for Hyperion', own: 'hyperion' },
+  'sim-setup': { app: 'lab', does: 'Sets up a Simulate study (shape, material, supports, loads) from a description', own: 'agents' },
   // UniVersity: learning
   tutor: { app: 'campus', does: 'The course tutor: answers from the course’s own sources, flashcards, practice, homework hints' },
   whisper: { app: 'campus', does: 'Answers a student’s quiet question during a class call' },

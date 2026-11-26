@@ -1061,9 +1061,10 @@ a.group:not(.sidebar-item):active { scale: 0.985; transition-duration: 70ms; }
 @media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
 
 /* Theme switch: one soft crossfade of the whole page (View Transitions) */
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: 320ms; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
-.theme-fading * { transition: none !important; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 320ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.theme-fading * { transition: none !important; }
+/* M476: slower and smoother (the owner, 23 Nov); only while the theme changes, so page morphs keep their speed. */
+html.theme-fading::view-transition-old(root), html.theme-fading::view-transition-new(root) { animation-duration: 800ms; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1); }
 html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 
 /* Content that fades in once data arrives (replaces per-row staggering) */
@@ -2568,6 +2569,11 @@ html.dark .ins-cell :is(svg, .ins-pop) { color: #6ea2f8; }
 .accent-word { font-family: var(--font-display); font-style: normal; letter-spacing: 0; }  /* M452: the key word in the headings' own face */
 /* M452: a big heading that isn't an h1–h3 (the homes' greeting) in the headings' face. */
 .display-face { font-family: var(--font-display); letter-spacing: 0; }
+/* M477 (the owner, 24 Nov: the handwritten face "in more places"): the search window, menus, tabs and the small
+   headings take the headings' face too; running text, fields people type in, tables and numbers stay in Inter. */
+:is(.hand, .side-label, .ios-segment, [role="tab"], h4, h5, h6) { font-family: var(--font-display); letter-spacing: 0; }
+:where(.doc-prose, .ProseMirror, [contenteditable="true"]) :is(h4, h5, h6) { font-family: var(--font-sans); letter-spacing: -0.015em; }
+html.dyslexic-font :is(.hand, .side-label, .ios-segment, [role="tab"], h4, h5, h6),
 html.dyslexic-font .display-face { font-family: 'OpenDyslexic', var(--font-sans, system-ui), sans-serif; }
 html.dark :is(h1, h2, h3):has(.accent-word) { color: var(--text-primary); }
 

@@ -74,7 +74,9 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
     cv.setAttribute('aria-hidden', 'true');
     cv.setAttribute('data-no-motion', '');
     box.appendChild(cv);
-    const still = reducedMotion();
+    // In Hyperion's computer app the scene holds one still frame: the window is a work tool, and every frame the
+    // scene draws is time the graphics chip can't give to the editor, the figures and the live simulations.
+    const still = reducedMotion() || 'hyperionDesktop' in window;
     const opts: BackdropOpts = { strength, still, phone: window.innerWidth < 640 };
     const isDark = () => dark || html().classList.contains('dark');
     const dpr = () => window.devicePixelRatio || 1;

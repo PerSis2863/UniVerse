@@ -12437,6 +12437,175 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+
+## M472 (23 Nov): Hyperion, the filter designer and signal analyser
+
+The owner (23 Nov): "help me to build what is left", group 5's signal analyser and filter designer. Three sessions build
+the rest in parallel: this branch (`claude/hyperion-signals-capabilities`) M472–M481, machines and vehicles M482–M491,
+sciences and industries M492–M505. Pure maths in `src/lib/lab/filters.ts`, the language in `filters-lab.ts` (loaded by
+`lab.worker.ts` and the tests): analog prototypes (Butterworth, Chebyshev I and II, elliptic by Landen's transform,
+after Orfanidis' notes), the low/high/band-pass/band-stop transformations and the bilinear transform with prewarping (fs
+= 2, as MATLAB, so edges are fractions of Nyquist); order estimates; `fir1` (windowed sinc, gain 1 in the first
+passband), `fir2` (frequency sampling), `firpm` (our own Remez exchange with barycentric interpolation, orders odd and
+even; no Hilbert or differentiator types); `freqz` moved here from `signal.ts` (draws magnitude and unwrapped phase
+without outputs; takes fs), `grpdelay`, `filtfilt` (odd reflection of 3·order samples, steady-state initial conditions),
+`designfilt` (a plain struct with Numerator and Denominator in place of MATLAB's digitalFilter object; `filter`,
+`filtfilt`, `freqz`, `grpdelay` take it; `filter` is wrapped here so `signal.ts` stays as it was), `pwelch` and
+`spectrogram` (MATLAB's defaults: 8 Hamming segments overlapping by half, nfft ≥ 256; one-sided PSD scaling).
+The window: Hyperion's new **Signals** page (`/hyperion/signals`, `SignalsTabs.tsx`, menu and phone tabs), its first
+tab `FilterDesigner.tsx`: designs on the page's thread (microseconds to milliseconds), edges dragged on the SVG
+(pointer capture, the neighbours' order kept) or moved with ‹ › buttons, Open in Code by `shareFragment`. The worked
+examples for this branch live in `src/components/lab/examples-signals.ts` (spread into `LabApp`'s list, so the three
+branches don't edit the same lines) and every one runs in `examples-signals.test.ts`. Browser check:
+`scripts/checks/hyperion-signals-ui.mjs` (TABS=… names the tabs to open). Not built: second-order sections (`sos`),
+`zplane`, `iirnotch`, filter quantisation, MATLAB's filterDesigner's import/export.
+
+## M473 (23 Nov): Hyperion, test and measurement (the microphone, a tone generator, recording, data logging)
+
+Signals → **Audio** (`src/components/lab/AudioBench.tsx`, a lazily loaded tab of `SignalsTabs`). Web Audio only, free
+and on the computer: the input is the microphone (`getUserMedia` with echoCancellation, noiseSuppression and
+autoGainControl off, so the real sound is measured; the site's Permissions-Policy already allows `microphone=(self)`)
+or a generator (OscillatorNode, or a looping buffer of white noise) → a gain → an AnalyserNode (8192 points, −140 … 0
+dB) and, for the generator only and when ticked, the speakers (never the microphone: it would howl). A canvas scope
+(triggered on the first rising zero crossing) and a log-frequency spectrum are drawn by requestAnimationFrame only
+while running; readings (level dBFS, the strongest frequency refined by a parabola, THD) come from `src/lib/lab/audio.ts`.
+**Recording is lossless**: an AudioWorklet (`public/hyperion/pcm-tap.js`, a static file because the CSP's script-src
+has no blob:) posts the samples in blocks of 4096; they are written as a 24-bit WAV with `keep()` into Hyperion's files
+(IndexedDB, `lab-files.ts`) and Open in Code reads it with `audioread`. The data logger keeps up to 100,000 readings
+(CSV download, or a CSV in Hyperion's files read with `readtable`). In the language (`audio-lab.ts`): `audioread`
+(with a sample range), `audiowrite` ('BitsPerSample' 8/16/24/32, 64 for floats), `audioinfo`, `sound` / `soundsc`
+(the engine's worker has no speakers: a new optional `Host.sound` posts `{ sound }` and `LabApp`'s `playSound` plays it),
+`thd` (dB). WAV reading takes PCM and float, WAVE_FORMAT_EXTENSIBLE, any channel count. The browser check
+(`hyperion-signals-ui.mjs`) uses the generator (no microphone in the test browser). Not built: two-channel inputs,
+choosing the input device, calibration to sound pressure (dB SPL needs a calibrated microphone), MATLAB's
+audioDeviceReader/audioPlayer objects (System objects the engine doesn't have).
+
+## M474 (23 Nov): Hyperion, serial devices and Arduino (Web Serial, Firmata, a simulated board)
+
+Signals → **Devices** (`SerialBench.tsx`). The connection is `serialLink` in `src/components/lab/serial-link.ts`, a
+module-level object, so it stays open while the person moves between Signals and the Code window (client-side
+navigation keeps modules). Web Serial (`navigator.serial.requestPort` shows the browser's chooser; Chrome, Edge, Opera
+on computers and the Electron app; Firefox and Safari have none: the page says so and the simulated board still works;
+the site's Permissions-Policy leaves `serial` at its default, self). **Text** mode decodes lines (keeps the last 10,000)
+and plots the Serial Plotter format (`parsePlotLine`: named "a:1,b:2" or plain "1 2 3", up to 6 series, last 300
+points); **Firmata** mode speaks StandardFirmata 2.x (`src/lib/lab/firmata.ts`: `encode`, a `Parser` that takes bytes
+in any pieces, sysex capability / analog-mapping / firmware / string replies), asks the board its pins and reports all
+three digital ports; analog reporting starts when a pin is set to analog. `SimBoard` is a byte-level simulated Uno
+running Firmata (pin 7 wired to pin 8, a button on pin 2, made-up sensors on A0–A5, A5 follows pin 9's PWM), and the text
+simulation prints `temp:…,light:…,knob:…,led:…` 20 times a second and answers `LED ON` / `LED OFF`.
+**Scripts** (`serial-lab.ts`): the engine can't hold a port (only the page can, and the engine runs a script straight
+through on its worker), so the window keeps the engine told (`bridgeToEngine` in `LabApp`, a `{ serial }` message:
+the device's state and new lines, between runs) and a script's writes go out through a new optional `Host.serial` →
+`{ serialOut }` → `applySerialOut`. So `readline` returns lines that arrived before the run (empty when none), pin reads
+return the last report; writes happen as the script runs. MATLAB's serialport and arduino objects are plain structs
+here. Not built: two devices at once, binary protocols beyond Firmata (I2C, SPI, Servo libraries' extras), USB (WebUSB is
+off by the site's policy), Bluetooth, an Arduino compiler/uploader (upload sketches with the Arduino IDE).
+
+## M475 (23 Nov): Hyperion, the Internet of Things (channels, write keys, live dashboards)
+
+Signals → **IoT** (`IotBench.tsx`). Database update **0260** (`iot_channels`, `iot_entries`; 0259 was already M445's on
+main). Server: `src/server/iot.ts`, the platform API module `src/server/modules/iot.ts` (registered in `app.ts`), so the
+routes are `/api/core/iot/…`: `GET/POST channels`, `PATCH/DELETE channels/:id`, `POST channels/:id/key`,
+`GET channels/:id/entries?after=&limit=` (owner only, `own()` checks `userId`), and the public `POST`/`GET
+write/:key` (listed in `route-gates.test.ts`'s PUBLIC_MODULE: the key is the password, as Trace's carrier key). The write
+key (20 characters, about 100 bits) is returned once; only its SHA-256 (`keyHash`, unique) and its first 4 characters are
+kept. Fields are numbers through `num()` (±1e15), field1…field8 (or f1…f8); one reading a second claimed with a
+conditional `updateMany` (no transactions in D1); every 200th insert trims the channel to its newest 20,000. Each reading
+`publish`es a refresh of `/iot/channels/<id>*` to the owner's tabs (the window also refreshes every 20 s when live
+updates are off). Sample answers in `src/lib/sample/iot.ts`; erased with the account (`account-deletion.ts`). The
+simulated device posts from the browser to the same public address every 2 s (making a new key if none is in memory).
+Not built: public (shared) channels, alerts on a threshold, reading a channel from a script (the engine runs scripts
+without waiting on the network: Open in Code saves the readings as a CSV in Hyperion's files), MQTT (browsers can't
+open raw TCP; HTTPS only).
+
+## M476 (23 Nov): Hyperion, unit tests and checks for scripts
+
+`src/lib/lab/verify.ts` (`differs`: why two values differ, down into cells and struct fields, with 'AbsTol' / 'RelTol';
+`sections`: a script's set-up and %% sections) and `verify-lab.ts`: `runScriptTests` (each section after the set-up in a
+fresh child `Lab` sharing the host and the script's functions; a section holding only function definitions isn't a test),
+`runFunctionTests` (local functions named test…, with setupOnce / setup / teardown / teardownOnce, each given a test case
+struct with TestName and IsTestCase), `runtests` (a file in Hyperion's files, or the test functions; prints the report,
+returns a table). `assertX` throws `AssertionFailed` (stops the test); `verifyX` adds to the running test's list and goes
+on (outside a test both stop the code); both take an optional test case first (MATLAB's verifyEqual(tc, …) and our
+assertEqual(…)). The window: a **Test** button beside Time it (`run(code, 'test')` → the worker's run with `test: name`
+→ `runScriptTests`); every report also goes to `testReports.onReport` → `{ tested }` → `TestResults.tsx`, shown in the
+figure's place (like Sweep). Browser check: `scripts/checks/hyperion-tests-ui.mjs`. MATLAB's matlab.unittest classes
+(class-based tests, TestData, parameterised tests, assume…, fixtures beyond the four functions) aren't here.
+
+## M477 (23 Nov): Hyperion, parallel computing (parfor, parfeval on Web Workers)
+
+`src/lib/lab/parallel-lab.ts`. The engine runs a script synchronously on its worker, and a thread can block on another
+only on a cross-origin-isolated site (this one isn't: no COEP; don't add it, it would break embeds), so parallel work
+**pauses** the run: `Flow` (now exported) has a new kind `'pause'`; `Pause` carries `wait()` and whether to re-run the
+statement. `runResumable(lab, src)` (used by `lab.worker.ts` for plain runs; Watch, Time it, Test and the command
+window's other paths stay synchronous, so parfor runs in order there) executes the top-level statements one at a time
+(`Lab.execTop`) and on a pause awaits, then goes on. **parfor** (parser: `parfor` keyword, `{ s: 'for', par: true }`,
+`parfor (i = …, M)` reads and ignores M; interp: `parHook.parfor` at depth 0) works only for top-level statements
+(`topLevel` set): `classify` sorts the body's assignments (indexed → merged element by element against the value before
+the loop by `mergeSliced`, so new arrays and cells grow to the largest size; `x = x + …`, `-`, `*`, `.*`, `&`, `|`,
+`[x, …]` / `[x; …]` → reductions started at their identity in each worker and combined in order; other names →
+temporaries, dropped). Iterations are split into one chunk per worker (`par.worker.ts`: a whole engine with the
+toolboxes, no files and no figures). **parfeval** posts the call at once; a future is its number (MATLAB's Future
+objects aren't in the engine, so `F(k) = parfeval(…)` makes a numeric array); `fetchOutputs` / `fetchNext` / `wait` on an
+unfinished one pauses with `rerun`, waits for every outstanding future, then runs that top-level statement again (so
+fetches belong in their own loop; side effects before the fetch in that statement repeat once). With no pool (tests, the
+Learn and health workers, 2 cores or fewer) parfeval runs the call at once and parfor in order. The pool
+(`WorkerPool` in `lab.worker.ts`) starts on first use and stays; Stop ends it with the engine. Browser check:
+`scripts/checks/hyperion-parallel-ui.mjs`. Not built: spmd, distributed arrays, parfor's sliced inputs (the whole
+workspace is sent), backgroundPool, afterEach / afterAll.
+
+## M478 (23 Nov): Hyperion, GPU computing (gpuArray and gather on WebGPU)
+
+`src/lib/lab/gpu.ts` (WebGPU: `initGpu` asks for an adapter once, from `lab.worker.ts` at start; WGSL compute shaders for
+the tiled matrix product, element-wise ops with scalar broadcasting, unary maths, column sums and transpose; column-major
+f32 buffers; `readBack` copies to a MAP_READ buffer and awaits `mapAsync`; with no device every op runs on the CPU in
+double precision, and a matrix made before the device was ready moves to it on first use, `onDevice`) and `gpu-lab.ts`.
+A gpuArray is a `Struct` with `gpu: true` (fields Size, Where, ID; `kind` says gpuArray, `sizeOf` its size, `show` a
+one-line summary): the engine's `binop` asks `opHooks.binop` first when either side is one, and `exp`, `sqrt`, `abs`,
+`sin`, `cos`, `tanh`, `log`, `sum`, `transpose`, `ctranspose`, `numel` are wrapped. **gather** throws
+`pauseFor(readBack)` (M477's pause, re-running the statement), so every operation is **memoised** by (op, operand ids,
+scalar values): the re-run gets the same handles and finds the numbers back. Buffers are freed when no handle refers to
+them (`FinalizationRegistry` with a count per id); a matrix uploaded as an operand keeps its buffer (a `shortcut:`
+comment). Unary minus, indexing and anything else need gather first (a clear error says so). WebGPU is in Chrome and
+Edge (desktop), not yet in Firefox or Safari by default: there gpuArray is still correct, just not faster. Browser
+check: `scripts/checks/hyperion-gpu-ui.mjs` (launches Chromium with its software WebGPU adapter, so it runs anywhere).
+
+## M479 (23 Nov): Hyperion, discrete-event simulation (Simulate → Queues and queuesim)
+
+Built both as a Simulate bench and a toolbox: a process is easiest to describe by clicking stations together and
+watching it run, and experiments (many seeds, a sweep of servers) are scripts. The engine `src/lib/sim/des.ts`:
+next-event time advance with a binary heap (ties in scheduling order), a seeded generator (mulberry32), distributions
+(exponential, constant, uniform, normal truncated at 0, Erlang), stations with c servers, an optional queue capacity
+(turned away when full) and FIFO queues, routing by a probability matrix (the rest leave; a straight line by default),
+a warm-up left out of the statistics, time-weighted queue length and utilisation, waits, throughput, work in progress, a
+timeline of up to ~600 snapshots and the first 60 entities' journeys; `mmc` is Erlang C. The bench
+`src/components/sim/QueuesBench.tsx` (a new kind in `SimulateApp`) reruns on every change on the page's thread (capped
+at 50,000 arrivals: milliseconds), plays the timeline with requestAnimationFrame only while playing. The language
+(`des-lab.ts`): `queuesim(arrivals, {{name, servers, service, capacity?}…}, T, 'Seed', 'Warmup', 'Route')` and
+`mmcqueue(λ, μ, c)`; MATLAB's SimEvents block diagrams aren't here. Browser check: `scripts/checks/hyperion-queues-ui.mjs`.
+Not built: priorities, other queue orders (LIFO, shortest job), resources shared between stations, schedules (staff by
+hour), batching.
+
+## M480 (23 Nov): Hyperion, C code generation and fixed point
+
+`src/lib/lab/codegen.ts` (`generate(fns, entry, argTypes)`): walks a function's syntax tree with the types the example
+inputs fix (class and r×c; every variable keeps one size: growing arrays, ranges in indexes, cells, text, structs,
+function handles, recursion and changed array inputs are refused with the function's name and the reason). Scalars are
+C locals; arrays fixed-size, column-major (`x[(i-1) + (j-1)*r]`); element-wise array expressions become one loop;
+a matrix product, a transpose or a matrix literal inside one is made first into a temporary (`tN`); reductions of
+vectors (sum, prod, mean, min, max) are hoisted before the statement. Whole-number classes compute in double and go
+through `sat_<class>()` (rounding halves away from zero, clamping, NaN → 0: MATLAB's rules). `fprintf` becomes printf
+(%d → %.0f). Outputs: one scalar → the return value; otherwise out-parameters (scalars by pointer: the body is written
+on a local name and the uses rewritten to `(*name)`). Other functions of the script become `static` functions,
+specialised per set of input types. `codegen-lab.ts`: `codegen('name', {examples})` writes `name.c` / `name.h` to
+Hyperion's files (MATLAB Coder's `codegen name -args {…}` command form isn't read). `codegen.test.ts` compiles the C with
+the machine's `cc -std=c99 -Wall -Werror` and compares with the engine (skipped where there is no compiler).
+**Fixed point**: `fixed.ts` (round to nearest with halves up, saturate, best-precision fraction length, MATLAB's
+full-precision word growth for sums and products, bits and hex by BigInt) and `fi` in `codegen-lab.ts`: a `Struct` with
+`fi: true` (Value, Signed, WordLength, FractionLength; `kind` embedded.fi, its own display and `sizeOf`); arithmetic
+through `opHooks.binop`, now a chain (gpu-lab and codegen-lab each pass on what isn't theirs). Not built: fixed-point C
+(generate on intN types from `storedInteger` instead), fimath settings (other rounding and overflow modes), HDL / VHDL.
+
 ## M482 (23 Nov): Hyperion toolbox, robot arms
 
 The owner's list, group 6 (machines and vehicles), first item. `src/lib/lab/robot.ts` (pure, no imports): arms as
@@ -13779,3 +13948,1651 @@ testing my ai also it was so much slow and not providing answer properly". The l
   base scores (90–92%, social 67%) stand. The agents' add-on (AGENTS_LORA) was trained on the old research and social
   wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
 
+
+## M476: the light/dark switch slower and smoother (23 Nov)
+
+The owner, 23 Nov: switching between light and dark "is fast so make it slow and it should be ultra smooth".
+`applyTheme` (`src/lib/theme.ts`): the circle reveal from the tapped switch now lasts 1100 ms with
+`cubic-bezier(0.65, 0, 0.25, 1)` (starts gently, settles softly). The crossfade without a tap point (the command
+palette) is 800 ms, scoped to `html.theme-fading` in `globals.css` so ordinary page morphs keep 320 ms. Only the
+snapshot's `clip-path` / `opacity` animate (the page itself is frozen behind the View Transition, `.theme-fading *`
+has no transitions). Measured in a browser without a graphics chip, the circle and a plain fade drop the same frames,
+so the cost is that browser's software drawing, not the effect; the one long frame at the start is the page restyling
+to the new theme, before the animation begins.
+
+## M477: the handwritten face in more places (24 Nov)
+
+The owner, 24 Nov, with a picture of the search window: "the text does not match… the main headers… add it in more
+places". `globals.css` (after `.display-face`): `:is(.hand, .side-label, .ios-segment, [role="tab"], h4, h5, h6)` take
+`--font-display` (Shantell Sans); people's own documents keep Inter for h4–h6 too; the dyslexic font still overrides.
+`.hand` is put on the search window's field, chips, section names and result titles (`CommandPalette.tsx`) and on the
+top bar's entries, its menus' rows and group names (`TopNav.tsx`). Hints, body text, fields people fill, tables and
+numbers stay Inter (readability). For a new label that should look like a heading, add `hand`.
+## M454: Google sign-in always asks which account (24 Nov)
+
+The owner signed out of a student account in the Hyperion computer app and chose Google again: it signed straight back
+into the same account with no chooser. Google remembers the last account in its own cookies (kept by the app's sign-in
+window, and by a browser), and Firebase's popup skips the chooser unless asked. Fix: `provider.setCustomParameters({
+prompt: 'select_account' })` on the Google provider in `login/page.tsx` and `register/page.tsx` (Microsoft already had
+it). Not set inside `popupSignIn`: `setCustomParameters` replaces the whole object and would drop Microsoft's `tenant`.
+Web only: the computer app loads the live site, so it needs no new build, only the merge.
+
+## M455: a check for problems, one library advisory fixed (25 Nov)
+
+The owner asked for a check for errors, bugs and security. The live `error_reports` have nothing new since 17 Nov: the
+open rows are old ones already fixed (M221's `_retryCache`, M73's "too many SQL variables"), bots on old chunks, or
+third-party scripts (reCAPTCHA, Firebase). The owner can mark them resolved in the console. `pnpm check` passed
+(2317 tests). `pnpm audit --prod` found one high advisory, GHSA-7589-6fvf-x4pw in `effect` (a slow regex in
+`Schema.TemplateLiteral`), pulled in only by Prisma's config loader (`@prisma/config`, build and CLI time; no request
+reaches it). Pinned `"effect@<3.22.1": "3.22.4"` in the root overrides; `prisma validate` and `generate` still work.
+Also looked at: the two `$queryRawUnsafe` calls in `owner-insights.ts` (safe: a typed literal and `?` values), and
+committed key-looking strings (only Firebase's public web key and test placeholders).
+## M481 (23 Nov): Hyperion, embedded AI (models made small and written out as C)
+
+`src/lib/lab/embedded.ts` and `embedded-lab.ts`, for the toolbox's neural networks (ClassificationNeuralNetwork,
+RegressionNeuralNetwork) and trees (ClassificationTree, RegressionTree); other learners are refused with the reason.
+**Quantisation** is weight-only: each layer's weights become int8 with one symmetric scale (max |w| / 127), biases and
+the standardisation in float; activations stay in floating point (integer-only inference, with quantised activations
+and calibration data, isn't built). `quantizemodel(m, p)` returns a copy whose LayerWeights / CutPoint hold the
+round-tripped numbers, so `predict`, `loss` and the rest work unchanged and measure the real effect; `modelsize` counts
+the bytes on a chip; `embedreport` tries double, single and int8 (trees: double and single) through `loss`.
+`exportmodel(m, 'name', 'Precision', p)` writes `name.c` / `name.h` (row-major weight arrays, one predict function:
+classification returns the class's number in ClassNames' order and fills softmax scores; a tree walks `pred` / `cut` /
+`left` / `right` as `ml.treeLeaf` does, `x < cut` going left). `embedded.test.ts` compiles both with `cc -Wall -Werror`
+and checks every iris flower's class against Hyperion's. MATLAB's own names (quantize, dlquantizer, Coder's
+saveLearnerForCoder) work on its deep-network and learner objects; these are our names for the toolbox's plain models.
+Not built: SVMs, k-NN, ensembles and linear models in C; CMSIS-NN / TensorFlow Lite formats; pruning.
+
+**This branch's work is complete (M472–M481).** Shared files touched, kept to small added lines: `interp.ts` (the
+`Flow` pause, `execTop`, `parHook`, `opHooks`, `Host.sound` / `Host.serial`), `values.ts` (`gpu` and `fi` structs),
+`parse.ts` (`parfor`), `help.ts` (new sections after Signals), `lab.worker.ts`, `LabApp.tsx` (examples spread from
+`examples-signals.ts`, the Test button and results panel, sound, the serial bridge), `SimulateApp.tsx` (Queues),
+`Sidebar.tsx` / `app-tabs.ts` (Signals), `app.ts` (the iot module), `route-gates.test.ts`, `account-deletion.ts`.
+
+## M521 (24 Nov): Hyperion scripts wait for live data mid-run
+
+The owner, 24 Nov, on M472–M481's left-outs: "please work on this". Before, the engine ran a script straight through on
+its thread: a device read gave what had arrived before the run, and only a top-level `parfor` could pause for the pool.
+Now **Hyperion's pages are cross-origin isolated** (`security-headers.ts` `isolationHeaders`: COOP `same-origin`, COEP
+`credentialless`, by `next.config.ts` on `/hyperion` and `/hyperion/:path*`), so the engine's worker may sleep on a
+`SharedArrayBuffer` with `Atomics.wait` until the page (or a pool worker) writes the answer (`src/lib/lab/wait.ts`:
+`newSlot`, `answer`, `sleepOn`, `pack` / `unpack` keep NaN, ±Inf, −0, typed arrays and Maps exact; `waits.page`,
+`askPage`).
+
+- **Traps:** a worker started by an isolated page refuses a script that doesn't send COEP: the built scripts get it
+  (`/_next/static/*` in `next.config.ts` and `public/_headers`; without it the engine never starts and every command
+  stays "running…"). The sealed Python/R frame sends it too (`sandboxHeaders` and `_headers`). Isolation is decided when
+  a page loads: `components/lab/Isolated.tsx` (in Hyperion's layout) reloads a page entered by an in-app link once
+  (`sessionStorage` `uv-isolation`: `trying`, `ok`, `failed`; Safari has no `credentialless` and is tried once a tab), and
+  reloads when the person leaves Hyperion, so the other pages keep their popups (Google sign-in) and framed pages.
+- **The page side:** the engine posts `{ channel: sab }` once and `{ ask: { kind, body, ms, n } }` per question;
+  `components/lab/page-answers.ts` answers by kind (`answers('serial', …)`, `answers('iot', …)`) in the slot, only the
+  newest `n`. A thread that sleeps can't start workers or receive messages: everything it needs comes in the answer
+  (serial lines are held in `heldLines` for an engine that asks, instead of being posted, so none arrive twice).
+- **Serial:** `readline` waits for the next line up to the port's `Timeout` (`serialport(…, 'Timeout', t)`, 10 s);
+  `readVoltage` waits for the next analog report (≤ 300 ms); `readDigitalPin`, `serialport`, `flush`, `arduino` take
+  what's there. The engine's own pin modes and outputs stand; inputs take the page's values.
+- **parfor:** `parHook` no longer needs depth 0: inside a function or a loop it uses the pool's waiting engines
+  (`WorkerPool.warm()` starts them before a run whose code says `parfor`, `runNow` hands out the chunks with a 32 MB slot
+  each). A top-level `parfor` still pauses as before (and prints the speed-up). `parfeval`'s futures are unchanged.
+- **Checked:** `wait.test.ts` (packing, slots, readline inside a function in a loop, the in-function parfor); in Chromium,
+  `scripts/checks/hyperion-wait-ui.mjs`: the headers, isolation, 20 lines from the simulated Arduino read inside a
+  function (1.5 s), a parfor in a function; entering from `/hub` and leaving reload once each; the sealed runner says
+  ready under isolation.
+- **Left out:** Safari waits as before (no isolation there); `pause` is left to the sciences branch (M506); a pool
+  answer over 32 MB is refused with a message.
+
+## M522 (24 Nov): Hyperion IoT in scripts and IoT alerts
+
+- **In scripts** (`src/lib/lab/iot-lab.ts`): `[data, t, names] = iotread(channel, 'NumPoints', n, 'Fields', f)` reads a
+  channel's newest readings mid-run by name or id: asked of the signed-in page (`answers('iot')` in `page-answers.ts`
+  calls `/iot/channels` and `/entries` with the person's own sign-in), so it needs M521's waiting (a clear message
+  otherwise). `r = iotwrite(key, values)` posts to the public `/iot/write/:key` with a synchronous request from the
+  engine's thread (allowed in workers: every browser), so the script goes on once the channel answered.
+- **Alerts** (database update **0261**, `iot_alerts`, `IotAlert`): field, op (`>`, `<`, `>=`, `<=`), value, note,
+  quietMinutes (15), lastFiredAt, fired. `writeEntry` checks the channel's rules after storing the reading; a broken
+  rule is claimed with a conditional `updateMany` (lastFiredAt older than the quiet time) and tells the owner with
+  `notify(…, { email: false })` and `pushService.sendToMany` (no emails, per the rules). Routes: `GET`/`POST
+  /iot/channels/:id/alerts`, `DELETE /iot/alerts/:id` (owner only, at most 10 a channel; sample answer
+  `sampleIotAlerts`). The window: `IotAlerts.tsx` under the charts; the notification links to `/hyperion/signals?tab=iot`
+  (`SignalsTabs` reads `?tab=`). Account erasure takes alerts with their channels (cascade).
+- **Checked:** `iot.test.ts` (fires only when broken, once per quiet time, owner only), `iot-lab.test.ts`; in Chromium
+  `hyperion-signals-ui.mjs` (an alert added, the simulated device breaks it, "told 1×", notifications stored, axe clean
+  light and dark) and `hyperion-wait-ui.mjs` (`iotread` of a channel mid-run).
+
+## M523 (24 Nov): Hyperion class-based tests
+
+MATLAB's object-based tests, without classes in the engine: `src/lib/lab/testclass.ts` `readTestClass(code)` finds a
+`classdef Name < matlab.unittest.TestCase` file's properties and methods blocks (a small scanner: `end`s inside
+brackets, after a dot, in strings and comments don't count; `endfunction` and friends do); any other `classdef` is
+refused with a message. `verify-lab.ts` `runClassTests` parses each methods block's functions with the engine's own
+parser and runs them; `runScriptTests` hands a class to it, so the Test button, Run (`lab.worker.ts`: code starting
+with `classdef`) and `runtests('Name')` all work.
+
+- **Handle-like test case:** a method without outputs is registered with its first parameter as its output, so what a
+  set-up stores (`tc.Data = magic(4)`) comes back and goes on; each test gets a copy of the class set-up's test case
+  (`TestName` is `Class/method(param=value)`).
+- **`tc.method(…)`:** `interp.ts` `methodHook` (a struct without that field, when the hook says so): a test case calls
+  the class's own helper or the builtin with itself first (`verifyEqual`, `addTeardown`…); `x.f(…)` on other structs is
+  unchanged (the field is read once). `interp.ts` also now keeps a `LabError`'s subclass when it adds the line number
+  (`new (e.constructor)(…)`): the assertion and skip kinds survive a function call.
+- **New:** `addTeardown` (last added runs first, also after a failure), `fatalAssert…` (as `assert…`), `assume…` (the
+  test is skipped: "(skipped)", counted as passed, MATLAB's Incomplete). TestParameter values: a cell (labels from short
+  values, else `value1`…) or a struct (its field names); several parameters run every combination.
+- **Checked:** `testclass.test.ts` (blocks, 13 tests from one class, set-up kept, parameters, teardown, skip, runtests
+  from Hyperion's files); `examples-signals.test.ts` runs `RootsTest.m`; in Chromium `hyperion-tests-ui.mjs` (Run on
+  RootsTest.m: "All 6 passed", the GPU test skipped without a chip; axe clean light and dark). The checks now press the
+  editor's Run (the toolstrip from PR #156 has one too).
+- **Left out:** class-level attributes beyond the test kinds (TestTags, shared fixtures, `applyFixture`), `log`, and
+  classes that aren't tests.
+
+## M524 (24 Nov): Hyperion fixed-point C code
+
+`codegen.ts` now takes fixed-point inputs (`Ty.cls === 'fixed'` with `fx: Nt` from `fixed.ts`): a value is its stored
+whole number in `int8_t` … `int64_t` (unsigned when the type is), chosen by word length (`fxC`); every fixed type in
+generated code has at most 62 bits (`MAX_FX`), so the 64-bit work below never overflows.
+
+- **Rules (the engine's fi, M480):** a sum keeps the finer fraction and one more integer bit (`sumType`), a product
+  adds both (`productType`), a matrix product adds log2 of the inner size; operands are aligned by multiplying by a
+  power of two (never `<<` on a signed value: undefined in C). A number written in the code that meets a fi takes the
+  fi's word and sign with its own best fraction (as the engine's `asFi`); a double variable meeting a fi is refused
+  (make it fi). `fi(x, s, w, f)` (all four, known when generating) and `y(:) = …`, `y(i) = …` convert with
+  `fx_shift` (towards fewer fraction bits: floor of (v + half) / 2^d, MATLAB's Nearest; more: multiply, saturating) or
+  `fx_from_double`; `−x` saturates with `fx_sat`; `double(x)` is `ldexp`. Helpers are emitted only when used
+  (`-Wall -Werror` refuses unused ones).
+- **A variable keeps one type:** `acc = acc + x(k)` in a loop changes its fixed type each time and is refused, naming
+  the fix (`acc(:) = …`), as MATLAB Coder does. The function's comment gives every fixed input's and output's type.
+- **The engine:** `interp.ts` gained `indexHooks` (get / set for values it doesn't know; `codegen-lab.ts` makes
+  `a(i)` keep a fi's type and `a(i) = v`, `a(:) = v` round and saturate into it) and `opHooks.neg`; fi comparisons give
+  logical arrays; `fi(b, …)` of a fi recasts it.
+- **Checked:** `codegen.test.ts` compiles a fixed-point FIR filter and a saturating function with `cc -std=c99 -Wall
+  -Werror` and gets exactly the engine's stored integers; the type-change refusal; `embedded.m` (examples test) runs
+  the filter in fixed point and writes `movavgfx.c`.
+- **Left out:** fixed types over 62 bits in C, rounding modes other than Nearest and overflow modes other than saturate
+  (`fimath`), fixed-point division.
+
+## M525 (24 Nov): Hyperion more AI models to C, networks wholly in 8 bits
+
+`embedded.ts` gained four model kinds (`SvmSpec`, `KnnSpec`, `EnsSpec`, `LinSpec`, written by `otherC`) and a wholly
+8-bit network (`planFullInt`, `runFullInt`, `fullIntC`); `embedded-lab.ts` reads them from the toolbox's structs
+(`specOf`) and accepts them in every function.
+
+- **Same answers as the engine:** each C mirrors `ml.ts` operation for operation: the SVM sums `(α·y)·K` with the
+  kernel's own order (`kernelOf`), k-NN keeps the k nearest with an earlier row winning a tie (the engine sorts by
+  distance, then row), ensembles add a bagged forest's leaf probabilities or a boosted one's weighted votes (first
+  maximum wins, as `argmax`), LSBoost starts from `Init`; a linear model adds `x·β` then the intercept. Compiled in
+  double, every iris row matches (`embedded.test.ts`). These kinds take 'single' or 'double' (8 bits would move their
+  support vectors and split points); a forest's equal weights aren't written (`-Wall -Werror` refuses unused arrays).
+- **'int8full':** scales from the model's training rows (`X`): the input's largest standardised value / 127, each
+  layer's weights / 127, each hidden layer's outputs / 127 (tanh / sigmoid: their sums, then a 256-entry table to 1/127
+  steps). Between layers `requant(acc, m, sh)` = floor((acc·m + 2^(sh−1)) / 2^sh) with m of 15 bits, so it is exact in
+  JavaScript's numbers and in C's int64 alike; biases are int32 in the sum's scale. `name_predict_q(int8 xq[])` is
+  the integer core; `name_predict(float x[])` standardises and quantises first (the only floating point; a regression's
+  answer is one last multiply). `embedreport` adds the 'int8full' row from `runFullInt`, the integer twin of the C.
+- **Checked:** `embedded.test.ts` (all four kinds in double against `predict`; three 8-bit networks, ReLU, tanh and a
+  regression, compiled and agreeing with the engine; the tanh table present); `embedded_ai.m` exports a forest and the
+  all-8-bit network.
+- **Left out:** SVMs with more than two classes (`fitcecoc`) and naive Bayes / discriminant models in C, int8 SVMs and
+  k-NN, per-channel scales, CMSIS-NN / TensorFlow Lite files.
+
+## M526 (24 Nov): Hyperion Bluetooth and USB devices
+
+- **The page side:** `components/lab/wireless-link.ts` (`wirelessLink`, one for the visit like `serialLink`): Web
+  Bluetooth asks for any device with the common GATT services named (`SERVICES`: heart rate, battery, device
+  information, environmental sensing, thermometer, cycling and running, Nordic UART, HM-10; Web Bluetooth only opens
+  services named when asking) plus any the person types; it lists every characteristic, starts notifications and keeps
+  each latest value. WebUSB opens the device, takes the first interface with endpoints both ways and claims it (a device
+  the computer's own driver holds is refused with a message: USB serial devices belong in Devices). Simulations: a
+  heart-rate sensor (a pulse notification every 0.5 s, a readable battery) and a USB echo device.
+- **Scripts** (`src/lib/lab/wireless-lab.ts`): every call asks the page (`answers('wireless')` in `page-answers.ts`)
+  and waits (M521), so these need Chrome or Edge (the browsers with Web Bluetooth and WebUSB, both isolated there) or the
+  computer app. `read(c)` waits for the next notification (`read(c, 'latest')` doesn't) or reads; `read(u, n)` waits
+  up to 4.5 s for bytes. `write` keeps the serial port's meaning (M474) and also takes a characteristic or a USB device;
+  `wireless-lab.ts` imports `serial-lab.ts` first so its `write` is wrapped, not lost.
+- **Headers:** `isolationHeaders` (Hyperion's pages only) adds `usb=(self), serial=(self), bluetooth=(self)` to the
+  Permissions-Policy; the rest of the site keeps `usb=()` (`wireless-lab.test.ts` checks both). The person always picks
+  the device in the browser's own chooser.
+- **Checked:** `wireless-lab.test.ts`; in Chromium `scripts/checks/hyperion-wireless-ui.mjs` (pulse and battery shown,
+  the echo device answers "hello", a script reads three pulses in a loop and the USB echo; axe clean light and dark).
+- **Left out:** Bluetooth Classic (browsers don't offer it), HID devices (WebHID), isochronous USB transfers and choosing
+  among several interfaces; subscribing a script to notifications as callbacks (MATLAB's DataAvailableFcn).
+
+## M527 (24 Nov): Hyperion IoT alert emails, behind the owner's switch
+
+The owner (24 Nov: "do email alert but give that as a option in owner console so that i can switch email whenever i
+needed"). `feature-switches.ts` gained `iot-email`, "Hyperion IoT alert emails", **opt-in** (off until the owner turns it
+on; stored as `iot-email:on`). `iot.ts` `checkAlerts` reads it once per reading (`featureOff`, cached a minute) and passes
+`email` to `notify`, so a broken rule also emails the channel's owner: only people with email notifications on, inside the
+routine daily email allowance (`claimEmails`), at most once per rule per quiet time (the same claim as the in-app note).
+In-app and push stay as M522 made them. Checked: `iot.test.ts` (off: `email: false`; on: `email: true`),
+`school-switches.test.ts` (the opt-in list).
+
+## M528 (24 Nov): Hyperion fixed-point division and types over 62 bits in C
+
+- **Division** (engine `codegen-lab.ts` `fiDiv`, C `fx_div`): `a ./ b` (and `a / b` by a scalar) keeps the larger word,
+  signed if either, fraction a's minus b's (`quotientType`); `divide(T, a, b)` puts the answer in T, a fi value or
+  `numerictype(s, w, f)` (now also a type maker; `numerictype(a)` still gives the text). The stored quotient is rounded
+  to the nearest step, halves up (floor((2·a·2^s + b) / 2b) after making b positive), held in range; dividing by zero
+  gives the top (or bottom) of the range, 0 / 0 gives 0. The engine works it in BigInt, so it matches the C exactly.
+  A plain number written in the code meets a fi as for the other operators.
+- **Wide types:** up to 62 bits everything is as M524 (int64_t). Past it (to 126 bits, `MAX_FX`) the generator sets
+  `wide`: the working type `fxw_t` (a typedef in the .c) becomes `fx128_t` (`__int128`, typedef'd in the .h with
+  `__extension__` and an `#error` for compilers without it), stored types over 64 bits are `fx128_t` / `ufx128_t`, and
+  ranges and powers of two past 2^52 are written as shifts (`lim`, `p2`) and big literals as m·2^e (`bigX`), never as
+  rounded decimals. A division whose working needs more than 62 bits also turns `wide` on. Every former `(int64_t)` in
+  fixed-point code is `(fxw_t)`.
+- **Checked:** `codegen.test.ts`: the engine's ./ type and values, divide by zero, an 81-bit a·b + c; compiled with
+  `cc -std=c99 -Wall -Werror`, ./ and divide on seven pairs (zeros included) give exactly the engine's stored integers and
+  the 81-bit result is exact in 128 bits.
+- **Left out:** small chips without 128-bit integers (the `#error` says to keep 62 bits), `fimath` rounding and
+  overflow modes, matrix division (`A \ b`, `/` by a fi matrix).
+
+## M529 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants to C
+
+`embedded.ts` gained `EcocSpec`, `BayesSpec`, `DiscrSpec` (`ecocC`, `scoreC`); `embedded-lab.ts` `specOf` reads them from
+`fitcecoc`, `fitcnb` and `fitcdiscr` models, and `quantizemodel` rounds each ECOC learner's own numbers.
+
+- **Same answers as predict:** ECOC runs every pair's SVM with its own standardising (`MU`/`SIGMA` per learner), then
+  hinge-loss decoding (each class's average of max(0, 1 − c·f) / 2 over the learners that know it; the smallest loss
+  wins, an earlier class on a tie). Naive Bayes keeps log prior − Σ log spread per class (`BASE`) and subtracts
+  ½((x − μ)/σ)²; the discriminant's w_k = Σ⁻¹μ_k and c_k = −½ w_k·μ_k + log prior_k are worked out in Hyperion (Σ itself
+  when it can't be inverted, as predict does), so the chip only multiplies and adds. All three return the class and,
+  if asked, scores (ECOC: minus the losses; the others: softmax chances).
+- **Checked:** `embedded.test.ts` compiles four models on iris (ECOC with an RBF kernel standardised, ECOC linear, naive
+  Bayes in double, the discriminant in single): every row in double gives `predict`'s class; single at most one near tie
+  apart.
+- **Left out:** 8-bit versions of these (their numbers are 'single' or 'double'), quadratic discriminants (not in the
+  toolbox), ECOC with learners other than SVMs, one-vs-all coding.
+
+
+## M530 (24 Nov): Hyperion fimath, fixed-point matrix division, 128-bit C on small chips, 8-bit many-class models
+
+The owner pasted M528–M529's "left out" list after them; this builds all three.
+
+- **fimath** (`fixed.ts`: `Rm`, `Om`, `roundBy`, `wrapInt`, `rdivBig`, `fitBig`, `fmOf`): a type (`Nt`) may carry `rm`
+  (Nearest, Floor, Ceiling, Zero, Round, Convergent) and `om` (Saturate, Wrap); left out they are Nearest and Saturate,
+  so everything before is unchanged. A fi keeps them as the fields `RoundingMethod` / `OverflowAction` only when set.
+  Sums and products stay full precision and take the first operand's fimath (`fmOf`); the methods act where a value is
+  put into a type: `fi(…)`, `x(:) = …`, `x(i) = …`, division, `−x`. `fi(v, s, w, f, F)` or name–value pairs; `fimath`,
+  `setfimath`, `removefimath`, `fimath(x)`. `divide(T, a, b)` uses T's fimath, else a's. In codegen `F = fimath(…)` is
+  kept at generation time (`fmVars`, no C) and read by `fi` / `setfimath`.
+- **Matrix division** (`codegen-lab.ts` `fiSolve`, `solveStored`; codegen `solveInto`): `A \ B`, `B / A` (as
+  `(A.' \ B.').'`), `mldivide(A, B, T)`, `mrdivide(B, A, T)` for a square fi A. Fraction-free Gauss–Jordan on the stored
+  integers (every division exact, checked on 200 random systems) leaves det·x; each answer is then one `fx_div`, so it is
+  rounded once. Singular A gives zeros. The answer's type is ./'s rule (`quotientType(B, A)`: fraction B's less A's,
+  often 0: pass T). The working needs 2·(n·w + ⌈n/2·log2 n⌉) + 2 bits (Hadamard; `solvePlan`): a 2×2 of 16 bits already
+  needs 128-bit working; past 128 it's refused naming shorter words. `y'` of a fi now works (`opHooks.post`).
+- **The C** (`codegen.ts`): the helpers are one text written with `fxw_` operations (`fx_rdiv` rounds t/m by the method,
+  `fx_fit` holds or wraps, `fx_shift`, `fx_div`, `fx_from_double`), the method and action passed as `FX_FLOOR` …,
+  `FX_WRAP`. Up to 62 bits the expressions stay plain int64_t operators and `fxw_` is static inline on int64_t. Past it
+  generation runs twice (`generate` → `emit(…, W)`): the first pass finds `wide`, the second writes every expression with
+  `fxw_add`, `fxw_mul`, `fxw_cmp` … (`fxEmit`). The header's `FX128_H` (guarded, so several headers go together) makes
+  `fx128_t` `__int128` (`HYPERION_FX128_NATIVE`) or, without it or with `-DHYPERION_FX_PORTABLE`, a struct of two
+  uint64_t with its own add, multiply (32-bit pieces), shift-and-subtract division and correctly rounded double
+  conversion. Every stored type over 64 bits is `fx128_t` (no `ufx128_t` now); a 63–64-bit unsigned one is `uint64_t`
+  via `fxw_ofu` / `fxw_lou`. Scalars of `fx128_t` start `= {0}`; a variable only ever set (a type holder for divide)
+  gets `(void)v;` for `-Wall -Werror`. fprintf of a fi prints its value. A fixed `sum` works (its temp had no type).
+- **8 bits for fitcecoc, fitcnb, fitcdiscr** (`embedded.ts` `eightOf`, `classOf`): ECOC's support vectors and
+  coefficients int8 with a scale per learner (`SVS`, `CS`); naive Bayes' means and 1 / spread int8 (1 / spread never 0:
+  `quantizePositive`) with BASE worked from the spreads as held; the discriminant's weights int8 with one scale. The
+  arithmetic stays float, as a network's 'int8'. `classOf` is the C's twin in doubles; `embedreport` adds its 'int8' row
+  with it, `exportmodel(…, 'Precision', 'int8')` writes it; `quantizemodel(…, 'int8')` refuses (a discriminant's predict
+  works from Mu and Sigma, not its weights). `specOf` is exported for the tests.
+- **Checked:** `codegen.test.ts` (each method by hand, wrap, setfimath, A \ b, b / A, mldivide with a type, singular;
+  the elimination on random systems; the too-big refusal; 12 method × overflow functions, a 2×2 8-bit solve in 64-bit
+  working, 3×3 16-bit `mldivide` and `/` and a 100-bit Convergent divide in 128-bit working, compiled native and with
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers or BigInt); `embedded.test.ts` (four 8-bit models in
+  C against `classOf`, at most one near tie, over 90% right, within 3 points of double); `embedded.m` and
+  `embedded_ai.m` show both.
+- **Left out:** fimath's ProductMode / SumMode other than full precision (MATLAB's KeepLSB etc.), least-squares `A \ b`
+  for a non-square A, per-class or per-channel 8-bit scales, 8-bit arithmetic inside these models (only their numbers).
+
+## M531 (24 Nov): Hyperion fixed-point matrix division by any matrix, past 128 bits
+
+The owner pasted M530's "left out" list and chose "build all of them"; this is the matrix-division part.
+
+- **Any A** (`codegen-lab.ts` `fiSolve`, `solveAny`, `elimStored`): a square A is solved as before (fraction-free
+  Gauss–Jordan on the stored integers); if a column has no pivot (singular), or A isn't square, the same elimination runs on
+  the normal equations AᵀA x = AᵀB, exact, so the answer is the least-squares one; an unknown whose column has no pivot is
+  0 (MATLAB's basic solution: a wide system gives a sparse answer, not the minimum-norm one). An all-zero A gives zeros.
+  `B / A` is `(A.' \ B.').'` for any shape (B needs A's columns). The elimination skips pivot-less columns; every division
+  stays exact (checked on 300 random square, tall, wide and rank-deficient systems: the normal equations hold exactly).
+- **The working's size** (`codegen.ts` `solveBits`): Hadamard's bound per order k, D(k); a step's difference is the old
+  pivot times the new number (D(k)·D(k+1)), and the products inside it may wrap (`fxw_mulw`, `fxw_subw`, `fxw_addw` wrap
+  through unsigned, defined behaviour), so a 2×2 of 16 bits is now worked in int64 (it needed 128 before). Least squares
+  uses AᵀA's bounds (about twice the bits).
+- **Past 128 bits** (`fxbC`): `fxb_t`, k 32-bit pieces (two's complement), with add, multiply, shift-and-subtract division,
+  and `fxb_rdiv` / `fxb_fit` / `fxb_divfit` made from the fx_ helpers' text by renaming; `fxb_ofw` / `fxb_tow` to and from
+  fxw_t (64 or 128). `solvePlan` picks per path: fxw_t when it fits (the square path may turn the file wide; the
+  least-squares fallback never does, it takes fxb_t instead), else fxb_t, to `FXB_MAX` 4096 bits (refused past it, naming
+  shorter words). The C per solve: a direct block for a square A, then `if (!sv_done)` the least-squares block;
+  `fxw_elim` / `fxb_elim` and `_normal` are `static inline` helpers (all fixed-point helpers are `static inline` now, so an
+  unused one doesn't fail `-Wall -Werror`).
+- **Checked:** `codegen.test.ts` M531: square 16-bit (int64), tall 4×2 least squares, a singular 3×3, a right division by a
+  wide A, a 3×3 of 40 bits (fxb_t in a 64-bit file) and of 70 bits (fxb_t in a 128-bit file), compiled native and
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers.
+- **Left out:** the minimum-norm answer for wide or rank-deficient systems (MATLAB's `\` doesn't give it either; `pinv`
+  does), refusing past 4096 bits.
+
+## M532 (24 Nov): Hyperion fimath's ProductMode and SumMode
+
+The second part of M530's "left out" list (the owner: "build all of them").
+
+- **Types** (`fixed.ts`): `Nt.ps` (`PS`: `pm`, `pwl`, `pfl`, `pmax`, `sm`, `swl`, `sfl`, `smax`, `cbs`), kept only when it
+  differs from MATLAB's defaults (`PS0`: full precision, 32-bit words, 30 fraction bits, cast before sum; Max… 128 here,
+  Hyperion's limit). `productType` / `sumType` narrow the full-precision type by the mode (`byMode`: KeepLSB keeps the
+  fraction, KeepMSB the whole part, SpecifyPrecision both lengths); a full-precision result over Max…WordLength is a
+  `LabError` (never a `RangeError`: the interpreter reads those as runaway recursion). `accType(t, n)` is a running sum's
+  type (⌈log2 n⌉ more bits, then the SumMode); `accStep` one step (cast first if CastBeforeSum, then into the type);
+  `plain(t)` drops the modes (the full result before narrowing).
+- **Hyperion** (`codegen-lab.ts`): `fimath` / `setfimath` / `fi(…, F)` take the new names (fmFrom); a fi shows the fields
+  (`psFields`, read back by `psOf`); `setfimath` replaces the whole fimath, `removefimath` drops it. `+`/`−` with
+  CastBeforeSum put each side into the sum type first; a matrix product with modes (`matProduct`) and `sum` of a fi vector
+  (new: it wasn't there for fi) add step by step as the C does.
+- **C** (`codegen.ts`): `fmArgs` reads the modes (numbers or `true` / `false` written in the code); the function key
+  includes them; `.*` writes the full product then `toFx` into the narrower type; `+` with CastBeforeSum `fx_fit`s the
+  sum of the two cast sides, without it `toFx`s the full sum; `accStepC` is the C twin of `accStep` for matrix products
+  and `sum`. **Fixed on the way:** the matrix product's loop used C locals `s` and `p`, which an output of the same name
+  (a pointer, `(*p)`) rewrote: they are `mp_s`, `mp_p` now. (Other loops still use `i`, `j`, `k`: an output called that
+  would clash the same way.)
+- **Checked:** `codegen.test.ts` M532: each mode by hand (3.375 KeepMSB to 3, KeepLSB wrapped to 96, SpecifyPrecision
+  216; cast-before-sum 0 against 1), the field shown, the Max…WordLength error; then a function with all of them on 20
+  random inputs compiled native and portable, equal to Hyperion.
+
+## M533 (24 Nov): Hyperion many-class SVMs, naive Bayes and discriminants wholly in whole numbers
+
+The last part of M530's "left out" list (the owner: "build all of them"): in 'int8' these three kept only their numbers
+in 8 bits and did the arithmetic in float; `'int8full'` now runs them wholly in whole numbers, as the networks' (M525).
+
+- **The plan** (`embedded-int.ts` `planInt`): each input gets a centre and a step from the model's training rows
+  (`X`; xq = round((x − centre) / step), the range in ±127). Every unit gives a whole number F on one shared scale S
+  (twice the largest unit value on the training rows, as 2^24): a discriminant's class score and a linear SVM are
+  **linear** units (the centre, the step and the learner's standardising folded into weights quantized per class or
+  learner, a bias); naive Bayes is a **distance** unit (8-bit means as steps from the centre, step / spread per class as
+  8-bit positive numbers, `BASE` from the spreads as held); a Gaussian SVM sums coef · `EXPQ[t]` (e^(−i/32) in 15 bits, 512
+  entries; t the distance to each support vector, worked the same way); a polynomial one (1 + t)^order in Q16, clamped
+  to twice the largest value seen in training (order ≤ 6). Multipliers are m · 2^−sh with m short enough that the sum
+  times m stays in 62 bits (`multiplier(M, accBits)`). Classes: the largest F (Bayes, discriminant), or the smallest
+  hinge sum per learner count, compared by cross-multiplying (ECOC; ONE = round(1 / S)).
+- **Twin and C:** `runInt` (BigInt) is the C's integer core exactly; `intModelC` writes `name_predict_q(xq, sums, n)`
+  (no floating point) and `name_predict(x, scores)` (the inputs made 8-bit and the optional scores are the only float).
+  `exportmodel(…, 'Precision', 'int8full')` and `embedreport`'s new 'int8full' row (sizes from `intBytes`). `num`, `list`,
+  `head`, `header`, `classNote` and `quantizePositive` in `embedded.ts` are exported for it.
+- **Checked:** `embedded.test.ts` M533: on iris, ECOC Gaussian (standardised), linear and polynomial (order 2), naive Bayes
+  and the discriminant compiled with `-Wall -Werror`: the integer core's class and sums equal the twin's on all 150 rows;
+  from float inputs at most two rows apart (input rounding); over 90% right; embedreport's int8full within 4 points of
+  double. A test bug on the way: C doesn't fix the order of a call's arguments, so read outputs after the call.
+- **Left out:** regression models (these three only classify), polynomial kernels past order 6, more than 256 inputs.
+
+## M534 (24 Nov): Hyperion's C, the script's names never clash with the C's own
+
+The owner pasted M531–M533's "left out" list and chose "build all of them"; this is the C names part.
+
+- **What was wrong:** the C's own loops count with `i`, `j`, `k`, its temporaries are `t1`, `t2`…, and a scalar output is
+  rewritten as `(*name)` everywhere in the body: an output called `i` turned the loops' `i` into `(*i)`, a variable called
+  `t1` or `int` broke the file.
+- **The fix** (`codegen.ts` `cSafe`, `cClash`): before writing, each function's variables (inputs, outputs, anything
+  assigned, loop variables, `try` / `global` names) that match the C's own names (`i j k`, `t<number>`, `si sj sc`, `sv_…`,
+  `mp_…`, `fx…_…`, `sat_…`, `intN_t`) or C's words (`int`, `double`, `for`, `bool`, `abs`, `exp`, `round`…) get a `_`
+  (more if that's taken). Only `id` nodes and those names are renamed; field names, lambdas and function names aren't.
+  The header shows the new names (`double t1_`); the order of inputs and outputs is unchanged, so callers are unaffected.
+- **Checked:** `codegen.test.ts` M534: outputs `i`, `j`, `k` and variables `t1`, `int`, `abs` compiled with `-Wall -Werror`,
+  equal to Hyperion. `smooth3`'s input `k` is now `k_` in its header.
+
+## M535 (24 Nov): Hyperion lsqminnorm, the smallest answer, exact for fi and in C
+
+- **Hyperion** (`codegen-lab.ts` `minNormStored`, `fiMinNorm`): `lsqminnorm(A, B[, T])` for fi values, exact on the stored
+  integers: G = AᵀA and C = AᵀB; P, the columns of G with a pivot (fraction-free elimination), span A's row space; the
+  smallest answer is G_P z with (G_Pᵀ G_P) z = C_P, solved fraction-free, so x = G_P·(det·z) / det, each answer rounded
+  once into its type (the default type is `\`'s). For plain numbers it is `pinv(A) * B`.
+- **pinv** (`builtins.ts`): now through the SVD (`dsp.ts` `svd`; σ below max(size)·eps(σ₁) is zero, or `pinv(A, tol)`):
+  the old one inverted AᵀA and failed on a rank-deficient A.
+- **C** (`codegen.ts`): `lsqminnorm(A, B, T)` of fi values (`isSolve`, `solveArgs` now gives a fourth "smallest" flag;
+  `solvePlan`'s `minNormBits`: AᵀA's and H's Hadamard bounds, the numerators G_P·(det·z)); `fx…_minnorm` writes the steps
+  (`static inline`, P passed in, no variable-length arrays). It always takes the H path (the answer is the same exact
+  number rounded once, whichever way it is found).
+- **Checked:** `codegen.test.ts` M535: x + y = 2 gives [1; 1] (`\` gives [2; 0]); a singular 3×3 within a step of
+  double `pinv(A) * b`; pinv of a rank-1 matrix; in C a wide, a singular, a tall and an all-zero system, native and
+  `-DHYPERION_FX_PORTABLE`, equal to Hyperion.
+- **Left out:** `lsqminnorm`'s tolerance and `'warn'` inputs; plain-number (double) lsqminnorm in C.
+
+## M536 (24 Nov): Hyperion's C matrix division past 4096 bits
+
+- **Faster big numbers** (`codegen.ts` `fxbC`): `fxb_div` is long division on the 32-bit pieces (Knuth's algorithm D,
+  normalised, two-digit estimate, add back), not bit by bit; carries of signed steps use `FXB_HI` (an exact division,
+  never a shift of a negative number).
+- **The limits:** `FXB_MAX` 65,536 bits (4096 before), and the working memory at most `FXB_MEM` 16 MB, refused past it
+  with the size named; a working over `FXB_STACK` 64 KB is declared `static` (not on the stack; the function is then not
+  re-entrant, like the rest of the generated code's fixed buffers). In practice the memory limit comes first.
+- **Checked:** `codegen.test.ts` M536: a 20×20 system of 120-bit values (about 4,700 bits of working, `static fxb_t`)
+  native and portable, equal to Hyperion; a 60×60 of 126 bits refused for memory, a 300×300 for bits. M531's tests (the
+  fxb_t paths) pass with the new division.
+
+## M537 (24 Nov): Hyperion 'int8full' for linear models, polynomial kernels of any order, 65,536 inputs
+
+The last part of M533's "left out" list (the owner: "build all of them").
+
+- **Linear models** (`embedded-int.ts`): a `LinSpec` (fitlm) is one linear unit (centre and step folded in, 8-bit weights,
+  a 32-bit sum, a multiplier); `intModelC` writes `int64_t name_predict_q(xq)` (the answer as F, the answer is F × S) and
+  `float name_predict(x)`. `exportmodel(lm, …, 'Precision', 'int8full')` and embedreport's int8full row (RMSE); `'int8'`
+  for a linear model is refused, naming `'int8full'`.
+- **Polynomial kernels:** the base (1 + t) is worked as a fraction of its largest value in Q30 (`ZQ`, its own multiplier
+  `mz`/`shz`), each power kept in Q30, and vmax^order goes into the unit's multiplier: no order grows past 62 bits, so the
+  order-6 limit is gone. An order-8 kernel loses accuracy in 8 bits ('int8' too, 100% → 86% on iris): the rounding of the
+  8-bit numbers, not the whole-number working.
+- **Inputs:** up to 65,536 (127 · 127 · 65,536 stays inside a 32-bit sum).
+- **Checked:** `embedded.test.ts` M537: fitlm on 80 rows, int8full RMSE within 0.15 of double, the C core equal to the
+  twin on every row and the float answer F · S; an order-8 ECOC equal to its twin, within 4 points of 'int8'; 300 inputs
+  planned, 70,000 refused.
+- **Left out:** trees and ensembles in whole numbers (they compare, they don't add), GLM links (as the single/double C).
+
+## M538 (24 Nov): Hyperion lsqminnorm of plain numbers in C, its tolerance and 'warn'
+
+The owner pasted M534–M537's "left out" list (as before: build all of them); this is the first of the three.
+
+- **Hyperion** (`codegen-lab.ts`): `lsqminnorm(A, B, tol)` for plain numbers is `pinv(A, tol) * B` (singular values at or
+  below tol count as zero); `'warn'` / `'nowarn'` last: `'warn'` prints a warning when A's rank is below its smaller size
+  (for fi the exact rank, `minNormStored` now returns it). A tolerance with fi values is refused (their rank is exact).
+- **C** (`codegen.ts` `minNormType`, `minNormInto`, `minNormC`): `lsqminnorm(A, B[, tol])` of double or single values
+  becomes `lsq_minnorm_d` / `_f`: the SVD by one-sided Jacobi on the tall form, the same rotations and stops as
+  Hyperion's `svd` (`dsp.ts`), then x = Σ v_k (w_kᵀ B) / s_k² without forming pinv; a negative tol (none given) is
+  max(R, N) · eps(largest), as pinv's default. Fixed-size working arrays in a block (`mn_w`, `mn_v`); an input that is
+  also the target goes through a temporary. `isSolve` now counts every lsqminnorm; whole-number types are refused.
+  `'warn'` in C prints nothing.
+- **Checked:** `codegen.test.ts` M538: the tolerance and the warning in Hyperion; in C a wide, a singular, a tall and an
+  all-zero system, a run-time tolerance and single, with `-Wall -Werror`, equal to Hyperion (1e-10; single 1e-5).
+
+## M539 (24 Nov): Hyperion trees and tree ensembles wholly in whole numbers
+
+The second of M534–M537's "left out" list.
+
+- **How** (`embedded-trees.ts`): inputs become 8-bit as in M533 (each its centre and step from the training rows, the
+  same `floor(… + 0.5)` rounding); each split point x < cut becomes xq < cq with cq the cut rounded the same way, kept in
+  `int16_t` (−128 and 128 mean always right / always left), so a walk only compares whole numbers. A class tree's leaves
+  are class numbers already. A bagged forest's leaf chances are 0–255 and summed into `int32_t` votes; a boosted one
+  (AdaBoostM1/M2) adds each tree's weight, 15 bits of the largest. Regression leaves are `int32_t` on one scale S
+  (at most 2^23; LSBoost's weights folded in, Init on the same scale), summed in 64 bits, the answer F · S (a bagged
+  forest's mean folded into S).
+- **The C:** `name_predict_q(xq[, votes])` (the class, or F for a regression), `name_predict(x[, scores])` from float
+  inputs (scores: each class's share of the votes). `runTree` is the C's twin (plain numbers: every sum stays far
+  inside 2^53). `exportmodel(…, 'Precision', 'int8full')` and embedreport's int8full row; 'int8' for trees is refused,
+  naming 'int8full'.
+- **Checked:** `embedded.test.ts` M539: on iris a class tree, a bagged forest (15), AdaBoostM2 (12), a regression tree,
+  LSBoost (20) and a bagged regression (10): the C's class, votes and F equal the twin on every row; int8full within 3
+  points of double accuracy, RMSE within 0.05.
+- **Trap:** in a C test's `printf("%d %ld", f(q, v), v[0])` the order arguments are worked out isn't fixed; call first.
+
+## M540 (24 Nov): Hyperion lsqminnorm's tolerance for fi values, and 'warn' in its C
+
+The owner pasted M538–M539's "left out" list and "push all": both parts built.
+
+- **A tolerance for fi** (`codegen-lab.ts` `tolCols`, `codegen.ts` `tolParts`): `lsqminnorm(A, B, tol, T)` (tol and T in
+  either order) keeps a column of A only when the part of it the earlier kept columns don't explain is longer than tol:
+  QR's |R(k,k)|, as MATLAB's lsqminnorm compares. On G = AᵀA in stored units that is pivot / previous pivot > tol² ·
+  2^(2·fa) in a fraction-free elimination with each diagonal as its pivot (every number left is a minor of G over the
+  kept columns, so it stays exact). tol is kept to 16 significant bits (`mt2 · 2^sh`, a power of two costing no
+  multiplier). Without a tolerance nothing changed (`elimStored`'s pivots; the same columns for a positive semi-definite G).
+- **In C:** `fx…_minnorm(…, tol, mt2, sh)` does the same steps and gives the rank; the tolerance must be written in the code
+  (it sets the bits: `minNormBits`' tol term, the larger of −sh and bits(mt2) + sh past G's minors).
+- **'warn' in C:** `lsq_minnorm_d/_f` and `fx…_minnorm` return the rank; with `'warn'` the call is followed by
+  `HYPERION_WARN("lsqminnorm: A's rank is below n: …")`, which prints to stderr unless the file that includes it defines
+  `HYPERION_WARN(msg)` first (a log, a light on a chip).
+- **Checked:** `codegen.test.ts` M540: R(2,2) = 0.001 dropped under 0.01 (Hyperion and C, in 32-bit pieces), a tolerance of
+  0 equal to none, a 4-bit system with tol 2 in 64-bit working (native and `-DHYPERION_FX_PORTABLE`) equal to Hyperion,
+  two warnings on stderr (fixed point and plain).
+- **Trap:** lsqminnorm's working grows fast (H = G_PᵀG_P's minors): even 6-bit values in a 4×3 system go past 64 bits.
+
+## M541 (24 Nov): Hyperion logistic models in C, with their link
+
+The last of M534–M537's "left out" list: a generalised linear model's link step.
+
+- **What was missing:** a logistic model (`fitglm(…, 'Distribution', 'binomial')`) was refused by the embedded tools; a
+  normal one (identity link) was already a linear model. Hyperion's fitglm has only these two, so the logit is the link.
+- **Single / double** (`embedded.ts`): `LinSpec` carries `link: 'logit'` and the two classes; the C is
+  `int name_predict(x, &prob)`: η = B·x, the chance 1 / (1 + e^−η) in `*prob`, class 1 when it is at least ½ (as predict).
+- **Wholly in whole numbers** (`embedded-int.ts`, `logit` on the plan): the same linear unit as M537 gives the log-odds as
+  F (× S); the class is F's sign (no exp, no floating point); the wrapper's chance is the only other float.
+  embedreport's int8full row scores the class from the sign.
+- **Checked:** `embedded.test.ts` M541: versicolor against virginica on petal length and width: the double C's chance within
+  1e-12 of Hyperion's predict and the same class on every row, single within 1e-5, the whole-number core equal to the twin
+  and its class from the sign; int8full within 3 points of double's accuracy.
+- **Left out:** links Hyperion's fitglm doesn't have (Poisson's log, probit…).
+
+## M492 (23 Nov): Hyperion toolbox, epidemics (sciences and industries, 1 of 14)
+
+The owner, 23 Nov ("help me to build what is left… as another agent didnt build", with MathWorks' solutions page): the
+Hyperion list's group 7, sciences and industries, is M492–M505 on `claude/hyperion-sciences-industries` (two other
+sessions build signals and capabilities, M472–M481, and machines and vehicles, M482–M491, on their own branches).
+**Shared files for the whole group, so the three branches merge cleanly:** `sciences.ts` (imports every `*-lab.ts`
+of the group; the worker and `help.test.ts` import only it), `help-sciences.ts` (`SCIENCES_HELP`, appended to help.ts's
+TEXT by one line), `examples-sciences.ts` (`SCIENCE_EXAMPLES`, spread into LabApp's EXAMPLES by one line; its test
+runs every example), `sci-kit.ts` (def, call, rows, `options` for name–value pairs, `record` for result structs,
+`lines` for a labelled plot) and `sci-num.ts` (pure: `rk4Grid` on an output grid with an `onStep` hook for doses and
+spikes, `rk45` Dormand–Prince, `ros23` the Rosenbrock 2(3) stiff method behind ode23s, `jacobian`, `sample`, `root`).
+A new toolbox of the group adds its import to `sciences.ts`, its help block and its example, nothing more shared.
+Epidemics, `epi.ts` (pure) and `epi-lab.ts`: `sir`, `seir`, `sirAge` (contact matrix C(i, j), state [S… I… R…]), all
+RK4 at 0.05 day reported daily, with `'Intervention'` rows [from to cut], `'Vaccinate'` (share of S a day) from
+`'VaccineFrom'`, `'Mu'`; the third output is the day's new infections (a hidden cumulative compartment differenced).
+`epiR0` (β/γ, or the spectral radius of K_ij = β C_ij N_i / (γ N_j) by power iteration), `epiFinalSize`
+(z = 1 − e^(−R0 z)), `herdImmunity`, `fitEpidemic` (β, γ, I0 on log scale by Levenberg–Marquardt against
+log(1 + cases), nine starts on a 0.25-day step, polished at 0.05; SEIR's first infected are put in I, not E: seeding E
+made a true SEIR fit land in a false valley), `epiRt` (the renewal equation with a discretised gamma serial interval,
+gamma prior 1 and 5 as Cori et al., normal-approximated 95% band). Names are our own (MATLAB builds these in
+SimBiology as objects). Tests: final size 0.9405 at R0 3 and 0.7968 at 2, the peak at S = N/R0, conservation,
+next-generation R0 for mixed and separate groups, fits recovering β and R0, R_t = e^r for steady growth, the stiff
+solver on a 1000:1 problem in under 400 steps. Not built: stochastic (Gillespie) outbreaks, spatial spread, deaths and
+hospital beds as compartments, fitting with confidence intervals.
+
+## M493 (23 Nov): Hyperion toolbox, pharmacokinetics (sciences and industries, 2 of 14)
+
+`pk.ts` (pure) and `pk-lab.ts`. A linear model is its disposition as exponential modes (`modes`: one compartment
+A = 1/V, λ = CL/V; two compartments α and β from k10, k12, k21 with A_α = (α − k21)/(V(α − β))), so every route has
+a closed form (`single`: bolus Σ A e^(−λt); infusion R Σ A/λ (1 − e^(−λt)) then decaying; oral F D Σ A ka/(ka − λ)
+(e^(−λt) − e^(−ka t)), with the ka = λ limit) and a schedule is a sum of single doses (`simulate`). Saturating
+elimination ('Vmax', 'Km', one compartment plus the gut) is solved by RK4 mark to mark (asked times, doses, infusion
+ends) so a bolus lands at its time; a time asked for at a dose reads after it. `steadyState` sums doses until the
+slowest mode is e^−30 down (at most 100,000); `dosingWindow` bisects the interval whose steady-state peak ÷ trough
+equals MTC ÷ MEC, then picks the longest practical interval (1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 168 h) and a dose aimed
+at the window's geometric middle; `nca` is linear-up log-down AUC and AUMC, λz from the last points after the peak.
+Language: `pkModel` (a struct, Type 'pkModel', with Rates and HalfLife), `pkSimulate` ('Route', 'Duration', 'Every',
+'Doses', 'Times', 'Hours', 'Step', 'Window'), `pkSteadyState`, `pkDosingWindow`, `pkNCA` (our own names; SimBiology's
+are objects). Units are the person's (mg, L, h by default). The example `dosing.m` says it is teaching, not medical
+advice. Tests: the textbook formulas (bolus, infusion end, oral Tmax = ln(ka/k)/(ka − k), AUC = F D/CL), two
+compartments against Dormand–Prince on the equations, the bolus steady state and accumulation 1/(1 − e^(−kτ)),
+the window τ = ln(MTC/MEC)/k with dose V(MTC − MEC), saturating = linear at low levels. Not built: population PK
+(mixed effects), fitting a model to measured levels (use lsqcurvefit on `pkSimulate`'s output), PD (effect) models,
+three compartments, lag times.
+
+## M494 (23 Nov): Hyperion toolbox, DNA and protein tools (sciences and industries, 3 of 14)
+
+`bio.ts` (pure) and `bio-lab.ts`. Sequences: `complement` (ambiguity letters too, case kept), `reverseComplement`,
+`gcContent`, `counts` (U as T), `translate` (the standard code as one 64-letter string in TCAG order; unknown codons
+'X', stops '*'), `orfs` (ATG to the first stop in frame, six frames; positions in the original's coordinates, start >
+stop on the reverse strand; the stop codon in the span, not the protein; longest first). Alignment, `align`: Gotoh's
+three matrices (M a pair, X a letter of a against a gap, Y the other way) with a pointer matrix each (P* = 3 marks
+where a local alignment starts), so the traceback never guesses from floating-point equalities; global or local;
+BLOSUM62 for proteins, +5/−4 (−2 against N) for DNA; gap = open + (L − 1) × extend (MATLAB's defaults 8 and 8 kept).
+Trees: `distance` (p, Jukes–Cantor; gaps skipped), `upgma` (size-weighted average, heights half the distance),
+`neighborJoin` (Saitou–Nei Q matrix; the result is unrooted Newick with three branches at the top, drawn rooted at
+the last join), `treeLayout` (elbow lines, leaves 1…n down the y axis). Language: MATLAB's `seqcomplement`,
+`seqrcomplement`, `seqreverse`, `basecount`, `nt2aa` ('Frame', 'all' a cell), `nwalign`, `swalign` ([score,
+alignment, start, identity]; the alignment a three-line text, since the engine's text has one row), `seqpdist` (a
+pdist row or 'SquareForm'; unequal lengths aligned first), `seqlinkage` ('average' only), `seqneighjoin`; our own
+`gcContent`, `findORFs` (a table) and `plottree` (MATLAB's trees are phytree objects; ours are structs with Type
+'phytree', Newick, Names, Parent, Length). Example `dna.m`: human β-globin, its ORF, the sickle-cell change GAG→GTG
+found by swalign, a five-species tree. Tests: textbook translations, ORFs on both strands, Durbin's HEAGAWGHEE pair
+(the score recomputed from the alignment), a local match and one long affine gap, Wikipedia's UPGMA and
+neighbour-joining examples. Not built: multiple alignment (profiles, ClustalW-style), reading FASTA/GenBank files
+(fastaread), other genetic codes, BLAST-style database search, maximum-likelihood trees, PAM and other matrices.
+
+## M495 (23 Nov): Hyperion toolbox, chemistry and chemical engineering (sciences and industries, 4 of 14)
+
+`chem.ts` (pure) and `chem-lab.ts`. `parseMechanism` reads 'A + B -> C; 2 C <-> D' (arrows ->, =>, <->, <=>, =;
+';' or new lines between reactions; a coefficient before a name), species in the order they first appear; `rates` is
+mass action (a reversible reaction takes forward then backward k); `batch` (= `pfr`: at constant density a plug-flow
+reactor's concentrations at residence time τ are the batch's at t = τ) solved stiffly by `ros23`; `cstr` runs the
+tank's equations 40 τ from the inlet and polishes by Newton with the finite-difference Jacobian; `equilibrium` is damped
+Newton on ln K = Σ ν ln c over the extents, halving the step until every involved concentration stays positive (a
+product starting at zero is first given a hair of extent); `acidPH` bisects the charge-balance cubic with water's ions;
+`arrhenius` and `arrheniusFit` (ln k on 1/T). Language: MATLAB's `odeset` (RelTol, AbsTol; the rest kept but unused),
+`ode15s` and `ode23s` (both the same Rosenbrock 2(3), MATLAB's ode23s method; ode15s's variable-order NDF is not
+built: say so if someone compares step counts); our own `kineticsSim`, `batchReactor`, `pfrReactor`, `cstrReactor`
+(one row per τ), `arrhenius`, `arrheniusFit`, `chemEquilibrium`, `acidPH`. **Fixed in sci-num.ts on the way:** the
+stiff solver's first step came out ~1e-17 when a component started at 0 with a tight AbsTol and it gave up; the first
+step now has a floor of 1e-10 × the span, and both solvers' "step too small" test is relative to the span, not to 1
+(problems in nanoseconds work). Example `reactors.m`. Tests: Robertson's problem to Hairer–Wanner's values (0.7158,
+9.185e-6, 0.2842), first-order batch and CSTR closed forms, the second-order CSTR quadratic, Arrhenius fit, single,
+bimolecular and coupled equilibria, acetic acid pH 2.87. Not built: non-isothermal reactors (energy balances, runaway),
+reactors with pressure drop or changing volume, Langmuir–Hinshelwood or other non-mass-action rate laws, activity
+coefficients, polyprotic acids and buffers, a periodic table and molar masses.
+
+## M496 (23 Nov): Hyperion toolbox, neuroscience (sciences and industries, 5 of 14)
+
+`neuro.ts` (pure; randomness passed in) and `neuro-lab.ts`. `hodgkinHuxley`: the 1952 squid axon with the modern
+voltage convention (rest −65 mV, ENa 50, EK −77, EL −54.387), RK4 at 0.01 ms, the rate functions' 0/0 points
+replaced by their limits, spike times at upward 0 mV crossings (interpolated). `lif`: the exact exponential step
+between inputs and the crossing time solved inside the step, so spike times and the firing rate match `lifRate`'s
+formula 1/(t_ref + τ ln((RI + rest − reset)/(RI + rest − θ))) to 6 digits; the refractory time is carried across steps
+(`quiet`). `izhikevich`: the 2003 model with v in two half steps as in the paper, named types RS, IB, CH, FS, LTS, TC,
+RZ. `izhNetwork`: the paper's network (excitatory c = −65 + 15r², d = 8 − 6r²; inhibitory a = 0.02 + 0.08r, b = 0.25 −
+0.05r; weights 0.5·rand and −rand; thalamic noise 5 and 2 × randn) at 1 ms. `lifNetwork`: W(i, j) mV added to i
+when j fires, after a delay (a ring of steps), noise σ√dt. Spike trains: `spikeTimes`, `poisson` (with dead time),
+`isiStats` (CV), `fano`, `psth` (Hz), `crossCorrelogram`. A spike list is rows [time neuron] everywhere (ms).
+Language (our own names): `hodgkinHuxley`, `lifNeuron`, `lifRate`, `izhikevich`, `izhNetwork`, `lifNetwork`,
+`poissonSpikes`, `spikeTimes`, `isiStats`, `fanoFactor`, `psth`, `rasterPlot`, `spikeXcorr`; a current is a number with
+'Start'/'Stop' or one value per step. Example `neurons.m`. Tests: HH rests at −65, fires 64–72 Hz at 10 µA/cm² and
+not at 2; LIF against its formula at four currents; Izhikevich RS adapts, FS is faster, CH bursts; a network's spikes
+in range; Poisson CV ≈ 1 and Fano ≈ 1, a clock 0; the correlogram's peak at the lag; one neuron driving another.
+Not built: cable and multi-compartment neurons, synaptic conductances with their own time course (synapses are
+instant voltage jumps), plasticity (STDP), spike sorting from recordings, reading electrophysiology files.
+
+## M497 (23 Nov): Hyperion toolbox, physics (sciences and industries, 6 of 14)
+
+`physics.ts` (pure, SI) and `physics-lab.ts`. Mechanics: `projectile` (quadratic drag k = ½ρCdA/m, from a height;
+the landing found by bisection on a re-integration of the last step), `ellipticK` (AGM) and `pendulumPeriod`
+(4√(L/g)K(sin θ0/2)), `pendulum` (θ'' = −(g/L) sin θ − bθ'), `doublePendulum` (the Lagrangian equations for unequal
+masses and rods, energy returned as a check), `nbody` (velocity Verlet, softening, positions every k-th step),
+`chargedParticle` (the Boris push). Waves: `pluckedString` (Fourier series of the triangle, b_n = 2hL² sin(nπp/L) /
+(n²π²p(L − p))), `slits` (single-slit envelope × the N-slit grating term, normalised to 1 at the centre),
+`waveField` (Σ A cos(kr − ωt + φ)/√(r/λ), 2D spreading). Fields: `pointCharges` (Coulomb, NaN inside a small core
+when drawing). **sci-num.ts `rk45` gained `{ at, maxStep }`:** with `at` the steps are shortened to land exactly on
+the asked-for times (no interpolation; a step shortened only for that doesn't shrink the next), which the pendulums
+and the projectile use; `sample` (linear) is still what ode15s uses for given times. Language (our own names):
+`projectile`, `pendulum`, `pendulumPeriod`, `doublePendulum`, `nbody`, `chargedParticle`, `stringWave`, `slitPattern`,
+`waveField`, `efield`. **Animation:** the engine's `drawnow` and `pause` do nothing (a script runs to its end, then
+draws), so every drawing takes the moment to show ('At', t, or t itself for the waves): a `% slider` on t moves it and
+Sweep (M402) films it as a GIF; `physics.m` is built that way. Tests: drag-free range, height and time; a horizontal
+throw from 10 m; K(0) = π/2; T(90°)/T0 = 1.180340599 and the simulated period agreeing; the double pendulum's energy
+to 1e-6; the Earth's year round the Sun with energy to 1e-6; the cyclotron radius and the E×B drift E/B; the plucked
+string's shape, its mirror at half a period and return at a whole one; two-slit maxima and minima; a point charge's
+V and E and a dipole's 2kp/r³. Not built: rigid bodies and collisions, 3D field lines (streamlines), magnetism of
+currents (Biot–Savart), optics with lenses, relativity, quantum wells; real-time animation inside a running script.
+
+## M498 (23 Nov): Hyperion toolbox, geoscience (sciences and industries, 7 of 14)
+
+`geo.ts` (pure; randomness passed in) and `geo-lab.ts`. Seismic: `seismogram` (P and S as Ricker wavelets with
+decaying codas, amplitude falling with distance, noise), `staLta` (trailing windows on cumulative energy), `aicPick`
+(Maeda's AIC by running sums, O(n)), `pick` (STA/LTA's first trigger, then AIC over the 2 s before and 0.5 s after),
+`locate` (Geiger's method by `levenbergMarquardt` from optim.ts, epicentre and origin time, depth bounded 0–700 km when
+asked), `spDistance`, `localMagnitude` (Hutton–Boore anchored at 1 mm, 100 km = ML 3). Globe: `arc` (haversine),
+`bearing`, `destination`, `vincenty` (inverse, on [a e]; NaN when it fails to converge near antipodes). Projections:
+`project` (spherical Mercator, equirectangular, Lambert azimuthal equal-area, orthographic with the far side NaN; x, y
+in sphere radii) and UTM by Krüger's series to n³ (`toUtm`, `fromUtm`; ~1 mm round trip; the northing on the central
+meridian equals k0 × the WGS84 meridian arc to 0.1 mm). Terrain: `fractalTerrain` (diamond-square), `slopeAspect`
+(rows north to south, aspect the way the slope faces, clockwise from north), `hillshade`. Language: MATLAB's Mapping
+Toolbox names `distance` (degrees; a radius gives length; [a e] gives Vincenty), `azimuth`, `reckon`, `deg2km`,
+`km2deg`, `wgs84Ellipsoid` (a vector [a e], not MATLAB's object); our own `seismogram`, `staLta`, `pickArrival`,
+`locateQuake`, `spDistance`, `localMagnitude`, `mapProject`, `ll2utm`, `utm2ll`, `fractalTerrain`, `slopeAspect`,
+`hillshade`. **Merge watch:** `distance`, `azimuth` and `reckon` are general names; the machines-and-vehicles branch
+(aerospace, M482–M491) may define geodesy functions too: a later registration silently wins, so check for duplicate
+`def(` names and help lines when the branches meet. Example `quake.m`. Tests: a P pick within 0.15 s, a quake located
+to 1e-4 km (and its depth), S−P distance, ML 3 anchor, haversine and London–Paris, bearings, destination round trip,
+Vincenty's Flinders Peak–Buninyong 54,972.271 m, Mercator, Lambert's radius-2 disc, UTM meridian arc and round trips
+(north and south), slope and aspect of planes, flat hillshade = sin(altitude). Not built: travel times through a
+layered Earth (only a uniform speed), focal mechanisms, real map data (coastlines, DEM files: GeoTIFF reading),
+gravity and magnetic surveys, well logs.
+
+## M499 (23 Nov): Hyperion toolbox, ECG and biosignals (sciences and industries, 8 of 14)
+
+`biosig.ts` (pure; randomness passed in) and `biosig-lab.ts`. For learning, not diagnosis: said in the help section's
+title, `patientMonitor`'s title, `panTompkins`' drawing and the example. Filters: our own second-order Butterworth
+biquads (bilinear with pre-warping; −3 dB at fc, tested) and `zeroPhase` (forwards and backwards). **Not defined on
+purpose:** `butter`, `filtfilt`, `pwelch`, `findpeaks`: the signals branch (M472–M481, "a signal analyser and filter
+designer") is likely to add them, and two `def`s of one name would silently replace each other at merge; after both
+merge, these toolboxes may switch to theirs. `ecgSynth`: Gaussian P, Q, R, S, T per beat, intervals with respiratory
+sinus arrhythmia (0.25 Hz) and jitter, QT scaled by √RR (Bazett), noise, baseline wander, 50 Hz hum. `panTompkins`:
+band-pass 5–15 Hz, the five-point derivative, squaring, 150 ms moving-window integration, peaks 200 ms apart,
+SPKI/NPKI thresholds learnt on the first 2 s and updated (1/8), search back past 1.66 × the mean of the last 8 RR at
+half the threshold, the R peak placed at the band-passed maximum in the integration window. `hrv`: SDNN, RMSSD,
+pNN50, and LF (0.04–0.15) / HF (0.15–0.4) by resampling the tachogram at 4 Hz and `welch` (Hann, half overlap,
+one-sided, density). `eegBands` (Welch with 2 s segments, five bands), `eegSynth` (AR(1) background + rhythms).
+`wdrc`: a 10 ms mean-square level read as a sine's peak, the gain smoothed with attack and release (an envelope
+follower on |x| was biased high by its fast attack: 1.4 dB too much compression; fixed this way); `hearingAid`:
+bands split at the edges by zero-phase pairs, each band compressed with its own gain, summed. Language (our own
+names): `ecgSynth`, `panTompkins`, `hrvMetrics`, `eegSynth`, `eegBandPower`, `patientMonitor`, `wdrc`, `hearingAid`.
+Example `ecg.m`. Tests: biquads at −3 dB, Pan–Tompkins > 98% of beats within 30 ms at 60 and 110 bpm with noise,
+wander and hum, HRV time measures by hand and HF ≫ LF for breathing-paced RR, a 10 Hz sine is alpha with A²/2,
+2:1 compression 20 dB over gives 10 dB over, unity hearing aid passes through. Not built: arrhythmia
+classification, reading real ECG files (WFDB/EDF), 12-lead views, SpO₂ from red and infrared light, EEG artefact
+removal (ICA), feedback cancellation and noise reduction in the hearing aid, audiogram fitting rules (NAL, DSL).
+
+## M500 (23 Nov): Hyperion toolbox, medical imaging (sciences and industries, 9 of 14)
+
+`medimg.ts` (pure) and `medimg-lab.ts`. For learning, not diagnosis. `readDicom`: Part 10 (preamble + DICM, group
+0002 always explicit, then the transfer syntax decides) or a bare implicit-VR file; only implicit and explicit VR
+little-endian (compressed or big-endian syntaxes are refused by name, encapsulated pixel data too); sequences of
+undefined length and their items are skipped (`skipUndefined` / `walk(…, inItem)`); only the tags in `TAGS` are read
+into `info` (geometry, rescale, window, modality, date, description): **patient identifiers are never read**; 8, 16 or
+32-bit, one sample a pixel, frames as pages. `writeDicom`: explicit VR LE, 16-bit stored values (signed when any value
+is negative), the meta group's length computed first, a random 2.25 UID. `windowed` is DICOM's linear VOI rule;
+`WINDOWS` the usual presets. `headPhantom` (whole HU: skull, brain with a texture, ventricles, a 70 HU lesion),
+`regionGrow` (6-connected, tolerance from the seed's value, iterative stack), `largestComponent` (6-connected).
+Language: MATLAB's `dicominfo`, `dicomread` (int16/uint16 by PixelRepresentation, as MATLAB), `dicomwrite`,
+`dicomreadVolume` (ours takes a cell of names or the start of the names, not a folder; rescale applied: HU; sorted by
+ImagePositionPatient z, else InstanceNumber; returns [dy dx dz]); our own `ctWindow`, `headPhantom`, `orthoSlices`
+(axial, coronal, sagittal at true proportions via imagesc's x/y in mm), `regionGrow`, `segmentHU` (mask and mL).
+Files go through the window's `FileStore` (Files panel), so a person's own uncompressed .dcm uploads open directly.
+Example `ctscan.m` (writes 40 slices, reads them back, four windows, three planes, a lesion and the skull measured,
+`bwlabel` from M428). Tests: write/read round trip with every header field, an old implicit file with a nested
+undefined-length sequence, refusing junk, the windowing rule, the phantom's skull as one component, region growing
+staying outside the head, a series round trip in the language to 0 HU. Not built: compressed DICOM (JPEG, JPEG 2000,
+RLE: needs decoders), DICOMDIR and folders, multi-frame enhanced objects, RGB ultrasound, 3D volume rendering,
+registration, MRI-specific tools.
+
+## M501 (23 Nov): Hyperion toolbox, finance: pricing (sciences and industries, 10 of 14)
+
+`fin.ts` (pure) and `fin-lab.ts`. `ncdf` is Hart's double-precision algorithm (West 2005; ~1e-15 absolute, 1e-8
+relative in the far tail past 7.07); `bs` is Black–Scholes–Merton with a continuous dividend yield, all Greeks
+(theta per year, vega per 1.00 of volatility, as MATLAB's), and the intrinsic limit at T = 0 or σ = 0;
+`impliedVol` is Newton kept in a bracket by bisection (NaN outside what any σ in (1e-6, 10) gives); `crr` the
+Cox–Ross–Rubinstein tree (rows nodes, columns steps; NaN below the diagonal, zeros in the language as MATLAB's);
+`monteCarlo` GBM paths with antithetic pairs, European in one step, Asian (arithmetic average) and knock-out barriers
+(up-and-out when the barrier is above the spot, down-and-out below) on `steps` steps, with the standard error. Bonds
+use per-period compounding at the coupon frequency and whole periods (`flows`): `bondPrice`, `bondYield` (bisection),
+`bondRisk` (Macaulay, modified, convexity), `bootstrap` (par → discount factors → zero rates), `nelsonSiegel` and
+`fitNelsonSiegel` (LM from five τ starts, bounded). Language: MATLAB's `blsprice`, `blsdelta`, `blsgamma`, `blsvega`,
+`blstheta`, `blsrho`, `blsimpv` (name–value 'Yield', 'Class'), `binprice` (American, Flag 1 call / 0 put, MATLAB's
+output layout), all element by element; our own `mcOptionPrice`, `bondPrice`, `bondYield`, `bondDuration`,
+`zeroCurve`, `nelsonSiegel`, `nelsonSiegelFit` (MATLAB's bond functions are date-based and its curves objects; ours
+take years). Example `options.m` (says teaching, not investment advice). Tests: Φ to 14 digits, Hull's 4.76 / 0.81,
+put–call parity with dividends, every Greek against finite differences, implied vol round trip, the tree converging
+to BS, Hull's two-step American put 7.43, no early exercise of a call without dividends, Monte Carlo within 4 standard
+errors, par bonds at 100, a zero's duration = maturity, duration + convexity predicting a 1% move, bootstrapped par
+bonds repricing to 1, Nelson–Siegel recovering a known curve. Not built: day counts and real dates (settlement,
+accrued interest), stochastic volatility (Heston), local volatility, interest-rate trees (Hull–White, BDT), credit
+spreads, exotic payoffs beyond these three.
+
+## M502 (23 Nov): Hyperion toolbox, finance: portfolios and risk (sciences and industries, 11 of 14)
+
+`risk.ts` (pure; uses `ncdf`/`npdf` from fin.ts and `nelderMead`/`solve` from optim.ts) and `risk-lab.ts`.
+`minRisk` is a primal active-set method on the KKT system (2 C_FF w_F − δ1 − γμ_F = 0, 1'w = 1, μ'w = target): the
+most negative weight leaves the free set; an asset at zero whose multiplier is negative rejoins; shorts allowed solves
+once. `frontier` (from the least-risk portfolio to the best single return long-only; a target only a corner reaches can
+be singular and is skipped), `maxSharpe` (200 frontier points, then a golden-section on the target), `ninv` (Acklam +
+one Newton step, 1e-12), `var_` (historical with interpolated quantile and the mean of the tail; normal; Cornish–Fisher
+with skew and excess kurtosis), `kupiec` (POF likelihood ratio, χ²₁ p-value), `garchFit` (normal likelihood; ω = e^p0,
+α + β = 0.9999·logistic, β's share logistic, so α + β < 1 always; Nelder–Mead twice; the variance starts at the
+sample's), `garchSim`, `ewma`, `maxDrawdown`, `backtestMA` (position decided on the previous close: no look-ahead;
+a cost on each switch), `carbonStress` (yearly emissions × price × (1 − pass-through) as a perpetuity at the rate,
+capped at the holding's value: a transparent basic, no scenario data invented). Language: MATLAB's `tick2ret`,
+`ret2tick`, `ewstats` (no decay factor), `portstats`, `portvrisk`, `maxdrawdown`; our own `efficientFrontier`,
+`maxSharpe`, `valueAtRisk`, `varBacktest`, `garchFit`, `garchSim`, `ewmaVol`, `backtestStrategy`, `carbonStress`
+(MATLAB's are Portfolio, varbacktest and garch objects). There is no `chol` in the engine (the example builds correlated
+returns from a market factor instead). Example `portfolio.m`. Tests: the least-risk portfolio's equal marginal risks,
+long-only weights ≥ 0 summing to 1 on a rising frontier, a corner target, the two-asset tangency closed form and its
+Sharpe √(e'C⁻¹e), normal VaR/ES formulas against 200,000 draws and the historical estimate, ninv(0.975), Kupiec
+accept/reject, GARCH recovering α 0.08, β 0.9 and the long-run volatility, returns and prices round trip, drawdown,
+a back-test with one trade, the carbon stress by hand. Not built: Black–Litterman, CVaR optimisation, transaction-cost
+or cardinality constraints, multivariate GARCH and copulas, credit risk (PD, LGD), NGFS climate scenarios with real
+data (the owner would need to choose a data source).
+
+## M503 (23 Nov): Hyperion toolbox, maths teaching (sciences and industries, 12 of 14)
+
+`teach.ts` (pure, on the symbolic `N` of sym.ts) and `teach-lab.ts`. Every step is `{ rule, tex, plain }`; the
+language prints "Step k, rule:" then the maths between `TEX_OPEN`/`TEX_MID`/`TEX_CLOSE`, so the command window sets it
+as real maths and copying keeps the plain text. `diffSteps` walks the expression: constant, the variable, the sum
+rule, the constant multiple rule (constant factors pulled out), the quotient rule (when a product has a factor with a
+negative numeric power), the product rule (first factor against the rest), the power rule and the chain rule with it,
+the exponential rule, the table (derivatives read from sym.ts's own `diff` of f(_u), so the table is never duplicated),
+and a final `simplify`. `intSteps`: constants, linearity, constant multiples, the power rule and ∫1/x = ln|x| by hand,
+otherwise `integrate` from sym-calc.ts with its result checked by differentiating back (the rule then says so), and
+F(b) − F(a) with limits. `solveSteps`: linear (move and divide), quadratic (a, b, c, the discriminant, its sign, the
+formula, the roots; one root when Δ = 0), otherwise `solveFor`. `rrefSteps` (exact fractions; swap, scale, clear the
+column; rank, pivots, the determinant from the pivots and swaps), `eigSteps` (A − λI, its determinant by cofactors,
+its roots). Language (our own names): `diffSteps`, `intSteps`, `solveSteps`, `rrefSteps`, `detSteps`, `eigSteps`, and
+graphs for a class through function handles: `tangentLine`, `riemannSum` (left, right, mid, trap against `integral`),
+`newtonSteps` (a table and the tangents), `taylorPlot` (exact derivatives at the centre). Sliders and Sweep animate them
+(example `teach.m`). Tests: product, chain and quotient rules named and agreeing with `diff`, linearity and a definite
+integral of 9, a linear and a quadratic equation, complex roots flagged, the classic 3 × 3 system to (2, 3, −1), a
+determinant with a swap, eigenvalues 1 and 3, the language run end to end. Not built: limits with L'Hôpital steps,
+integration by parts shown as steps (the integrator does it silently), proofs, differential equations step by step,
+exercises with checking of a student's own answer.
+
+## M504 (23 Nov): Hyperion toolbox, semiconductors and materials (sciences and industries, 13 of 14)
+
+`matsci.ts` (pure) and `matsci-lab.ts`. Semiconductors (silicon; doping cm⁻³, lengths cm, energies eV): `siEg`
+(Varshni 1.17 − 4.73e-4 T²/(T + 636)), `siNi` from Nc, Nv ∝ T^1.5 (6.1e9 at 300 K by these textbook constants; the
+"1e10" often quoted is a rounded measurement), `pnJunction` (depletion approximation: Vbi, W, xn, xp, Emax; refuses
+forward bias at or past Vbi), `bands` (the parabolic potential in each depletion side; Ec, Ev and both Fermi levels),
+`diodeCurrent` (Shockley with Rs solved by Newton from the smaller of the two limits), `mosThreshold` (V_FB + 2φF +
+√(2εqNa·2φF)/Cox), `mosfetId` (square law with λ). Materials (MPa): `MATERIALS` (steel S355, aluminium 6061-T6,
+Ti-6Al-4V, annealed copper; rounded textbook figures, labelled "for teaching, not design data" in help and titles),
+`stressStrain` (Ramberg–Osgood to the UTS, then a necking tail to the elongation), `tensile` (E by a fit below 40% of the
+strength, the 0.2% offset crossing interpolated, UTS, plastic elongation, toughness by trapezoids), `basquinFit`,
+`cyclesToFailure` (Goodman), `rainflow` (ASTM E1049 three-point stack on turning points; the residue counted as halves),
+`minerDamage`. Mining: `variogram` (binned half mean squared differences), `spherical`, `krige` (ordinary kriging,
+the (n+1)² system solved per query point: fine to ~1,000 samples), `idw`. Language (our own names): `siliconNi`,
+`pnJunction` (band diagram), `diodeIV`, `mosfetVth`, `mosfetIV`, `materialCurve`, `tensileTest`, `basquinFit`,
+`fatigueLife`, `rainflowCount` (not `rainflow`: MATLAB's has another layout, and the signals branch may define it),
+`minerDamage`, `variogramExp`, `krigeGrade`, `idwGrade`. Example `materials.m`. Tests: Vbi and W by the formulas,
+charge balance, reverse bias widening, the band bending equal to Vbi, the diode equation satisfied with Rs, square-law
+saturation and continuity, a thinner oxide's lower threshold, the tensile test recovering E and the yield it was built
+with, Basquin round trip, Goodman shortening life, ASTM E1049's own example (ranges 3, 4, 6, 8, 9 counted ½, 1½, ½,
+1, ½), Miner on one cycle, kriging exact at data with zero variance, IDW at a sample. Not built: carrier transport
+(drift–diffusion), MOS capacitance curves, heterojunctions, plasticity in 3D, crack growth (Paris law), strain-life
+(Coffin–Manson), block models and ore reserve classification.
+
+## M505 (23 Nov): Hyperion toolbox, agriculture and energy production (sciences and industries, 14 of 14)
+
+`agri.ts` (pure) and `agri-lab.ts`. `et0` is FAO-56 equation 6 step by step (pressure from elevation, γ, Δ, es from
+Tmax and Tmin, ea from RHmin/RHmax or a mean, Ra and daylight from latitude and day, Rs measured or Ångström from
+sunshine, Rso, Rns at albedo 0.23, Rnl), checked against FAO-56 example 18 (Brussels, 6 July: Ra 41.09, Rs 22.07,
+ea 1.409, Rn 13.28, ET0 3.9); `kcCurve` (the four stages, straight lines between); `waterBalance` (FAO-56 chapter 8:
+depletion, Ks below RAW, rain beyond field capacity drains, irrigation back to field capacity the day depletion passes
+RAW, an application efficiency); `cropGrowth` (degree-days over a base; LAI an S-curve peaking at 35% of the thermal
+time and dying back over the last quarter; RUE × ½Rs × (1 − e^(−k·LAI)) × Ks; harvest index); `dispatch` (bisection on
+λ with every unit clamped to its limits; null when the demand is outside the fleet's range), checked against Wood and
+Wollenberg's example 3A (λ 9.148; 393.2, 334.6, 122.2 MW); `lcoe` with panel degradation. Language (our own names):
+`et0PM`, `kcCurve`, `soilWaterBalance`, `cropGrowth`, `economicDispatch` (many demands at once: a row per demand),
+`lcoe`. The "process optimisation examples using M422" are in `farm_energy.m`: a least-cost feed by `linprog` and the
+most profitable irrigation by `fminbnd`. The examples' test now also loads image-lab and optim-lab (the worker loads
+every toolbox; the test must too when an example uses another toolbox's functions). Not built: crop models of the
+AquaCrop / DSSAT kind (phenology stages, nitrogen), soil layers and capillary rise, unit commitment (start-ups, minimum
+up and down times), transmission losses in dispatch, hourly solar and wind (M434 has those).
+
+**Group 7 (M492–M505) is complete.** No point-and-click window was added: every toolbox draws its own figure and every
+example has live sliders (and Sweep for films), which covered what a window would have given; a window remains possible
+later (Learn's pattern, M421/M465) if the owner wants one for a particular toolbox.
+
+**M505 follow-up (23 Nov): every example's figures rendered and looked at** (46 figures, `renderSvg` to PNG). Fixed:
+`plot(x, y, 'Color', '#22c55e')` (and 'Color', 'r') read the pair's name as a line spec and drew circle markers: the
+engine only treated a pair name as a pair when a number followed it (plot.ts `seriesFrom`, one line; a regression test
+in `examples-sciences.test.ts`). This touched every chart in the app that passes a colour by text. Also: the diode's log
+plot was empty (0 A at 0 V; now left out), the epidemic example's fit drew nothing (it asked for an output), a tree's
+root line hid under the y axis (a little room on the left), the dosing window's top line sat on the frame (more head
+room), PSTH counted only the neurons that fired (now the highest neuron number), shorter "mV" labels for stacked
+neuron traces, the MOSFET title's threshold rounded.
+
+**Checked in a browser (23 Nov):** `scripts/checks/hyperion-sciences-ui.mjs` on a local build runs all 14 examples from
+their tabs in the engine's thread (each must print its line, no error), checks the maths-teaching steps are set as maths
+(MathML) and a figure shows; axe clean at 1280 dark and 1024 light, no sideways scroll, no page errors. It found one
+accessibility fault, fixed: a wide maths line in the command window (a matrix step) scrolls sideways but couldn't take
+the keyboard's focus (`LabText`'s maths span now has `tabIndex={0}`).
+
+## M506 (23 Nov): Hyperion, animation while a script runs
+
+The owner (23 Nov) asked for M492–M505's left-outs ("please work on this"); the first: no live animation while a script
+ran (Hyperion drew when it finished). Now `drawnow` and `pause` call the host's `frame()` (interp.ts `Host.frame`,
+`Host.wait`); the worker (`lab.worker.ts`) posts `{ live: FigOut }` for the current figure when it changed, at most every
+33 ms, and flushes printed text, so a loop plays in the figure pane and the command window fills as it goes. `pause(t)`
+really waits there: a busy wait in the engine's own thread (shortcut: `Atomics.wait` would need a cross-origin-isolated
+page, which the site isn't; the page stays free and Stop ends the worker), capped at an hour. Only runs from the command
+window or Run animate (`ToLab.run.animate`); live controls, notebook sections, Sweep, Watch it run, Time it and the tests
+neither send frames nor wait, so a slider never replays an animation slowly. The window upserts a live figure that
+didn't exist before the run (`'live' in m` in LabApp).
+
+Handles: `h = plot(…)` returns a handle per line (numbers from `HANDLE` = 1000, kept in `Graphics.handles`; figure
+numbers stay small); `set(h, 'XData', x, 'YData', y, 'Color', …)` changes the line (only pair names `isPairName`
+knows are applied: a bare `'Visible'` would otherwise read as a line spec); `animatedline` (respects hold like plot),
+`addpoints(h, x, y[, z])`, `clearpoints(h)`. The example `animate.m` (a pendulum and its angle growing) is in the
+examples list. Tests in `plot.test.ts` (M506). Not built: `getframe` / `movie` / `VideoWriter` (Sweep's GIF film covers
+saving a film), `set` on other objects (text, surfaces), `delete(h)`.
+
+## M507 (23 Nov): Hyperion reads compressed DICOM
+
+M500 left out compressed scans. `dicom-codecs.ts` (pure, written from the standards): `decodeRle` (PS3.5 annex G:
+PackBits segments, most significant byte first, any samples and 8/16/32 bits) and `decodeJpeg` (T.81: baseline and
+extended sequential Huffman, 8 or 12 bits, any sampling factors, interleaved or one-component scans, restart markers;
+lossless process 14, predictors 1–7, point transform, up to 16 bits, components not subsampled). Colour in a DCT JPEG:
+an Adobe APP14 decides, then component ids R, G, B (no change), then JFIF (YCbCr), then the DICOM photometric (`ybr`);
+lossless syntaxes never transform. Subsampled chroma is stretched by centred linear steps (libjpeg's "fancy"
+upsampling), which brought a 4:2:2 ultrasound film from 15 levels off libjpeg to 3 (the rest is libjpeg's integer IDCT).
+
+`readDicom` (medimg.ts) now: reads the meta group, then by transfer syntax: deflated (fflate `inflateSync` on the rest),
+explicit big-endian (`le` flag; 8-bit pixels in a big-endian OW element are swapped in pairs), files without a meta
+header (explicit or implicit guessed from the first element's VR), encapsulated pixel data (basic offset table and
+fragments → frames by the table, one fragment a frame, all for one frame, or JPEG start markers), RGB / YBR_FULL /
+YBR_FULL_422 colour (3 samples, planar or not; YBR turned into RGB), 1-bit, signed values within BitsStored.
+`DicomImage.samples` is new; `pixels` is frame by frame, sample by sample. `dicomread` gives rows × cols × 3 for colour
+(× frames as a 4D array, `nd: [3, F]`); `dicomreadVolume` refuses colour. JPEG-LS, JPEG 2000, HTJ2K and MPEG are
+refused by name. Checked against 27 of pydicom's test files (decoded by pydicom, libjpeg-turbo and imagecodecs, on this
+machine only, not committed): every supported file identical or within 1 level (12-bit extended, colour baseline),
+the 4:2:2 film within 3. Committed tests use `fixtures/dicom-compressed.json` (made with libjpeg-turbo and pydicom's
+RLE encoder: lossless with three predictors, a 4:2:0 colour JPEG, a two-frame lossless and an RLE DICOM). Not built:
+JPEG-LS, JPEG 2000, palette colour, DICOMDIR, enhanced multi-frame's per-frame headers.
+
+## M508 (23 Nov): Hyperion Learn → Sciences, a point-and-click window for every science toolbox
+
+The owner was asked which toolbox should get a window first and answered "all of them". One window serves all 14:
+`src/lib/lab/sci-apps.ts` describes each toolbox as data (`SciApp`: fields of kind num / menu / toggle / text, each
+optionally shown only `when` another field allows, and `script(values)` that writes a Hyperion script). `clean` keeps
+numbers in range, menus to their options and text to its allowed letters before any value reaches a script (nothing
+typed can leave a number or a quoted string). Scripts print their results as `= Label | value` lines (`resultsOf`);
+anything else they print shows under "What it printed". `SciencesApp.tsx` (Learn's third tab, `LearnTabs`) runs the
+script in its own `lab.worker.ts` (prefixed `close('all'); clear;`), the newest values winning while a run goes (a
+queue of one), and shows the run's current figure (light or dark SVG), the result cards, and the script (Copy, Open in
+Code through `shareFragment`). The chosen toolbox is remembered for the visit (sessionStorage `uv-sci-app`).
+
+Windows: epidemics (SIR/SEIR, vaccination, a lockdown), drug dosing (levels, the best schedule), DNA (one-letter
+changes, reading frames, a family tree), chemistry (series reactions, CSTR against PFR, Arrhenius), neurons (HH, LIF,
+Izhikevich), physics (throw, pendulum, double pendulum, slits), geoscience (locate a quake, a lit landscape, distance on
+the globe), ECG (monitor, beat-to-beat rate, EEG bands), medical imaging (window, three planes, measure a range),
+pricing (option price and delta against the spot, a bond against its yield), portfolios (frontier, VaR, a trend rule,
+a carbon price), maths for class (tangent, Riemann sums, Newton, Taylor), materials (junction, MOSFET, tensile,
+fatigue), farms and power (irrigation, dispatch, LCOE). `sci-apps.test.ts` runs every view with its starting values
+(each prints results; each but reading frames draws). Values checked by hand: Wood and Wollenberg's dispatch (393, 335,
+122 MW at 9.148), the junction's 0.80 V, the Riemann exact integral, Newton to √2. The pk "best schedule" view takes
+about 2 s (pkDosingWindow's search). Not built: a window per toolbox beyond these views, files in the window (the
+window's worker has none of the person's files; scripts in Code do).
+
+**M508 checked in a browser (23 Nov):** `scripts/checks/hyperion-windows-ui.mjs` on a local build: all 14 windows show a
+figure and result cards, a slider (R0, by keyboard) changes the results, axe clean at 1280 dark and 1024 light, no
+sideways scroll, no page errors; animate.m (M506) showed 20 different frames while it ran. Fixed from it: pressing the
+toolbox already open wiped its results (`pick` now ignores it); the pendulum in animate.m was drawn in black, invisible
+in dark mode (an orange line now). Open in Code lands on Code's "Someone shared … Open it" banner, as Machine health's
+does.
+
+## M509 (24 Nov): Hyperion, real climate scenarios in the carbon stress test
+
+The owner chose both ways, "focus more on the first": (1) people download NGFS's (or IPCC's) scenario file themselves
+and Hyperion reads it; (2) a few headline numbers ship with credit. NGFS's licence (data.ene.iiasa.ac.at/ngfs/#/license,
+read 23 Nov) is CC BY 4.0 adapted: parts may be shared with attribution, "a substantial portion" may not; so only the
+range NGFS states in its own report ships: Net Zero 2050's global shadow carbon price, 100–260 US$2010/t CO₂ in 2030
+and 500–1,250 in 2050 across its models ("NGFS long-term scenarios, narratives and key findings", Phase V, 2025),
+`NGFS_NZ2050` in risk.ts with its source line. IIASA's explorer and API are blocked from this machine (proxy), so no
+dataset was downloaded; other scenarios come from the person's file.
+
+`readIamc` (risk.ts) reads the IAMC layout (Model, Scenario, Region, Variable, Unit, then a column per year; any order
+and case; empty cells NaN). `ngfsRead(file, 'Variable', …, 'Region', …, 'Scenario', …, 'Model', …)` (risk-lab.ts) goes
+through `rowsOf` (files.ts, now exported) so CSV, .xlsx and .xls all work, and returns a struct (cells of names, Years,
+Values a row per series). `yearly` turns a path into whole years (straight lines; before its first year a line up from
+0 at 'Start'). `carbonStressPath` pays emissions × price × (1 − pass-through) at each year's end, emissions falling by
+'Decline' a year, discounted at 'Rate' to 'Start', the last year's cost carried on as a shrinking perpetuity, capped at
+the value: a flat path gives exactly `carbonStress`'s answer (tested). Several rows of prices are several scenarios;
+without outputs it draws bars. The Portfolios window's carbon view has "Carbon prices": one price, NGFS Net Zero 2050
+low end or high end (with "Emissions cut each year"), and prints the source. Not built: downloading from NGFS inside
+Hyperion (people fetch the file; the explorer needs its own sign-in), GDP or physical-risk variables in the stress.
+
+## M510 (24 Nov): Hyperion epidemics, the left-outs
+
+The owner, 24 Nov: work through "the toolbox gaps from the M492–M505 notes", a few at a time from M510 (the order:
+each note's "Not built" list, M492 first). `epi.ts` / `epi-lab.ts`: `sirGillespie(β, γ, [S I R], days, 'Runs', n)`,
+Gillespie's exact method (one infection or recovery at a time, exponential waits, the state read at whole days, stops
+when nobody is infectious or at 5 million events), random numbers from the engine's `random` (so `rng(seed)` repeats
+it); at most 1,000,000 people and runs × people 20 million. Drawn as grey runs against the smooth SIR, printing how
+many died out early against theory (γ/β)^I0. `seihrd(β, σ, γ, [S E I H R D], days, 'Hospital', 'StayDays',
+'Fatality', 'Beds', 'FatalityNoBed', + sir's 'Intervention' / 'Vaccinate')`: a share of those leaving I goes to H, a
+share of those leaving H dies; patients past the beds die at FatalityNoBed (deaths = 1/stay × (m·min(H, B) + m'·
+(H − B)⁺)); the fourth output is daily admissions. `epiOptions` now takes extra option names (and a parsed map) so a
+model can add its own. `fitEpidemic` gives 95% intervals from the curvature at the best fit (s²(JᵀJ)⁻¹ on the logs,
+Student's t by Hill's expansion, `studentT975`), lopsided after exp; R0's from var(log β − log γ); [NaN NaN] when JᵀJ
+is singular. Tests: half of single-case outbreaks at R0 2 die out, the big ones reach the final size, no person lost;
+SEIHRD without hospital equals SEIR, deaths = fatality × admissions, too few beds means 1.5× the deaths; the intervals
+hold the truth on noisy data. Not built: spatial spread (a metapopulation between cities is the natural next step).
+
+## M511 (24 Nov): Hyperion pharmacokinetics, the left-outs
+
+From M493's "Not built". `pk.ts` / `pk-lab.ts`: `pkModel` takes 'Lag' (hours before a dose by mouth starts; `single`
+shifts oral doses, the saturating solver gets oral doses moved by the lag) and 'Q3', 'V3' (a third compartment, needs
+the second). Three compartments go through `mammillary(V, k10, [[k1j, kj1]…])`, general for any number of peripherals:
+the rates solve k10 + Σk1j − λ = Σ k1j kj1/(kj1 − λ), one root between each pair of poles (bracketed, the top end
+doubled until the sign turns), each mode's weight the residue 1/(V(1 + Σ k1j kj1/(kj1 − λ)²)); equal kj1 are merged.
+Two compartments keep the closed form (the test checks the general route gives the same). Older pkModel structs
+without Q3, V3 or Lag still work (read as 0). `pkEffect(t, C, 'Emax', 'EC50', 'Hill', 'E0', 'ke0')`: Hill's sigmoid
+Emax; with ke0 an effect site Ce' = ke0(C − Ce) solved exactly with C straight between samples (`effectSite`); drawn
+as effect over time and the hysteresis loop. `pkFit(t, C, dose, 'Route', 'Every', 'Doses', 'Times', 'Compartments' 1
+or 2, 'F', 'Lag')`: Levenberg–Marquardt on log parameters against log levels (zero levels left out), starts from NCA
+(CL = dose/AUC, V = CL/λz, ka from Tmax; two compartments try six splits), 95% intervals by the curvature (Student's t
+from `studentT975` in epi.ts, M510); returns a pkModel struct plus RMSE, Fitted and CLCI, VCI, kaCI, QCI, V2CI. Tests:
+three compartments against the equations stepped by RK4, the lag exact, Emax at EC50, the effect site for a steady
+and a ramping level, fits recovering one and two compartments (the interval holds CL). Not built: population PK
+(mixed effects: a model of how parameters vary between people), fitting the effect model's parameters (use lsqcurvefit
+on `pkEffect`).
+
+## M512 (24 Nov): Hyperion DNA tools, the left-outs
+
+From M494's "Not built". `bio.ts` / `bio-lab.ts`. **Data:** NCBI's 27 genetic codes (ids 1–6, 9–16, 21–33: name, the
+64 amino acids in TCAG order, the start codons) and Dayhoff's PAM250 (same 24-letter order as BLOSUM62), both checked
+against Biopython 1.85's copies (its wheel read as text, nothing run; NCBI's FTP is blocked from this machine).
+`translate` / `codonToAA` take a code; `nt2aa(…, 'GeneticCode', n or a name)`; `geneticcode(n)` returns ID, Name,
+AminoAcids, Codons, Starts, Stops, and with nothing prints the list. `nwalign`, `swalign` and `multialign` take
+'ScoringMatrix' ('BLOSUM62', 'PAM250', 'NUC44' = the +5/−4 we had). **Files:** `fileText` / `writeFileText` are now
+exported from files.ts for toolbox readers. `fastaread(file or text starting with '>')`: one output a struct (text for
+one record, cells for several; no struct arrays in the engine), two outputs cells; ';' comment lines and a final '*'
+dropped. `fastawrite(file, headers, seqs | struct | seqs)` appends as MATLAB does, 70 letters a line. `genbankread`
+reads the first record: LOCUS (name, length, molecule), DEFINITION over several lines, ACCESSION, VERSION, ORGANISM,
+FEATURES as a table (type, location joined across lines, first /gene and /product), ORIGIN. **multialign**: distances
+1 − identity from pairwise global alignments, a UPGMA guide tree (`upgma`'s internal nodes come in merge order, so
+children always exist before their parent), then profile against profile by Gotoh's three states, a column pair scored
+as the average of its letters' pair scores (gaps 0); returns a cell of rows and the guide tree; without outputs prints
+blocks of 60 with '*' under columns identical in all. Up to 100 sequences, 60,000 letters. `seqconsensus` gives the
+commonest letter per column and the share agreeing. Not built: refinement after the progressive pass (MUSCLE-style),
+reading several GenBank records at once, BLAST-style database search, maximum-likelihood trees.
+
+
+## M513 (24 Nov): Hyperion chemistry, the left-outs
+
+From M495's "Not built". **Periodic table** (`elements.ts`): 118 elements, IUPAC 2021 standard weights (the conventional
+value where IUPAC gives an interval; mass numbers in brackets for those with no stable isotope, `bracketed`); checked
+against the NIST table in the periodictable package (read as text; only Zn differs, IUPAC revised it in 2007).
+`chem-plus.ts` (pure): `parseFormula` (brackets ( ) and [ ], hydrates after '·', '•', '*' or '.', a leading count per
+hydrate part; charges '^2-', '^{3+}', '{2-}' or bare trailing signs, each one charge, so 'Fe3+' reads as Fe₃⁺: write
+Fe^3+), `molarMass` (electrons ignored); `balance`: species split on ' + ' with spaces (so 'Na+ + Cl-' works), a row per
+element plus one for charge, the null space by elimination must be one-dimensional (else "can't, or two reactions in
+one"), scaled to the smallest whole numbers up to ×10,000. **Acids:** an `Acid` is Ka's from the most protonated form,
+total C, and that form's `charge` (0 for H3PO4, 1 for NH4⁺, so ammonia is NH4⁺'s Ka with charge 1); `solvePH` solves
+the charge balance on log h by `root` over [−20, 3] (it rises with h), strong cations (Na⁺) and anions (Cl⁻) given
+apart; with `activity`, Davies' γ (25 °C, A = 0.509) iterated with the ionic strength, concentration constants
+Kc = Ka γ(z_{j−1})/(γ₁ γ(z_j)), Kw/γ₁², the pH −log(γ₁h). `fractions` in logs (no overflow for H3PO4 at pH 14).
+`titration` dilutes analyte and titrant; equivalence volumes are one per proton the titrant can take or give.
+**Heat:** chem.ts now has `reactionRates(m)(c, k)` (per-reaction net rates, k passed each call) and `stoichiometry`;
+`rates` and `equilibrium` use them. `heatedBatch`: [c…, T] with ρCp dT/dt = Σ(−ΔH)r − UA(T − Tc) by `ros23`.
+`cstrSteadyStates`: the mass balance at each of 300 temperatures (Newton from the previous one, `cstr` as fallback),
+G(T) against R(T) = ρCp(T − Tin)/τ + UA(T − Tc), crossings refined by `root`, stable by the slope test (necessary only:
+said in the help). Units: mol/L, J/mol, J/(L·K), W/(L·K), K, s. Language: `molarMass`, `elementInfo`,
+`balanceEquation`, `polyproticPH`, `bufferPH`, `acidSpecies`, `titrationCurve`, `activityCoeff`, `ionicStrength`,
+`heatedBatch`, `cstrSteadyStates` (in chem-lab.ts). Example `solutions.m`. Tests: molar masses of glucose, the hydrate,
+ferrocyanide; three balances (one ionic); H3PO4 against the quadratic, ammonia, the buffer at pKa and its Davies shift,
+acetic acid's titration (pKa half way, 8.72 at equivalence); the adiabatic rise ΔH·c/ρCp; three CSTR states (cold,
+unstable middle, hot) each checked against c = cin/(1 + kτ) and the energy balance. Not built: reactors with pressure
+drop or changing volume, Langmuir–Hinshelwood and other non-mass-action rate laws, activity models past Davies
+(Pitzer), temperature-dependent Ka, a tank that oscillates (the slope test can't see it).
+
+## M514 (24 Nov): Hyperion neuroscience, the left-outs
+
+From M496's "Not built". `neuro-plus.ts` (pure) and its language part at the end of `neuro-lab.ts`. **Cable**
+(`cable`): n compartments, sealed ends, axial coupling 1000·d/(4·Ri·dx²) mS/cm² (d, dx in cm), the injected nA spread
+over the compartment's side area; each step the HH gates by exponential Euler, then the voltages by backward Euler
+along the cable (Thomas' algorithm), as NEURON does. Passive: leak 1/Rm to the rest; active: HH's own leak and
+channels (Rm is ignored), rates × 3^((°C − 6.3)/10). Recorded at most 4000 times and 2 million values; first arrival
+at 0 mV per compartment, the speed from a line through the middle half. `cableNeuron`'s defaults switch with
+'Active': the squid giant axon (476 µm, 35.4 Ω·cm, 5 cm, 500 compartments, 18.5 °C, 2000 nA for 0.5 ms) against a
+thin passive 1 mm dendrite. **Synapses** (`kernel`, `conductance`): exponential, alpha, or two exponentials normalised
+to peak 1 (the peak at τrτd/(τd − τr) ln(τd/τr)). **STDP** (`stdpChange`, `songNeuron`): Song, Miller and Abbott's
+2000 neuron, conductances relative to the leak; Poisson inputs drawn per step as a Poisson count spread over random
+inputs (the same process as independent trains); each input's potentiation trace decays lazily (stored with its last
+time), so a post spike costs one pass over the weights. **Spike sorting** (`detect`, `sortSpikes`): σ = median|x| /
+0.6745, threshold crossings aligned on the peak within 1 ms, dead time, windows of 'Pre' / 'Post' ms; `pca` and
+`kmeans` from ml.ts; the automatic k (1–6) by the mean silhouette on ≤ 600 spikes, a k counted only if every cluster
+holds 5% (a cluster of noise crossings had won otherwise); units numbered by mean peak size. Language: `cableNeuron`,
+`synapseConductance`, `stdpWindow`, `stdpNeuron`, `detectSpikes`, `spikeSort`. Example `brain.m`. Tests: the passive
+cable's V(L)/V(0) = 1/cosh(L/λ) and its λ, τ; the axon at 18.5 °C between 17.5 and 20 m/s (HH's computed 18.8; 18.6
+here) and slower when cold; the kernels' peaks; the pair rule; Song's neuron fast at first, settling under 40 Hz with
+over 60% of weights near 0 or the maximum after 1000 s (1.4 s to run); two simulated units in noise found (> 90%) and
+told apart (> 95%). Not built: branched morphologies (SWC files), channels other than HH's, synapses on the cable,
+plasticity rules other than pair-based additive STDP, filtering raw recordings before sorting (pass a band-passed
+signal), reading electrophysiology files (ABF, NWB).
+
+## M515 (24 Nov): Hyperion physics, the left-outs
+
+From M497's "Not built". `physics-plus.ts` (pure) and its language part at the end of `physics-lab.ts`. **Currents:**
+`biotSavart` is exact per straight piece (μ0I/(4πd)(sB/√(sB²+d²) − sA/√(sA²+d²)) round u × −d̂), so a polygon of 720
+sides matches a loop to 1e-4; `coulomb3` in 3D; `fieldLine` is RK4 along the unit field direction, stopping on leaving
+the box, near a sink, when the field vanishes or when it closes on its seed. `bfield`'s drawing seeds along a line from
+the wire's middle toward its nearest point (a straight wire on its axis gets an offset), so a loop's lines thread it.
+**Optics:** a system is text ('d L; f F; s R n1 n2; m R'), rays [height; angle], matrices multiplied last-first;
+focal length −1/C, back −A/C, front −D/C, an image at si = −(A so + B)/(C so + D); the mirror is unfolded with the
+matrix [1 0; −2/R 1], so a concave (focusing) mirror is R > 0 with focal length R/2 and 'm -100' is a convex one, f = −50
+(the test checks it). `gaussianBeam` propagates q (complex, written out) through d, f and m only (no index
+changes) and reports the last waist. **Relativity:** `relativisticParticle` is the Boris push on u = γv (the rotation
+with t = qBdt/(2mγ⁻)); the speed is kept exactly in a pure B field and stays below c under any E; `chargedParticle(…,
+'Relativistic', true)`. `lorentz`, `addVelocity`, `relativistic`, `minkowskiDiagram`. **Quantum** (eV, nm, electron
+masses; ħ²/2mₑ = 0.0380998212 eV·nm²): `schrodinger` builds the three-point Hamiltonian (ψ = 0 beyond the grid) and
+`tridiagEigen` finds the lowest states by Sturm bisection and inverse iteration (tridiagonal, any size to 50,000);
+`finiteWell` solves the even and odd transcendental equations branch by branch; `barrier` in closed form (E = V0 as its
+limit); `transmission` walks transfer matrices from the right lead (outgoing wave only) to the left, each region with
+its own local origin so evanescent stretches don't overflow early, regions bounded half way between samples and the
+first and last samples as the leads. **Rigid bodies:** `eulerSpin` (rk45 at 1e-10 on the given times), `collide1d`,
+`disks`: event-driven hard disks (the next wall or contact solved exactly, all pairs each event: n ≤ 300), walls
+elastic, pairs with restitution e along the line of centres, positions at the frame times; `diskCollisions` starts on a
+lattice with directions from the engine's `random` (so `rng` repeats it) and takes 'At' for a slider. Example
+`physics2.m`. Tests: a long wire's 2e-5 T, a loop's centre and axis; a wire's field line closing and a dipole's ending on
+−; two lenses' f1f2/(f1 + f2 − d), the lensmaker's 50 from two surfaces, imaging at 2f, a beam's √2 at zR and its focus
+by the formula; the interval, 0.5c ⊕ 0.5c, an electron's γmv/(qB) at 0.9c, a proton pushed by 1 GV/m never at c; the
+infinite well to 1e-5, the oscillator to 1e-4, the finite well against the grid, `transmission` = `barrier` to 1e-9 and
+resonant tunnelling through two barriers; the middle-axis flip with energy and |L| to 1e-8; head-on exchange, energy
+kept through 30 disks' collisions with no overlaps, energy lost at e = 0.5. Not built: rigid bodies' orientation
+(quaternions) and contact between shapes other than disks, field lines of currents in a chosen plane only, thick-lens
+apertures and aberrations, general relativity, time-dependent quantum wave packets, potentials in 2D and 3D.
+
+## M516 (24 Nov): Hyperion chemistry, more left-outs
+
+From M513's "Not built" (the owner, 24 Nov, the list of what was left out). `chem-more.ts` (pure) and its language part
+at the end of `chem-lab.ts`. **Packed bed** (`packedBed`): isothermal, gas phase, along the catalyst mass W:
+dFᵢ/dW = Σ νᵢⱼ r′ⱼ with Cᵢ = C_T0 (Fᵢ/F_T) y (C_T0 = P0/RT in mol/L), dy/dW = −α/(2y) · F_T/F_T0 (Fogler, isothermal),
+by `ros23`; the gas flow v = v0 (F_T/F_T0)/y is reported; it stops where y < 0.01 (said in the window). α = 0 is a gas
+PFR whose flow grows with the moles (the changing volume). `ergunAlpha` gives α and β0 from the bed (SI units).
+**Rate laws** (`RateLaw`: concentrations and T → one net rate per reaction): `massAction`, `lhRate` (k Π K p of the first
+n species / (1 + Σ K p)^n), `rateLawBatch`; in the language `rateLawSim` and `packedBed` take rate constants or a
+function `@(c) [...]` (called with c only). **Pitzer** (`pitzer`, 25 °C, one salt, molality): Aφ = 0.3915, b = 1.2,
+α1 = 2 (2:2: α1 = 1.4, α2 = 12), ln γ± and φ as Pitzer and Mayorga; 2:1 salts stored from their printed (4/3)β0,
+(4/3)β1, (2^(5/2)/3)Cφ; a_w = exp(−φνmM_w). MgSO4 left out on purpose: the commonly quoted 1974 parameters gave γ±
+10% above Robinson and Stokes' table (0.055 against 0.049 at 1 mol/kg) where CuSO4's matched to 1%; a person can pass
+any salt as a struct. Language: `rateLawSim`, `lhRate`, `ergunAlpha`, `packedBed`, `pitzerActivity` (drawn beside
+Davies'). Example `beds.m`. Tests: NaCl's γ± 0.657 and φ 0.936 at 1 mol/kg, 0.986 at 6; KCl 0.604; CaCl2 0.500; CuSO4
+0.0423; y = √(1 − αW) without reaction and the stop near W = 1/α; A → 2B without pressure drop against Fogler's
+(1 + ε) ln(1/(1 − X)) − εX = kW/v0 and v/v0 = 1 + X; LH by hand; a Michaelis-like batch against its closed form. Not
+built: non-isothermal packed beds, mixed electrolytes in Pitzer's model (θ and ψ terms) and temperatures other than
+25 °C, Pitzer inside `solvePH`.
+
+## M517 (24 Nov): Hyperion neuroscience, more left-outs
+
+From M514's "Not built". `neuro-tree.ts` (pure), `neuro-files.ts` (readers), the language part at the end of
+`neuro-lab.ts`. **Branches:** `parseSWC` (id type x y z radius parent; `#` comments), `buildTree`: the root is a cylinder
+as long as it is wide (a sphere's area), every other point ends a piece from its parent cut to at most 'MaxLength' µm
+(20), breadth-first so a parent always comes before its children; one root only, at most 20,000 compartments.
+`treeNeuron` works in nF, µS, mV, ms and nA: backward Euler, Hines' two sweeps (up the tree eliminating, down it
+substituting), HH by exponential Euler only where `active(type)` says ('none', 'soma', 'axon' = soma and axon, 'all'),
+else a leak of 1/Rm at rest; synapses are one event each (kernel from `neuro-plus.ts`, nS, implicit in V);
+`cableTerms` gives the axial conductance from the two half pieces' resistances. An SWC id names the last piece ending at
+that point. **Cleaning:** Butterworth by RBJ biquads at Q = 1/(2cos((2k−1)π/2N)) (even orders 2–8), notches (Q 30)
+at the mains and its harmonics up to 5× below the band's top, `zeroPhase` with odd reflection at both ends long enough to
+settle (3 periods of the low edge, 5 notch time constants), each section started at its DC steady state;
+`commonAverage` takes the median across channels. detectSpikes and spikeSort take 'Band', 'Notch', 'Order'. **Files:**
+`readAbf`: ABF2 only (ABF 1 refused with how to convert), offsets as pyabf documents them (header: episodes @12, data
+format @30, sections of 16 bytes from @76: protocol, ADC @92, strings @220, data @236; protocol: mode @0, interval µs @2,
+ADC range @110, resolution @118; ADC entry: instrument scale @40, signal gain @48, programmable gain @28, telegraph gain
+@6 when enabled @2, offsets @44 − @52, name and unit string indices @74, @78 counted from the 'clampex'/'clampfit'/
+'axoscope'/'patchxpress' string). Checked against a file laid out the same way in the test, not yet against a real
+Clampex recording. `readNwb`: series under /acquisition and /stimulus/presentation with a numeric `data`, scaled by
+`conversion` and `offset`, `starting_time` and its `rate`, or `timestamps`. **hdf5.ts** now reads variable-length string
+attributes (the global heap, 'GCOL'), which h5py and the NWB tools write; the fixture `fixtures/nwb-small.nwb` was
+written with h5py (gzip chunks, int16, a vlen unit). Language: `swcRead`, `treeNeuron`, `filterRecording`, `abfload`
+(MATLAB's File Exchange name: d, si in µs, h), `nwbRead`. Example `branches.m`. Tests: an unbranched tree equals
+`cable()` to 1e-6; Rall's 3/2 rule (two daughters of the right size and length give the soma the same voltage as one
+cylinder, within 1%); a spike reaching an active axon's end, later than its middle; a distal EPSP over halved at the
+soma; 1 kHz kept and 50 Hz cut by the band-pass, the notch alone killing 50 and keeping 130; spikes under 300 mV of
+4 Hz and 80 mV of hum sorted after filtering (> 85% found, > 90% agreeing); ABF2 and NWB read back. Not built: ABF 1,
+NWB's processing modules and units tables, channel types other than HH's on the tree, 3D views of the morphology (drawn
+from above), spines.
+
+## M518 (24 Nov): Hyperion physics, more left-outs
+
+From M515's "Not built". `physics-more.ts` (pure) and its language part at the end of `physics-lab.ts`.
+**Orientation** (`spinBody`): state [ω (body), q (scalar first, body → space)], Euler's equations with a torque,
+q' = ½ q ⊗ (0, ω), `rk45` at 1e-11, q renormalised on output; gravity for a top on a fixed point as m·g·l with the centre
+of mass on the body's third axis and gravity down space z (body torque = l e3 × (−mg Rᵀẑ)); reports the third axis and
+L in space and the energy. **Real rays** (`traceSurfaces`): surfaces [R t n (Vd)], the first vertex at z = 0, light
+from −z, the stop at the first surface; the sphere's intersection on the vertex's side (−b − √ for R > 0, + for R < 0),
+vector Snell, total reflection drops the ray; n(λ) by two-term Cauchy from nd and Vd (F, d, C lines); `axisCrossing`,
+`paraxialFocus` (a ray at 1e-5 of the aperture), `spot` (hexagonal rings filling the pupil, field angle in y–z), an
+optional `paths` record for drawing. **Schwarzschild** (G = c = M = 1): bound orbits from their turning points
+(1/L² = (u1 + u2)/2 − (u1² + u1u2 + u2²); refused unless the cubic's third root u3 = ½ − u1 − u2 lies above u1);
+u'' = 1/L² − u + 3u² by rk45, perihelia where u' changes sign; light u'' = −u + 3u² from u = 0, u' = 1/b; both
+right-hand sides frozen once u > 0.6 (inside the horizon) so the solver doesn't chase the singularity.
+`perihelionShift` in SI. **Wave packet** (`wavePacket`): Crank–Nicolson in eV, nm, fs (ħ = 0.6582119569 eV·fs,
+ħ²/2m from `HB2M`), ψ = 0 beyond the grid, the tridiagonal complex factorisation done once, |ψ|² saved at the asked
+times. **2D/3D** (`boundStates`): LOBPCG on [X W P] with modified Gram–Schmidt twice (dropping dependent vectors) and
+Rayleigh–Ritz by `symEig` (sim/modal.ts), block size states + 3, deterministic start; preconditioner the exact inverse
+of (−(ħ²/2m)∇² + mean(V − Vmin)) by dense sine transforms along each axis (O(n·N) per axis); stops at residual
+< 1e-6 × scale or when the energies stop moving (< 1e-10 × scale) with residuals under 1e-3 × scale (degenerate states
+converge slowly: a 24³ oscillator takes ~4 s). In the language V is in meshgrid's layout (rows y) or a function; ours
+runs x fastest, converted both ways. Language: `rigidRotation`, `lensAberration`, `spotDiagram`, `realRayTrace`,
+`schwarzschildOrbit`, `lightBending`, `perihelionShift`, `wavePacket`, `schrodinger2D`, `schrodinger3D`. Example
+`physics3.m`. Tests: a free symmetric body's ω1 = A cos((I3 − I1)/I1 ω3 t) to 1e-6 and L in space fixed to 1e-7; a
+fast top precessing at mgl/(I3ω3) within 5% with energy to 1e-7; one refracting surface against the exact
+sine-rule crossing to 1e-9 and nR/(n − 1); a plano-convex lens's aberration negative and growing as h², blue focus
+short of red, best focus spot under half the paraxial one, the image height f tan θ; precession and deflection
+within 1% of 6πM/(a(1 − e²)) and 4M/b far out, capture at b = 5.1 and not 5.3, Mercury's 43″; a free packet's norm
+to 1e-6, its spread σ√(1 + (ħt/2mσ²)²) and speed; a barrier's transmitted share against the plane waves' transmission
+averaged over the packet's momenta (to 0.005); the 2D box against the discrete eigenvalues to 1e-7 (with the (1,2),
+(2,1) pair); the 3D oscillator's 3/2 and threefold 5/2 ħω within 5%. Not built: contact between rigid shapes other than
+disks, aspheres and Seidel coefficients, Kerr (spinning) black holes and orbits out of the plane, time-dependent
+packets in 2D, 3D views of 3D states (slices only).
+
+## M519 (25 Nov): Hyperion physics, the last left-outs (shapes, Kerr, 3D states)
+
+From M518's "Not built" (the owner: "please do this"). **Shapes** (`rigid2d.ts`, `rigidShapes`): convex polygons (any
+corners, centred on their centroid, made counter-clockwise, concave refused) and circles; contacts by the
+separating-axis test with Box2D-style clipping of the incident edge (up to two points), circle–polygon by the nearest
+face or corner, walls as four half-planes; sequential impulses (20 passes) with accumulated clamping, restitution
+targeted from the approach speed only above 2g·dt (slower contacts rest, so nothing jitters) and Coulomb friction within
+μ·jn; afterwards a position-only push apart (80% beyond a slop of 1e-4 of the box) so no energy is made. 'Fixed' bodies
+have infinite mass (ramps, pegs). The step is capped so nothing moves a tenth of its smallest size in one. **Kerr**
+(`kerr.ts`, G = c = M = 1): Boyer–Lindquist, Mino time, r'' = R'/2 and u'' = U'/2 (u = cos θ), re-projected onto
+(dr/dλ)² = R and (du/dλ)² = U after every output step (without it, light from r = 1000 lost the constraint: R ~ r⁴).
+`constants(a, p, e, inc)` solves E, Lz by Newton with Q = Lz² tan² inc (polar orbits solve E, Q with Lz = 0);
+`circular`, `isco` (Bardeen–Press–Teukolsky), `photonOrbit`, `shadow` (Bardeen's ξ, η along the spherical light
+orbits), `precessions` (φ between southward equator crossings, periapsis by a parabola). Pictures in x = √(r² + a²)
+sin θ cos φ. **3D views**: a new figure grid kind `'tri'` (`plot.ts` `Grid.tri` / `face` / `edge`; drawn in `draw3d`
+with the other faces, sorted far first, lit per face or by averaged corner normals under `lighting gouraud`; LaTeX as
+a pgfplots patch); `isosurface.ts` by marching tetrahedra (six a cube along one diagonal, so it has no holes; triangles
+face away from larger values); `isosurface` (meshgrid layout, level the middle of the range when left out, adds a
+camlight and gouraud when the axes have no light) and `patch(fv)` / `patch('Faces', F, 'Vertices', V, …)` (polygons
+as fans; FaceColor, EdgeColor, FaceAlpha, FaceVertexCData). `schrodinger3D` now draws ψ = ±30% of its peak in blue
+and orange ('View', 'slice' for the old middle slice). Example `physics4.m`. Tests (`physics-m519.test.ts`): a square's
+s²/6, equal squares swapping speeds, a tilted square's corner hit keeping its energy to 1e-8 and spinning, a pair's
+momentum to 1e-9, a box sliding v²/(2μg) and resting flat, a ball bouncing to e² its height, a disc rolling down a
+fixed ramp at ⅔ g sin θ with ωr = v; horizon, ISCO 6 / 1 / 9 and light orbits 3 / 1 / 4; a circle's constants against
+the closed form and staying circular to 1e-6; with no spin the periapsis shift equal to M518's Schwarzschild solver;
+a tilted circle's φ per vertical swing 2π Ω_φ/Ω_θ (the exact Kerr vertical frequency) to 1e-4; capture 2% either side
+of the critical b both ways; a = 0's deflection equal to `lightRay`; the shadow a 3√3 circle without spin and
+−2 … 7 edge-on at a = 1; a sphere's isosurface closed (every edge in two triangles) holding 4/3 π r³ to 1%. Not built:
+friction between two moving shapes in 3D (2D only), concave shapes (split them), Kerr–Newman (charge), light out of
+the equator in `kerrLight` (the shadow covers it), and a smooth-shaded isosurface coloured by another field.
+
+## M520 (25 Nov): Hyperion physics, M519's left-outs (dents, 3D, charge, light from anywhere)
+
+The owner sent M519's "left out on purpose" list back. **Dents** (`rigid2d.ts`): `polygon` takes any simple outline
+(up to 64 corners; a crossing outline is refused), its area, centroid and ∫r² by the shoelace sums (signed, so dents
+count right), and `convexParts`: ear clipping into triangles, then Hertel–Mehlhorn (a shared diagonal removed while the
+merged piece stays convex). `Shape.poly.parts` collide part by part (`worldParts`); walls still use the outline's corners.
+**3D** (`rigid3d.ts`, `rigidShapes3D`): `hull(points)` by every plane through three points with all on one side, coplanar
+corners merged into one face (ordered round its normal, mid-edge points dropped), volume, centroid and inertia per unit
+mass from tetrahedra (∫xxᵀ = V/20 (Σ vvᵀ + ssᵀ)); `boxHull`; balls. Each body keeps L in space, ω = R J⁻¹ Rᵀ L, the
+quaternion turned by exp(ω dt): a free body keeps L exactly. Contacts: SAT over both face normals and every edge × edge
+(edges biased 5% so faces win ties); the reference face is the one pointing along the axis (opposite faces share an axis:
+the bug fixed while building), the incident face clipped by Sutherland–Hodgman against its sides; edge–edge by the two
+nearest segment points; ball–hull by the deepest face inside or the nearest face / edge point outside. Friction is a disc
+(both tangent impulses scaled to μ jn together). **Charge** (`kerr.ts`): Δ = r² − 2r + a² + q², P = E(r² + a²) − aLz − εqr
+(ε the particle's charge per mass); `circular` keeps Kerr's closed form and otherwise walks Newton in from r = 30 with
+the charge added in 20 steps; `isco` by bisection on R'' < 0; the light orbits and the shadow from the general
+ξ = (r² + a² − 4rΔ/Δ')/a, η = 16r²Δ/Δ'² − (ξ − a)² (equal to Bardeen's at q = 0), their r range where η ≥ 0 (scanned and
+bisected); no spin: a circle r²/√Δ at r = (3 + √(9 − 8q²))/2. The language keeps a² + q² a hair under 1. **Light from
+anywhere**: `imageRay` (Lz = −α sin θo, Q = β² + (α² − a²) cos² θo), traced back from r = 200 with `north = β > 0`;
+`kerrLight(…, 'Inclination', deg, 'Beta', β)` draws it in 3D. **axis equal in 3D** (`draw3d`): the shorter ranges widen
+about their middles to the box's 2 : 2 : 2·ZS, so a ball is round. Example `physics5.m`. Tests (`physics-m520.test.ts`):
+an L's two parts, area and ∫r² against two rectangles; a star rests on the floor without sinking; a ball rests inside a
+fixed U; a cube hull's 6 faces, 12 edges, s²/6, a tetrahedron's 1/6 and centroid; a tumbling box's L to 1e-12; equal cubes
+swapping speeds; a ball bouncing to e²; a tilted cube's corner hit keeping its energy to 1e-7 and spinning; a box sliding
+v²/(2μg) and resting; a cube stacked off-centre staying; RN's horizons, light sphere 2, ISCO 4 at q = 1 and the cubic for
+q = 0.6, the shadow r²/√Δ through the spinning formulas; q → 0 giving Kerr back; a particle with ε = 1 hovering beside an
+extremal hole (the Majumdar–Papapetrou balance) and falling in without its charge; a charged circular orbit staying
+circular to 1e-6; rays 3% inside the shadow's edge caught and 3% outside escaping, at three places round it. Not built:
+rolling resistance (balls roll for ever on a flat floor), concave solids in 3D (split them into convex ones by hand),
+magnetic charge, and a ray-traced picture of a disc round the hole.
+
+## M542 (25 Nov): Hyperion physics, M520's left-outs (rolling, dented solids, magnetic charge, the disc)
+
+Numbered after the signals branch's M541 (this branch's M492–M520 were used up). **Rolling resistance** ('Rolling',
+`roll` in both `simulate`s): at a contact with a ball or circle, an angular impulse against the relative turning across
+the contact (3D: the part of ω_b − ω_a across n), accumulated and kept within Crr · jn · r (r the smaller radius); boxes
+don't get it. A rolling disc slows at Crr g / 1.5, a ball at Crr g / 1.4. **Glued solids** (`r3.compound`): parts from
+`hull` / `boxHull` with their centroids in one frame; volume summed, centre volume-weighted, J = ∑ V_i (J_i + |d|²1 −
+ddᵀ) / V; `Shape3` is now `{ kind: 'hull'; parts }` (a single hull is one part), `posed(b)` gives each part's corners,
+normals and hull in space, contacts loop over part pairs, and `hullHull` points its axis by the parts' own middles (a
+compound's centre can sit outside a part). In the language a shape may be a cell of parts, each n × 3 corners or a
+placed box [w d h x y z]. Parts that overlap count twice. **Magnetic charge** g (`Charge.g`): Δ gains g² everywhere; the
+θ equation is now the general (du/dλ)² = (1 − u²)(K − μa²u²) − P_θ², K = Q + (Lz − aE)², P_θ = aE(1 − u²) − Lz − εg u
+(`Uf`, `dU` exported; equal to the old one at εg = 0, tested), dt/dλ = −aP_θ + (r² + a²)P/Δ, dφ/dλ = −P_θ/(1 − u²) +
+aP/Δ. R doesn't see εg, so `constants` and `circular` still set the radial motion; a charged body then rides a cone
+(Poincaré), shown in `kerrOrbit`'s title. Light and the shadow use the metric charge √(q² + g²) (`charge()` in the
+language returns q, g and m). **The disc** (`discImage`, `kerrDisc`): fixed-step RK4 in Mino time (h = 0.02 / (r +
+√(Q + Lz²) + 1)), re-projected onto R and U each step, from r = 1000, stopped at the first equator crossing between rIn
+(the ISCO) and rOut, at the horizon (×1.01) or going out past r0; brightness g⁴ (1 − √(rIn/r)) / r³, g = 1/(uᵗ(1 − Ωξ))
+with Ω and uᵗ from the circular orbit's E, L on a 300-radius log table. 80 × 80 takes ~1.3 s; the language allows 16–240
+pixels. Drawn with `imagesc`, `colormap hot`, brightness^¼, `axis xy`. Example `physics6.m`. Tests
+(`physics-m542.test.ts`): the two rolling rates and no slowing without it; an L's centre and I_yy by hand, landing and
+resting on both feet; a ball staying in a U of three glued boxes; the general θ equation against the old; a charged
+particle's cos θ held on Poincaré's cone to 1e-7; a face-on disc's shadow pixel empty and its far shift √(1 − 3/r); the
+approaching half more than twice as bright edge-on; the language bits. Not built: rolling resistance for boxes' edges
+(they don't roll), automatic splitting of a dented 3D mesh into convex parts, the disc's thickness and colour by
+temperature, and light that passes through the disc (it's opaque).
+
+## M543 (25 Nov): Hyperion physics, M542's left-outs (boxes that rock, dented meshes split, the disc's thickness, colour and see-through)
+
+The owner sent M542's "left out on purpose" list back. **Rolling resistance for any shape** (`rigid2d.ts`, `rigid3d.ts`):
+the same capped angular impulse, but a polygon or solid gets it too, its lever the distance from its centre to the
+contact (a circle or ball keeps its radius); fixed bodies give no lever. Resting flat it does nothing (no relative turn);
+rocking, tipping or tumbling on a corner it takes the energy out. **`convexSplit(V, F)`** (`r3.convexSplit`): a closed
+mesh (faces of any size, dents allowed in a face: `earClip` in the face's plane; closed and turned one way round is
+checked, a negative volume flipped). Parts are convex cells (planes) met with the mesh; a cell's corners are mesh corners
+inside it, mesh edges through its planes, cell corners inside the mesh and cell edges through mesh triangles; a point
+that only touches as a flat sliver is dropped (a 1e-5 step towards the middle, the mean of a 9³ grid inside both, must be
+inside the mesh: the corners' own mean can sit on the dent's edge, the bug met while building). A part is kept when ≥ 98%
+of a 12³ grid inside its hull is inside the mesh (`insideMesh`: ray parity along a skewed direction); otherwise it is cut
+by the plane of a face beside a fold inwards (a reflex edge) that leaves the least empty volume, worst part first, up to
+12 parts. `hull` takes a `max` (64 for these parts and in `rigidShapes3D`). **The disc** (`discImage`): `thick` = h/r
+(0–0.3) makes its faces the cones |cos θ| = h/r, entered from above or below, the gas taken at the cylinder radius;
+`opacity` < 1 adds each later crossing times (1 − opacity)ᵏ (stops under 1e-3), so the far side and the thin ring show
+through; `T` is g · (F/F_peak)^¼, brightness-weighted (F peaks at 49/36 rIn). `blackbodyRGB(T)`: Planck through Wyman,
+Sloan and Shirley's CIE fit, to sRGB, brightest channel 1. In the language: 'Thickness', 'Opacity', 'Colour'
+'temperature' (an RGB `image`, colour × brightness^¼), 'Temperature' (hottest gas, K), a 4th output T in kelvin.
+Example `physics7.m`. Tests (`physics-m543.test.ts`): a tumbling hexagon stops sooner, a box resting flat isn't moved, a
+tipped cube settles; a cube one part, an L two, a U three with their volumes; the split L glued back has the L's centre
+and rests; an open mesh refused; blackbody colours at 2000, 6500, 20 000 K; the plain disc unchanged; see-through adds
+light; a thick disc edge-on covers more. Not built: a smooth curved mesh is split into many flat-cut parts (12 at most;
+the rest stay a little hollow-hulled), the disc's own thickness doesn't shadow its far side's glow (the light passes
+the slab once per entry), and no light from the disc's inner edge wall.
+
+## M544: Hyperion Simulate, heat and stress together (26 Nov)
+
+The owner, 26 Nov ("do all of them start now", the list after the Hyperion review): the Ansys side of Simulate first.
+Structures → **Warming** (in the outline under gravity): not at all, evenly (one temperature change, °C), or **from
+Heat** (Simulate → Heat solved on this same mesh, less the temperature the part was made at). `Material.alpha` (1/K,
+handbook values) on every material; `Study.warming` is a number or one value per node (`warmingAt`). The solver adds
+∫Bᵀ·D·ε_th per element (forces inside the part that sum to nothing) and `stressOf` takes off E·α·ΔT/(1−ν) (plane
+stress) so only strain beyond the free growth makes stress; reactions subtract the thermal forces too. Tested against
+textbook answers: a free bar grows α·ΔT·L with no stress, a bar held at both ends is squeezed by E·α·ΔT, an uneven
+warming balances. "From Heat" needs Heat on the same template, sizes and outline (`heatWarming` in `sim.worker.ts`;
+Heat's own material and thickness give way to the study's); otherwise the panel says so. Left out: warming in 3D parts
+and in Vibration (the panel says 3D is flat-only for now). Check: `scripts/checks/hyperion-warming-ui.mjs`.
+
+## M545: Hyperion Simulate, buckling (26 Nov)
+
+Structures → Solution → **Buckling** (beside Stress and bending, Vibration and Shaking): linear (eigenvalue) buckling.
+`src/lib/sim/buckle.ts`: the loads are solved first (`solveStatic`, warming included), each element's stress at its
+integration points (`gaussStress`, less the thermal part) builds the geometric stiffness Kg = ∫∇Nᵀ·σ·∇N (the same for
+x and y movements), and Lanczos on K⁻¹(−Kg) in K's inner product (an unfactored copy of K for the products) gives
+1/λ for the lowest buckling load factors λ (× the loads). Shapes are scaled to a largest movement of 1. Loads that
+only pull give `none`. In the part's own plane only (a column, a strip on edge, a web): plate buckling out of the
+plane needs plate elements (not built). Tested: a cantilever column within 3% of Euler's π²EI/(4L²), its second
+mode about 9× the first, a pulled column none, a held bar buckling from heat. The panel says "×N the loads", red
+under 3. Check: `scripts/checks/hyperion-buckling-ui.mjs` (the start beam pushed end-on: ×163, Euler ×164.5).
+
+## M546: Hyperion Simulate, fatigue life (26 Nov)
+
+Structures → **Fatigue** (in the outline under Warming): how the loads repeat (back and forth: fully reversed; on and
+off: 0 to the loads) and the cycles it must last. Every material got `utsMPa`, `sf`, `b` (Basquin's σa = sf·(2N)^b;
+teaching values, the panel says so). `fatigueOf` in `structure.ts`: von Mises carrying the sign of the larger principal
+stress; reversed: amplitude |S|; on and off: amplitude and mean |S|/2, the mean by Goodman only when it pulls; the life
+`life` as log₁₀ cycles capped at 9, and `fsafety` against the amplitude allowed at the life wanted. Two new pictures in
+Show (Fatigue life, Fatigue safety factor), both coloured with low as danger. Tested against Basquin and Goodman by
+hand. Also: `SimCanvas` draws a field that is the same everywhere in the calm colour (it was the danger end, red).
+Left out: fatigue on 3D parts (the panel says so), variable loads over time (rainflow + Miner live in the scripts'
+materials toolbox, M504). Check: `scripts/checks/hyperion-fatigue-ui.mjs`.
+
+## M547: Hyperion Simulate, the lightest shape (topology optimisation, 26 Nov)
+
+Structures → Solution → **Lightest shape**: topology optimisation by SIMP (`src/lib/sim/topo.ts`). Each element's
+density x (0–1) scales its full-material stiffness by 0.001 + x³·0.999; each round solves, takes the compliance's
+sensitivity −3x²·uᵀk·u, smooths it with Sigmund's filter (radius about one element by default: wider gave grey edges
+and a part twice as bendy; a grid of cells finds the neighbours), and moves material by the optimality criteria
+(bisection on the multiplier, move 0.2) until the share asked for is kept; stops when no density moves 0.002 after
+30 rounds, at most 120. Keep 20–60% (`Model.topo.keep`). The picture: density at the nodes (red solid, blue carved
+away), undeformed, no animation. The part's own weight and warming are left out (they would change with the shape).
+Tested: 40% kept to ±1%, mostly solid or empty, evenly spread = 16× as bendy as solid, the shape found under 2.8×. The
+bracket at 40%: 2.48× the solid part, 0.191 kg, a truss of struts, ~350 ms. Check: `scripts/checks/hyperion-topology-ui.mjs`.
+
+## M548: Hyperion Simulate, Fields: electromagnetics (26 Nov)
+
+Simulate → **Fields**, a new bench (`src/lib/sim/fields.ts`, `components/sim/FieldsBench.tsx`, `fields.worker.ts`):
+2D electromagnetics by bilinear finite elements on a square grid (~160 cells across), matrix-free conjugate gradients
+with Jacobi. Magnetic: A (Wb/m), ∇·(ν∇A) = −J − ∇×(ν₀Br), A = 0 on the box; coils (A/mm², minus out of the page),
+magnets (remanence, north angle), iron (μr) that **saturates** at 2 T (B = Bsat + μ₀(H − Hsat): repeated solves
+with each iron cell's secant ν, half-way each round, until none moves 1%; without it the electromagnet read 70 T).
+Electric: V, ∇·(ε∇V) = 0, electrodes held, the box's sides natural (the field leaves); two electrodes give C = 2W/ΔV².
+Forces by Maxwell's stress on the loop of cells just outside each part's box (trapezoid weights at the corners: without
+them +12%). Field lines / equipotentials by marching squares of the potential. Five ready studies (electromagnet,
+two wires, magnets and a plate, plate capacitor, coaxial cable); parts by numbers or dragged in the picture.
+Tested: a wire's field μ₀I/(2πr) within 5%, two wires' pull μ₀I²/(2πd) within 10%, iron multiplies a coil's field,
+a capacitor's E = V/d, C within 35% of ε·w/d (fringing), a dielectric ×4, a magnet's north. The electromagnet takes
+~4.6 s (saturation; in the worker, "solving…"). Check: `scripts/checks/hyperion-fields-ui.mjs`.
+
+## M549: Ghidra's Aether guide and Hyperion set-up skills (26 Nov)
+
+The owner, 26 Nov: "train ghidra to next level… it should understand everything related to my project specially in the
+aether app… answer about the places, food, city… and for the hyperion app the ai should able to create things in the
+system for the user". Two new Ghidra skills, each in the app, with its playbook and exam paper, before the training run:
+- **guide** (Aether): `POST /travel/ask { place, question }` (`src/server/ghidra-apps.ts` `askPlace`): the place's
+  Wikivoyage guide as text (`guideText` in `travel.ts`: the opening, each part's paragraphs and listed places with
+  price and hours as given, ~7,000 letters) and the question → `{ answer, answered }`. Playbook: only the guide's
+  facts, say plainly when it doesn't cover something, never invent prices or hours, under 150 words. The box: Aether →
+  a guide → Overview, "Ask Ghidra about <place>" with five starter questions (`components/travel/AskPlace.tsx`).
+- **sim-setup** (Hyperion): `POST /hyperion/setup { text }` → a Structures study (`src/lib/sim/setup.ts`: `simChoices`
+  lists the shapes with their sizes and edges, the materials, the kinds; `studyFrom` keeps only what exists: sizes
+  clamped, unknown edges and kinds dropped, the start's supports and loads when none survive). The box: Structures,
+  over the outline, "Describe it: Ghidra sets it up" (`SimSetupAsk.tsx`); the study and its analysis open at once.
+- Exam papers (`papers-apps.ts`, `AETHER_HYPERION_PAPERS`): guide (made-up towns' mini-guides; must name the guide's
+  items, no number not in it, admit what it doesn't say), sim-setup (a description with a known answer: shape, size,
+  material, support and load edges, kN → N, direction, analysis). Both within the AI allowance, the switch, and
+  recorded in AI receipts (`guide`, `sim-setup`). The itinerary the owner asked for already exists (M329: ✨ on a trip,
+  `travel-itinerary.ts`, places by area around the stay); Ghidra's trip_new opens a trip with "Plan my days" started.
+- Ghidra 2, trained longer (CHAT 3000, THINK 7200 steps) on a rented RTX 4090: 3 of 100 maths problems against the
+  committed model's 4, so the committed model stays (the run's own rule). Pod terminated.
+Next: the add-on run (`ghidra-gpu.sh`) on an 80 GB card, with these papers in it.
+
+
+## M544 (25 Nov): Hyperion physics, M543's left-outs (curved solids split tightly, the thick disc's own shadow and walls)
+
+The owner sent M543's "left out on purpose" list back. **`convexSplit` on smooth curves** (`rigid3d.ts`): a bug first —
+the sliver filter stepped each corner towards the part's middle, which for a bent part lies in its hole, so real corners
+on the inside of a curve were dropped and a 16- or 24-step half ring came out at 54% / 20% of its volume. Now a corner is
+kept when a 1e-5 step towards the middle **or any of 26 directions** (`PROBES`) lands strictly inside the cell and the
+mesh. New cut candidates: besides the two face planes at each fold inwards, the plane **through the fold halving its
+angle** (normal n₁ − n₂; on a ring, the radial cut). Each cut keeps the folds it came from (`at`); a part only tries cuts
+with a fold inside it, the 12 passing nearest its middle. A part may have at most **64 corners** (what a solid takes): one
+with more is cut even when solid (by the best cut, else across its longest side), and refused with a clear message when
+'Parts' runs out. 'Parts' up to 32, default 16. Speed: `meshTest(V, T)` precomputes each triangle's ray-fixed numbers and
+a bounding box (was 60% of the time); `hull` skips triples already on a found face and stops a plane's scan once points
+lie on both sides. A 24-step half ring: 13 parts, 100.2% of its volume, 1.6 s (was 18 s and hollow); a 12 × 6 doughnut:
+12 parts, exact, 0.5 s. **The disc** (`kerr.ts`): a see-through thick disc (`thick` > 0, `opacity` < 1, `vol`) now glows
+and absorbs **along the path through its gas** (Beer–Lambert, κ such that a straight-down pass through the full height
+at that radius takes `opacity`, the source the gas's glow, so that pass gives opacity × glow as a crossing did); path
+length from dr, r dθ and r sinθ dφ (dφ/dλ = L/sin²θ − a + aP/Δ), in Boyer–Lindquist coordinates (`shortcut:`). A ray
+skimming through the near side is dimmed more, so it shadows the far side (the far side's share at 80° falls from 62%
+to 55% going from h/r 0.05 to 0.25). g and r are taken where the gas has taken the first 5%. A **solid** thick disc's
+walls: the inner cylinder rIn, met from the hole's side between the faces, shines with the gas one disc-height behind it
+(Novikov–Thorne's glow is zero at rIn itself; r reports rIn); the outer rim, met from outside (an edge-on ray that never
+crosses a face used to pass straight through), with the gas at rOut. Example `physics8.m` (the doughnut dropped, the two
+discs); the science examples' test now allows 20 s each (heavy examples missed 5 s when the whole suite runs side by
+side). Tests (`physics-m544.test.ts`): the half ring within 1% and ≤ 64 corners a part, the doughnut exact, face-on
+see-through about the opacity, the thicker disc's far side shadowed, inner wall seen at 60° and not on a thin disc, the
+rim edge-on, 'Parts' 32 and its limit. Not built: lengths in the disc's gas are coordinate lengths (not the gas's own
+frame), the gas absorbs the same at every colour, and convexSplit's cuts are still only planes from the mesh's folds (no
+free search for the best plane, as V-HACD does).
+
+## M545 (25 Nov): Hyperion physics, M544's left-outs (free planes for convexSplit, the disc's gas in its own frame and by colour)
+
+The owner sent M544's "left out on purpose" list back. **`convexSplit`** (`rigid3d.ts`): measuring the free search
+showed two older faults first. (1) A real corner of a **thin wedge-shaped part** was dropped: none of the 26 probe
+directions (M544) lands inside a wedge narrower than their spacing, so a cube with a pyramid pushed into its top came
+out at 89% of its volume. `PROBES` now adds 256 directions on a Fibonacci sphere (cheap: most fail the cell's planes
+before the mesh test). (2) A cut whose one side failed to judge was taken with that side dropped (and its empty space
+uncounted, so it looked good): `scoreIn` now needs both sides. With the corners right the dented cube hit a
+**plateau** (each diagonal cut leaves the same total empty space), so when the best cut saves under 1% and 4 parts
+remain in the budget, the 6 best cuts are judged **one cut ahead** (each side then cut by its best of 6 fold cuts):
+the dented cube is 4 exact parts. **`'Search', true`** (`search` in `convexSplit`) adds free planes where the fold
+cuts leave over half the empty space: across the part's three axes at ¼, ½ and ¾, then the best plane tilted (±0.3
+rad, halving) and slid, 4 rounds. A free plane must beat the best fold cut by a fifth (the 12³ grid's count of empty
+space is noisy; a fold cut is exact). Measured on 10 meshes it rarely wins (a peanut 1.0029 → 1.0004 of its volume, at
+4× the time; once it led to a part over 64 corners), so it is **off by default**. A 24-step half ring now makes 14
+parts (13 before) within 0.7%. **The disc** (`kerr.ts`): lengths through the gas are **the gas's own**,
+ds = (−p·u) dλ = Σ dλ_Mino / g (Σ = r² + a² cos²θ, E = 1), and κ is set by the proper height 2 r asin(h/r) (across
+the gas's motion, the same for it as for a still observer). With **`tK`** (kelvin of the hottest gas) each pixel gets a
+**spectrum** `S` at `LAM` (17 wavelengths, 380–780 nm): each bit of gas a black body at g·T as we see it (I_ν/ν³ is
+invariant), taking light by colour with κ_ν = κ (ν/ν_peak)^−`absorb` in its own frame (ν_peak its own temperature's,
+where `opacity` holds). Faces take 1 − (1 − opacity)^f, the slab exp(−κ f ds), walls all; a ray goes on while any colour
+gets through. `I`, `g`, `r`, `T` are still the grey ones. `kerrDisc`'s 'temperature' colour is now each pixel's spectrum
+through `sampledRGB` (`spectrumRGB` is the CIE fit for any spectrum; `blackbodyRGB` uses it), and **`'Absorption'`**
+p (−4 to 4) sets the power. Note for whoever builds on it: by Kirchhoff the gas also **glows** most at the colours it
+takes most, and in a see-through disc that glow outweighs the light from behind, so p = 2 (free–free) makes the
+picture redder and −1 (dust) bluer (the light from behind does pass bluer for p = 2). Example `physics9.m` (the dented
+cube, two discs). Tests (`physics-m545.test.ts`): the dented cube 4 exact parts, 'Search' on an L, a sampled black
+body's colour, free–free redder and dust bluer with the brightness unchanged (within 0.2%) and a solid disc unchanged,
+face-on still about the opacity, both options in the language. Not built: `'Search'` stays a local search (no
+V-HACD-style voxel or hierarchical search), the one-cut look-ahead only on a plateau, and scattering (light turned
+aside rather than taken) is not modelled; the spectrum is not one of `kerrDisc`'s outputs.
+
+## M546 (25 Nov): Hyperion physics, M545's left-outs (a fuller split search, scattering in the disc, its spectrum out)
+
+The owner sent M545's "left out on purpose" list back. **`convexSplit(…, { search: 'full' })`** (`rigid3d.ts`;
+`'Search', 'full'` in the language): one cut **ahead at every cut** (not only on a plateau): the best 4 cuts, each
+judged by what its two sides leave after their own best cut (6 fold cuts plus a halving across each axis), taken
+when that is 10% better than looking ahead from the plain best; then V-HACD's last step, **merging** neighbouring parts
+(boxes touching) while their joint hull stays solid within the tolerance and has at most 64 corners, the pair wasting
+least first (`fill`, split out of `judge`, scores any set of corners). Measured on 10 meshes (16 parts allowed): a
+24-step half ring 12 parts at 1.0073 of its volume against 14 at 1.0064 plain, ~10 s against 1.7 s; merging alone
+takes it to 13 and a peanut from 10 to 8, cheaply; the rest unchanged. **Tried and dropped:** free planes in 13
+directions (axes, face and body diagonals) at five places each, always: never a closer fit, 5–15× slower, and on two
+smooth blobs it left parts of over 64 corners (refused) — the note in the code says so. A trap: the peanut's plain
+split sums to 1.0029 of its volume but its merged parts to 0.988, so the plain parts overlapped slightly while leaving
+about 1% uncovered; the volume sum hides that. **The disc** (`kerr.ts`): `scatter` ω, the share of the opacity (at
+the gas's peak colour) that turns light aside, in the **Eddington two-stream** approximation: extinction (1 − ω)f + ω
+times κ at a colour whose absorption is f times the peak's, ε = (1 − ω)f / that, a surface (or deep slab) gives out
+ε_eff = 2√ε / (1 + √ε) of a black body, so the gas is f_col = ε_eff(peak)^−¼ hotter to carry its flux (colour
+correction: ×1.2 at ω = 0.9, ×1.53 at 0.99); a solid disc keeps its bolometric light exactly, its `T` and spectrum
+harden. Inside a see-through slab the source is εB + (1 − ε)J, J = B (1 − e^(−√(3ε) τ) / (1 + √ε)) at the optical
+depth τ to the nearer face (`shortcut:`: a plane-parallel slab at each point, not the light really arriving from the
+whole disc), so a scattering see-through disc dims (light turned away from us: 0.73 of its light at ω = 0.99). ω = 0
+gives M545 exactly. **`kerrDisc`** takes 'Scattering' (0 to 0.99) and gives `[I, g, r, T, S, lam]`: S each pixel's
+spectrum (n × n × 17, arbitrary units, by the picture's rows), lam the wavelengths (380 to 780 nm); asking for S
+computes the spectrum even with 'Colour', 'brightness'. Example `physics10.m` (a half ring plain and full, the
+spectrum without and with scattering, the scattering disc in colour). Tests (`physics-m546.test.ts`): 'full' on a half
+ring (no more parts, within 1%), a box one part, a solid disc's light kept and its temperature raised by exactly
+f_col and bluer, ω = 0 unchanged, the outputs' sizes, both options in the language. Not built: V-HACD's voxel and
+hierarchical search itself (only its merge), and scattered light reaching us from other parts of the disc (no
+Monte Carlo transfer); Compton up-scattering (hot electrons boosting light to X-rays) is not modelled.
+
+
+## M478: Hyperion's computer app smoother, 1.2.0 (25 Nov)
+
+The owner, 25 Nov: "make everything ultra smooth specially the downloaded hyperion app". The site's Hyperion pages were
+measured in M468 (no long task at CPU ×1), so this is the app's window and two costs found in the pages.
+- **`desktop/hyperion/main.js`:** `enable-gpu-rasterization` and `enable-zero-copy` (not `ignore-gpu-blocklist`: those
+  chips are blocked for crashes); the window's background follows the system's light/dark (`nativeTheme`, updated live)
+  so resizing or the first frame never flashes white in dark; `v8CacheOptions: 'bypassHeatCheck'` keeps the site's code
+  compiled from its first run; the connection to the site opens while the window is made (`preconnect`); the window
+  reopens maximized when it closed so (`getNormalBounds` + `maximized` in window.json); shown at its first paint or
+  after 4 s at the latest, and a second launch shows it (it could stay hidden on a slow line).
+- **File → Code / Simulate / Learn without a reload:** main sends `hyperion:go` (only when the page is the site's);
+  `preload.js` hands it to the page's `hyperionDesktop.onGo` listener (`components/lab/DesktopGo.tsx` in the Hyperion
+  layout: `router.push`, only `/hyperion…` paths) or, when nothing listens (an older site, sign-in), loads the address.
+  Tried in the real Electron under xvfb both ways.
+- **The scene behind the page holds one still frame in the app** (`AppBackdrop`: `'hyperionDesktop' in window`, like
+  Reduce Motion): a work tool's graphics chip goes to the editor, figures and live simulations.
+- **The command window** (`LabApp`): each printed line has a steady number (`n`) and is a memo'd `LogLine`, so a run's
+  streaming output draws only the new line, not up to 800 above it (index keys shifted every row once at the cap).
+- **[owner]:** after merging, GitHub → Actions → "Hyperion desktop" → Run workflow with "publish" ticked (version 1.2.0).
+
+## M550: Hyperion's Code window: no overlap, the editor and command window full width (26 Nov)
+
+The owner, 26 Nov, with a screenshot: in Hyperion's Code window the command window was drawn over the editor's last
+lines, and Variables and Files should move so the editor and the command window fill that space. The middle column is
+now the editor over the command window with a divider between them (`Splitter axis="y"`, kept as `uv-lab-panes`;
+the editor's height is `min(kept, 100% − 9rem)` so the command window always keeps 8 rem), both marked
+`data-no-arrange` (page-arranging could give a card a fixed height that broke the old 1.1 : 1 grid rows). Variables and
+Files left the left column: with the figure they are tabs on the right ("Side panel": Figure, Variables, Files; the
+toolstrip's Layout still hides either part). A new figure brings its tab forward without an effect: the tab chosen
+remembers the figure it was chosen at. Check: `scripts/checks/hyperion-layout-ui.mjs` (no overlap at 1280×800 and
+1920×1080, with Ask Ghidra open too).
+
+## M551: Hyperion Simulate, Sound: acoustics (26 Nov)
+
+Simulate → **Sound**, a new bench (`src/lib/sim/acoustics.ts`, `components/sim/SoundBench.tsx`): acoustics in a floor
+plan by FDTD on a staggered grid (pressure at the cells, velocity on the faces, ~200 cells across, dt = 0.5·h/c).
+Blocks are rigid (faces beside them hold no velocity) and absorb a share at the air cells touching them; the box is a
+room (hard sides) or open (a quadratic sponge at the edges). The source plays a tone (three-cycle soft start) or a
+clap (a Gaussian pulse). Views: the wave (red push, blue pull) and Loudness (RMS dB re 20 µPa once the sound has
+crossed the box twice, the loudest 40 dB). The listener's level over the last 50 ms; after a clap, the room's
+resonances from the listener's spectrum (a Hann-windowed DFT, parabolic peaks, up to 200 Hz) beside the textbook's
+for a plain rectangle. Runs on the page's thread in requestAnimationFrame (~26k cells × up to 60 steps a frame, a few
+ms; paused while the tab is hidden; Reduce Motion starts paused). Drag S and L. Tested: a pulse at c within 4%, a
+closed room's lowest three modes within 3% of (c/2)·√((m/W)²+(n/H)²), a wall >5 dB quieter behind it. In the
+browser the resonance study read 34.4, 48.9, 59.9, 84.4 Hz against 34.3, 49.0, 59.8, 84.3. Check:
+`scripts/checks/hyperion-sound-ui.mjs`.
+
+## M552: Hyperion Simulate, parts from STL files (26 Nov)
+
+Simulate → **3D file**, a new tab (`src/lib/sim/stl.ts`, `components/sim/FileBench.tsx`, `stl.worker.ts`): stress in a
+part from an STL file (binary or text; binary when its size matches its triangle count, since text files can start
+with "solid" too). The surface is filled with boxes (a box is inside when the line through its middle along x crosses
+the surface an odd number of times before it; triangles listed per row of the y–z grid), each direction's spacing
+stretched so whole boxes fit the part's extent exactly, each box cut into six tetrahedra along its main diagonal (the
+same cut everywhere, so faces always match), and those made 10-node by `quadraticTets` (moved out of `extrude` in
+`solid.ts`, shared). The file's z is up (CAD's habit; the solver's y is up), and `size` is reported in the file's
+order. The six sides of the box around it are named (Bottom, Top, Left, Right, Front, Back) and each can be free,
+held or pushed (N, down / up / left / right: the 3D solver's loads lie in x and y). About 14,000 unknowns (~3 s for a
+60 × 30 × 15 mm block); the box size is shown ("fine details smaller than that are smoothed out"). The file stays in
+the tab only (reopen it after a reload); a sample bar opens first. Tested: binary and text read alike, a box's volume,
+a bar from a file under tension at F/A within 5% and stretching FL/(EA). Check: `scripts/checks/hyperion-file-ui.mjs`
+(it writes a binary STL and opens it through the picker). Left out: holding or loading a chosen face that isn't one
+of the six sides, loads out of the x–y plane, keeping the file across reloads.
+
+## M553: Hyperion: integral2, integral3 and pdepe (26 Nov)
+
+`src/lib/lab/calc-lab.ts` (loaded by `lab.worker.ts`, `par.worker.ts` and `help.test.ts`): **integral2** and
+**integral3** (nested adaptive Gauss–Legendre, 10 against 20 points per piece, split where they disagree, up to 12
+levels; the inner limits may be functions of the outer variables, so regions that aren't boxes work; the function is
+called with scalars, so `x.*y` and plain `x*y` both work) and **pdepe** (the method of lines: finite volumes around
+xmesh's points with each midpoint's flux from its two neighbours, weighted by xᵐ for cylinders and spheres; each end
+p + q·f = 0, an end with q = 0 held by a fast relaxation (1e-6) that the stiff solver `ros23` from sci-num.ts takes
+in its stride; sol(i, j, k) time × point × component, a times × points matrix for one component). Equations with
+c = 0 (elliptic ones in the system) are refused with a plain message: not supported yet. Tested: ∫∫ x·y² over a box,
+a triangle's area with a function limit, the Gaussian's π, ∫∫∫ x+y+z, the unit sphere's volume, a rod with held
+ends cooling as sin(πx)·e^(−π²t), an insulated rod keeping its average. Help lines added in help.ts.
+
+## M554: Hyperion: your own app windows (uifigure, 26 Nov)
+
+The owner, 26 Nov: "building your own app windows with buttons and sliders (uifigure)". `src/lib/lab/app-lab.ts` (loaded
+by `lab.worker.ts`; it imports `files.ts` first because it wraps that module's `delete`): uifigure, uibutton, uislider,
+uilabel, uieditfield (text or 'numeric'), uicheckbox, uidropdown, uiaxes, uialert (prints). Each part is a numeric
+handle from 50001 up, kept per Lab in a WeakMap; Position is MATLAB's [left bottom width height] in pixels (parts
+stack down the window when none is given). `set` / `get` are wrapped: app handles take Text, Value, Limits, Items,
+Enable, Position and the callbacks (ButtonPushedFcn, ValueChangedFcn); other handles go to plot.ts's set. A uiaxes owns
+a figure; plot, title, xlabel… with an axes handle first draw on it and give the current figure back. The worker sends
+`appsOut(lab)` with every `done`, and takes `{ appEvent: { part, value } }`: the value is set (a slider clamped to its
+Limits), then the callback runs as fn(source, event) with event.Value, event.Source, event.EventName (fewer arguments
+if the function asks for fewer). `AppWindows.tsx` floats the windows at the Code window's bottom end (scaled to fit,
+Close hides one until the next run); sliders and typed fields send on let-go / Enter / blur; the Figure tab skips
+figures that live in an app (`own` in LabApp, memoised for the React compiler). Help lines for each. Tests:
+`app.test.ts` (a slide changes a label through its callback, a button resets the slider, clamping, get, plot into
+uiaxes, a callback's error, delete). Check: `scripts/checks/hyperion-apps-ui.mjs`. Left out: drag-and-drop app designing
+(it is code-built, like MATLAB's programmatic apps), layouts (uigridlayout), tables, tabs and menus inside apps, dot
+syntax (`lbl.Text = …`: use set/get or event.Value).
+
+## M555: Hyperion: the webcam in image processing (26 Nov)
+
+`src/lib/lab/webcam-lab.ts` (loaded by `lab.worker.ts`): **webcamlist**, **webcam** (first, by number or by part of its
+name, 'Resolution' 'WxH', a struct with Name, Resolution, AvailableResolutions) and **snapshot** (rows × columns × 3
+uint8, laid out as `imread` does). The engine's thread has no camera, so it asks the page through M521's waiting
+(`waits.page('camera', …)`: it returns the answer itself, errors come back thrown, undefined on time-out). The page's
+answer is in `components/lab/page-answers.ts` ('camera'): enumerateDevices (labels need one allowed getUserMedia
+first), one stream per camera kept for the visit, a frame drawn to a canvas at the size asked, sent as RGB bytes.
+`camera=(self)` was already in the Permissions-Policy. Help lines added. Tests: `webcam.test.ts` (a stand-in page);
+`scripts/checks/hyperion-webcam-ui.mjs` runs Chromium's fake camera (`--use-fake-device-for-media-stream`): a
+240 × 320 × 3 uint8 picture shown by imshow. Left out: preview(cam) (a live view window) and closing the camera
+(clear cam): the browser's camera light stays on until the tab is left.
+
+## M556: Hyperion: statistics tests and resampling (the Octave packages' first wave, 26 Nov)
+
+The first GNU Octave wave (statistics, statistics-resampling), written from the documented behaviour (no Octave
+code: GPL). `src/lib/lab/stats.ts` (pure): gammaln (Lanczos), gammainc and betainc (Numerical Recipes' series and
+continued fractions, ~1e-12), an accurate normal cdf through gammainc (the older `erf` in signal.ts is a 1e-7
+approximation: left as it is), inverses by bisection to the last bit; t, χ², F, beta, gamma, binomial, Poisson; the
+tests: ttest (one-sample, paired), ttest2 (pooled or Welch), ranksum (exact by counting subsets when ≤ 20 and no
+ties, else normal with tie and continuity corrections), signrank (exact ≤ 15), anova1, anova2 (reps), kruskalwallis
+(tie correction), chi2gof (normal, merging bins under 5 expected), normfit, fitdist (Normal, Exponential, Poisson,
+Lognormal, Gamma by Newton on the shape), bootstrap and bootci (BCa by default, 'per'). `stats-lab.ts` gives them
+MATLAB's names, argument orders and outputs (tables as cell arrays, stats structs; options Alpha, Tail, Vartype,
+NBins, Type), plus the pdfs and tiedrank; random numbers from the engine's `random` (rng repeats a bootstrap).
+Loaded by both workers and help.test.ts; help lines for each. Tests: against printed tables (tinv(0.975,10),
+chi2inv, finv, norminv to 8–10 digits), exact rank tests, worked ANOVA and Kruskal–Wallis. Left out: anovan
+(unbalanced several-factor ANOVA), multcompare, other fitdist families (Weibull, beta…).
+
+## M557: Hyperion: data files (the Octave packages' second wave, 26 Nov)
+
+The second GNU Octave wave (pkg-json, pkg-yaml, netcdf, ncarray, cfitsio, serialize; our own code from their
+documented behaviour). `src/lib/lab/data-lab.ts` (both workers, help.test.ts): **jsondecode / jsonencode**
+(MATLAB's mapping: objects → structs with safe field names, number arrays → column vectors, equal-length rows → a
+matrix, mixed → cells, null → [], NaN → null, 'PrettyPrint'); **yamldecode / yamlencode / yamlread / yamlwrite**
+(block maps and lists, "- key:" items, flow [a, b] and {k: v}, | and > blocks, comments, true/yes/on);
+**readstruct / writestruct** for XML (via `xml-lite`: attributes → fieldAttribute, repeated elements → cells);
+**ncinfo / ncread / ncreadatt** (NetCDF classic CDF-1/2/5 parsed from the spec, record variables, scale_factor,
+add_offset and _FillValue applied, dimensions reversed as MATLAB's ncread gives them; NetCDF-4 read through
+`hdf5.ts`); **fitsinfo / fitsread** (the primary HDU: 8/16/32/64-bit and float images, BSCALE/BZERO, rows of NAXIS1);
+**zip / unzip / gzip / gunzip** (fflate), **base64encode / base64decode**, **hash** (MD5, SHA-1, SHA-256 written out:
+the engine can't wait for crypto.subtle), **getByteStreamFromArray / getArrayFromByteStream** (through the .mat
+writer and reader). `files.ts` gained `fileBytes`, `writeFileBytes`, `hasFile`. Tests: published hash vectors, a
+NetCDF and a FITS file built byte by byte, JSON/YAML/XML round trips. Left out: MIDI files, FITS extensions (tables),
+NetCDF writing (nccreate/ncwrite), XML as a DOM (xmlread).
+
+## M558: Hyperion: special maths (the Octave packages' third wave, 26 Nov)
+
+The third GNU Octave wave (special maths; pkg-funm-schur-parlett, chebfun's basics, octave-miscellaneous; our own
+code). `src/lib/lab/special-lab.ts` (both workers, help.test.ts): **expm** (scaling and squaring, [6/6] Padé),
+**sqrtm** (Denman–Beavers), **logm** (square roots to near I, the log series, ×2^k), **funm** (V·f(D)·V⁻¹ for real
+eigenvalues; a plain error otherwise: the Schur–Parlett general case is left out); **besselj / bessely / besseli /
+besselk** of any real order from their integral representations, integrated by calc-lab's adaptive Gauss–Legendre
+(`integrate`, tol 1e-13; besseli scaled by e^−x inside; the infinite tails cut where e^(νt − x·g(t)) < e^−45),
+**airy** (Ai, Bi from order-1/3 Bessels); **lambertw** (branches 0 and −1, Halley), **erfinv / erfcinv** (through
+stats.ts' norminv), **ellipke** (AGM), **expint** (E₁: series below 1, continued fraction above), **legendre**
+(associated, Condon–Shortley sign like MATLAB); **perms** (MATLAB's reverse order), **rat / rats** (continued
+fractions); **chebcoeffs / chebval / chebroots** (Chebyshev points of the first kind, Clenshaw, the colleague
+matrix's eigenvalues polished by Newton on the series: `eig` alone gave 1e-4). gammainc / betainc came in M556; vpa
+was already there (sym-lab.ts). Tests: tabulated values to 10–14 digits, the J_{5/2} closed form, matrix identities.
+
+## M559: Hyperion: text, dates and maps (the Octave packages' fourth wave, 26 Nov)
+
+The Octave packages' fourth wave (strings, miscellaneous, financial dates, containers), written fresh in `src/lib/lab/text-lab.ts` (no Octave code).
+
+- **Text:** `strjust`, `validatestring`, `dec2base` / `base2dec`, `typecast`, `num2hex` / `hex2num`, `textscan`, `strread`.
+- **Dates:** `datenum` (serial days, day 1 = 1 Jan year 0, as MATLAB), `weekday`, `eomday`, `calendar`, `addtodate`.
+- **Maps:** `containers.Map(keys, values)` and `dictionary`; `m(key)` reads, `m(key) = v` writes (a map is a handle: every copy sees the change), `keys`, `values`, `isKey`, `remove`, `numEntries`, `m.Count`.
+- **How maps hook in:** a `Struct` with `keyed` set; `interp.ts` has `keyHooks` (get/set) checked before ordinary struct indexing, like `indexHooks`. `containers` returns a struct whose `Map` field is the builtin named `containers.Map`, so `containers.Map(...)` works without new syntax. Help needs a line for every builtin key, that one included.
+- Tests: `text.test.ts`.
+
+## M560: Hyperion: the web, MQTT and game controllers (the Octave packages' fifth wave, 26 Nov)
+
+The Octave packages' fifth wave (web, networks and devices), written fresh in `src/lib/lab/net-lab.ts` (no Octave code).
+
+- **Web:** `webread`, `webwrite`, `websave`, `weboptions` (Timeout, ContentType, MediaType, RequestMethod, HeaderFields, Username / Password, KeyName / KeyValue), `urlencode`, `urldecode`. JSON comes back as structs, text as char, pictures as uint8 images, anything else as bytes.
+- **MQTT:** `mqttclient` (secure WebSockets only: a browser can't open other sockets), `subscribe`, `unsubscribe`, `write(mq, topic, text)`, `read(mq)` (waits for messages), `peek(mq)`, `close(mq)`. MQTT 3.1.1 at QoS 0, written in the frame.
+- **Game controllers:** `vrjoystick`, `read(joy)` → axes, buttons, the D-pad as a hat in degrees; `axis(joy, n)`, `button(joy, n)`, `caps(joy)`. `read`, `write`, `axis` and `close` are wrapped: they take these objects first, anything else as before.
+- **Safety (the rule for code that builds on it):** this site's addresses are fetched by the page without cookies. Other sites go only through the **sealed web link** `public/sandbox/net.html` (framed `sandbox="allow-scripts"`, an opaque origin with nothing of the site's, requests without credentials; its own policy `NET_CSP` in `security-headers.ts` and `public/_headers`: `connect-src https: wss:`, nothing loaded). The page asks the person once per site per visit (`net-link.ts`, `mayReach`) before anything is sent, so a script shared by link can't send someone's files or variables away without their yes. The site's own policy is unchanged. `next.config.ts` now names `/sandbox/run` and `/sandbox/net` separately; `sandbox-headers.test.ts` checks both. Never give either frame allow-same-origin.
+- Sites must allow other sites' pages to read them (CORS), as with any browser app.
+- Checked in a real browser: a fetch to a public API through the frame, and MQTT connect, subscribe, publish and receive against a local broker (this container reaches only port 443, so the public brokers weren't tried).
+- Left out: `tcpclient`, `udpport` (no raw sockets in a browser; they'd need the computer app's runner and a new installer), SQLite and MySQL (a database library needs the owner's yes), Raspberry Pi pins.
+- Tests: `net.test.ts`.
+
+## M561: Hyperion: Octave-style tests, doctests, Jupyter notebooks, QR codes and pixel info (the Octave packages' last wave, 26 Nov)
+
+The Octave packages' sixth and last wave, written fresh (no Octave code). With it the six GNU Octave groups planned on 26 Nov are done (M556–M561).
+
+- **Tests inside a function's file** (`src/lib/lab/octtest-lab.ts`): `test('name')` runs the `%!` blocks at the end of `name.m` in Hyperion's files, as Octave writes them: `%!assert (…)`, `%!test`, `%!error <pattern> code`, `%!fail`, `%!shared` (its set-up runs before each test), `%!function … %!endfunction`, `%!xtest` (a known failure). Prints the usual report and "PASSES n out of m tests"; the window's results panel shows it (`testReports`). `demo('name', k)` runs the `%!demo` blocks. `fail(code, pattern)` too. `one` and `files` are now exported from `verify-lab.ts` for this.
+- **doctest('name')**: the help text's examples, `% >> code` and then the lines it should print (spaces don't matter; `...` stands for anything), run in one workspace in order.
+- **Jupyter** (`src/lib/lab/ipynb.ts`): Open in the toolstrip takes `.ipynb` files (up to 20 MB): Markdown cells become `%` text, a heading the part's title, each code cell its own `%%` part, so the notebook view runs them cell by cell. The notebook view's **Jupyter notebook** button saves the script as `.ipynb` (nbformat 4.4, Octave kernel) with each part's printed output, figures (SVG) and errors.
+- **qrcode(text)**: a logical matrix, true where dark (`imshow(~q)`), from the site's own encoder `src/lib/qr.ts`.
+- **impixel(I, cols, rows)** and **impixelinfo**: the figure gets `pixelinfo` (`data-pixelinfo` on its SVG, `data-px="W H flipped"` on each picture); the page reads the pixel under the pointer (`src/components/lab/pixel-info.ts`) and shows "Pixel info: (X, Y) = (c, r) value" under the figure. It shows the colour drawn (for uint8 RGB or grey pictures, their own values). The PNG is decoded through an `<img>`, not `fetch`: the site's policy blocks `data:` connections.
+- Not done: Octave's command form `test sq` (write `test('sq')`; adding the names to the command words would change how `test = 3` reads).
+- Tests: `octtest.test.ts`. Browser check: `scripts/checks/hyperion-octave6-ui.mjs` (light and dark, axe clean, no page errors).

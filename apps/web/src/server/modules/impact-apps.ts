@@ -24,6 +24,7 @@ import { checkInSafe, sharedTrip, shareTrip, tripShare, unshareTrip } from '../t
 import { addAlbumPhotos, addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
 import { addTripExpense, addTripPacking, addTripTodos, removeTripExpense, removeTripPacking, removeTripTodo, tripExpenses, tripPacking, tripTodos, updateTripPacking, updateTripTodo } from '../travel-trip-extras';
 import { readBooking } from '../travel-booking';
+import { askPlace, setupSim } from '../ghidra-apps';
 import { addTravelItem, addTravelStop, planTravelStop, createTravelTrip, travelTripStays, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, copyTravelTrip, tripChat, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
@@ -150,6 +151,9 @@ export default function impactAppsModule(router: Router) {
   travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
   travel.post<{ id: string }>('trips/:id/plan', ({ user, params, body }) => planTravelStop(user, params.id, body ?? {}));
   travel.post('booking/read', ({ user, body }) => readBooking(user, body ?? {}));
+  // M549b: Ghidra's guide answers about a place; Hyperion's sim set-up from a description.
+  travel.post('ask', { status: 200 }, ({ user, body }) => askPlace(user, body ?? {}));
+  router.controller('hyperion').post('setup', { status: 200 }, ({ user, body }) => setupSim(user, body ?? {}));
   // M215: a trip's shared costs and packing list.
   travel.get<{ id: string }>('trips/:id/expenses', ({ user, params }) => tripExpenses(user, params.id));
   travel.post<{ id: string }>('trips/:id/expenses', ({ user, params, body }) => addTripExpense(user, params.id, body ?? {}));

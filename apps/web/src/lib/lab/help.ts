@@ -1,6 +1,7 @@
 // Hyperion's help (M391): a line for every function, grouped as a person looks for them. `help name` and `doc
 // name` print it, the editor shows it beside suggestions and on hover, the function browser lists it. Written for
 // this Lab (what our own functions do), in plain words.
+import { SCIENCES_HELP } from './help-sciences';
 
 import { MACHINES_HELP } from './help-machines';
 
@@ -21,7 +22,8 @@ minus | minus(a, b) | a − b.
 times | times(a, b) | a .* b, element by element.
 rdivide | rdivide(a, b) | a ./ b, element by element.
 mtimes | mtimes(A, B) | Matrix product A * B.
-mldivide | mldivide(A, b) | Solves A x = b (A \\ b).
+mldivide | mldivide(A, b) | Solves A x = b (A \\ b); for fi values mldivide(A, b, T) gives the answer in type T.
+mrdivide | mrdivide(b, A) | Solves x A = b (b / A); for fi values mrdivide(b, A, T) gives the answer in type T.
 linsolve | linsolve(A, b) | Solves A x = b, as A \\ b.
 round | round(x) | Nearest whole number (halves away from zero).
 floor | floor(x) | Round down.
@@ -165,6 +167,7 @@ isnan | isnan(x) | True for NaN.
 # Linear algebra
 inv | inv(A) | The inverse of a square matrix (A \\ b is better for solving).
 pinv | pinv(A) | The pseudo-inverse (least squares).
+lsqminnorm | x = lsqminnorm(A, B, tol, 'warn') | The smallest least-squares answer (pinv(A) * B); tol: singular values at or below it count as zero; 'warn' says when A's rank is short. For fi values exact on the stored integers, rounded once; lsqminnorm(A, B, tol, T) keeps a column only when its part the earlier columns don't explain is longer than tol (QR's R(k,k)), worked exactly. Both kinds become C (codegen; 'warn' calls HYPERION_WARN, stderr unless you define your own).
 det | det(A) | The determinant.
 rank | rank(A) | How many independent rows.
 trace | trace(A) | The sum of the diagonal.
@@ -255,6 +258,128 @@ spline | spline(x, y, xq) | Cubic spline through the points.
 trapz | trapz(x, y) | Area under the points (trapezoids).
 cumtrapz | cumtrapz(x, y) | Running area.
 integral | integral(f, a, b) | Integral of a function from a to b.
+integral2 | integral2(f, xmin, xmax, ymin, ymax) | A double integral of f(x, y); ymin and ymax may be functions of x, for a region that isn't a box: integral2(@(x, y) 1, 0, 1, 0, @(x) x).
+integral3 | integral3(f, xmin, xmax, ymin, ymax, zmin, zmax) | A triple integral of f(x, y, z); the y limits may be functions of x, the z limits functions of x and y.
+pdepe | sol = pdepe(m, @pdefun, @icfun, @bcfun, xmesh, tspan) | Partial differential equations in one space dimension: c·∂u/∂t = x⁻ᵐ∂/∂x(xᵐ·f) + s, with [c, f, s] = pdefun(x, t, u, dudx), u0 = icfun(x), [pl, ql, pr, qr] = bcfun(xl, ul, xr, ur, t) (each end p + q·f = 0); m = 0 slab, 1 cylinder, 2 sphere. sol(i, j, k): time i, point j, component k.
+gammaln | gammaln(x) | The logarithm of the gamma function (no overflow for big x).
+gammainc | gammainc(x, a) | The regularised lower incomplete gamma function P(a, x).
+betainc | betainc(x, a, b) | The regularised incomplete beta function.
+tcdf | tcdf(x, v) | Student's t distribution's cumulative probability with v degrees of freedom; tinv(p, v) inverts it, tpdf(x, v) is its density.
+tinv | tinv(p, v) | The t value with probability p below it (critical values: tinv(0.975, 10)).
+tpdf | tpdf(x, v) | Student's t density.
+chi2cdf | chi2cdf(x, v) | The χ² distribution's cumulative probability; chi2inv(p, v), chi2pdf(x, v).
+chi2inv | chi2inv(p, v) | The χ² value with probability p below it.
+chi2pdf | chi2pdf(x, v) | The χ² density.
+fcdf | fcdf(x, v1, v2) | The F distribution's cumulative probability; finv(p, v1, v2), fpdf(x, v1, v2).
+finv | finv(p, v1, v2) | The F value with probability p below it.
+fpdf | fpdf(x, v1, v2) | The F density.
+betacdf | betacdf(x, a, b) | The beta distribution's cumulative probability; betapdf for its density.
+betapdf | betapdf(x, a, b) | The beta density.
+gamcdf | gamcdf(x, a, b) | The gamma distribution's cumulative probability (shape a, scale b); gampdf for its density.
+gampdf | gampdf(x, a, b) | The gamma density.
+binocdf | binocdf(x, n, p) | The binomial distribution's cumulative probability; binopdf(x, n, p) the chance of exactly x.
+binopdf | binopdf(x, n, p) | The chance of exactly x successes in n tries.
+poisscdf | poisscdf(x, lambda) | The Poisson distribution's cumulative probability; poisspdf(x, lambda) the chance of exactly x.
+poisspdf | poisspdf(x, lambda) | The chance of exactly x events.
+tiedrank | [r, tieadj] = tiedrank(x) | Ranks, ties given their average rank.
+ttest | [h, p, ci, stats] = ttest(x, m) or ttest(x, y) | One-sample t-test of mean m (or paired, x against y). Options 'Alpha', 'Tail' ('both', 'right', 'left'). h = 1 rejects at that level.
+ttest2 | [h, p, ci, stats] = ttest2(x, y, 'Vartype', 'unequal') | Two-sample t-test (pooled, or Welch's with 'unequal').
+ranksum | [p, h, stats] = ranksum(x, y) | Wilcoxon rank-sum (Mann–Whitney) test: exact for small samples without ties.
+signrank | [p, h, stats] = signrank(x, m) or signrank(x, y) | Wilcoxon signed-rank test of median m (or of paired differences): exact up to 15.
+anova1 | [p, tbl, stats] = anova1(y, group) | One-way analysis of variance: a matrix's columns, or values and their group labels.
+anova2 | [p, tbl] = anova2(y, reps) | Two-way analysis of variance (columns one factor, blocks of reps rows the other; interaction when reps > 1).
+kruskalwallis | [p, tbl, stats] = kruskalwallis(y, group) | The rank version of one-way ANOVA.
+chi2gof | [h, p, stats] = chi2gof(x, 'NBins', 10) | χ² goodness of fit to a normal distribution.
+normfit | [mu, sigma, muci, sigmaci] = normfit(x) | The normal distribution's mean and spread with confidence intervals.
+fitdist | pd = fitdist(x, 'Normal') | Fits a distribution by maximum likelihood: Normal, Exponential, Poisson, Lognormal, Gamma.
+bootstrp | b = bootstrp(nboot, @fun, data) | The statistic of nboot resamples (with replacement), for its spread.
+bootci | ci = bootci(nboot, @fun, data) or bootci(nboot, {@fun, data}, 'Type', 'per') | A bootstrap confidence interval: bias-corrected and accelerated (BCa) or percentile.
+jsondecode | s = jsondecode(text) | Reads JSON: objects become structs, lists of numbers vectors (equal rows a matrix), mixed lists cells, null [].
+jsonencode | text = jsonencode(value, 'PrettyPrint', true) | Writes a value as JSON (a matrix as rows, NaN as null).
+yamldecode | s = yamldecode(text) | Reads YAML (maps, lists, numbers, text, true/false, flow [a, b]).
+yamlencode | text = yamlencode(value) | Writes a value as YAML.
+yamlread | s = yamlread('settings.yaml') | Reads a YAML file.
+yamlwrite | yamlwrite('settings.yaml', s) | Writes a value to a YAML file.
+readstruct | s = readstruct('part.xml') | Reads an XML file as a struct (attributes as fields ending in Attribute, repeated elements as cells).
+writestruct | writestruct(s, 'part.xml') | Writes a struct as an XML file.
+ncinfo | info = ncinfo('data.nc') | A NetCDF file's dimensions, variables and attributes (classic and NetCDF-4).
+ncread | v = ncread('data.nc', 'temp') | A NetCDF variable, its scale and offset applied and fill values as NaN.
+ncreadatt | a = ncreadatt('data.nc', 'temp', 'units') | One NetCDF attribute ('/' for the file's own).
+fitsinfo | info = fitsinfo('sky.fits') | A FITS file's image size and header keywords.
+fitsread | im = fitsread('sky.fits') | A FITS image (BSCALE and BZERO applied).
+zip | zip('archive', {'a.csv', 'b.txt'}) | Packs files into a .zip.
+unzip | names = unzip('archive.zip') | Unpacks a .zip into Files.
+gzip | gzip('data.csv') | Compresses a file to .gz.
+gunzip | gunzip('data.csv.gz') | Uncompresses a .gz file.
+base64encode | t = base64encode(text or bytes) | Base64 text of some text or uint8 bytes.
+base64decode | b = base64decode(t) | The uint8 bytes of base64 text (char(b) for text).
+hash | h = hash('sha256', text) | A fingerprint of text or bytes: 'md5', 'sha1' or 'sha256', as hex.
+getByteStreamFromArray | b = getByteStreamFromArray(value) | Any value as uint8 bytes (to save or send); getArrayFromByteStream turns them back.
+getArrayFromByteStream | v = getArrayFromByteStream(b) | The value saved by getByteStreamFromArray.
+expm | E = expm(A) | The matrix exponential e^A (scaling and squaring).
+sqrtm | S = sqrtm(A) | The principal square root of a matrix (S*S = A).
+logm | L = logm(A) | The principal logarithm of a matrix (expm(L) = A).
+funm | F = funm(A, @fun) | Any function of a matrix with real eigenvalues, through its eigenvectors.
+besselj | besselj(nu, x) | The Bessel function of the first kind, any real order.
+bessely | bessely(nu, x) | The Bessel function of the second kind, x > 0.
+besseli | besseli(nu, x) | The modified Bessel function of the first kind.
+besselk | besselk(nu, x) | The modified Bessel function of the second kind, x > 0.
+airy | airy(x) or airy(k, x) | The Airy function Ai (k = 0) or Bi (k = 2).
+lambertw | w = lambertw(x) or lambertw(-1, x) | Lambert's W: w·e^w = x (the other branch with −1).
+erfinv | erfinv(y) | The inverse error function.
+erfcinv | erfcinv(y) | The inverse complementary error function.
+ellipke | [K, E] = ellipke(m) | The complete elliptic integrals of the first and second kind (parameter m).
+expint | expint(x) | The exponential integral E₁(x).
+legendre | P = legendre(n, x) | The associated Legendre functions P_n^m(x), m = 0…n, a row for each m.
+perms | P = perms(v) | Every order of v's items, one per row.
+rat | [n, d] = rat(x, tol) | The fraction n/d nearest x (continued fractions).
+rats | s = rats(x) | x written as fractions.
+chebcoeffs | c = chebcoeffs(@f, n, [a b]) | The Chebyshev series of f on [a, b] to degree n (chebfun's idea: a function as a few numbers).
+chebval | y = chebval(c, x, [a b]) | A Chebyshev series' values.
+chebroots | r = chebroots(c, [a b]) | The real roots of a Chebyshev series in its interval.
+strjust | strjust(s, 'right') | Text moved right, left or to the 'center' within its width.
+validatestring | v = validatestring('app', {'apple', 'banana'}) | The option a word starts (any case), or an error naming the choices.
+dec2base | dec2base(d, base, len) | A whole number in any base from 2 to 36, as text.
+base2dec | base2dec('FF', 16) | Text in a base back to a number.
+typecast | typecast(x, 'uint32') | The same bytes read as another number type.
+num2hex | num2hex(x) | A double's 16 hex digits.
+hex2num | hex2num('400921fb54442d18') | 16 hex digits back to the double.
+textscan | C = textscan(text, '%s %f', 'Delimiter', ',') | Reads delimited text into a cell: one column per field (%*… skips).
+strread | [a, b] = strread(text, '%s %f') | Like textscan, each field its own output.
+datenum | n = datenum(2026, 11, 26) or datenum('2026-11-26 14:30') | A date as MATLAB's day number (1 = 1 January, year 0).
+weekday | [n, name] = weekday(d) | The day of the week (1 = Sunday) and its short name.
+eomday | eomday(y, m) | The last day of a month.
+calendar | C = calendar(y, m) | A month as 6 weeks × 7 days (Sunday first).
+addtodate | addtodate(d, n, 'month') | A date moved by years, months, weeks, days, hours, minutes or seconds (month ends kept).
+containers | m = containers.Map({'a', 'b'}, {1, 2}) | A map from keys to values (shared by its copies): m('a'), m('c') = 3, keys(m), values(m), isKey(m, k), remove(m, k), m.Count.
+test | test('name') or [ok, n] = test('name') | Runs the tests at the end of name.m in your files, written as Octave writes them: %!assert (f(2), 4), %!test blocks, %!error <pattern> code, %!fail, %!shared, %!function, %!xtest.
+fail | fail('code', 'pattern') | Passes when the code stops with an error (matching the pattern, when given); for tests.
+__octfail__ | __octfail__('code', 'pattern') | The function behind %!fail in test (use fail).
+demo | demo('name') or demo('name', k) | Runs the %!demo blocks in name.m, showing each one's code.
+doctest | doctest('name') or [passed, n] = doctest('name') | Checks the examples in name.m's help text: a line % >> code, then the lines it should print (... stands for anything).
+qrcode | q = qrcode(text) or qrcode(text, 'Margin', 2) | A QR code as a logical matrix, true where it is dark: imshow(~q) shows it.
+impixel | v = impixel(I, columns, rows) | The values of a picture's pixels, one row each with three columns (grey pictures repeated).
+impixelinfo | impixelinfo | Shows the column, row and value of the pixel under the pointer, under the figure.
+weboptions | o = weboptions('Timeout', 30, 'ContentType', 'json', 'HeaderFields', {'Accept' 'text/plain'}) | Options for webread, webwrite and websave: Timeout (s), ContentType (auto, text, json, binary, image), MediaType, RequestMethod, HeaderFields, Username and Password, KeyName and KeyValue.
+webread | data = webread(url, name, value, …, options) | Reads a web address: JSON comes back as structs, text as char, pictures as images, anything else as uint8 bytes. Hyperion asks you once per site before reaching it.
+webwrite | answer = webwrite(url, data, options) or webwrite(url, name, value, …) | Sends data to a web address (a struct as JSON, name–value pairs as a form, text or bytes as they are) and reads the answer.
+websave | websave(filename, url, name, value, …) | Saves what a web address gives into your Hyperion files.
+urlencode | s = urlencode(text) | Text made safe for a web address (spaces as +).
+urldecode | s = urldecode(text) | Undoes urlencode.
+mqttclient | mq = mqttclient('wss://broker.example.com:8884/mqtt', 'ClientID', id, 'Username', u, 'Password', p) | Connects to an MQTT broker over secure WebSockets (the browser can't open other sockets).
+subscribe | subscribe(mq, topic) | Receives the messages on an MQTT topic (+ and # as wildcards).
+unsubscribe | unsubscribe(mq, topic) | Stops receiving an MQTT topic.
+peek | msgs = peek(mq) | The MQTT messages that have arrived (Time, Topic, Data), without waiting.
+vrjoystick | joy = vrjoystick(1) | A game controller or joystick (press one of its buttons first, so the browser shows it). [axes, buttons, pov] = read(joy); axis(joy, n); button(joy, n); caps(joy). MQTT's read(mq) waits for the next messages and write(mq, topic, text) sends one.
+caps | c = caps(joy) | How many axes, buttons and hats a game controller has.
+button | b = button(joy, n) | Whether a game controller's buttons are pressed.
+containers.Map | m = containers.Map(keys, values) or containers.Map('KeyType', 'double', 'ValueType', 'any') | Makes a map; see containers.
+dictionary | d = dictionary(keys, values) | A map that copies like a value: d(key), d(key) = v, keys, values, isKey, numEntries.
+keys | k = keys(m) | A map's keys, sorted.
+values | v = values(m) or values(m, {k1, k2}) | A map's values (in keys' order), or those of some keys.
+isKey | tf = isKey(m, k) | Whether a map has a key (or each of a cell of keys).
+remove | m = remove(m, k) | Takes a key (or several) out of a map.
+numEntries | n = numEntries(d) | How many keys a map has.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
 fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.
@@ -275,10 +400,7 @@ nextpow2 | nextpow2(n) | The next power of 2's exponent.
 filter | filter(b, a, x) | Runs x through a digital filter.
 conv2 | conv2(A, K, 'same') | 2D convolution.
 xcorr | [r, lags] = xcorr(x, y) | Cross-correlation.
-freqz | [h, w] = freqz(b, a, n) | A filter's frequency response.
 findpeaks | [pks, locs, w, p] = findpeaks(y, x, 'MinPeakHeight', h, 'MinPeakDistance', d, 'MinPeakProminence', p, 'NPeaks', n, 'SortStr', 'descend') | The local tops of a signal: their heights, places and prominences (how far each stands above its surroundings). Without outputs, drawn.
-butter | [b, a] = butter(n, Wn, 'low') | A Butterworth filter of order n (as flat as possible in the pass band); Wn is the cut-off as a fraction of the Nyquist frequency; 'high', 'bandpass' or 'stop' ([w1 w2]).
-filtfilt | y = filtfilt(b, a, x) | Filters forwards and backwards: no delay (zero phase), the edges started smoothly.
 lowpass | y = lowpass(x, fpass, fs) | Keeps what is slower than fpass (Hz): a Butterworth run both ways. Without outputs, drawn.
 highpass | y = highpass(x, fpass, fs) | Keeps what is faster than fpass (Hz). Without outputs, drawn.
 bandpass | y = bandpass(x, [f1 f2], fs) | Keeps the band between f1 and f2 (Hz). Without outputs, drawn.
@@ -287,6 +409,156 @@ hanning | hanning(n) | Hann window (older name).
 hamming | hamming(n) | Hamming window.
 blackman | blackman(n) | Blackman window.
 rectwin | rectwin(n) | Rectangular window.
+freqz | [h, w] = freqz(b, a, n, fs) | A filter's frequency response at n points (512); drawn (magnitude in dB and phase) without outputs. Takes a designfilt filter too: freqz(d).
+butter | [b, a] = butter(n, Wn, 'high') | Butterworth filter of order n: flattest passband; Wn the −3 dB edge (1 = half the sample rate), two edges for a band ('bandpass', 'stop'); [z, p, k] with three outputs; 's' designs an analog one (Wn in rad/s).
+cheby1 | [b, a] = cheby1(n, Rp, Wp, type) | Chebyshev type I: ripple of Rp dB in the passband for a sharper edge at Wp.
+cheby2 | [b, a] = cheby2(n, Rs, Ws, type) | Chebyshev type II: flat passband, at least Rs dB down from the stopband edge Ws.
+ellip | [b, a] = ellip(n, Rp, Rs, Wp, type) | Elliptic (Cauer) filter: Rp dB ripple in the passband, Rs dB down in the stopband; the sharpest edge for its order.
+buttord | [n, Wn] = buttord(Wp, Ws, Rp, Rs) | The smallest Butterworth order that keeps the passband within Rp dB and the stopband Rs dB down.
+cheb1ord | [n, Wp] = cheb1ord(Wp, Ws, Rp, Rs) | The smallest Chebyshev I order for the specification.
+cheb2ord | [n, Ws] = cheb2ord(Wp, Ws, Rp, Rs) | The smallest Chebyshev II order for the specification.
+ellipord | [n, Wp] = ellipord(Wp, Ws, Rp, Rs) | The smallest elliptic order for the specification.
+fir1 | b = fir1(n, Wn, 'high', win) | Windowed-sinc FIR filter of order n (Hamming window unless given); high-pass and band-stop need an even n.
+fir2 | b = fir2(n, f, m) | FIR filter by frequency sampling: gains m at frequencies f (0 … 1, a repeated f makes a jump).
+firpm | [b, err] = firpm(n, f, a, w) | Equiripple FIR (Parks–McClellan): bands as edge pairs f, gains a at each edge, a weight per band; err is the ripple.
+grpdelay | [gd, w] = grpdelay(b, a, n, fs) | Group delay in samples; drawn without outputs.
+filtfilt | y = filtfilt(b, a, x) | Filters forwards and backwards: no phase shift, the magnitude response squared. Takes a designfilt filter too.
+designfilt | d = designfilt('lowpassiir', 'FilterOrder', 8, 'HalfPowerFrequency', 0.2) | Designs a filter from a description ('lowpassfir', 'bandstopiir'…; 'PassbandFrequency', 'StopbandFrequency', 'PassbandRipple', 'StopbandAttenuation', 'CutoffFrequency', 'DesignMethod', 'SampleRate'); a struct that filter, filtfilt, freqz and grpdelay take.
+pwelch | [pxx, f] = pwelch(x, window, noverlap, nfft, fs) | Welch's power spectral density (averaged, windowed periodograms); drawn without outputs.
+spectrogram | [s, f, t, p] = spectrogram(x, window, noverlap, nfft, fs) | The short-time Fourier transform: how the spectrum changes over time; drawn as a picture without outputs.
+
+# Test and measurement
+audioread | [y, fs] = audioread('take.wav', [first last]) | Reads a WAV file from Hyperion's files: one column per channel, −1 … 1, and its sample rate (Signals → Audio records them).
+audiowrite | audiowrite('out.wav', y, fs, 'BitsPerSample', 24) | Writes a WAV file (8, 16, 24 or 32-bit; 64 for floats); one column per channel.
+audioinfo | info = audioinfo('take.wav') | A WAV file's sample rate, channels, length and bits.
+sound | sound(y, fs) | Plays samples (−1 … 1) through the speakers.
+soundsc | soundsc(y, fs) | Plays samples scaled so the loudest is full volume.
+thd | r = thd(x, fs, n) | Total harmonic distortion in dB against the fundamental (harmonics 2 … n, 6 unless given).
+
+# Hardware: serial devices and Arduino
+serialportlist | serialportlist | The device connected in Signals → Devices (a real port or the simulated Arduino), as a cell of names.
+serialport | s = serialport(port, baudrate, 'Timeout', 10) | The serial device connected in Signals → Devices (connect it there first: browsers let only the page open ports). Timeout: how many seconds readline waits for a line.
+readline | line = readline(s) | The device's next line: waits for it (up to the port's Timeout) in Chrome, Edge, Firefox and the computer app, inside loops and functions too; empty if none came. In Safari, only lines that arrived before the run.
+writeline | writeline(s, 'LED ON') | Sends text and a new line to the device.
+write | write(s, data, 'uint8') | Sends bytes (or 'string' text) to the serial device; write(c, bytes) to a Bluetooth characteristic, write(u, bytes) to a USB device.
+flush | flush(s) | Forgets the lines not read yet.
+arduino | a = arduino() | The Arduino connected in Signals → Devices in Firmata mode (StandardFirmata uploaded), with its pins.
+configurePin | configurePin(a, 'D13', 'DigitalOutput') | Sets a pin's mode: 'DigitalOutput', 'DigitalInput', 'AnalogInput', 'PWM', 'Pullup' or 'Servo'; without a mode, says it.
+writeDigitalPin | writeDigitalPin(a, 'D13', 1) | Switches a digital pin high (1) or low (0).
+readDigitalPin | v = readDigitalPin(a, 'D2') | A digital pin's level, 0 or 1 (its last report before the script started).
+readVoltage | v = readVoltage(a, 'A0') | An analog pin's voltage, 0 to 5 V (10 bits).
+writePWMDutyCycle | writePWMDutyCycle(a, 'D9', 0.5) | PWM on a pin: the share of time it is on, 0 to 1.
+writePWMVoltage | writePWMVoltage(a, 'D9', 2.5) | PWM on a pin as an average voltage, 0 to 5 V.
+blelist | names = blelist | The Bluetooth device connected in Signals → Bluetooth & USB (an empty list when none).
+ble | b = ble | The connected Bluetooth Low Energy device: b.Characteristics lists every service and characteristic with what it can do (read, write, notify). Chrome, Edge or the computer app.
+characteristic | c = characteristic(b, "180D", "2A37") | One of the device's characteristics, by its service and characteristic UUID (full, 16-bit, or a name such as "heart_rate").
+read | data = read(c) | A characteristic's value as bytes: the next notification (read(c, 'latest') for the last one) or a fresh read; from a USB device, read(u, n) takes up to n bytes. The script waits for it.
+usbdevlist | names = usbdevlist | The USB device connected in Signals → Bluetooth & USB.
+usbdev | u = usbdev | The connected USB device (its name, VendorID, ProductID): write(u, bytes) and read(u, n) move data through its endpoints.
+iotread | [data, t, names] = iotread('Greenhouse', 'NumPoints', 100, 'Fields', [1 2]) | A Signals → IoT channel's newest readings, read while the script runs (by its name or id): one row per reading, NaN where a field was missing; t in seconds since 1970. Needs Chrome, Edge, Firefox or the computer app.
+iotwrite | r = iotwrite(key, [21.5 40]) | Sends a reading to a channel with its write key, as a device would (one a second at most); r.ok says whether it was taken. Its alerts are checked.
+
+# Unit tests
+runtests | results = runtests('t_math.m') | Runs tests: a test script's %% sections (each after the set-up code, in its own workspace), a test class (classdef Name < matlab.unittest.TestCase: its Test methods, set-up and teardown methods, TestParameter properties), or with no file the local functions named test… (with setupOnce, setup, teardown, teardownOnce). Prints a report and gives a table (Name, Passed, Failed, Duration, Details). The Test button runs the open script.
+addTeardown | tc.addTeardown(@() delete('out.csv')) | In a class-based test: a function to call after this test, even when it fails (the last added runs first).
+fatalAssertEqual | tc.fatalAssertEqual(…) | As assertEqual: stops the test at a failure.
+assumeEqual | tc.assumeEqual(…) | As verifyEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertNotEqual | tc.fatalAssertNotEqual(…) | As assertNotEqual: stops the test at a failure.
+assumeNotEqual | tc.assumeNotEqual(…) | As verifyNotEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertTrue | tc.fatalAssertTrue(…) | As assertTrue: stops the test at a failure.
+assumeTrue | tc.assumeTrue(…) | As verifyTrue, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertFalse | tc.fatalAssertFalse(…) | As assertFalse: stops the test at a failure.
+assumeFalse | tc.assumeFalse(…) | As verifyFalse, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertEmpty | tc.fatalAssertEmpty(…) | As assertEmpty: stops the test at a failure.
+assumeEmpty | tc.assumeEmpty(…) | As verifyEmpty, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertNotEmpty | tc.fatalAssertNotEmpty(…) | As assertNotEmpty: stops the test at a failure.
+assumeNotEmpty | tc.assumeNotEmpty(…) | As verifyNotEmpty, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertSize | tc.fatalAssertSize(…) | As assertSize: stops the test at a failure.
+assumeSize | tc.assumeSize(…) | As verifySize, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertClass | tc.fatalAssertClass(…) | As assertClass: stops the test at a failure.
+assumeClass | tc.assumeClass(…) | As verifyClass, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertLessThan | tc.fatalAssertLessThan(…) | As assertLessThan: stops the test at a failure.
+assumeLessThan | tc.assumeLessThan(…) | As verifyLessThan, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertLessThanOrEqual | tc.fatalAssertLessThanOrEqual(…) | As assertLessThanOrEqual: stops the test at a failure.
+assumeLessThanOrEqual | tc.assumeLessThanOrEqual(…) | As verifyLessThanOrEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertGreaterThan | tc.fatalAssertGreaterThan(…) | As assertGreaterThan: stops the test at a failure.
+assumeGreaterThan | tc.assumeGreaterThan(…) | As verifyGreaterThan, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertGreaterThanOrEqual | tc.fatalAssertGreaterThanOrEqual(…) | As assertGreaterThanOrEqual: stops the test at a failure.
+assumeGreaterThanOrEqual | tc.assumeGreaterThanOrEqual(…) | As verifyGreaterThanOrEqual, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertError | tc.fatalAssertError(…) | As assertError: stops the test at a failure.
+assumeError | tc.assumeError(…) | As verifyError, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+fatalAssertFail | tc.fatalAssertFail(…) | As assertFail: stops the test at a failure.
+assumeFail | tc.assumeFail(…) | As verifyFail, but a failure skips the test (it isn't counted as failed): for tests that need something this computer may not have.
+assertEqual | assertEqual(actual, expected, 'AbsTol', 1e-9) | Stops the test unless the values match (size, class and every element; within a tolerance when given). verifyEqual records the failure and goes on.
+verifyEqual | verifyEqual(tc, actual, expected, 'RelTol', 1e-6) | Like assertEqual, but the test goes on after a failure (every failed check is listed).
+assertTrue | assertTrue(condition, 'message') | Stops the test unless the condition is true.
+verifyTrue | verifyTrue(condition) | Records a failure unless the condition is true.
+assertFalse | assertFalse(condition) | Stops the test unless the condition is false.
+verifyFalse | verifyFalse(condition) | Records a failure unless the condition is false.
+assertNotEqual | assertNotEqual(a, b) | Stops the test if the values are the same.
+verifyNotEqual | verifyNotEqual(a, b) | Records a failure if the values are the same.
+assertEmpty | assertEmpty(x) | Stops the test unless x is empty.
+verifyEmpty | verifyEmpty(x) | Records a failure unless x is empty.
+assertNotEmpty | assertNotEmpty(x) | Stops the test if x is empty.
+verifyNotEmpty | verifyNotEmpty(x) | Records a failure if x is empty.
+assertSize | assertSize(x, [2 3]) | Stops the test unless x has that size.
+verifySize | verifySize(x, [2 3]) | Records a failure unless x has that size.
+assertClass | assertClass(x, 'double') | Stops the test unless x is of that class.
+verifyClass | verifyClass(x, 'char') | Records a failure unless x is of that class.
+assertLessThan | assertLessThan(x, limit) | Stops the test unless every element is below the limit.
+verifyLessThan | verifyLessThan(x, limit) | Records a failure unless every element is below the limit.
+assertLessThanOrEqual | assertLessThanOrEqual(x, limit) | Stops the test unless every element is at most the limit.
+verifyLessThanOrEqual | verifyLessThanOrEqual(x, limit) | Records a failure unless every element is at most the limit.
+assertGreaterThan | assertGreaterThan(x, limit) | Stops the test unless every element is above the limit.
+verifyGreaterThan | verifyGreaterThan(x, limit) | Records a failure unless every element is above the limit.
+assertGreaterThanOrEqual | assertGreaterThanOrEqual(x, limit) | Stops the test unless every element is at least the limit.
+verifyGreaterThanOrEqual | verifyGreaterThanOrEqual(x, limit) | Records a failure unless every element is at least the limit.
+assertError | assertError(@() f(x), 'part of the message') | Stops the test unless calling the function stops with an error (containing that text, when given).
+verifyError | verifyError(@() f(x)) | Records a failure unless calling the function stops with an error.
+assertFail | assertFail('why') | Fails the test there.
+verifyFail | verifyFail('why') | Fails the test there.
+
+# Parallel computing
+parfor | parfor i = 1:n … end | A loop whose passes are independent: at a script's top level they are shared among the pool's workers (one fewer than the computer's cores, up to 8) and the speed-up is printed; arrays indexed by i, sums (s = s + …), products and [c, x] joins come back; other variables set inside stay inside. Inside a function it runs in order.
+parfeval | F(k) = parfeval(@f, nout, x, y) | Runs f(x, y) on a pool worker while the script goes on; gives a future (its number). Collect with fetchOutputs or fetchNext (in a loop of their own: the run waits there for every unfinished future, then that statement runs again).
+fetchOutputs | [a, b] = fetchOutputs(F) | The outputs of finished futures (several futures: one row each).
+fetchNext | [k, v] = fetchNext(F) | The next future not read yet: its place in F and its outputs.
+wait | wait(F) | Waits until the futures are finished.
+cancel | cancel(F) | Forgets futures (their results are dropped).
+parpool | p = parpool(4) | How many of the pool's workers parfor uses (the pool starts itself; p.NumWorkers).
+gcp | p = gcp | The pool: p.NumWorkers (gcp('nocreate') is empty when there is none).
+
+# GPU computing
+gpuArray | G = gpuArray(A) | Puts a matrix on the graphics chip (WebGPU, single precision; on the CPU where there is none): + − .* ./ .^, * (the matrix product), exp, sqrt, abs, sin, cos, tanh, log, sum and transpose work on it; anything else needs gather first.
+gather | A = gather(G) | Brings a gpuArray's numbers back (the run pauses while they come, then that statement runs again; plain values pass through).
+gpuDevice | d = gpuDevice | The graphics chip in use: d.Name, d.Available, d.Precision.
+gpuDeviceCount | n = gpuDeviceCount | 1 when WebGPU found a graphics chip, else 0.
+isgpuarray | tf = isgpuarray(x) | True for a gpuArray.
+existsOnGPU | tf = existsOnGPU(x) | True for a gpuArray.
+
+# Discrete-event simulation
+queuesim | r = queuesim({'exp', 2}, {{'Desk', 2, {'exp', 3}}, {'Pay', 1, {'const', 1}}}, 480, 'Seed', 1) | Runs entities through a line of stations (name, servers, service time; a 4th number caps the queue) for that long: r.Stations (busy share, waits, queues), r.MeanTimeInSystem, r.Throughput, r.Time and r.Queue over the run. Times are a mean (exponential) or {'exp', m}, {'const', v}, {'uniform', lo, hi}, {'normal', m, sd}, {'erlang', m, k}; 'Route', P sends entities from station i to j with probability P(i, j); 'Warmup', t leaves out the start. Drawn without outputs. Simulate → Queues is the same without code.
+mmcqueue | q = mmcqueue(lambda, mu, c) | Erlang's exact M/M/c answers: q.Rho (busy share), q.PWait, q.Lq and q.Wq (queue length and wait), q.L and q.W (in the system).
+
+# Embedded code and fixed point
+codegen | codegen('myfilter', {zeros(1, 64), 0.5}) | Turns a function of the script into plain C99 (myfilter.c and myfilter.h in Hyperion's files): the example inputs fix every size and type (double, single, int8 … uint64, logical, and fi: fixed-point C on whole-number types, each value its stored integer, sums and products growing as fi's do, ./, divide(T, a, b), A \\ B and B / A by any matrix (exact elimination on whole numbers, least squares for a non-square or singular one, each answer rounded once; past 128 bits worked in 32-bit pieces, to 65,536 bits; lsqminnorm(A, B, T) gives the smallest answer; of plain numbers, lsqminnorm(A, B, tol) through the SVD), fimath's rounding methods, Wrap and product and sum modes, types up to 62 bits in 64-bit integers and up to 126 bits in 128-bit ones (__int128 on 64-bit computers; on small chips without it, or with HYPERION_FX_PORTABLE defined, two 64-bit halves giving the same answers), y(:) = … and fi(x, s, w, f) rounding and saturating as MATLAB's); loops, if, while, switch, element-wise maths, the matrix product, sum / prod / mean / min / max of vectors, sqrt, exp, sin… and calls to the script's other functions. No memory is allocated while it runs; arrays are stored column by column. What can't become fixed-size C is refused with the reason. With an output, gives a struct with the C and H texts.
+fi | a = fi(v, signed, wordLength, fractionLength) | A fixed-point number, as an embedded chip or FPGA holds it: rounded to the nearest step of 2^-fractionLength and held in range (fi(v) is signed 16-bit with the best fraction length); fi(v, s, w, f, F) or fi(v, s, w, f, 'RoundingMethod', 'Floor', 'OverflowAction', 'Wrap') rounds and overflows another way (fimath). A \\ B and B / A solve exactly with any fi matrix: a square one directly, a non-square or singular one by least squares (an unknown that can't be told apart is 0); mldivide(A, B, T) chooses the answer's type. + − .* * grow the word so nothing is lost; a ./ b keeps the larger word with a's fraction less b's (divide(T, a, b) for another type), rounded to the nearest, dividing by zero giving the top or bottom of the range; a.WordLength, a.FractionLength. a(i) keeps the type; a(i) = v and a(:) = v round and hold the range (how a loop keeps an accumulator's type); fi(b, …) of a fi recasts it; −a and comparisons work.
+storedInteger | n = storedInteger(a) | The whole numbers a fi value is stored as (what the chip holds).
+bin | s = bin(a) | A fi value's stored bits, most significant first (two's complement).
+hex | s = hex(a) | A fi value's stored bits in hexadecimal.
+numerictype | t = numerictype(a) | A fi value's sign, word length and fraction length, as text; numerictype(signed, wordLength, fractionLength) makes a type for divide.
+fimath | F = fimath('RoundingMethod', 'Floor', 'OverflowAction', 'Wrap') | How fi values are rounded to a step (Nearest: halves up; Floor; Ceiling; Zero (Fix); Round: halves away from zero; Convergent: halves to even) and what happens past the range (Saturate, or Wrap round it as two's complement). 'ProductMode' and 'SumMode' (FullPrecision, the default: nothing lost; KeepLSB: ProductWordLength / SumWordLength bits keeping the fraction; KeepMSB: that many bits keeping the whole part, rounding the bottom; SpecifyPrecision: the word and ProductFractionLength / SumFractionLength), 'CastBeforeSum' (true: each side put into the sum's type first), MaxProductWordLength / MaxSumWordLength (a full-precision result longer is an error). A matrix product and sum(v) add step by step in the sum's type. Give it to fi(v, s, w, f, F) or setfimath(a, F); it also acts where a value is put into a type: fi(…), a(:) = …, division, −a. fimath(a) gives a fi value's.
+setfimath | a = setfimath(a, F) | The fi value a with the fimath F (or 'RoundingMethod', … pairs); removefimath(a) goes back to Nearest and Saturate.
+removefimath | a = removefimath(a) | The fi value a back on the default fimath (Nearest, Saturate).
+divide | c = divide(T, a, b) | a ./ b of fi values with the answer in type T (numerictype(s, w, f) or a fi value's type): rounded to the nearest step (or by the fimath of T, else a's), held in range; dividing by zero gives the top or bottom of the range (0 / 0 is 0).
+upperbound | u = upperbound(a) | The largest value a fi type can hold.
+lowerbound | l = lowerbound(a) | The smallest value a fi type can hold.
+
+# Embedded AI
+quantizemodel | q = quantizemodel(net, 'int8') | A trained network (fitcnet, fitrnet), tree (fitctree, fitrtree), SVM (fitcsvm, or fitcecoc for many classes), naive Bayes (fitcnb), discriminant (fitcdiscr), k-NN (fitcknn), tree ensemble (fitcensemble, fitrensemble, TreeBagger) or linear model (fitlm, fitglm: a logistic model gives its chance and class; all but networks and trees 'single' or 'double'; many-class SVMs, naive Bayes and discriminants also 'int8' in exportmodel and embedreport) with its numbers as a small chip would hold them: 'int8' (8-bit weights, one scale per layer), 'single' or 'double'. predict and loss work on it as on the original.
+modelsize | b = modelsize(net, 'int8') | The bytes a model's numbers take in that precision.
+embedreport | T = embedreport(net, X, Y) | Size and accuracy (or RMSE) of the model in double, single and int8 (a network also 'int8full': wholly in 8 bits, run exactly as its C; a many-class SVM, naive Bayes or discriminant also 'int8', run as its C, and 'int8full', wholly in whole numbers, run exactly as its C; a linear model (fitlm), a tree or a tree ensemble also 'int8full'), tested on X and Y; drawn as bars without an output.
+exportmodel | exportmodel(net, 'mynet', 'Precision', 'int8') | Writes the model as plain C (any kind quantizemodel takes; 'int8full' writes a network wholly in 8-bit integers: 8-bit activations with scales from its training rows, ReLU as a clamp, tanh and sigmoid as 256-entry tables, mynet_predict_q for 8-bit inputs; many-class SVMs (polynomial kernels of any order), naive Bayes, discriminants and linear models (fitlm: mynet_predict_q gives the answer as a whole number; a logistic fitglm the log-odds, its class their sign, mynet_predict(x, &prob)), trees and tree ensembles (8-bit inputs, whole-number splits; leaf chances, tree weights or values as whole numbers) too, up to 65,536 inputs) (mynet.c, mynet.h in Hyperion's files): its weights as constant arrays and mynet_predict(x, scores), giving the class's number (or the value). Trees take 'single', 'double' or 'int8full'. Many-class SVMs (8-bit support vectors and coefficients, a scale per learner), naive Bayes (8-bit means and 1 / spread) and discriminants (8-bit weights) also take 'int8'. They also take 'int8full': wholly in whole numbers on the chip (each input 8-bit with its own centre and step from the training rows, a scale per class or learner, 32- and 64-bit sums, the Gaussian kernel by a table, hinge decoding compared in whole numbers; mynet_predict_q(xq, sums, n) for 8-bit inputs).
 
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
@@ -418,7 +690,8 @@ errorbar | errorbar(x, y, err) | Points with error bars.
 pie | pie(x, explode, labels) | A pie chart.
 pie3 | pie3(x) | A pie chart.
 fill | fill(x, y, 'g') | A filled shape.
-patch | patch(x, y, c) | A filled shape (added to the plot).
+patch | patch(x, y, c), patch(fv), patch('Faces', F, 'Vertices', V, 'FaceColor', 'r', 'EdgeColor', 'none', 'FaceAlpha', 1) | A filled shape (added to the plot), or a 3D surface of faces (rows of vertex numbers) and vertices (n × 3), as isosurface gives them.
+isosurface | isosurface(X, Y, Z, V, level), fv = isosurface(V, level), [F, P] = isosurface(...) | The surface where a 3D array V (laid out as meshgrid makes it) equals level (the middle of its range if left out): drawn, lit, without outputs; fv has faces and vertices for patch.
 rectangle | rectangle('Position', [x y w h], 'Curvature', c) | A rectangle (or rounded, or an ellipse).
 line | line(x, y) | A line added to the plot.
 text | text(x, y, 'words') | Words on the plot.
@@ -469,8 +742,24 @@ cla | cla | Clears the axes.
 close | close, close all | Closes figures.
 gcf | gcf | The current figure's number.
 gca | gca, set(gca, 'XLim', [0 10]) | The current axes (for set).
-set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on') | Changes the current axes' limits and grid.
-drawnow | drawnow | Draws now.
+set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on'), set(h, 'XData', x, 'YData', y) | Changes the current axes' limits and grid, or a line's points, colour and width by its handle (h = plot(…)).
+drawnow | drawnow | Shows the figure as it is now, while the script goes on: call it in a loop to animate.
+uifigure | fig = uifigure('Name', 'My app', 'Position', [100 100 640 480]) | A window for your own app: put buttons, sliders, fields and plots in it; it floats over the Code window. Its parts' callbacks run when you press, slide or choose.
+uibutton | b = uibutton(fig, 'Text', 'Go', 'Position', [20 20 100 22], 'ButtonPushedFcn', @(src, event) …) | A button in an app window; its function runs when pressed.
+uislider | s = uislider(fig, 'Limits', [0 10], 'Value', 5, 'ValueChangedFcn', @(src, event) disp(event.Value)) | A slider in an app window; event.Value is where it was let go.
+uilabel | l = uilabel(fig, 'Text', 'Hello', 'Position', [20 60 200 22]) | Text in an app window; change it with set(l, 'Text', …).
+uieditfield | e = uieditfield(fig, 'numeric', 'Value', 3, 'ValueChangedFcn', @(src, event) …) | A box to type a number ('numeric') or text in, in an app window.
+uicheckbox | c = uicheckbox(fig, 'Text', 'Show grid', 'ValueChangedFcn', @(src, event) …) | A tick box in an app window; event.Value is true or false.
+uidropdown | d = uidropdown(fig, 'Items', {'Sine', 'Square'}, 'ValueChangedFcn', @(src, event) …) | A drop-down list in an app window; event.Value is the item chosen.
+uiaxes | ax = uiaxes(fig, 'Position', [20 120 400 250]) | A plot inside an app window: plot(ax, x, y), title(ax, …), cla(ax) draw there.
+uialert | uialert(fig, 'Done!', 'Title') | Shows a message (in the command window).
+webcamlist | names = webcamlist | The cameras on this computer (the browser asks to use the camera the first time).
+webcam | cam = webcam, webcam(2), webcam('USB'), webcam(…, 'Resolution', '1280x720') | Picks a camera (the first by default) for snapshot.
+snapshot | img = snapshot(cam) | Takes a picture with the camera: rows × columns × 3 uint8, ready for imshow and the image functions.
+get | v = get(h, 'Value') | Reads an app part's Value, Text, Limits, Items or Position.
+animatedline | h = animatedline('Color', 'r') | An empty line to grow point by point (addpoints) while a loop draws it.
+addpoints | addpoints(h, x, y) | Adds points to an animated line; drawnow shows them.
+clearpoints | clearpoints(h) | Empties an animated line.
 rlim | rlim([a b]) | A polar plot's radius limits.
 
 # 3D plots and colour
@@ -819,7 +1108,7 @@ warning | warning('message') | Shows a warning and goes on.
 assert | assert(condition, 'message') | Stops when the condition is false.
 input | input('prompt') | (Not available in the browser: no keyboard prompt.)
 keyboard | keyboard | (Not available here.)
-pause | pause(s) | Waits (figures update).
+pause | pause(s) | Shows the figure as it is now and waits s seconds: a loop with pause(0.05) plays as an animation.
 tic | tic | Starts a stopwatch.
 toc | toc | Seconds since tic.
 clock | clock | [year month day hour minute seconds].
@@ -846,7 +1135,7 @@ export const HELP = new Map<string, Entry>();
 export const SECTIONS: string[] = [];
 {
   let section = '';
-  for (const line of TEXT.split('\n')) {
+  for (const line of (TEXT + SCIENCES_HELP).split('\n')) {
     if (line.startsWith('# ')) { section = line.slice(2); SECTIONS.push(section); continue; }
     const m = /^(\S+) \| (.+?) \| (.+)$/.exec(line);
     if (m) HELP.set(m[1], { name: m[1], syntax: m[2], text: m[3], section });

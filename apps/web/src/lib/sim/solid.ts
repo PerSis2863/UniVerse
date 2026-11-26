@@ -45,6 +45,27 @@ export function extrude(m: Mesh, t: number, layers: number): SolidMesh {
       for (const tt of tets) corner.push(tt);
     }
   }
+  const { tet, surf } = quadraticTets(xs, ys, zs, corner);
+  // Side faces belong to the edge whose boundary piece they stand on (two different flat nodes among their corners).
+  const pieceOf = new Map<string, string>();
+  for (const [id, segs] of m.segs) for (const [a, , b] of segs) pieceOf.set(a < b ? `${a},${b}` : `${b},${a}`, id);
+  const faces = new Map<string, number[]>(), nodes = new Map<string, Set<number>>();
+  surf.forEach((f, i) => {
+    const flat = [...new Set(f.slice(0, 3).map((n) => n % C))];
+    if (flat.length !== 2) return;
+    const id = pieceOf.get(flat[0] < flat[1] ? `${flat[0]},${flat[1]}` : `${flat[1]},${flat[0]}`);
+    if (!id) return;
+    if (!faces.has(id)) { faces.set(id, []); nodes.set(id, new Set()); }
+    faces.get(id)!.push(i);
+    for (const n of f) nodes.get(id)!.add(n);
+  });
+  return { x: Float64Array.from(xs), y: Float64Array.from(ys), z: Float64Array.from(zs), tet, surface: Uint32Array.from(surf.flat()), faces, nodes: new Map([...nodes].map(([k, v]) => [k, [...v]])), thickness: t };
+}
+
+/** Corner tetrahedra (4 node numbers each) made 10-node ones: each turned to a positive volume, a node added in the
+ *  middle of every edge (shared by neighbours), and the outside faces (those used once) listed. M552: shared by
+ *  `extrude` and the parts read from STL files (stl.ts). */
+export function quadraticTets(xs: number[], ys: number[], zs: number[], corner: number[][]) {
   // Positive volume for every tetrahedron.
   const vol = (q: number[]) => {
     const [p0, p1, p2, p3] = q, ax = xs[p1] - xs[p0], ay = ys[p1] - ys[p0], az = zs[p1] - zs[p0], bx = xs[p2] - xs[p0], by = ys[p2] - ys[p0], bz = zs[p2] - zs[p0], cx = xs[p3] - xs[p0], cy = ys[p3] - ys[p0], cz = zs[p3] - zs[p0];
@@ -69,20 +90,7 @@ export function extrude(m: Mesh, t: number, layers: number): SolidMesh {
     seen.set(key, [g[0], g[1], g[2], tet[e * 10 + mid(loc[0], loc[1])], tet[e * 10 + mid(loc[1], loc[2])], tet[e * 10 + mid(loc[0], loc[2])]]);
   }
   const surf = [...seen.values()].filter((f): f is number[] => !!f);
-  // Side faces belong to the edge whose boundary piece they stand on (two different flat nodes among their corners).
-  const pieceOf = new Map<string, string>();
-  for (const [id, segs] of m.segs) for (const [a, , b] of segs) pieceOf.set(a < b ? `${a},${b}` : `${b},${a}`, id);
-  const faces = new Map<string, number[]>(), nodes = new Map<string, Set<number>>();
-  surf.forEach((f, i) => {
-    const flat = [...new Set(f.slice(0, 3).map((n) => n % C))];
-    if (flat.length !== 2) return;
-    const id = pieceOf.get(flat[0] < flat[1] ? `${flat[0]},${flat[1]}` : `${flat[1]},${flat[0]}`);
-    if (!id) return;
-    if (!faces.has(id)) { faces.set(id, []); nodes.set(id, new Set()); }
-    faces.get(id)!.push(i);
-    for (const n of f) nodes.get(id)!.add(n);
-  });
-  return { x: Float64Array.from(xs), y: Float64Array.from(ys), z: Float64Array.from(zs), tet, surface: Uint32Array.from(surf.flat()), faces, nodes: new Map([...nodes].map(([k, v]) => [k, [...v]])), thickness: t };
+  return { tet, surf };
 }
 
 // 4-point rule (exact for the stiffness of straight 10-node tetrahedra).

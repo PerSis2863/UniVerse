@@ -10,6 +10,7 @@ import { bookingLinks, hostelLink, type BookKind } from '@/lib/travel-book';
 import type { Guide, GuidePart, GuideSection, Listing } from '@/lib/travel-guide';
 import { DIETS, priceBand, type Climate, type DietId, type TipTopic, type Tips } from '@/lib/travel-tips';
 import { KnowTab } from './TravelKnow';
+import { AskPlace } from './AskPlace';
 import { cn } from '@/lib/utils';
 import { Cover, ListingCard, sky, startTrip, type Saved } from './travel-ui';
 
@@ -165,6 +166,7 @@ export function TravelGuide() {
       <div key={current.id} role="tabpanel" aria-label={current.label} className="swap space-y-6" data-dir={dir}>
           {current.id === 'overview' && (
             <>
+              <AskPlace place={g.title} name={nice(g.title)} />
               {(g.summary.length > 1 || (g.summary[0]?.length ?? 0) > LONG || parts.get('understand')?.text.length) && (
                 <section className="panel p-6">
                   <p className="mb-2 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Info className="h-5 w-5 text-indigo-500" aria-hidden />Good to know</p>
