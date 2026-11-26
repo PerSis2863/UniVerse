@@ -1947,6 +1947,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M558 | Hyperion: special maths (the Octave packages' third wave, 26 Nov) | **Done** (branch) | expm/sqrtm/logm/funm, Bessel J/Y/I/K and Airy of any order, lambertw, erfinv, ellipke, expint, legendre, perms, rat/rats, Chebyshev series with roots; tested against tabulated values. |
 | M559 | Hyperion: text, dates and maps (the Octave packages' fourth wave, 26 Nov) | **Done** (branch) | strjust, textscan, typecast, datenum, calendar, containers.Map and dictionary (text-lab.ts, keyHooks in interp.ts) |
 | M560 | Hyperion: the web, MQTT and game controllers (the Octave packages' fifth wave, 26 Nov) | **Done** (branch) | webread, webwrite, websave, mqttclient, vrjoystick; other sites only through the sealed web link, asked once per site (net-lab.ts, net-link.ts, sandbox/net.html) |
+| M561 | Hyperion: Octave-style tests, doctests, Jupyter notebooks, QR codes and pixel info (the Octave packages' last wave, 26 Nov) | **Done** (branch) | test, demo, doctest, qrcode, impixel, impixelinfo; .ipynb opened and saved (octtest-lab.ts, ipynb.ts, pixel-info.ts) |
 
 ### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
 

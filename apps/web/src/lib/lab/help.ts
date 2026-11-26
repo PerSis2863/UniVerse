@@ -352,6 +352,14 @@ eomday | eomday(y, m) | The last day of a month.
 calendar | C = calendar(y, m) | A month as 6 weeks × 7 days (Sunday first).
 addtodate | addtodate(d, n, 'month') | A date moved by years, months, weeks, days, hours, minutes or seconds (month ends kept).
 containers | m = containers.Map({'a', 'b'}, {1, 2}) | A map from keys to values (shared by its copies): m('a'), m('c') = 3, keys(m), values(m), isKey(m, k), remove(m, k), m.Count.
+test | test('name') or [ok, n] = test('name') | Runs the tests at the end of name.m in your files, written as Octave writes them: %!assert (f(2), 4), %!test blocks, %!error <pattern> code, %!fail, %!shared, %!function, %!xtest.
+fail | fail('code', 'pattern') | Passes when the code stops with an error (matching the pattern, when given); for tests.
+__octfail__ | __octfail__('code', 'pattern') | The function behind %!fail in test (use fail).
+demo | demo('name') or demo('name', k) | Runs the %!demo blocks in name.m, showing each one's code.
+doctest | doctest('name') or [passed, n] = doctest('name') | Checks the examples in name.m's help text: a line % >> code, then the lines it should print (... stands for anything).
+qrcode | q = qrcode(text) or qrcode(text, 'Margin', 2) | A QR code as a logical matrix, true where it is dark: imshow(~q) shows it.
+impixel | v = impixel(I, columns, rows) | The values of a picture's pixels, one row each with three columns (grey pictures repeated).
+impixelinfo | impixelinfo | Shows the column, row and value of the pixel under the pointer, under the figure.
 weboptions | o = weboptions('Timeout', 30, 'ContentType', 'json', 'HeaderFields', {'Accept' 'text/plain'}) | Options for webread, webwrite and websave: Timeout (s), ContentType (auto, text, json, binary, image), MediaType, RequestMethod, HeaderFields, Username and Password, KeyName and KeyValue.
 webread | data = webread(url, name, value, …, options) | Reads a web address: JSON comes back as structs, text as char, pictures as images, anything else as uint8 bytes. Hyperion asks you once per site before reaching it.
 webwrite | answer = webwrite(url, data, options) or webwrite(url, name, value, …) | Sends data to a web address (a struct as JSON, name–value pairs as a form, text or bytes as they are) and reads the answer.

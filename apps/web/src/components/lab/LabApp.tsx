@@ -6,6 +6,8 @@ import type { TestReport } from '@/lib/lab/verify-lab';
 import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
 import { asksOf, onAsk, onChannel } from './page-answers';
 import './net-link';
+import { ipynbToScript } from '@/lib/lab/ipynb';
+import { pixelAt } from './pixel-info';
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { MACHINE_EXAMPLES } from '@/lib/lab/examples-machines';
 import { toast } from 'sonner';
@@ -100,6 +102,12 @@ function playSound(channels: Float32Array[], fs: number) {
     channels.forEach((c, i) => buf.copyToChannel(Float32Array.from(c), i));
     const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.onended = () => void ctx.close(); src.start();
   } catch { /* no audio here */ }
+}
+/** A Jupyter notebook opened from the computer becomes a script of %% sections (M561); anything else stays as it is. */
+function fromNotebook(f: { name: string; code: string }): { name: string; code: string } {
+  if (!/\.ipynb$/i.test(f.name)) return f;
+  try { return { name: f.name.replace(/\.ipynb$/i, '.m'), code: ipynbToScript(f.code) }; }
+  catch (e) { return { name: f.name.replace(/\.ipynb$/i, '.txt'), code: `% ${e instanceof Error ? e.message : String(e)}\n` }; }
 }
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
 /** A control moved in the notebook view while something ran: run every section of this script, afterwards. */
@@ -404,6 +412,7 @@ export function LabApp() {
   const [side, setSide] = useState<{ tab: 'figure' | 'variables' | 'files'; figId: number | null }>({ tab: 'figure', figId: null });
   // The figure is drawn at its panel's real size (sharp text), again whenever the panel changes size.
   const figBox = useRef<HTMLDivElement | null>(null), asked = useRef('');
+  const pixSeq = useRef(0), [pix, setPix] = useState<string | null>(null);
   const figId = fig?.id;
   useEffect(() => {
     const el = figBox.current;
@@ -830,7 +839,12 @@ export function LabApp() {
         <div key={fig.id} ref={figBox} className="swap relative min-h-0 flex-1 m-2" data-dir="next"><NextImage src={otherUrl} alt={`Figure ${fig.id - OTHER_FIG} from ${lang.name}`} fill unoptimized className="rounded-xl bg-white object-contain" /></div>
       ) : fig ? (
         // Our own SVG (src/lib/lab/plot.ts), its text escaped there.
-        <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
+        <>
+          <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }}
+            onPointerMove={svg.includes('data-pixelinfo') ? (e) => { const n = ++pixSeq.current; void pixelAt(e.target, e.clientX, e.clientY).then((t) => { if (n === pixSeq.current) setPix(t); }); } : undefined}
+            onPointerLeave={() => { pixSeq.current++; setPix(null); }} />
+          {svg.includes('data-pixelinfo') && <p className="shrink-0 px-3 pb-2 font-mono text-[12px] text-zinc-700 dark:text-zinc-200" aria-live="polite">Pixel info: {pix ?? 'point at the picture'}</p>}
+        </>
       ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">{mat ? 'Figures appear here. Try plot(1:10) in the command window.' : `Figures appear here when the ${lang.name} script draws one.`}</p>}
     </section>
   );
@@ -856,7 +870,7 @@ export function LabApp() {
       {/* Computers only (M405): variables and files, the editor over the command window, the figure. */}
       <LabToolstrip busy={busy} matlab={mat} varsAreMatlab={varsFrom === 'MATLAB'} vars={vars} scripts={list} open={open} examples={EXAMPLES} layout={layout} onLayout={setLayout}
         onNew={(id) => { const l = LANGS.find((x) => x.id === id)!; save([...list, { name: `untitled${list.length + 1}${l.ext}`, code: l.starter }]); setOpen(list.length); }}
-        onOpenFiles={(fs) => { void Promise.all([...fs].slice(0, 20).filter((f) => f.size <= 1_000_000).map(async (f) => ({ name: f.name.replace(/[^\w.-]/g, '_'), code: await f.text() }))).then((got) => { if (!got.length) return; save([...list, ...got]); setOpen(list.length + got.length - 1); }); }}
+        onOpenFiles={(fs) => { void Promise.all([...fs].slice(0, 20).filter((f) => f.size <= (/\.ipynb$/i.test(f.name) ? 20_000_000 : 1_000_000)).map(async (f) => fromNotebook({ name: f.name.replace(/[^\w.-]/g, '_'), code: await f.text() }))).then((got) => { if (!got.length) return; save([...list, ...got]); setOpen(list.length + got.length - 1); }); }}
         onJump={(k, line) => { setOpen(k); setNoteView((nv) => ({ ...nv, [k]: false })); setJump((j) => ({ line, n: (j?.n ?? 0) + 1 })); }}
         onImport={() => picker.current?.click()} onCommand={(code) => run(code, 'tool')} onClearLog={() => setLog([])}
         onAnalyze={() => { const probs = lintScript(script.code, isFn).problems; print({ k: 'in', t: `>> analyse ${script.name}` }); print({ k: 'out', t: probs.length ? `${probs.map((q) => `Line ${lineOf(script.code, q.from)}: ${q.message}`).join('\n')}\n` : 'No problems found.\n' }); }}

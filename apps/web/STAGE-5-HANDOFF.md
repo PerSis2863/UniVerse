@@ -15213,3 +15213,15 @@ The Octave packages' fifth wave (web, networks and devices), written fresh in `s
 - Checked in a real browser: a fetch to a public API through the frame, and MQTT connect, subscribe, publish and receive against a local broker (this container reaches only port 443, so the public brokers weren't tried).
 - Left out: `tcpclient`, `udpport` (no raw sockets in a browser; they'd need the computer app's runner and a new installer), SQLite and MySQL (a database library needs the owner's yes), Raspberry Pi pins.
 - Tests: `net.test.ts`.
+
+## M561: Hyperion: Octave-style tests, doctests, Jupyter notebooks, QR codes and pixel info (the Octave packages' last wave, 26 Nov)
+
+The Octave packages' sixth and last wave, written fresh (no Octave code). With it the six GNU Octave groups planned on 26 Nov are done (M556–M561).
+
+- **Tests inside a function's file** (`src/lib/lab/octtest-lab.ts`): `test('name')` runs the `%!` blocks at the end of `name.m` in Hyperion's files, as Octave writes them: `%!assert (…)`, `%!test`, `%!error <pattern> code`, `%!fail`, `%!shared` (its set-up runs before each test), `%!function … %!endfunction`, `%!xtest` (a known failure). Prints the usual report and "PASSES n out of m tests"; the window's results panel shows it (`testReports`). `demo('name', k)` runs the `%!demo` blocks. `fail(code, pattern)` too. `one` and `files` are now exported from `verify-lab.ts` for this.
+- **doctest('name')**: the help text's examples, `% >> code` and then the lines it should print (spaces don't matter; `...` stands for anything), run in one workspace in order.
+- **Jupyter** (`src/lib/lab/ipynb.ts`): Open in the toolstrip takes `.ipynb` files (up to 20 MB): Markdown cells become `%` text, a heading the part's title, each code cell its own `%%` part, so the notebook view runs them cell by cell. The notebook view's **Jupyter notebook** button saves the script as `.ipynb` (nbformat 4.4, Octave kernel) with each part's printed output, figures (SVG) and errors.
+- **qrcode(text)**: a logical matrix, true where dark (`imshow(~q)`), from the site's own encoder `src/lib/qr.ts`.
+- **impixel(I, cols, rows)** and **impixelinfo**: the figure gets `pixelinfo` (`data-pixelinfo` on its SVG, `data-px="W H flipped"` on each picture); the page reads the pixel under the pointer (`src/components/lab/pixel-info.ts`) and shows "Pixel info: (X, Y) = (c, r) value" under the figure. It shows the colour drawn (for uint8 RGB or grey pictures, their own values). The PNG is decoded through an `<img>`, not `fetch`: the site's policy blocks `data:` connections.
+- Not done: Octave's command form `test sq` (write `test('sq')`; adding the names to the command words would change how `test = 3` reads).
+- Tests: `octtest.test.ts`. Browser check: `scripts/checks/hyperion-octave6-ui.mjs` (light and dark, axe clean, no page errors).
