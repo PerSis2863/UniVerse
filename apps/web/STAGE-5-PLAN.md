@@ -1933,6 +1933,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M544 | Hyperion Simulate, heat and stress together (26 Nov) | **Done** (branch) | Structures → Warming: none, even (°C) or from Heat on the same part; materials' expansion α; thermal strain in the solver; textbook tests (free growth α·ΔT·L, held bar −E·α·ΔT); checked in the browser, light and dark, axe clean. |
 | M545 | Hyperion Simulate, buckling (26 Nov) | **Done** (branch) | Structures → Solution → Buckling: the lowest buckling load factors and their shapes by Lanczos on the geometric stiffness; heat counts; Euler's column within 3%; checked in the browser, light and dark, axe clean. |
 | M546 | Hyperion Simulate, fatigue life (26 Nov) | **Done** (branch) | Structures → Fatigue: back and forth or on and off, the cycles wanted; life and fatigue safety-factor pictures by Basquin and Goodman; checked in the browser, light and dark, axe clean. |
+| M547 | Hyperion Simulate, the lightest shape (topology optimisation, 26 Nov) | **Done** (branch) | Structures → Solution → Lightest shape: SIMP with a sensitivity filter and optimality criteria, keep 20–60%; the bracket turns into a truss; checked in the browser, light and dark, axe clean. |
 
 ### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
 

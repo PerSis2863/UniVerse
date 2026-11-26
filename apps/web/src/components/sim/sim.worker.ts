@@ -6,18 +6,19 @@ import { harmonicField, modalBasis, solveHarmonic, solveModes, type Basis, type 
 import { solveHeat, type HeatResult } from '@/lib/sim/heat';
 import { heatStudyOf, type HeatModel } from '@/lib/sim/heat-model';
 import { solveBuckling, type BuckleResult } from '@/lib/sim/buckle';
+import { solveTopology, type TopoResult } from '@/lib/sim/topo';
 import { extrude, solveSolid, type SolidMesh, type SolidResult } from '@/lib/sim/solid';
 
 // Hyperion Simulate (M404): meshing and solving run here, off the page's thread, so the window stays smooth. The mesh is
 // kept while only supports, loads or the material change (no new mesh needed).
 
-export type Analysis = 'static' | 'modal' | 'harmonic' | 'buckling';
+export type Analysis = 'static' | 'modal' | 'harmonic' | 'buckling' | 'topology';
 /** M463: for 'harmonic', the sweep's settings and the frequency to show the part at (Hz; the strongest peak when absent). */
 export type ToSim = { id: number; model: Model; solve: boolean; analysis: Analysis; harmonic?: Harmonic; at?: number; heatFor?: HeatModel } | { id: number; heat: HeatModel; solve: boolean };
 export interface HarmonicOut { sweep: HarmonicResult; hz: number; ux: Float64Array; uy: Float64Array; swing: Float64Array; vm: Float64Array }
 export interface MeshOut { x: Float64Array; y: Float64Array; tri: Uint32Array; corners: number; segs: Record<string, [number, number, number][]>; minAngle: number }
 export interface SolidOut { x: Float64Array; y: Float64Array; z: Float64Array; surface: Uint32Array; tets: number; dofs: number }
-export type FromSim = { id: number; mesh: MeshOut | null; result: StaticResult | null; modal: ModalResult | null; harmonic: HarmonicOut | null; heat: HeatResult | null; buckle: BuckleResult | null; solid: SolidOut | null; solidResult: SolidResult | null; error?: string; ms: { mesh: number; solve: number }; meshed: boolean };
+export type FromSim = { id: number; mesh: MeshOut | null; result: StaticResult | null; modal: ModalResult | null; harmonic: HarmonicOut | null; heat: HeatResult | null; buckle: BuckleResult | null; topo: TopoResult | null; solid: SolidOut | null; solidResult: SolidResult | null; error?: string; ms: { mesh: number; solve: number }; meshed: boolean };
 
 /** A 3D part's solid (M413): coarser than the flat mesh (each element is far heavier), at most ~21,000 unknowns. */
 let keptSolid: { key: string; solid: SolidMesh } | null = null;
@@ -51,7 +52,7 @@ let keptBasis: { key: string; basis: Basis } | null = null;
 
 self.onmessage = (e: MessageEvent<ToSim>) => {
   const msg = e.data, { id, solve } = msg, model = 'heat' in msg ? msg.heat : msg.model;
-  let buckle: BuckleResult | null = null;
+  let buckle: BuckleResult | null = null, topo: TopoResult | null = null;
   let mesh: Mesh | null = null, result: StaticResult | null = null, modal: ModalResult | null = null, harmonic: HarmonicOut | null = null, heat: HeatResult | null = null, error: string | undefined;
   let solid: SolidMesh | null = null, solidResult: SolidResult | null = null;
   const t0 = performance.now();
@@ -75,11 +76,13 @@ self.onmessage = (e: MessageEvent<ToSim>) => {
     }
     else {
       const st = { ...studyOf(msg.model), ...(msg.model.warming?.kind === 'heat' ? { warming: heatWarming(mesh, msg.model, msg.heatFor) } : {}) };
-      if (msg.analysis === 'buckling') buckle = solveBuckling(mesh, st, 4); else result = solveStatic(mesh, st);
+      if (msg.analysis === 'buckling') buckle = solveBuckling(mesh, st, 4);
+      else if (msg.analysis === 'topology') topo = solveTopology(mesh, st, { keep: msg.model.topo?.keep ?? 0.4 });
+      else result = solveStatic(mesh, st);
     }
   } catch (err) { error = err instanceof Error ? err.message : String(err); }
   const t2 = performance.now();
   const out: MeshOut | null = mesh ? { x: mesh.x, y: mesh.y, tri: mesh.tri, corners: mesh.corners, segs: Object.fromEntries(mesh.segs), minAngle: mesh.minAngle } : null;
   const solidOut: SolidOut | null = solid ? { x: solid.x, y: solid.y, z: solid.z, surface: solid.surface, tets: solid.tet.length / 10, dofs: solid.x.length * 3 } : null;
-  postMessage({ id, mesh: out, result, modal, harmonic, heat, buckle, solid: solidOut, solidResult, error, ms: { mesh: t1 - t0, solve: t2 - t1 }, meshed } satisfies FromSim);
+  postMessage({ id, mesh: out, result, modal, harmonic, heat, buckle, topo, solid: solidOut, solidResult, error, ms: { mesh: t1 - t0, solve: t2 - t1 }, meshed } satisfies FromSim);
 };

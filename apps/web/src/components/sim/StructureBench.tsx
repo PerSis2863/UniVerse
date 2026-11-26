@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Thermometer, Columns3, Repeat, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
+import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Thermometer, Columns3, Repeat, Scissors, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -83,6 +83,7 @@ export function StructureBench() {
   const { part, edges } = useMemo(() => partOf(model), [model]);
   const groups = useMemo(() => edgeGroups(edges), [edges]);
   const problem = modelProblem(model, analysis === 'modal');
+  const topo = analysis === 'topology' ? out?.topo ?? null : null;
   const buckle = analysis === 'buckling' ? out?.buckle ?? null : null, bmode = buckle?.modes[Math.min(modeAt, buckle.modes.length - 1)] ?? null;
   const result = out?.result ?? null, mesh = out?.mesh ?? null, modal = out?.modal ?? null, shaken = analysis === 'harmonic' ? out?.harmonic ?? null : null;
   // M413: a solid (3D) part's stress and bending; vibration still uses the flat model.
@@ -187,10 +188,10 @@ export function StructureBench() {
         <span className="min-w-0 flex-1 truncate">Fatigue<span className="font-normal text-zinc-500 dark:text-zinc-400">: {fat.kind === 'reversed' ? 'back and forth' : 'on and off'}, {cyclesText(fat.cycles)} times</span></span>
       </button>
       <div className="px-2 pt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solution</div>
-      {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity], ['harmonic', 'Shaking', Waves], ['buckling', 'Buckling', Columns3]] as const).map(([a, name, Icon]) => {
-        const here = analysis === a, solved = here && (a === 'static' ? !!res : a === 'modal' ? !!modal : a === 'buckling' ? !!buckle : !!shaken);
+      {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity], ['harmonic', 'Shaking', Waves], ['buckling', 'Buckling', Columns3], ['topology', 'Lightest shape', Scissors]] as const).map(([a, name, Icon]) => {
+        const here = analysis === a, solved = here && (a === 'static' ? !!res : a === 'modal' ? !!modal : a === 'buckling' ? !!buckle : a === 'topology' ? !!topo : !!shaken);
         return (
-          <button key={a} type="button" className={cn(item, 'ps-4', isSel('solution') && here && on)} aria-current={(isSel('solution') && here) || undefined} onClick={() => { setAnalysis(a); setSel({ k: 'solution' }); if (a !== 'static' && !still) setPlaying(true); }}>
+          <button key={a} type="button" className={cn(item, 'ps-4', isSel('solution') && here && on)} aria-current={(isSel('solution') && here) || undefined} onClick={() => { setAnalysis(a); setSel({ k: 'solution' }); if (a !== 'static' && a !== 'topology' && !still) setPlaying(true); if (a === 'topology') setPlaying(false); }}>
             {solved ? <Icon className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : here && !busy ? <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden /> : <Icon className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />}
             <span className="flex-1">{name}</span><span className="text-xs font-normal tabular-nums text-zinc-500 dark:text-zinc-400">{!here ? '' : busy ? 'solving…' : solved && out ? `${Math.round(out.ms.mesh + out.ms.solve)} ms` : 'not solved'}</span>
           </button>
@@ -379,6 +380,25 @@ export function StructureBench() {
       </div>
     );
   }
+  if (!details && analysis === 'topology') {
+    const keep = model.topo?.keep ?? 0.4, last = topo ? topo.history[topo.history.length - 1] : 0;
+    details = (
+      <div className="space-y-3">
+        {problem ? <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{problem}</p>
+          : out?.error ? <p className="rounded-lg bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">{out.error}</p> : null}
+        <div><span className={label}>Keep this much of the material</span>
+          <div className="mt-1"><Segmented<string> label="Keep this much of the material" value={String(keep)} onChange={(v) => setModel((m) => ({ ...m, topo: { keep: Number(v) } }))} segments={[0.2, 0.3, 0.4, 0.5, 0.6].map((k) => ({ value: String(k), label: `${k * 100}%` }))} /></div>
+        </div>
+        {topo && (
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+            {[['Material kept', `${Math.round(topo.kept * 100)}%`], ['Weight', `${+topo.massKg.toPrecision(3)} kg`], ['Bends', `${+(last / topo.solid).toPrecision(3)}× the solid part`], ['Rounds', `${topo.rounds}`]].map(([k, v]) => <div key={k}><dt className="text-zinc-500 dark:text-zinc-400">{k}</dt><dd className="font-mono font-semibold tabular-nums text-zinc-900 dark:text-white">{v}</dd></div>)}
+          </dl>
+        )}
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Topology optimisation: Hyperion keeps only {Math.round(keep * 100)}% of the part, where it carries the loads best, and carves the rest away, the stiffest shape for that weight (red is solid, blue is carved away). It is how lightweight brackets, bridges and aircraft ribs are found. Keep the supports and loads where the real ones are; the part’s own weight and warming are left out here. Use it as a sketch to redraw (Geometry → Draw your own) and check with Stress and bending.</p>
+        {topo && <button type="button" className={small} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />Picture (PNG)</button>}
+      </div>
+    );
+  }
   if (!details && analysis === 'buckling') {
     const low = buckle?.modes[0]?.factor ?? null;
     details = (
@@ -454,9 +474,11 @@ export function StructureBench() {
   const fieldNow: Field = fields.some((f) => f.id === field) ? field : 'vm';
   const fieldInfo = FIELDS.find((f) => f.id === fieldNow)!;
   const shown3 = is3d && solidRes && !problem ? { ux: solidRes.ux, uy: solidRes.uy, uz: solidRes.uz, values: solidRes[fieldNow as 'u' | 'ux' | 'uy' | 'vm' | 'sx' | 'sy' | 'safety'], name: fieldInfo.name, unit: fieldInfo.unit, reverse: fieldNow === 'safety' } : null;
+  const zeros = useMemo(() => (topo ? new Float64Array(topo.atNodes.length) : null), [topo]);
   const modeShape = useMemo(() => (mode ? Float64Array.from(mode.ux, (x, i) => Math.hypot(x, mode.uy[i])) : null), [mode]);
   const shown: Shown | null = problem ? null : analysis === 'static'
     ? (result ? { ux: result.ux, uy: result.uy, values: result[field], name: fieldInfo.name, unit: fieldInfo.unit, reverse: field === 'safety' || field === 'fsafety' || field === 'life' } : null)
+    : analysis === 'topology' ? (topo && zeros ? { ux: zeros, uy: zeros, values: topo.atNodes, name: `The lightest shape: ${Math.round(topo.kept * 100)}% of the material kept (1 = solid)`, unit: '' } : null)
     : analysis === 'buckling' ? (bmode ? { ux: bmode.ux, uy: bmode.uy, values: bmode.u, name: `Buckling shape ${Math.min(modeAt, buckle!.modes.length - 1) + 1}, at ${+bmode.factor.toPrecision(4)} × the loads (largest movement = 1)`, unit: '', swing: true } : null)
     : analysis === 'harmonic' ? (shaken ? { ux: shaken.ux, uy: shaken.uy, values: shaken[hShow], name: `Shaken at ${fmtHz(shaken.hz)}: ${hShow === 'vm' ? 'the highest stress over a cycle' : 'how far each point swings'}`, unit: hShow === 'vm' ? 'MPa' : 'mm', swing: true } : null)
     : (mode && modeShape ? { ux: mode.ux, uy: mode.uy, values: modeShape, name: `Mode ${Math.min(modeAt, modal!.modes.length - 1) + 1}, ${fmtHz(mode.freq)}: how far each point swings (largest = 1)`, unit: '', swing: true } : null);
@@ -475,7 +497,7 @@ export function StructureBench() {
               <option value="swing">Movement</option><option value="vm">Stress (von Mises, highest over a cycle)</option>
             </select>
           </label>
-        ) : analysis === 'buckling' ? (
+        ) : analysis === 'topology' ? null : analysis === 'buckling' ? (
           <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Shape
             <select value={modeAt} onChange={(e) => setModeAt(Number(e.target.value))} disabled={!buckle?.modes.length} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
               {(buckle?.modes ?? []).map((md, i) => <option key={i} value={i}>{i + 1}: × {+md.factor.toPrecision(4)}</option>)}
@@ -494,14 +516,14 @@ export function StructureBench() {
           </select>
         </label>}
         <button type="button" className={small} aria-pressed={showMesh} onClick={() => setShowMesh((v) => !v)}><Grid3x3 className="h-3.5 w-3.5" aria-hidden />Mesh</button>
-        <button type="button" className={small} disabled={!(is3d ? shown3 : shown) || (analysis === 'static' && deform === 'none')} aria-pressed={playing} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Stop' : 'Animate'}</button>
+        <button type="button" className={small} disabled={!(is3d ? shown3 : shown) || (analysis === 'static' && deform === 'none') || analysis === 'topology'} aria-pressed={playing} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Stop' : 'Animate'}</button>
         {busy && <span className="ms-auto text-xs text-zinc-500 dark:text-zinc-400">solving…</span>}
       </div>
       <div className="relative min-h-0 flex-1">
         {is3d ? (solid3 ? <Sim3DView ref={view} solid={solid3} shown={shown3} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still} dark={dark} deform={deform}
           label={shown3 ? `${tpl.name} as a solid: ${shown3.name} from ${+Math.min(...shown3.values).toPrecision(3)} to ${+Math.max(...shown3.values).toPrecision(3)} ${shown3.unit}` : `${tpl.name} as a solid: not solved yet`} />
           : <div className="grid h-full place-items-center text-[13px] text-zinc-500 dark:text-zinc-400">Making the solid…</div>) : <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} shown={shown} deform={analysis !== 'static' ? 'auto' : deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
-          supports={model.supports} loads={analysis === 'static' || analysis === 'buckling' || (analysis === 'harmonic' && (model.harmonic ?? HARMONIC_START).drive === 'loads') ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
+          supports={model.supports} loads={analysis === 'static' || analysis === 'buckling' || analysis === 'topology' || (analysis === 'harmonic' && (model.harmonic ?? HARMONIC_START).drive === 'loads') ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
           label={shown ? `${tpl.name}: ${shown.name}${analysis === 'static' && result ? ` from ${+Math.min(...result[field]).toPrecision(3)} to ${+Math.max(...result[field]).toPrecision(3)} ${fieldInfo.unit}` : ''}` : `${tpl.name}: not solved yet`} />}
       </div>
       {picking && <p className="border-t border-zinc-200/80 px-3 py-1.5 text-xs text-violet-800 dark:border-white/10 dark:text-violet-200">Press an edge in the picture to add it to {letterOf(sel.id)} or take it away.</p>}

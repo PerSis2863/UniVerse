@@ -26,6 +26,8 @@ export interface Model {
   warming?: Warming;
   /** M546: how the loads repeat and the life wanted. */
   fatigue?: Fatigue;
+  /** M547: the lightest shape keeps this share of the material (0–1). */
+  topo?: { keep: number };
 }
 
 /** A ready-made shape's name and sizes, or the hand-drawn one's (no sizes: its corners are drawn). */
@@ -96,6 +98,7 @@ export function readModel(raw: unknown): Model {
     dim: m.dim === '3d' ? '3d' : '2d',
     harmonic: readHarmonic(m.harmonic),
     warming: readWarming(m.warming),
+    topo: { keep: typeof m.topo?.keep === 'number' && m.topo.keep >= 0.05 && m.topo.keep <= 0.95 ? m.topo.keep : 0.4 },
     fatigue: { kind: m.fatigue?.kind === 'pulsating' ? 'pulsating' : 'reversed', cycles: typeof m.fatigue?.cycles === 'number' && m.fatigue.cycles >= 1 ? Math.min(1e9, m.fatigue.cycles) : FATIGUE_START.cycles },
     ...(m.template === 'custom' ? { custom: readCustom(m.custom) } : {}),
     supports: Array.isArray(m.supports) ? m.supports.filter((s) => s && ['fixed', 'slideX', 'slideY'].includes(s.kind)).map((s) => ({ id: String(s.id), kind: s.kind, edges: strs(s.edges) })) : base.supports,

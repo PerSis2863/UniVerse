@@ -15003,3 +15003,15 @@ Show (Fatigue life, Fatigue safety factor), both coloured with low as danger. Te
 hand. Also: `SimCanvas` draws a field that is the same everywhere in the calm colour (it was the danger end, red).
 Left out: fatigue on 3D parts (the panel says so), variable loads over time (rainflow + Miner live in the scripts'
 materials toolbox, M504). Check: `scripts/checks/hyperion-fatigue-ui.mjs`.
+
+## M547: Hyperion Simulate, the lightest shape (topology optimisation, 26 Nov)
+
+Structures → Solution → **Lightest shape**: topology optimisation by SIMP (`src/lib/sim/topo.ts`). Each element's
+density x (0–1) scales its full-material stiffness by 0.001 + x³·0.999; each round solves, takes the compliance's
+sensitivity −3x²·uᵀk·u, smooths it with Sigmund's filter (radius about one element by default: wider gave grey edges
+and a part twice as bendy; a grid of cells finds the neighbours), and moves material by the optimality criteria
+(bisection on the multiplier, move 0.2) until the share asked for is kept; stops when no density moves 0.002 after
+30 rounds, at most 120. Keep 20–60% (`Model.topo.keep`). The picture: density at the nodes (red solid, blue carved
+away), undeformed, no animation. The part's own weight and warming are left out (they would change with the shape).
+Tested: 40% kept to ±1%, mostly solid or empty, evenly spread = 16× as bendy as solid, the shape found under 2.8×. The
+bracket at 40%: 2.48× the solid part, 0.191 kg, a truss of struts, ~350 ms. Check: `scripts/checks/hyperion-topology-ui.mjs`.
