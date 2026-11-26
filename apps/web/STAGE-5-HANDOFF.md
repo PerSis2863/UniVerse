@@ -15015,3 +15015,18 @@ and a part twice as bendy; a grid of cells finds the neighbours), and moves mate
 away), undeformed, no animation. The part's own weight and warming are left out (they would change with the shape).
 Tested: 40% kept to ±1%, mostly solid or empty, evenly spread = 16× as bendy as solid, the shape found under 2.8×. The
 bracket at 40%: 2.48× the solid part, 0.191 kg, a truss of struts, ~350 ms. Check: `scripts/checks/hyperion-topology-ui.mjs`.
+
+## M548: Hyperion Simulate, Fields: electromagnetics (26 Nov)
+
+Simulate → **Fields**, a new bench (`src/lib/sim/fields.ts`, `components/sim/FieldsBench.tsx`, `fields.worker.ts`):
+2D electromagnetics by bilinear finite elements on a square grid (~160 cells across), matrix-free conjugate gradients
+with Jacobi. Magnetic: A (Wb/m), ∇·(ν∇A) = −J − ∇×(ν₀Br), A = 0 on the box; coils (A/mm², minus out of the page),
+magnets (remanence, north angle), iron (μr) that **saturates** at 2 T (B = Bsat + μ₀(H − Hsat): repeated solves
+with each iron cell's secant ν, half-way each round, until none moves 1%; without it the electromagnet read 70 T).
+Electric: V, ∇·(ε∇V) = 0, electrodes held, the box's sides natural (the field leaves); two electrodes give C = 2W/ΔV².
+Forces by Maxwell's stress on the loop of cells just outside each part's box (trapezoid weights at the corners: without
+them +12%). Field lines / equipotentials by marching squares of the potential. Five ready studies (electromagnet,
+two wires, magnets and a plate, plate capacitor, coaxial cable); parts by numbers or dragged in the picture.
+Tested: a wire's field μ₀I/(2πr) within 5%, two wires' pull μ₀I²/(2πd) within 10%, iron multiplies a coil's field,
+a capacitor's E = V/d, C within 35% of ε·w/d (fringing), a dielectric ×4, a magnet's north. The electromagnet takes
+~4.6 s (saturation; in the worker, "solving…"). Check: `scripts/checks/hyperion-fields-ui.mjs`.
