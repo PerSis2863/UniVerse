@@ -14979,3 +14979,15 @@ textbook answers: a free bar grows α·ΔT·L with no stress, a bar held at both
 warming balances. "From Heat" needs Heat on the same template, sizes and outline (`heatWarming` in `sim.worker.ts`;
 Heat's own material and thickness give way to the study's); otherwise the panel says so. Left out: warming in 3D parts
 and in Vibration (the panel says 3D is flat-only for now). Check: `scripts/checks/hyperion-warming-ui.mjs`.
+
+## M545: Hyperion Simulate, buckling (26 Nov)
+
+Structures → Solution → **Buckling** (beside Stress and bending, Vibration and Shaking): linear (eigenvalue) buckling.
+`src/lib/sim/buckle.ts`: the loads are solved first (`solveStatic`, warming included), each element's stress at its
+integration points (`gaussStress`, less the thermal part) builds the geometric stiffness Kg = ∫∇Nᵀ·σ·∇N (the same for
+x and y movements), and Lanczos on K⁻¹(−Kg) in K's inner product (an unfactored copy of K for the products) gives
+1/λ for the lowest buckling load factors λ (× the loads). Shapes are scaled to a largest movement of 1. Loads that
+only pull give `none`. In the part's own plane only (a column, a strip on edge, a web): plate buckling out of the
+plane needs plate elements (not built). Tested: a cantilever column within 3% of Euler's π²EI/(4L²), its second
+mode about 9× the first, a pulled column none, a held bar buckling from heat. The panel says "×N the loads", red
+under 3. Check: `scripts/checks/hyperion-buckling-ui.mjs` (the start beam pushed end-on: ×163, Euler ×164.5).

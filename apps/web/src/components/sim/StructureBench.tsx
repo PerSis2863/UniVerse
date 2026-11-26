@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Thermometer, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
+import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Thermometer, Columns3, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -83,6 +83,7 @@ export function StructureBench() {
   const { part, edges } = useMemo(() => partOf(model), [model]);
   const groups = useMemo(() => edgeGroups(edges), [edges]);
   const problem = modelProblem(model, analysis === 'modal');
+  const buckle = analysis === 'buckling' ? out?.buckle ?? null : null, bmode = buckle?.modes[Math.min(modeAt, buckle.modes.length - 1)] ?? null;
   const result = out?.result ?? null, mesh = out?.mesh ?? null, modal = out?.modal ?? null, shaken = analysis === 'harmonic' ? out?.harmonic ?? null : null;
   // M413: a solid (3D) part's stress and bending; vibration still uses the flat model.
   const is3d = model.dim === '3d' && analysis === 'static', solidRes = out?.solidResult ?? null, solid3 = out?.solid ?? null;
@@ -181,8 +182,8 @@ export function StructureBench() {
         <span className="min-w-0 flex-1 truncate">Warming<span className="font-normal text-zinc-500 dark:text-zinc-400">: {warm.kind === 'none' ? 'none' : warm.kind === 'even' ? `${warm.dT > 0 ? '+' : ''}${warm.dT} °C` : 'from Heat'}</span></span>
       </button>
       <div className="px-2 pt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solution</div>
-      {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity], ['harmonic', 'Shaking', Waves]] as const).map(([a, name, Icon]) => {
-        const here = analysis === a, solved = here && (a === 'static' ? !!res : a === 'modal' ? !!modal : !!shaken);
+      {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity], ['harmonic', 'Shaking', Waves], ['buckling', 'Buckling', Columns3]] as const).map(([a, name, Icon]) => {
+        const here = analysis === a, solved = here && (a === 'static' ? !!res : a === 'modal' ? !!modal : a === 'buckling' ? !!buckle : !!shaken);
         return (
           <button key={a} type="button" className={cn(item, 'ps-4', isSel('solution') && here && on)} aria-current={(isSel('solution') && here) || undefined} onClick={() => { setAnalysis(a); setSel({ k: 'solution' }); if (a !== 'static' && !still) setPlaying(true); }}>
             {solved ? <Icon className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : here && !busy ? <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden /> : <Icon className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />}
@@ -351,6 +352,31 @@ export function StructureBench() {
       </div>
     );
   }
+  if (!details && analysis === 'buckling') {
+    const low = buckle?.modes[0]?.factor ?? null;
+    details = (
+      <div className="space-y-3">
+        {problem ? <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{problem}</p>
+          : out?.error ? <p className="rounded-lg bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">{out.error}</p>
+            : buckle && (buckle.none ? <p className="rounded-lg bg-emerald-50 p-2.5 text-xs leading-relaxed text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">It can’t buckle under these loads: nothing in it is squeezed (the loads pull, or there are none). Push on it, or warm it while held, to see buckling.</p>
+              : low !== null && <p className={cn('rounded-lg p-2.5 text-xs leading-relaxed', low >= 3 ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200' : 'bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200')}>
+                {low < 1 ? `It buckles before the loads are reached: at ${+(low * 100).toPrecision(3)}% of them. Make it wider or shorter, hold it better, or lower the load.`
+                  : `It would buckle at ${+low.toPrecision(3)} times these loads.${low < 3 ? ' Designs usually want 3 or more against buckling (it gives way suddenly, and real parts are never perfectly straight).' : ' A good margin.'}`}
+              </p>)}
+        {buckle && !buckle.none && (
+          <table className="w-full text-xs tabular-nums">
+            <thead className="text-zinc-500 dark:text-zinc-400"><tr><th className="py-1 text-start font-medium">Shape</th><th className="py-1 text-end font-medium">Buckles at (× the loads)</th></tr></thead>
+            <tbody>{buckle.modes.map((md, i) => (
+              <tr key={i} className={cn('border-t border-zinc-100 dark:border-white/[0.06]', i === Math.min(modeAt, buckle.modes.length - 1) && 'font-semibold')}>
+                <td className="py-1"><button type="button" className="text-start underline-offset-2 hover:underline" aria-label={`Show buckling shape ${i + 1}`} onClick={() => setModeAt(i)}>{i + 1}</button></td><td className="py-1 text-end font-mono">{+md.factor.toPrecision(4)}</td>
+              </tr>))}</tbody>
+          </table>
+        )}
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Linear buckling: where a squeezed part suddenly bows sideways, in the part’s own plane (a column, a strip standing on edge, a thin web). The shapes show how it would give way; their size means nothing. Warming counts too, so a part held at both ends can buckle from heat alone.</p>
+        {bmode && <button type="button" className={small} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />Picture (PNG)</button>}
+      </div>
+    );
+  }
   if (!details && analysis === 'harmonic') {
     details = (
       <div className="space-y-3">
@@ -404,6 +430,7 @@ export function StructureBench() {
   const modeShape = useMemo(() => (mode ? Float64Array.from(mode.ux, (x, i) => Math.hypot(x, mode.uy[i])) : null), [mode]);
   const shown: Shown | null = problem ? null : analysis === 'static'
     ? (result ? { ux: result.ux, uy: result.uy, values: result[field], name: fieldInfo.name, unit: fieldInfo.unit, reverse: field === 'safety' } : null)
+    : analysis === 'buckling' ? (bmode ? { ux: bmode.ux, uy: bmode.uy, values: bmode.u, name: `Buckling shape ${Math.min(modeAt, buckle!.modes.length - 1) + 1}, at ${+bmode.factor.toPrecision(4)} × the loads (largest movement = 1)`, unit: '', swing: true } : null)
     : analysis === 'harmonic' ? (shaken ? { ux: shaken.ux, uy: shaken.uy, values: shaken[hShow], name: `Shaken at ${fmtHz(shaken.hz)}: ${hShow === 'vm' ? 'the highest stress over a cycle' : 'how far each point swings'}`, unit: hShow === 'vm' ? 'MPa' : 'mm', swing: true } : null)
     : (mode && modeShape ? { ux: mode.ux, uy: mode.uy, values: modeShape, name: `Mode ${Math.min(modeAt, modal!.modes.length - 1) + 1}, ${fmtHz(mode.freq)}: how far each point swings (largest = 1)`, unit: '', swing: true } : null);
   const graphic = (
@@ -419,6 +446,12 @@ export function StructureBench() {
           <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Show
             <select value={hShow} onChange={(e) => setHShow(e.target.value as typeof hShow)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
               <option value="swing">Movement</option><option value="vm">Stress (von Mises, highest over a cycle)</option>
+            </select>
+          </label>
+        ) : analysis === 'buckling' ? (
+          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Shape
+            <select value={modeAt} onChange={(e) => setModeAt(Number(e.target.value))} disabled={!buckle?.modes.length} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
+              {(buckle?.modes ?? []).map((md, i) => <option key={i} value={i}>{i + 1}: × {+md.factor.toPrecision(4)}</option>)}
             </select>
           </label>
         ) : (
@@ -441,7 +474,7 @@ export function StructureBench() {
         {is3d ? (solid3 ? <Sim3DView ref={view} solid={solid3} shown={shown3} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still} dark={dark} deform={deform}
           label={shown3 ? `${tpl.name} as a solid: ${shown3.name} from ${+Math.min(...shown3.values).toPrecision(3)} to ${+Math.max(...shown3.values).toPrecision(3)} ${shown3.unit}` : `${tpl.name} as a solid: not solved yet`} />
           : <div className="grid h-full place-items-center text-[13px] text-zinc-500 dark:text-zinc-400">Making the solid…</div>) : <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} shown={shown} deform={analysis !== 'static' ? 'auto' : deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
-          supports={model.supports} loads={analysis === 'static' || (analysis === 'harmonic' && (model.harmonic ?? HARMONIC_START).drive === 'loads') ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
+          supports={model.supports} loads={analysis === 'static' || analysis === 'buckling' || (analysis === 'harmonic' && (model.harmonic ?? HARMONIC_START).drive === 'loads') ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
           label={shown ? `${tpl.name}: ${shown.name}${analysis === 'static' && result ? ` from ${+Math.min(...result[field]).toPrecision(3)} to ${+Math.max(...result[field]).toPrecision(3)} ${fieldInfo.unit}` : ''}` : `${tpl.name}: not solved yet`} />}
       </div>
       {picking && <p className="border-t border-zinc-200/80 px-3 py-1.5 text-xs text-violet-800 dark:border-white/10 dark:text-violet-200">Press an edge in the picture to add it to {letterOf(sel.id)} or take it away.</p>}
