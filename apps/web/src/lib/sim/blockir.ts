@@ -10,7 +10,7 @@ import { evalExpr, FUNCS, type Assign, type Chart, type Expr } from './chart';
 // states moved, the charts take their turn with this step's values, then t += dt.
 
 /** An expression: the chart's (M563) plus a choice (c ? a : b). */
-export type E = Expr | { k: 'sel'; c: E; a: E; b: E };
+export type E = { k: 'num'; v: number } | { k: 'var'; name: string } | { k: 'un'; op: '-' | '!'; a: E } | { k: 'bin'; op: string; a: E; b: E } | { k: 'call'; fn: string; args: E[] } | { k: 'sel'; c: E; a: E; b: E };
 export interface Ir {
   dt: number;
   inputs: { name: string; test: number }[];
@@ -85,9 +85,9 @@ export function chartExpr(c: IrChart, e: Expr): E {
   switch (e.k) {
     case 'num': return e;
     case 'var': return e.name === 't' ? bin('-', v('t'), v(`${c.name}_since`)) : v(`${c.name}_${e.name}`);
-    case 'un': return { k: 'un', op: e.op, a: chartExpr(c, e.a) as Expr };
+    case 'un': return { k: 'un', op: e.op, a: chartExpr(c, e.a) };
     case 'bin': return bin(e.op, chartExpr(c, e.a), chartExpr(c, e.b));
-    case 'call': return { k: 'call', fn: e.fn, args: e.args.map((a) => chartExpr(c, a) as Expr) };
+    case 'call': return { k: 'call', fn: e.fn, args: e.args.map((a) => chartExpr(c, a)) };
   }
 }
 export const chartAssigns = (c: IrChart, list: Assign[]) => list.map((a) => ({ name: `${c.name}_${a.name}`, e: chartExpr(c, a.e) }));
@@ -99,7 +99,7 @@ export function evalE(e: E, env: Record<string, number>): number {
   if (e.k === 'un') { const a = evalE(e.a, env); return e.op === '-' ? -a : a ? 0 : 1; }
   if (e.k === 'bin') return evalExpr({ k: 'bin', op: e.op, a: { k: 'num', v: evalE(e.a, env) }, b: { k: 'num', v: evalE(e.b, env) } }, {});
   if (e.k === 'call') return FUNCS[e.fn].f(...e.args.map((a) => evalE(a, env)));
-  return evalExpr(e, env);
+  return e.k === 'num' ? e.v : (env[e.name] ?? 0);
 }
 
 /** The generated code's steps, run here: what every output was at each step (inputs at their test values). */
