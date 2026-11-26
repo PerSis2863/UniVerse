@@ -258,6 +258,128 @@ spline | spline(x, y, xq) | Cubic spline through the points.
 trapz | trapz(x, y) | Area under the points (trapezoids).
 cumtrapz | cumtrapz(x, y) | Running area.
 integral | integral(f, a, b) | Integral of a function from a to b.
+integral2 | integral2(f, xmin, xmax, ymin, ymax) | A double integral of f(x, y); ymin and ymax may be functions of x, for a region that isn't a box: integral2(@(x, y) 1, 0, 1, 0, @(x) x).
+integral3 | integral3(f, xmin, xmax, ymin, ymax, zmin, zmax) | A triple integral of f(x, y, z); the y limits may be functions of x, the z limits functions of x and y.
+pdepe | sol = pdepe(m, @pdefun, @icfun, @bcfun, xmesh, tspan) | Partial differential equations in one space dimension: c·∂u/∂t = x⁻ᵐ∂/∂x(xᵐ·f) + s, with [c, f, s] = pdefun(x, t, u, dudx), u0 = icfun(x), [pl, ql, pr, qr] = bcfun(xl, ul, xr, ur, t) (each end p + q·f = 0); m = 0 slab, 1 cylinder, 2 sphere. sol(i, j, k): time i, point j, component k.
+gammaln | gammaln(x) | The logarithm of the gamma function (no overflow for big x).
+gammainc | gammainc(x, a) | The regularised lower incomplete gamma function P(a, x).
+betainc | betainc(x, a, b) | The regularised incomplete beta function.
+tcdf | tcdf(x, v) | Student's t distribution's cumulative probability with v degrees of freedom; tinv(p, v) inverts it, tpdf(x, v) is its density.
+tinv | tinv(p, v) | The t value with probability p below it (critical values: tinv(0.975, 10)).
+tpdf | tpdf(x, v) | Student's t density.
+chi2cdf | chi2cdf(x, v) | The χ² distribution's cumulative probability; chi2inv(p, v), chi2pdf(x, v).
+chi2inv | chi2inv(p, v) | The χ² value with probability p below it.
+chi2pdf | chi2pdf(x, v) | The χ² density.
+fcdf | fcdf(x, v1, v2) | The F distribution's cumulative probability; finv(p, v1, v2), fpdf(x, v1, v2).
+finv | finv(p, v1, v2) | The F value with probability p below it.
+fpdf | fpdf(x, v1, v2) | The F density.
+betacdf | betacdf(x, a, b) | The beta distribution's cumulative probability; betapdf for its density.
+betapdf | betapdf(x, a, b) | The beta density.
+gamcdf | gamcdf(x, a, b) | The gamma distribution's cumulative probability (shape a, scale b); gampdf for its density.
+gampdf | gampdf(x, a, b) | The gamma density.
+binocdf | binocdf(x, n, p) | The binomial distribution's cumulative probability; binopdf(x, n, p) the chance of exactly x.
+binopdf | binopdf(x, n, p) | The chance of exactly x successes in n tries.
+poisscdf | poisscdf(x, lambda) | The Poisson distribution's cumulative probability; poisspdf(x, lambda) the chance of exactly x.
+poisspdf | poisspdf(x, lambda) | The chance of exactly x events.
+tiedrank | [r, tieadj] = tiedrank(x) | Ranks, ties given their average rank.
+ttest | [h, p, ci, stats] = ttest(x, m) or ttest(x, y) | One-sample t-test of mean m (or paired, x against y). Options 'Alpha', 'Tail' ('both', 'right', 'left'). h = 1 rejects at that level.
+ttest2 | [h, p, ci, stats] = ttest2(x, y, 'Vartype', 'unequal') | Two-sample t-test (pooled, or Welch's with 'unequal').
+ranksum | [p, h, stats] = ranksum(x, y) | Wilcoxon rank-sum (Mann–Whitney) test: exact for small samples without ties.
+signrank | [p, h, stats] = signrank(x, m) or signrank(x, y) | Wilcoxon signed-rank test of median m (or of paired differences): exact up to 15.
+anova1 | [p, tbl, stats] = anova1(y, group) | One-way analysis of variance: a matrix's columns, or values and their group labels.
+anova2 | [p, tbl] = anova2(y, reps) | Two-way analysis of variance (columns one factor, blocks of reps rows the other; interaction when reps > 1).
+kruskalwallis | [p, tbl, stats] = kruskalwallis(y, group) | The rank version of one-way ANOVA.
+chi2gof | [h, p, stats] = chi2gof(x, 'NBins', 10) | χ² goodness of fit to a normal distribution.
+normfit | [mu, sigma, muci, sigmaci] = normfit(x) | The normal distribution's mean and spread with confidence intervals.
+fitdist | pd = fitdist(x, 'Normal') | Fits a distribution by maximum likelihood: Normal, Exponential, Poisson, Lognormal, Gamma.
+bootstrp | b = bootstrp(nboot, @fun, data) | The statistic of nboot resamples (with replacement), for its spread.
+bootci | ci = bootci(nboot, @fun, data) or bootci(nboot, {@fun, data}, 'Type', 'per') | A bootstrap confidence interval: bias-corrected and accelerated (BCa) or percentile.
+jsondecode | s = jsondecode(text) | Reads JSON: objects become structs, lists of numbers vectors (equal rows a matrix), mixed lists cells, null [].
+jsonencode | text = jsonencode(value, 'PrettyPrint', true) | Writes a value as JSON (a matrix as rows, NaN as null).
+yamldecode | s = yamldecode(text) | Reads YAML (maps, lists, numbers, text, true/false, flow [a, b]).
+yamlencode | text = yamlencode(value) | Writes a value as YAML.
+yamlread | s = yamlread('settings.yaml') | Reads a YAML file.
+yamlwrite | yamlwrite('settings.yaml', s) | Writes a value to a YAML file.
+readstruct | s = readstruct('part.xml') | Reads an XML file as a struct (attributes as fields ending in Attribute, repeated elements as cells).
+writestruct | writestruct(s, 'part.xml') | Writes a struct as an XML file.
+ncinfo | info = ncinfo('data.nc') | A NetCDF file's dimensions, variables and attributes (classic and NetCDF-4).
+ncread | v = ncread('data.nc', 'temp') | A NetCDF variable, its scale and offset applied and fill values as NaN.
+ncreadatt | a = ncreadatt('data.nc', 'temp', 'units') | One NetCDF attribute ('/' for the file's own).
+fitsinfo | info = fitsinfo('sky.fits') | A FITS file's image size and header keywords.
+fitsread | im = fitsread('sky.fits') | A FITS image (BSCALE and BZERO applied).
+zip | zip('archive', {'a.csv', 'b.txt'}) | Packs files into a .zip.
+unzip | names = unzip('archive.zip') | Unpacks a .zip into Files.
+gzip | gzip('data.csv') | Compresses a file to .gz.
+gunzip | gunzip('data.csv.gz') | Uncompresses a .gz file.
+base64encode | t = base64encode(text or bytes) | Base64 text of some text or uint8 bytes.
+base64decode | b = base64decode(t) | The uint8 bytes of base64 text (char(b) for text).
+hash | h = hash('sha256', text) | A fingerprint of text or bytes: 'md5', 'sha1' or 'sha256', as hex.
+getByteStreamFromArray | b = getByteStreamFromArray(value) | Any value as uint8 bytes (to save or send); getArrayFromByteStream turns them back.
+getArrayFromByteStream | v = getArrayFromByteStream(b) | The value saved by getByteStreamFromArray.
+expm | E = expm(A) | The matrix exponential e^A (scaling and squaring).
+sqrtm | S = sqrtm(A) | The principal square root of a matrix (S*S = A).
+logm | L = logm(A) | The principal logarithm of a matrix (expm(L) = A).
+funm | F = funm(A, @fun) | Any function of a matrix with real eigenvalues, through its eigenvectors.
+besselj | besselj(nu, x) | The Bessel function of the first kind, any real order.
+bessely | bessely(nu, x) | The Bessel function of the second kind, x > 0.
+besseli | besseli(nu, x) | The modified Bessel function of the first kind.
+besselk | besselk(nu, x) | The modified Bessel function of the second kind, x > 0.
+airy | airy(x) or airy(k, x) | The Airy function Ai (k = 0) or Bi (k = 2).
+lambertw | w = lambertw(x) or lambertw(-1, x) | Lambert's W: w·e^w = x (the other branch with −1).
+erfinv | erfinv(y) | The inverse error function.
+erfcinv | erfcinv(y) | The inverse complementary error function.
+ellipke | [K, E] = ellipke(m) | The complete elliptic integrals of the first and second kind (parameter m).
+expint | expint(x) | The exponential integral E₁(x).
+legendre | P = legendre(n, x) | The associated Legendre functions P_n^m(x), m = 0…n, a row for each m.
+perms | P = perms(v) | Every order of v's items, one per row.
+rat | [n, d] = rat(x, tol) | The fraction n/d nearest x (continued fractions).
+rats | s = rats(x) | x written as fractions.
+chebcoeffs | c = chebcoeffs(@f, n, [a b]) | The Chebyshev series of f on [a, b] to degree n (chebfun's idea: a function as a few numbers).
+chebval | y = chebval(c, x, [a b]) | A Chebyshev series' values.
+chebroots | r = chebroots(c, [a b]) | The real roots of a Chebyshev series in its interval.
+strjust | strjust(s, 'right') | Text moved right, left or to the 'center' within its width.
+validatestring | v = validatestring('app', {'apple', 'banana'}) | The option a word starts (any case), or an error naming the choices.
+dec2base | dec2base(d, base, len) | A whole number in any base from 2 to 36, as text.
+base2dec | base2dec('FF', 16) | Text in a base back to a number.
+typecast | typecast(x, 'uint32') | The same bytes read as another number type.
+num2hex | num2hex(x) | A double's 16 hex digits.
+hex2num | hex2num('400921fb54442d18') | 16 hex digits back to the double.
+textscan | C = textscan(text, '%s %f', 'Delimiter', ',') | Reads delimited text into a cell: one column per field (%*… skips).
+strread | [a, b] = strread(text, '%s %f') | Like textscan, each field its own output.
+datenum | n = datenum(2026, 11, 26) or datenum('2026-11-26 14:30') | A date as MATLAB's day number (1 = 1 January, year 0).
+weekday | [n, name] = weekday(d) | The day of the week (1 = Sunday) and its short name.
+eomday | eomday(y, m) | The last day of a month.
+calendar | C = calendar(y, m) | A month as 6 weeks × 7 days (Sunday first).
+addtodate | addtodate(d, n, 'month') | A date moved by years, months, weeks, days, hours, minutes or seconds (month ends kept).
+containers | m = containers.Map({'a', 'b'}, {1, 2}) | A map from keys to values (shared by its copies): m('a'), m('c') = 3, keys(m), values(m), isKey(m, k), remove(m, k), m.Count.
+test | test('name') or [ok, n] = test('name') | Runs the tests at the end of name.m in your files, written as Octave writes them: %!assert (f(2), 4), %!test blocks, %!error <pattern> code, %!fail, %!shared, %!function, %!xtest.
+fail | fail('code', 'pattern') | Passes when the code stops with an error (matching the pattern, when given); for tests.
+__octfail__ | __octfail__('code', 'pattern') | The function behind %!fail in test (use fail).
+demo | demo('name') or demo('name', k) | Runs the %!demo blocks in name.m, showing each one's code.
+doctest | doctest('name') or [passed, n] = doctest('name') | Checks the examples in name.m's help text: a line % >> code, then the lines it should print (... stands for anything).
+qrcode | q = qrcode(text) or qrcode(text, 'Margin', 2) | A QR code as a logical matrix, true where it is dark: imshow(~q) shows it.
+impixel | v = impixel(I, columns, rows) | The values of a picture's pixels, one row each with three columns (grey pictures repeated).
+impixelinfo | impixelinfo | Shows the column, row and value of the pixel under the pointer, under the figure.
+weboptions | o = weboptions('Timeout', 30, 'ContentType', 'json', 'HeaderFields', {'Accept' 'text/plain'}) | Options for webread, webwrite and websave: Timeout (s), ContentType (auto, text, json, binary, image), MediaType, RequestMethod, HeaderFields, Username and Password, KeyName and KeyValue.
+webread | data = webread(url, name, value, …, options) | Reads a web address: JSON comes back as structs, text as char, pictures as images, anything else as uint8 bytes. Hyperion asks you once per site before reaching it.
+webwrite | answer = webwrite(url, data, options) or webwrite(url, name, value, …) | Sends data to a web address (a struct as JSON, name–value pairs as a form, text or bytes as they are) and reads the answer.
+websave | websave(filename, url, name, value, …) | Saves what a web address gives into your Hyperion files.
+urlencode | s = urlencode(text) | Text made safe for a web address (spaces as +).
+urldecode | s = urldecode(text) | Undoes urlencode.
+mqttclient | mq = mqttclient('wss://broker.example.com:8884/mqtt', 'ClientID', id, 'Username', u, 'Password', p) | Connects to an MQTT broker over secure WebSockets (the browser can't open other sockets).
+subscribe | subscribe(mq, topic) | Receives the messages on an MQTT topic (+ and # as wildcards).
+unsubscribe | unsubscribe(mq, topic) | Stops receiving an MQTT topic.
+peek | msgs = peek(mq) | The MQTT messages that have arrived (Time, Topic, Data), without waiting.
+vrjoystick | joy = vrjoystick(1) | A game controller or joystick (press one of its buttons first, so the browser shows it). [axes, buttons, pov] = read(joy); axis(joy, n); button(joy, n); caps(joy). MQTT's read(mq) waits for the next messages and write(mq, topic, text) sends one.
+caps | c = caps(joy) | How many axes, buttons and hats a game controller has.
+button | b = button(joy, n) | Whether a game controller's buttons are pressed.
+containers.Map | m = containers.Map(keys, values) or containers.Map('KeyType', 'double', 'ValueType', 'any') | Makes a map; see containers.
+dictionary | d = dictionary(keys, values) | A map that copies like a value: d(key), d(key) = v, keys, values, isKey, numEntries.
+keys | k = keys(m) | A map's keys, sorted.
+values | v = values(m) or values(m, {k1, k2}) | A map's values (in keys' order), or those of some keys.
+isKey | tf = isKey(m, k) | Whether a map has a key (or each of a cell of keys).
+remove | m = remove(m, k) | Takes a key (or several) out of a map.
+numEntries | n = numEntries(d) | How many keys a map has.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
 fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.
@@ -622,6 +744,19 @@ gcf | gcf | The current figure's number.
 gca | gca, set(gca, 'XLim', [0 10]) | The current axes (for set).
 set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on'), set(h, 'XData', x, 'YData', y) | Changes the current axes' limits and grid, or a line's points, colour and width by its handle (h = plot(…)).
 drawnow | drawnow | Shows the figure as it is now, while the script goes on: call it in a loop to animate.
+uifigure | fig = uifigure('Name', 'My app', 'Position', [100 100 640 480]) | A window for your own app: put buttons, sliders, fields and plots in it; it floats over the Code window. Its parts' callbacks run when you press, slide or choose.
+uibutton | b = uibutton(fig, 'Text', 'Go', 'Position', [20 20 100 22], 'ButtonPushedFcn', @(src, event) …) | A button in an app window; its function runs when pressed.
+uislider | s = uislider(fig, 'Limits', [0 10], 'Value', 5, 'ValueChangedFcn', @(src, event) disp(event.Value)) | A slider in an app window; event.Value is where it was let go.
+uilabel | l = uilabel(fig, 'Text', 'Hello', 'Position', [20 60 200 22]) | Text in an app window; change it with set(l, 'Text', …).
+uieditfield | e = uieditfield(fig, 'numeric', 'Value', 3, 'ValueChangedFcn', @(src, event) …) | A box to type a number ('numeric') or text in, in an app window.
+uicheckbox | c = uicheckbox(fig, 'Text', 'Show grid', 'ValueChangedFcn', @(src, event) …) | A tick box in an app window; event.Value is true or false.
+uidropdown | d = uidropdown(fig, 'Items', {'Sine', 'Square'}, 'ValueChangedFcn', @(src, event) …) | A drop-down list in an app window; event.Value is the item chosen.
+uiaxes | ax = uiaxes(fig, 'Position', [20 120 400 250]) | A plot inside an app window: plot(ax, x, y), title(ax, …), cla(ax) draw there.
+uialert | uialert(fig, 'Done!', 'Title') | Shows a message (in the command window).
+webcamlist | names = webcamlist | The cameras on this computer (the browser asks to use the camera the first time).
+webcam | cam = webcam, webcam(2), webcam('USB'), webcam(…, 'Resolution', '1280x720') | Picks a camera (the first by default) for snapshot.
+snapshot | img = snapshot(cam) | Takes a picture with the camera: rows × columns × 3 uint8, ready for imshow and the image functions.
+get | v = get(h, 'Value') | Reads an app part's Value, Text, Limits, Items or Position.
 animatedline | h = animatedline('Color', 'r') | An empty line to grow point by point (addpoints) while a loop draws it.
 addpoints | addpoints(h, x, y) | Adds points to an animated line; drawnow shows them.
 clearpoints | clearpoints(h) | Empties an animated line.

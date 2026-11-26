@@ -230,7 +230,7 @@ const ToolstripView = memo(function ToolstripView(p: ViewProps) {
         <Menu label="New script in" className={bare} button={<span className={big}><FilePlus className={iconBig} aria-hidden />New script</span>}
           items={LANGS.map((l) => ({ label: `${l.name} (${l.ext})${l.where === 'computer' ? ', computer app' : ''}`, onSelect: () => p.act('onNew', l.id) }))} />
         <button type="button" className={big} onClick={() => opener.current?.click()}><FolderOpen className={iconBig} aria-hidden />Open</button>
-        <input ref={opener} type="file" multiple accept=".m,.py,.R,.r,.jl,.cpp,.cc,.rs,.txt" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => { if (e.target.files?.length) p.act('onOpenFiles', e.target.files); e.target.value = ''; }} />
+        <input ref={opener} type="file" multiple accept=".m,.ipynb,.py,.R,.r,.jl,.cpp,.cc,.rs,.txt" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => { if (e.target.files?.length) p.act('onOpenFiles', e.target.files); e.target.value = ''; }} />
         <Stack>
           <Popover label="Find in scripts" className={cn(bare, 'w-full')} wide button={<span className={small}><Search className={iconSmall} aria-hidden />Find in scripts</span>}>
             {(close) => <FindBox getScripts={p.getScripts} onJump={(k, l) => { p.act('onJump', k, l); close(); }} />}

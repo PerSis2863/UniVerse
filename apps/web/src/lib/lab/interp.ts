@@ -51,6 +51,8 @@ export const indexHooks: { get: ((v: Value, idx: Idx[], plain: (m: Value) => Val
 export const parHook: { parfor: ((lab: Lab, st: Extract<Stmt, { s: 'for' }>, vars: Map<string, Value>) => boolean) | null } = { parfor: null };
 interface Frame { vars: Map<string, Value>; nargin: number; nargout: number; depth: number }
 export type Idx = 'all' | number[]; // 0-based positions
+/** M559: maps (map-lab.ts) see their keys before they become positions. */
+export const keyHooks: { get: ((m: Struct, keys: Value[]) => Value) | null; set: ((m: Struct, keys: Value[], v: Value) => Value) | null } = { get: null, set: null };
 
 /** Values that may be held in two places: never changed in place (copied first). */
 const shared = new WeakSet<object>();
@@ -185,6 +187,7 @@ export class Lab {
     }
     if (t.k === 'index') {
       const base = this.peek(t.of, f);
+      if (base?.k === 'struct' && base.keyed && keyHooks.set && !t.brace) { this.assign(t.of, keyHooks.set(base, t.args.map((a) => this.ev(a, f)), v), f); return; }
       const idx = t.args.map((a, i) => this.index(a, base, i, t.args.length, f));
       const next = t.brace ? setCell(base, idx, v) : setIndex(base, idx, v, t.of.k === 'id' && base !== undefined && !shared.has(base));
       this.assign(t.of, next, f);
@@ -298,6 +301,7 @@ export class Lab {
           }
         } else b = this.ev(e.of, f);
         if (b.k === 'fn') return this.callFn(b, e.args.flatMap((a) => this.spread(a, f)), nout);
+        if (b.k === 'struct' && b.keyed && keyHooks.get && !e.brace) return [keyHooks.get(b, e.args.map((a) => this.ev(a, f)))];
         const idx = e.args.map((a, i) => this.index(a, b, i, e.args.length, f));
         return e.brace ? getCell(b, idx) : [getIndex(b, idx)];
       }
