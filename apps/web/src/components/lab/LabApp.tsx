@@ -5,6 +5,7 @@ import { TestResults } from './TestResults';
 import type { TestReport } from '@/lib/lab/verify-lab';
 import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
 import { asksOf, onAsk, onChannel } from './page-answers';
+import './net-link';
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { MACHINE_EXAMPLES } from '@/lib/lab/examples-machines';
 import { toast } from 'sonner';

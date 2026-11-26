@@ -15200,3 +15200,16 @@ The Octave packages' fourth wave (strings, miscellaneous, financial dates, conta
 - **Maps:** `containers.Map(keys, values)` and `dictionary`; `m(key)` reads, `m(key) = v` writes (a map is a handle: every copy sees the change), `keys`, `values`, `isKey`, `remove`, `numEntries`, `m.Count`.
 - **How maps hook in:** a `Struct` with `keyed` set; `interp.ts` has `keyHooks` (get/set) checked before ordinary struct indexing, like `indexHooks`. `containers` returns a struct whose `Map` field is the builtin named `containers.Map`, so `containers.Map(...)` works without new syntax. Help needs a line for every builtin key, that one included.
 - Tests: `text.test.ts`.
+
+## M560: Hyperion: the web, MQTT and game controllers (the Octave packages' fifth wave, 26 Nov)
+
+The Octave packages' fifth wave (web, networks and devices), written fresh in `src/lib/lab/net-lab.ts` (no Octave code).
+
+- **Web:** `webread`, `webwrite`, `websave`, `weboptions` (Timeout, ContentType, MediaType, RequestMethod, HeaderFields, Username / Password, KeyName / KeyValue), `urlencode`, `urldecode`. JSON comes back as structs, text as char, pictures as uint8 images, anything else as bytes.
+- **MQTT:** `mqttclient` (secure WebSockets only: a browser can't open other sockets), `subscribe`, `unsubscribe`, `write(mq, topic, text)`, `read(mq)` (waits for messages), `peek(mq)`, `close(mq)`. MQTT 3.1.1 at QoS 0, written in the frame.
+- **Game controllers:** `vrjoystick`, `read(joy)` → axes, buttons, the D-pad as a hat in degrees; `axis(joy, n)`, `button(joy, n)`, `caps(joy)`. `read`, `write`, `axis` and `close` are wrapped: they take these objects first, anything else as before.
+- **Safety (the rule for code that builds on it):** this site's addresses are fetched by the page without cookies. Other sites go only through the **sealed web link** `public/sandbox/net.html` (framed `sandbox="allow-scripts"`, an opaque origin with nothing of the site's, requests without credentials; its own policy `NET_CSP` in `security-headers.ts` and `public/_headers`: `connect-src https: wss:`, nothing loaded). The page asks the person once per site per visit (`net-link.ts`, `mayReach`) before anything is sent, so a script shared by link can't send someone's files or variables away without their yes. The site's own policy is unchanged. `next.config.ts` now names `/sandbox/run` and `/sandbox/net` separately; `sandbox-headers.test.ts` checks both. Never give either frame allow-same-origin.
+- Sites must allow other sites' pages to read them (CORS), as with any browser app.
+- Checked in a real browser: a fetch to a public API through the frame, and MQTT connect, subscribe, publish and receive against a local broker (this container reaches only port 443, so the public brokers weren't tried).
+- Left out: `tcpclient`, `udpport` (no raw sockets in a browser; they'd need the computer app's runner and a new installer), SQLite and MySQL (a database library needs the owner's yes), Raspberry Pi pins.
+- Tests: `net.test.ts`.

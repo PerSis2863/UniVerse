@@ -352,6 +352,19 @@ eomday | eomday(y, m) | The last day of a month.
 calendar | C = calendar(y, m) | A month as 6 weeks × 7 days (Sunday first).
 addtodate | addtodate(d, n, 'month') | A date moved by years, months, weeks, days, hours, minutes or seconds (month ends kept).
 containers | m = containers.Map({'a', 'b'}, {1, 2}) | A map from keys to values (shared by its copies): m('a'), m('c') = 3, keys(m), values(m), isKey(m, k), remove(m, k), m.Count.
+weboptions | o = weboptions('Timeout', 30, 'ContentType', 'json', 'HeaderFields', {'Accept' 'text/plain'}) | Options for webread, webwrite and websave: Timeout (s), ContentType (auto, text, json, binary, image), MediaType, RequestMethod, HeaderFields, Username and Password, KeyName and KeyValue.
+webread | data = webread(url, name, value, …, options) | Reads a web address: JSON comes back as structs, text as char, pictures as images, anything else as uint8 bytes. Hyperion asks you once per site before reaching it.
+webwrite | answer = webwrite(url, data, options) or webwrite(url, name, value, …) | Sends data to a web address (a struct as JSON, name–value pairs as a form, text or bytes as they are) and reads the answer.
+websave | websave(filename, url, name, value, …) | Saves what a web address gives into your Hyperion files.
+urlencode | s = urlencode(text) | Text made safe for a web address (spaces as +).
+urldecode | s = urldecode(text) | Undoes urlencode.
+mqttclient | mq = mqttclient('wss://broker.example.com:8884/mqtt', 'ClientID', id, 'Username', u, 'Password', p) | Connects to an MQTT broker over secure WebSockets (the browser can't open other sockets).
+subscribe | subscribe(mq, topic) | Receives the messages on an MQTT topic (+ and # as wildcards).
+unsubscribe | unsubscribe(mq, topic) | Stops receiving an MQTT topic.
+peek | msgs = peek(mq) | The MQTT messages that have arrived (Time, Topic, Data), without waiting.
+vrjoystick | joy = vrjoystick(1) | A game controller or joystick (press one of its buttons first, so the browser shows it). [axes, buttons, pov] = read(joy); axis(joy, n); button(joy, n); caps(joy). MQTT's read(mq) waits for the next messages and write(mq, topic, text) sends one.
+caps | c = caps(joy) | How many axes, buttons and hats a game controller has.
+button | b = button(joy, n) | Whether a game controller's buttons are pressed.
 containers.Map | m = containers.Map(keys, values) or containers.Map('KeyType', 'double', 'ValueType', 'any') | Makes a map; see containers.
 dictionary | d = dictionary(keys, values) | A map that copies like a value: d(key), d(key) = v, keys, values, isKey, numEntries.
 keys | k = keys(m) | A map's keys, sorted.

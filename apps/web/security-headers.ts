@@ -91,6 +91,20 @@ export const sandboxHeaders = [
   { key: 'Referrer-Policy', value: 'no-referrer' },
 ];
 
+// Hyperion's sealed web link (M560, public/sandbox/net.html): webread, webwrite, websave and mqttclient reach other
+// sites from this frame, framed with sandbox="allow-scripts" (an opaque origin, nothing of the site's reachable), so it
+// may connect to any https or wss address; its one inline script runs and nothing else loads. The page asks the person
+// once per site before sending a request here (src/components/lab/net-link.ts). Same text in public/_headers.
+export const NET_CSP = [
+  "default-src 'none'",
+  "script-src 'unsafe-inline'",
+  'connect-src https: wss:',
+  "frame-ancestors 'self'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+export const netHeaders = [{ key: 'Content-Security-Policy', value: NET_CSP }, ...sandboxHeaders.slice(1)];
+
 // Hyperion's pages are cross-origin isolated (M521): its engine's background thread may then sleep on memory shared
 // with the page (SharedArrayBuffer and Atomics.wait) until a device's next line, a pin's next reading or another
 // thread's result arrives, inside loops and functions too. Pages from other sites still load (credentialless: they

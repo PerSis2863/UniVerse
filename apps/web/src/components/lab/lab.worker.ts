@@ -15,6 +15,7 @@ import '@/lib/lab/stats-lab';
 import '@/lib/lab/data-lab';
 import '@/lib/lab/special-lab';
 import '@/lib/lab/text-lab';
+import '@/lib/lab/net-lab';
 import '@/lib/lab/maint-lab';
 import '@/lib/lab/dsp-lab';
 import '@/lib/lab/energy-lab';
