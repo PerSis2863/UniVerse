@@ -7,6 +7,7 @@ import './optim-lab';
 import './calc-lab';
 import './stats-lab';
 import './data-lab';
+import './special-lab';
 import './maint-lab';
 import './dsp-lab';
 import './energy-lab';

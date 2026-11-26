@@ -316,6 +316,27 @@ base64decode | b = base64decode(t) | The uint8 bytes of base64 text (char(b) for
 hash | h = hash('sha256', text) | A fingerprint of text or bytes: 'md5', 'sha1' or 'sha256', as hex.
 getByteStreamFromArray | b = getByteStreamFromArray(value) | Any value as uint8 bytes (to save or send); getArrayFromByteStream turns them back.
 getArrayFromByteStream | v = getArrayFromByteStream(b) | The value saved by getByteStreamFromArray.
+expm | E = expm(A) | The matrix exponential e^A (scaling and squaring).
+sqrtm | S = sqrtm(A) | The principal square root of a matrix (S*S = A).
+logm | L = logm(A) | The principal logarithm of a matrix (expm(L) = A).
+funm | F = funm(A, @fun) | Any function of a matrix with real eigenvalues, through its eigenvectors.
+besselj | besselj(nu, x) | The Bessel function of the first kind, any real order.
+bessely | bessely(nu, x) | The Bessel function of the second kind, x > 0.
+besseli | besseli(nu, x) | The modified Bessel function of the first kind.
+besselk | besselk(nu, x) | The modified Bessel function of the second kind, x > 0.
+airy | airy(x) or airy(k, x) | The Airy function Ai (k = 0) or Bi (k = 2).
+lambertw | w = lambertw(x) or lambertw(-1, x) | Lambert's W: w·e^w = x (the other branch with −1).
+erfinv | erfinv(y) | The inverse error function.
+erfcinv | erfcinv(y) | The inverse complementary error function.
+ellipke | [K, E] = ellipke(m) | The complete elliptic integrals of the first and second kind (parameter m).
+expint | expint(x) | The exponential integral E₁(x).
+legendre | P = legendre(n, x) | The associated Legendre functions P_n^m(x), m = 0…n, a row for each m.
+perms | P = perms(v) | Every order of v's items, one per row.
+rat | [n, d] = rat(x, tol) | The fraction n/d nearest x (continued fractions).
+rats | s = rats(x) | x written as fractions.
+chebcoeffs | c = chebcoeffs(@f, n, [a b]) | The Chebyshev series of f on [a, b] to degree n (chebfun's idea: a function as a few numbers).
+chebval | y = chebval(c, x, [a b]) | A Chebyshev series' values.
+chebroots | r = chebroots(c, [a b]) | The real roots of a Chebyshev series in its interval.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
 fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.

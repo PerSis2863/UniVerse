@@ -15175,3 +15175,18 @@ the engine can't wait for crypto.subtle), **getByteStreamFromArray / getArrayFro
 writer and reader). `files.ts` gained `fileBytes`, `writeFileBytes`, `hasFile`. Tests: published hash vectors, a
 NetCDF and a FITS file built byte by byte, JSON/YAML/XML round trips. Left out: MIDI files, FITS extensions (tables),
 NetCDF writing (nccreate/ncwrite), XML as a DOM (xmlread).
+
+## M558: Hyperion: special maths (the Octave packages' third wave, 26 Nov)
+
+The third GNU Octave wave (special maths; pkg-funm-schur-parlett, chebfun's basics, octave-miscellaneous; our own
+code). `src/lib/lab/special-lab.ts` (both workers, help.test.ts): **expm** (scaling and squaring, [6/6] Padé),
+**sqrtm** (Denman–Beavers), **logm** (square roots to near I, the log series, ×2^k), **funm** (V·f(D)·V⁻¹ for real
+eigenvalues; a plain error otherwise: the Schur–Parlett general case is left out); **besselj / bessely / besseli /
+besselk** of any real order from their integral representations, integrated by calc-lab's adaptive Gauss–Legendre
+(`integrate`, tol 1e-13; besseli scaled by e^−x inside; the infinite tails cut where e^(νt − x·g(t)) < e^−45),
+**airy** (Ai, Bi from order-1/3 Bessels); **lambertw** (branches 0 and −1, Halley), **erfinv / erfcinv** (through
+stats.ts' norminv), **ellipke** (AGM), **expint** (E₁: series below 1, continued fraction above), **legendre**
+(associated, Condon–Shortley sign like MATLAB); **perms** (MATLAB's reverse order), **rat / rats** (continued
+fractions); **chebcoeffs / chebval / chebroots** (Chebyshev points of the first kind, Clenshaw, the colleague
+matrix's eigenvalues polished by Newton on the series: `eig` alone gave 1e-4). gammainc / betainc came in M556; vpa
+was already there (sym-lab.ts). Tests: tabulated values to 10–14 digits, the J_{5/2} closed form, matrix identities.
