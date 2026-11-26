@@ -294,6 +294,28 @@ normfit | [mu, sigma, muci, sigmaci] = normfit(x) | The normal distribution's me
 fitdist | pd = fitdist(x, 'Normal') | Fits a distribution by maximum likelihood: Normal, Exponential, Poisson, Lognormal, Gamma.
 bootstrp | b = bootstrp(nboot, @fun, data) | The statistic of nboot resamples (with replacement), for its spread.
 bootci | ci = bootci(nboot, @fun, data) or bootci(nboot, {@fun, data}, 'Type', 'per') | A bootstrap confidence interval: bias-corrected and accelerated (BCa) or percentile.
+jsondecode | s = jsondecode(text) | Reads JSON: objects become structs, lists of numbers vectors (equal rows a matrix), mixed lists cells, null [].
+jsonencode | text = jsonencode(value, 'PrettyPrint', true) | Writes a value as JSON (a matrix as rows, NaN as null).
+yamldecode | s = yamldecode(text) | Reads YAML (maps, lists, numbers, text, true/false, flow [a, b]).
+yamlencode | text = yamlencode(value) | Writes a value as YAML.
+yamlread | s = yamlread('settings.yaml') | Reads a YAML file.
+yamlwrite | yamlwrite('settings.yaml', s) | Writes a value to a YAML file.
+readstruct | s = readstruct('part.xml') | Reads an XML file as a struct (attributes as fields ending in Attribute, repeated elements as cells).
+writestruct | writestruct(s, 'part.xml') | Writes a struct as an XML file.
+ncinfo | info = ncinfo('data.nc') | A NetCDF file's dimensions, variables and attributes (classic and NetCDF-4).
+ncread | v = ncread('data.nc', 'temp') | A NetCDF variable, its scale and offset applied and fill values as NaN.
+ncreadatt | a = ncreadatt('data.nc', 'temp', 'units') | One NetCDF attribute ('/' for the file's own).
+fitsinfo | info = fitsinfo('sky.fits') | A FITS file's image size and header keywords.
+fitsread | im = fitsread('sky.fits') | A FITS image (BSCALE and BZERO applied).
+zip | zip('archive', {'a.csv', 'b.txt'}) | Packs files into a .zip.
+unzip | names = unzip('archive.zip') | Unpacks a .zip into Files.
+gzip | gzip('data.csv') | Compresses a file to .gz.
+gunzip | gunzip('data.csv.gz') | Uncompresses a .gz file.
+base64encode | t = base64encode(text or bytes) | Base64 text of some text or uint8 bytes.
+base64decode | b = base64decode(t) | The uint8 bytes of base64 text (char(b) for text).
+hash | h = hash('sha256', text) | A fingerprint of text or bytes: 'md5', 'sha1' or 'sha256', as hex.
+getByteStreamFromArray | b = getByteStreamFromArray(value) | Any value as uint8 bytes (to save or send); getArrayFromByteStream turns them back.
+getArrayFromByteStream | v = getArrayFromByteStream(b) | The value saved by getByteStreamFromArray.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
 fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.

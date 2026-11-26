@@ -15158,3 +15158,20 @@ NBins, Type), plus the pdfs and tiedrank; random numbers from the engine's `rand
 Loaded by both workers and help.test.ts; help lines for each. Tests: against printed tables (tinv(0.975,10),
 chi2inv, finv, norminv to 8–10 digits), exact rank tests, worked ANOVA and Kruskal–Wallis. Left out: anovan
 (unbalanced several-factor ANOVA), multcompare, other fitdist families (Weibull, beta…).
+
+## M557: Hyperion: data files (the Octave packages' second wave, 26 Nov)
+
+The second GNU Octave wave (pkg-json, pkg-yaml, netcdf, ncarray, cfitsio, serialize; our own code from their
+documented behaviour). `src/lib/lab/data-lab.ts` (both workers, help.test.ts): **jsondecode / jsonencode**
+(MATLAB's mapping: objects → structs with safe field names, number arrays → column vectors, equal-length rows → a
+matrix, mixed → cells, null → [], NaN → null, 'PrettyPrint'); **yamldecode / yamlencode / yamlread / yamlwrite**
+(block maps and lists, "- key:" items, flow [a, b] and {k: v}, | and > blocks, comments, true/yes/on);
+**readstruct / writestruct** for XML (via `xml-lite`: attributes → fieldAttribute, repeated elements → cells);
+**ncinfo / ncread / ncreadatt** (NetCDF classic CDF-1/2/5 parsed from the spec, record variables, scale_factor,
+add_offset and _FillValue applied, dimensions reversed as MATLAB's ncread gives them; NetCDF-4 read through
+`hdf5.ts`); **fitsinfo / fitsread** (the primary HDU: 8/16/32/64-bit and float images, BSCALE/BZERO, rows of NAXIS1);
+**zip / unzip / gzip / gunzip** (fflate), **base64encode / base64decode**, **hash** (MD5, SHA-1, SHA-256 written out:
+the engine can't wait for crypto.subtle), **getByteStreamFromArray / getArrayFromByteStream** (through the .mat
+writer and reader). `files.ts` gained `fileBytes`, `writeFileBytes`, `hasFile`. Tests: published hash vectors, a
+NetCDF and a FITS file built byte by byte, JSON/YAML/XML round trips. Left out: MIDI files, FITS extensions (tables),
+NetCDF writing (nccreate/ncwrite), XML as a DOM (xmlread).
