@@ -285,6 +285,16 @@ Alarm -> Draining: level < 2 after 1` });
     },
   },
   {
+    // M568: two loops that pull on each other (a 2×2 plant: each input moves both outputs). Tune → Tune all loops.
+    id: 'twoloops', name: 'Two coupled loops (tune them together)', make: () => {
+      const r1 = B('step', 10, 20, { time: 1, after: 1 }), r2 = B('step', 10, 250, { time: 15, after: 1 }), e1 = B('sum', 120, 20, { signs: '+-' }), e2 = B('sum', 120, 250, { signs: '+-' });
+      const c1 = B('pid', 230, 20, { Kp: 1, Ki: 0.5, Kd: 0, N: 100 }), c2 = B('pid', 230, 250, { Kp: 1, Ki: 0.5, Kd: 0, N: 100 });
+      const g11 = B('tf', 360, 0, { num: '1', den: '1 1' }), g21 = B('tf', 360, 90, { num: '0.6', den: '1 1' }), g12 = B('tf', 360, 170, { num: '0.5', den: '2 1' }), g22 = B('tf', 360, 260, { num: '1', den: '3 1' });
+      const y1 = B('sum', 500, 30, { signs: '++' }), y2 = B('sum', 500, 240, { signs: '++' }), sc = B('scope', 640, 130, { inputs: 2 });
+      return { stop: 30, dt: 0.01, blocks: [r1, r2, e1, e2, c1, c2, g11, g21, g12, g22, y1, y2, sc], wires: [W(r1, e1), W(r2, e2), W(e1, c1), W(e2, c2), W(c1, g11), W(c1, g21), W(c2, g12), W(c2, g22), W(g11, y1), W(g12, y1, 1), W(g21, y2), W(g22, y2, 1), W(y1, e1, 1), W(y2, e2, 1), W(y1, sc), W(y2, sc, 1)] };
+    },
+  },
+  {
     id: 'loop', name: 'A first-order loop', make: () => {
       const s = B('step', 20, 80, { time: 0 }), sum = B('sum', 160, 80, { signs: '+-' }), k = B('gain', 300, 80, { k: 2 }), it = B('integrator', 440, 80), sc = B('scope', 610, 80);
       return { stop: 5, dt: 0.001, blocks: [s, sum, k, it, sc], wires: [W(s, sum), W(sum, k), W(k, it), W(it, sc), W(it, sum, 1)] };

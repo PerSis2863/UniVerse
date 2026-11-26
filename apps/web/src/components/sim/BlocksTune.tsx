@@ -9,7 +9,7 @@ import type { Gains, PidType } from '@/lib/lab/pidtune';
 import { coeffs, type Diagram } from '@/lib/sim/blocks';
 import { ui } from './bench-ui';
 import { fmt, ScopePlot, ticks } from './scope-plot';
-import type { FromTune, Report, ToTune } from './tune.worker';
+import type { FromTune, Report, ToTune, ToTuneAll } from './tune.worker';
 
 // Hyperion Simulate → Blocks → Tune (M562, the owner's picture of MATLAB's PID Tuner): the plant is the diagram as one
 // of its PID blocks sees it (linearised where the model is at a chosen moment) or a transfer function typed in. Two
@@ -70,7 +70,8 @@ export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; nam
   const [typedBase, setTypedBase] = useState<Gains>(ZERO);
   const [view, setView] = useState<View>('track');
   const [res, setRes] = useState<FromTune | null>(null);
-  const worker = useRef<Worker | null>(null), asked = useRef(0);
+  const worker = useRef<Worker | null>(null), asked = useRef(0), askedAll = useRef(-1);
+  const [all, setAll] = useState<FromTune | null>(null), [allBusy, setAllBusy] = useState(false);
   const block = pids.find((b) => b.id === source) ?? null;
   const src = block ? block.id : 'typed';
   const baseline = block ? blockGains(block.p) : typedBase;
@@ -78,7 +79,10 @@ export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; nam
 
   useEffect(() => {
     const w = new Worker(new URL('./tune.worker.ts', import.meta.url));
-    w.onmessage = (e: MessageEvent<FromTune>) => { if (e.data.id === asked.current) setRes(e.data); };
+    w.onmessage = (e: MessageEvent<FromTune>) => {
+      if (e.data.all) { if (e.data.id === askedAll.current) { setAll(e.data); setAllBusy(false); } return; }
+      if (e.data.id === asked.current) setRes(e.data);
+    };
     worker.current = w;
     return () => w.terminate();
   }, []);
@@ -105,6 +109,8 @@ export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; nam
   const params: [string, string, string][] = tuned ? [['P (Kp)', g(tuned.Kp), g(baseline.Kp)], ['I (Ki)', g(tuned.Ki), g(baseline.Ki)], ['D (Kd)', g(tuned.Kd), g(baseline.Kd)], ['Filter Tf', tuned.Tf ? `${g(tuned.Tf)} s` : '—', baseline.Tf ? `${g(baseline.Tf)} s` : '—']] : [];
   const update = () => { if (!tuned || !block) return; setParams(block.id, { Kp: +tuned.Kp.toPrecision(6), Ki: +tuned.Ki.toPrecision(6), Kd: +tuned.Kd.toPrecision(6), N: tuned.Tf ? +(1 / tuned.Tf).toPrecision(6) : 100 }); };
   const base = block ? `${names.get(block.id)}'s own gains` : 'Baseline';
+  const tuneEvery = () => { askedAll.current = -(Date.now() % 1e9) - 2; setAllBusy(true); setAll(null); worker.current?.postMessage({ id: askedAll.current, all: true, diagram: dg, type, pm: pmOf(aggr), N, at } satisfies ToTuneAll); };
+  const applyAll = () => { for (const l of all?.all?.loops ?? []) setParams(l.id, { Kp: +l.gains.Kp.toPrecision(6), Ki: +l.gains.Ki.toPrecision(6), Kd: +l.gains.Kd.toPrecision(6), N: l.gains.Tf ? +(1 / l.gains.Tf).toPrecision(6) : 100 }); };
 
   return (
     <div className="space-y-3">
@@ -144,6 +150,25 @@ export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; nam
       </div>
       {res?.error ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{res.error}</p> : res?.plant && (
         <p className="text-xs text-zinc-600 dark:text-zinc-300">Plant: <span className="font-mono" translate="no">G(s) = {tfInline(res.plant.n.map((v) => +v.toPrecision(5)), res.plant.d.map((v) => +v.toPrecision(5)))}</span>{block ? ` (the diagram from ${names.get(block.id)}'s output back to its input, at ${g(at)} s)` : ''}</p>
+      )}
+      {pids.length >= 2 && (
+        <section aria-label="Every loop together" className="space-y-2 rounded-lg border border-zinc-200 p-2 dark:border-white/10">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-zinc-700 dark:text-zinc-200">This diagram has {pids.length} PID loops that pull on each other. Tuned one at a time, each ignores the others; together, each is tuned with the others closed, round after round, until none moves.</p>
+            <button type="button" className={ui.small} disabled={allBusy} onClick={tuneEvery}>{allBusy ? 'Tuning…' : `Tune all ${pids.length} loops together`}</button>
+            {all?.all && all.all.loops.length > 0 && <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={applyAll}><Upload className="h-3.5 w-3.5" aria-hidden />Update all blocks</button>}
+          </div>
+          {all?.error && <p className="text-xs text-amber-800 dark:text-amber-300">{all.error}</p>}
+          {all?.all && all.all.loops.length > 0 && (
+            <>
+              <table className="w-full text-[13px]">
+                <thead><tr className="text-xs text-zinc-500 dark:text-zinc-400">{['Loop', 'Kp', 'Ki', 'Kd', 'Crossover', 'Phase margin (others closed)', 'Gain margin'].map((h) => <th key={h} scope="col" className="py-1 pe-2 text-start font-medium">{h}</th>)}</tr></thead>
+                <tbody>{all.all.loops.map((l) => <tr key={l.id} className="border-t border-zinc-200/80 dark:border-white/10"><th scope="row" className="py-1 pe-2 text-start font-normal">{names.get(l.id)}</th>{[l.gains.Kp, l.gains.Ki, l.gains.Kd].map((v, i) => <td key={i} className="py-1 pe-2 font-mono tabular-nums">{g(v)}</td>)}<td className="py-1 pe-2 font-mono tabular-nums">{g(l.wc)} rad/s</td><td className="py-1 pe-2 font-mono tabular-nums">{g(l.Pm, '°')}</td><td className="py-1 font-mono tabular-nums">{l.Gm === Infinity ? 'Inf' : g(20 * Math.log10(l.Gm), ' dB')}</td></tr>)}</tbody>
+              </table>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300" data-tune-all>{all.all.stable ? 'The whole closed loop is stable' : 'The whole closed loop is NOT stable'} (slowest pole {g(all.all.slowestPole)}), after {all.all.rounds} round{all.all.rounds === 1 ? '' : 's'}{all.all.settled ? '' : ' (still moving a little: the loops are strongly coupled)'}.</p>
+            </>
+          )}
+        </section>
       )}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-2">

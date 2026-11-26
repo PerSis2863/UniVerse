@@ -4,6 +4,7 @@ import '@/lib/lab/interp';
 import { autoTime, bodeOf, minreal, stepOf, type Tf } from '@/lib/lab/control';
 import { autoWc, pidReport, tunePid, type Gains, type PidType } from '@/lib/lab/pidtune';
 import { linearize } from '@/lib/sim/linearize';
+import { tuneAll, type AllResult } from '@/lib/sim/tune-all';
 import { pade } from '@/lib/lab/pade';
 
 const conv = (a: number[], b: number[]) => { const o = new Array<number>(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => { o[i + j] += x * y; })); return o; };
@@ -16,8 +17,10 @@ import type { Diagram } from '@/lib/sim/blocks';
 export type Plant = { tf: Tf; delay: number } | { diagram: Diagram; pid: string; at: number };
 export interface ToTune { id: number; plant: Plant; type: PidType; speed: number; pm: number; N: number; baseline: Gains }
 export interface Report { stable: boolean; rise: number; settle: number; overshoot: number; peak: number; Gm: number; Wcg: number; Pm: number; Wcp: number }
+/** M568: every PID block tuned together. */
+export interface ToTuneAll { id: number; all: true; diagram: Diagram; type: PidType; pm: number; N: number; at: number }
 export interface FromTune {
-  id: number; error?: string; plant?: Tf; tuned?: Gains; wc?: number; wc0?: number;
+  id: number; error?: string; all?: AllResult; plant?: Tf; tuned?: Gains; wc?: number; wc0?: number;
   t?: number[]; curves?: Record<'track' | 'disturb' | 'effort', { tuned: number[]; base: number[] }>;
   w?: number[]; bode?: { tuned: { mag: number[]; phase: number[] }; base: { mag: number[]; phase: number[] } };
   tunedRep?: Report; baseRep?: Report;
@@ -36,8 +39,13 @@ function plantOf(p: Plant): Tf {
   return g;
 }
 
-self.onmessage = (e: MessageEvent<ToTune>) => {
+self.onmessage = (e: MessageEvent<ToTune | ToTuneAll>) => {
   const q = e.data;
+  if ('all' in q) {
+    try { postMessage({ id: q.id, all: tuneAll(q.diagram, { type: q.type, pm: q.pm, N: q.N, at: q.at }) } satisfies FromTune); }
+    catch (err) { postMessage({ id: q.id, error: err instanceof Error ? err.message : String(err), all: { loops: [], rounds: 0, settled: false, stable: false, slowestPole: NaN } } satisfies FromTune); }
+    return;
+  }
   try {
     const G = plantOf(q.plant), wc0 = autoWc(G, q.type, q.pm, q.N), want = wc0 * 10 ** q.speed;
     const { gains, wc } = tunePid(G, q.type, { wc: want, pm: q.pm, N: q.N });

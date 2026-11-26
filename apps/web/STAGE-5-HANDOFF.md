@@ -15738,3 +15738,21 @@ M562's left-out (the owner, 26 Nov: "please do this all").
 - **Code:** a delay is a ring of round(L / dt) past inputs (`Ir.delays`, `read` / `write` statements): C and C++ arrays,
   Structured Text `ARRAY[0..n-1] OF LREAL` (and `DINT` counters now), Verilog `reg` arrays, VHDL an array type in the
   process. Tested: emulation against the simulation, C to 1e-9, Verilog and VHDL in fixed point.
+
+## M568 (26 Nov): Hyperion, tuning several PID loops together
+
+M562's left-out ("tuning several inputs at once"). Blocks → Tune shows **Tune all N loops together** when the diagram
+has two or more PID blocks (`src/lib/sim/tune-all.ts`, `tuneAll`, run in `tune.worker.ts` as a `ToTuneAll` message).
+
+- **Sequential loop closing, iterated:** each loop's crossover is chosen once, from the plant it sees with every other
+  loop open (gains 0), fastest loop first; then round after round each loop is retuned on the plant it sees with the
+  others closed at their current gains (`plantSeenBy` = `linearize` from the block's output to what feeds it, minus),
+  moving half way to the new gains after the first round, until no gain moves by 1 % (`settled`) or 20 rounds.
+- **Traps learned:** a crossover chosen afresh each round runs away (the closed loops' own fast poles raise the "ten
+  times the fastest pole" cap every round); and coupled loops can cross 0 dB more than once, so a design that has 60° at
+  its own crossover may have 38° at another: `tuneNear` lowers the crossover (×0.7 at a time) until the worst crossing
+  has the margin (within 3°), or keeps the best it found.
+- **Checks:** each loop's margins with the others closed (`pidReport` on its seen plant), and the whole closed loop's
+  stability from its own Jacobian (`closedLoopStable`: finite differences of every state, poles of its characteristic
+  polynomial). Example "Two coupled loops (tune them together)", a 2×2 plant; both loops reach 60° (PI and PIDF).
+- Left out: true simultaneous (structured H∞) tuning as MATLAB's systune does, decouplers.

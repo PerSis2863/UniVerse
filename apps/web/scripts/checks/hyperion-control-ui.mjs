@@ -20,12 +20,13 @@ try {
     await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
     await page.getByRole('group', { name: 'Kind of simulation' }).getByRole('button', { name: 'Blocks' }).click({ timeout: 120_000 });
     const tools = page.getByRole('group', { name: 'Tools' });
-    for (const tool of ['Tune', 'Logic', 'Real time', 'Code', 'Verify']) {
+    for (const tool of ['Tune', 'Logic', 'Real time', 'Code', 'Verify', 'Tune all']) {
       if (only && only !== tool) continue;
-      const b = tools.getByRole('button', { name: tool });
+      const b = tools.getByRole('button', { name: tool === 'Tune all' ? 'Tune' : tool, exact: true });
       if (!(await b.count())) continue;
       if (tool === 'Logic') await page.getByLabel('Start from').selectOption('tank');
       if (tool === 'Real time') await page.getByLabel('Start from').selectOption('hil');
+      if (tool === 'Tune all') await page.getByLabel('Start from').selectOption('twoloops');
       await b.click();
       await page.waitForTimeout(2500);
       r[`${tool}-text`] = (await page.getByRole('region', { name: /tuner|logic|real time|code|verif/i }).innerText()).slice(0, 600);
@@ -53,6 +54,11 @@ try {
         await page.locator('[data-coverage]').waitFor({ timeout: 60_000 });
         r.coverage = await page.locator('[data-coverage]').innerText();
         r.reqs = (await page.getByRole('region', { name: 'Requirements' }).innerText()).slice(0, 300);
+      }
+      if (tool === 'Tune all') {
+        await page.getByRole('button', { name: 'Tune all 2 loops together' }).click();
+        await page.locator('[data-tune-all]').waitFor({ timeout: 30_000 });
+        r.tuneAll = await page.getByRole('region', { name: 'Every loop together' }).innerText();
       }
       if (tool === 'Tune') {
         await page.getByRole('button', { name: 'Update block' }).isEnabled({ timeout: 20_000 }).catch(() => {});
