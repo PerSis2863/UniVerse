@@ -148,7 +148,8 @@ def('vehicleCrash', (a, nout, lab) => {
   if (seat !== 'front' && seat !== 'rear') throw new LabError("'Seat' is 'front' or 'rear'.");
   if (behind !== 'none' && behind !== 'belted' && behind !== 'unbelted') throw new LabError("'Behind' is 'none', 'belted' or 'unbelted'.");
   // M486z: 'Front' (the moving barrier's face): 'typical', 'suv', 'small', 'spread', or rows [share yFrom yTo zFrom zTo]
-  // (m; y across from the car's outer side, negative counted from the other side; z up from the road).
+  // (m; y across from the car's outer side, negative counted from the other side; z up from the road). M486za: the
+  // shares add up to the front's stiffness against a typical car's.
   let front: vd.FrontPart[] | keyof typeof vd.FRONTS = 'typical';
   const fo = o.get('front');
   if (fo && fo.k === 'str') {
@@ -160,7 +161,7 @@ def('vehicleCrash', (a, nout, lab) => {
     if (m.c !== 5 || rows < 1 || rows > 12) throw new LabError("'Front' as parts is 1 to 12 rows of [share yFrom yTo zFrom zTo].");
     front = Array.from({ length: rows }, (_, i) => { const g = (k: number) => m.d[i + k * rows]; return { name: `part ${i + 1}`, share: g(0), y: [[g(1), g(2)]] as [number, number][], z: [g(3), g(4)] as [number, number] }; });
     const at = (y: number) => (y < 0 || Object.is(y, -0) ? vd.CAR_WIDTH + y : y);
-    if (front.some((q) => !(q.share >= 0 && q.z[0] >= 0 && q.z[1] > q.z[0] && q.z[1] <= 1.5 && Math.abs(q.y[0][0]) <= vd.CAR_WIDTH && Math.abs(q.y[0][1]) <= vd.CAR_WIDTH && at(q.y[0][1]) > at(q.y[0][0]))) || !front.some((q) => q.share > 0)) throw new LabError("'Front' parts need shares of 0 or more (some above 0), y within the car's 1.8 m width (from below to), and z from below to, 0 to 1.5 m.");
+    if (front.some((q) => !(q.share >= 0 && q.z[0] >= 0 && q.z[1] > q.z[0] && q.z[1] <= 1.5 && Math.abs(q.y[0][0]) <= vd.CAR_WIDTH && Math.abs(q.y[0][1]) <= vd.CAR_WIDTH && at(q.y[0][1]) > at(q.y[0][0]))) || !(vd.frontStiff(front) >= 0.3 && vd.frontStiff(front) <= 3)) throw new LabError("'Front' parts need shares of 0 or more adding up to 0.3–3 (1 is a typical car's stiffness), y within the car's 1.8 m width (from below to), and z from below to, 0 to 1.5 m.");
   }
   const c = vd.frontalCrash(v, sp, { into, other, belt: flag('belts'), bags: flag('airbags'), overlap, seat, behind, front });
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['WallSpeed', num(c.vEq)], ['Crush', num(c.crush)], ['BarrierCrush', num(c.barrier)], ['TrolleySpeedChange', num(c.trolleyDv)], ['OLC', num(c.olc)], ['BarrierSD', num(c.faceSD)], ['BarrierMax', num(c.faceMax)], ['BottomedOut', num(c.bottomed ? 1 : 0)], ['CompatibilityPenalty', num(c.compat)], ['CompatibilityShare2026', num(c.compatShare)], ['BarrierFace', c.face.length ? mat(c.face.length, c.face[0].length, Float64Array.from({ length: c.face.length * c.face[0].length }, (_, q) => c.face[q % c.face.length][Math.floor(q / c.face.length)])) : mat(0, 0, [])], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['AirbagLate', num(c.late ? 1 : 0)], ['BeltForce', num(c.beltPeak)], ['ChestG', num(c.chestG)], ['Travel', num(c.travelMax)], ['HitWheel', num(c.hitWheel ? 1 : 0)], ['HeadHitWheel', num(c.headHit ? 1 : 0)], ['Intrusion', num(c.intrusion)], ['SlidOffAirbag', num(c.slidOff ? 1 : 0)], ['HitFrontSeat', num(c.hitSeat ? 1 : 0)], ['BackLoad', num(c.backLoad)], ['Injury', str(c.risk)]]) };

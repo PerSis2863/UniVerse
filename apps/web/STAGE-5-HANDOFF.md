@@ -13623,6 +13623,19 @@ barrier → "The car's front"; Into the side → "The other driver was already b
 Not built: a front's own stiffness (each front still crushes as the mass sets), the cars' tyres turning as they're
 pushed.
 
+## M486za (26 Nov): Hyperion vehicles, each front's own stiffness; the rolling striker's tyres
+
+The owner (M486z's left-outs). **Front stiffness:** `FRONT_STIFF` (typical 1, suv 1.3, small 1.15, spread 1.05) and
+`frontStiff(front)` (your own parts: their shares added up, a typical car's add to 1); `frontalCrash`'s k0 is multiplied
+by it in every crash, not only the moving barrier. At 56 km/h into a wall (1,500 kg): typical 0.65 m and 38 g peak (as
+before), SUV 0.57 m and 43 g, small 0.61 m, spread 0.63 m; chest g unchanged (the belt sets it). The moving barrier:
+SUV's penalty 5.6 → 6.2, small 4.1 → 4.4. M486z's barrier depths in its note were with every front at typical
+stiffness. Language: 'Front' rows' shares must add to 0.3–3. Window: "The car's front" now shows for every head-on
+crash. **Tyres:** in `strikerAfter` the striker while still rolling (unbraked, before `REACT`) moves by `rollStep`:
+coasting along its length at `COAST_G`, each axle's side force by its slip angle (cornering stiffness scaled by mass,
+up to μ·Fz), so a push off its line turns it (aimed at the back seat: 1.5–2° against 0.2–0.3° before). The struck car
+still skids as one block (its driver taken as on the brake). Not built: the struck car's own tyres rolling along it.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

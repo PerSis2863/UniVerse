@@ -542,6 +542,12 @@ export const FRONTS: Record<'typical' | 'suv' | 'small' | 'spread', FrontPart[]>
   ],
 };
 export const FRONT_PARTS = FRONTS.typical;
+// M486za: each front's own stiffness, against a typical car's of the same mass (which crushes 0.65 m at 56 km/h): an SUV
+// or pickup's rails and frame are built stiffer for its weight; a small car has less room to crush, so it is built a
+// little stiffer for its mass; a front built to spread its load sits near typical. Your own parts: their shares added up
+// (a typical car's add to 1). Rough.
+export const FRONT_STIFF: Record<keyof typeof FRONTS, number> = { typical: 1, suv: 1.3, small: 1.15, spread: 1.05 };
+export const frontStiff = (f: keyof typeof FRONTS | FrontPart[] = 'typical') => (Array.isArray(f) ? f.reduce((t, q) => t + q.share, 0) : FRONT_STIFF[f]);
 /** Euro NCAP's compatibility penalty (TB 027): points off, 0 to 8. */
 export function compatPenalty(sdMm: number, olcG: number, bottomed: boolean) {
   const sh = (x: number, a: number, b: number) => Math.max(0, Math.min(1, (x - a) / (b - a))), s = sh(sdMm, 50, 150), o = sh(olcG, 25, 40);
@@ -599,7 +605,7 @@ export function frontalCrash(v: Vehicle, speed: number, o: { front?: keyof typeo
   const ov = Math.max(0.1, Math.min(1, o.overlap ?? (mpdb ? 0.5 : 1))), share = overlapShare(ov), side = 0.7 * (1 - ov) ** 2;
   // An unbelted person behind the front one (the back seat itself has nobody behind it).
   const pushed = !rear && o.behind === 'unbelted';
-  const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k0 = (m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
+  const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k0 = (frontStiff(o.front) * m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
   let xc = 0, vc = vEq, xo = 0, vo = vEq, xb = 0, vb = vEq, crush = 0, sens = 0, bagAt = NaN, beltPeak = 0, hitWheel = false, travelMax = 0, late = false, backLoad = 0, slidOff = false;
   const out: Crash = { olc: NaN, faceSD: NaN, faceMax: NaN, bottomed: false, compat: NaN, compatShare: NaN, face: [], trolleyDv: 0, barrier: 0, t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, intrusion: 0, slidOff: false, hitSeat: false, backLoad: 0, risk: 'low' };
   const win = Math.round(0.003 / dt), recent: number[] = [];
@@ -786,7 +792,20 @@ function touchPoint(A: Box, B: Box, hl: number, hw: number): [number, number] {
   if (!pts.length) return [(A.x + B.x) / 2, (A.y + B.y) / 2];
   return [pts.reduce((t, q) => t + q[0], 0) / pts.length, pts.reduce((t, q) => t + q[1], 0) / pts.length];
 }
-interface Box { x: number; y: number; th: number; vx: number; vy: number; w: number; a: (t: number) => number; aw: number }
+interface Tyres { m: number; iz: number; lf: number; lr: number; cf: number; cr: number; fz: [number, number]; mu: number }
+interface Box { x: number; y: number; th: number; vx: number; vy: number; w: number; a: (t: number) => number; aw: number; rolls?: (t: number) => boolean; tyres?: Tyres }
+/** M486za: a car whose wheels still roll (the other driver's second before braking): it coasts along its length at
+ * `COAST_G`, while each axle's tyres push across it by their slip angle (cornering stiffness, up to μ·Fz): pushed
+ * sideways it resists like a car, its path bends towards where it points and it turns towards where it's going. */
+function rollStep(P: Box, dt: number) {
+  const T = P.tyres!, c = Math.cos(P.th), s = Math.sin(P.th);
+  const u = P.vx * c + P.vy * s, side = -P.vx * s + P.vy * c, ref = Math.max(Math.abs(u), 0.5);
+  const fy = (lat: number, C: number, fz: number) => -Math.sign(lat) * Math.min(C * Math.abs(Math.atan2(lat, ref)), T.mu * fz);
+  const ff = fy(side + P.w * T.lf, T.cf, T.fz[0]), fr = fy(side - P.w * T.lr, T.cr, T.fz[1]);
+  const along = -Math.sign(u) * Math.min(COAST_G * G, Math.abs(u) / dt), across = (ff + fr) / T.m;
+  P.vx += (along * c - across * s) * dt; P.vy += (along * s + across * c) * dt;
+  P.w += ((T.lf * ff - T.lr * fr) / T.iz) * dt;
+}
 function boxGap(A: Box, B: Box, hl: number, hw: number) {
   // Separating axes of two equal boxes: the least overlap and its axis (from A to B); negative overlap is a gap.
   const ax = [A.th, A.th + Math.PI / 2, B.th, B.th + Math.PI / 2].map((q) => [Math.cos(q), Math.sin(q)]);
@@ -802,7 +821,7 @@ export function strikerAfter(v: Vehicle, m2: number, speed: number, ang: number,
   const d = L(v) / 2 + NOSE, iz2 = (v.iz * m2) / v.m, w2 = (d * (Ja * Math.cos(ang) - J * Math.sin(ang))) / iz2;
   const r = Math.hypot(L(v) / 2, (v.roll?.track ?? 1.55) / 2), mu = v.mu * G, hl = (L(v) + 1.6) / 2, hw = CAR_WIDTH / 2;
   const A: Box = { x: 0, y: 0, th: 0, vx: struck.vx, vy: struck.vy, w: struck.w, a: () => mu, aw: (v.mu * v.m * G * r) / v.iz };
-  const B: Box = { x: hitAt - d * Math.sin(ang), y: -CAR_WIDTH / 2 - d * Math.cos(ang), th: Math.PI / 2 - ang, vx: speed * Math.sin(ang) - Ja / m2, vy: vs, w: w2, a: (t) => (!braked && t < REACT ? COAST_G * G : mu), aw: (v.mu * m2 * G * r) / iz2 };
+  const B: Box = { x: hitAt - d * Math.sin(ang), y: -CAR_WIDTH / 2 - d * Math.cos(ang), th: Math.PI / 2 - ang, vx: speed * Math.sin(ang) - Ja / m2, vy: vs, w: w2, a: (t) => (!braked && t < REACT ? COAST_G * G : mu), aw: (v.mu * m2 * G * r) / iz2, rolls: (t) => !braked && t < REACT, tyres: { m: m2, iz: iz2, lf: v.lf, lr: v.lr, cf: (v.cf * m2) / v.m, cr: (v.cr * m2) / v.m, fz: staticLoads(v).map((f) => (f * m2) / v.m) as [number, number], mu: v.mu } };
   const path: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 }, striker: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 };
   const rec = (t: number) => {
     path.t.push(t); path.x.push(A.x); path.y.push(A.y); path.psi.push((A.th * 180) / Math.PI);
@@ -816,8 +835,11 @@ export function strikerAfter(v: Vehicle, m2: number, speed: number, ang: number,
     let moving = false;
     for (const [P, own] of [[A, path], [B, striker]] as const) {
       const sp = Math.hypot(P.vx, P.vy);
-      if (sp > 0) { const dv = Math.min(sp, P.a(t) * dt), f = (sp - dv) / sp; P.vx *= f; P.vy *= f; }
-      P.w = Math.sign(P.w) * Math.max(0, Math.abs(P.w) - P.aw * dt);
+      if (P.rolls?.(t)) rollStep(P, dt);
+      else {
+        if (sp > 0) { const dv = Math.min(sp, P.a(t) * dt), f = (sp - dv) / sp; P.vx *= f; P.vy *= f; }
+        P.w = Math.sign(P.w) * Math.max(0, Math.abs(P.w) - P.aw * dt);
+      }
       P.x += P.vx * dt; P.y += P.vy * dt; P.th += P.w * dt; own.distance += Math.hypot(P.vx, P.vy) * dt;
       if (Math.hypot(P.vx, P.vy) > 1e-3 || Math.abs(P.w) > 1e-3) moving = true;
     }

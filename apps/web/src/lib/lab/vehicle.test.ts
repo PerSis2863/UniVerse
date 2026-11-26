@@ -404,6 +404,22 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     expect(f('a', 'BarrierSD')).toBeCloseTo(suv.faceSD, 9); expect(f('b', 'BarrierSD')).toBeGreaterThan(0); expect(f('c', 'Touches')).toBe(0);
     expect(() => lab.run("vehicleCrash(vehicle(), 50/3.6, 'Into', 'mpdb', 'Front', 'bus')")).toThrow(/Front/);
   });
+  it('each front\'s own stiffness; the rolling striker\'s tyres (M486za)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, wall = (front: keyof typeof vd.FRONTS | vd.FrontPart[]) => vd.frontalCrash(car, 56 / 3.6, { front });
+    // A typical front still crushes 0.65 m at 56 km/h; a stiffer one less, and stops the car harder.
+    const typ = wall('typical'), suv = wall('suv');
+    expect(typ.crush).toBeCloseTo(vd.NCAP_CRUSH, 2);
+    expect(suv.crush).toBeLessThan(typ.crush - 0.05); expect(Math.max(...suv.carG)).toBeGreaterThan(Math.max(...typ.carG) * 1.1);
+    expect(vd.frontStiff('typical')).toBe(1); expect(vd.frontStiff(vd.FRONTS.suv)).toBeCloseTo(1, 9);
+    // Your own parts: their shares added up; twice the shares, a stiffer front.
+    const twice = vd.FRONTS.typical.map((q) => ({ ...q, share: 2 * q.share }));
+    expect(wall(twice).crush).toBeLessThan(typ.crush);
+    // The striker still rolling pushes into the struck car and its tyres turn it (braked, it slides as one block).
+    const go = (braked: boolean) => vd.sideCrash(car, 50 / 3.6, { braked, hitAt: vd.SEAT_X.rear }).striker!;
+    expect(Math.abs(go(false).turned)).toBeGreaterThan(1); expect(Math.abs(go(true).turned)).toBeLessThan(0.5);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    expect(() => lab.run("vehicleCrash(vehicle(), 15, 'Front', [5 0 -0 0.3 0.6])")).toThrow(/Front/);
+  });
   it('Euro NCAP\'s moving barrier (M486r)', { timeout: 60_000 }, () => {
     const car = vd.CAR_DEFAULT, go = (v: typeof car, o: Parameters<typeof vd.frontalCrash>[2] = {}) => vd.frontalCrash(v, 50 / 3.6, { into: 'mpdb', ...o });
     const c = go(car);

@@ -32,7 +32,7 @@ export function CrashView({ car }: { car: Vehicle }) {
   const [seat, setSeat] = useState<Seat>('front');
   const [kind, setKind] = useState<Kind>('front');
   const [sideInto, setSideInto] = useState<SideInto>('car');
-  // M486z: the other driver already braking (side), the car's front (moving barrier).
+  // M486z: the other driver already braking (side), the car's front (M486za: its own stiffness, so every head-on crash).
   const [braked, setBraked] = useState(false);
   const [front, setFront] = useState<keyof typeof FRONTS>('typical');
   const [sideSeat, setSideSeat] = useState<SideSeat>('near');
@@ -164,7 +164,7 @@ export function CrashView({ car }: { car: Vehicle }) {
         </div> : <div className="space-y-1"><span className={label}>Into</span>
           <Segmented<Into> label="Into" value={into} onChange={setInto} segments={[{ value: 'wall', label: 'A wall' }, { value: 'barrier', label: 'A soft barrier (Euro NCAP)' }, { value: 'mpdb', label: 'A moving barrier (Euro NCAP)' }, { value: 'car', label: 'A car like it, head on' }]} />
         </div>}
-        {!side && into === 'mpdb' && <div className="space-y-1"><span className={label}>The car’s front</span>
+        {!side && <div className="space-y-1"><span className={label}>The car’s front</span>
           <Segmented<keyof typeof FRONTS> label="The car’s front" value={front} onChange={setFront} segments={[{ value: 'typical', label: 'Typical' }, { value: 'suv', label: 'SUV or pickup' }, { value: 'small', label: 'Small car' }, { value: 'spread', label: 'Built to spread' }]} />
         </div>}
         <div className="space-y-1"><span className={label}>Belt and airbag</span>
