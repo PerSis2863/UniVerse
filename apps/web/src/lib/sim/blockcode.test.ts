@@ -76,3 +76,31 @@ describe('code from block diagrams', () => {
     expect(() => generateCode({ ...d, wires: [] }, 'c')).toThrow(/Nothing comes out/);
   });
 });
+
+describe('delays in generated code (M567)', () => {
+  const withDelay = () => {
+    const d = ex('loop'), it2 = d.blocks.find((b) => b.kind === 'integrator')!, sum = d.blocks.find((b) => b.kind === 'sum')!;
+    const dl = { id: 'dly', kind: 'delay' as const, x: 0, y: 0, p: { time: 0.05, initial: 0 } };
+    // The feedback comes back 0.05 s late: the loop rings a little.
+    return { ...d, blocks: [...d.blocks, dl], wires: [...d.wires.filter((w) => !(w.to === sum.id && w.in === 1)), { id: 'w1', from: it2.id, out: 0, to: 'dly', in: 0 }, { id: 'w2', from: 'dly', out: 0, to: sum.id, in: 1 }] };
+  };
+  it('the emulation follows the simulation', () => {
+    const d = withDelay(), ir = buildIr(d), o = emulate(ir, 3001), r = simulate(d), y = [...r.scopes.values()][0][0];
+    expect(o[ir.outputs[0].name][3000]).toBeCloseTo(y[r.t.findIndex((t) => t >= 3 - 1e-9)], 2);
+  });
+  it.skipIf(!hasCc)('C with a delay: the same numbers', () => {
+    const d = withDelay(), dir = write(d, 'c');
+    execFileSync('cc', ['-std=c99', '-Wall', '-Wextra', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), join(dir, 'model.c'), '-lm'], { cwd: dir });
+    const got = rows(execFileSync(join(dir, 'run'), ['500']).toString()), want = expected(d, 500);
+    got.forEach((row, k) => row.forEach((v, j) => expect(v).toBeCloseTo(want[k][j], 9)));
+  });
+  it.skipIf(!hasIv || !hasGhdl)('Verilog and VHDL with a delay', () => {
+    const d = withDelay(), want = expected(d, 1000);
+    const dv = write(d, 'verilog');
+    execFileSync('iverilog', ['-g2012', '-o', join(dv, 'sim'), join(dv, 'model.v'), join(dv, 'model_tb.v')]);
+    closeEnough(rows(execFileSync('vvp', ['-n', join(dv, 'sim')]).toString().split('\n').filter((l) => /^-?\d/.test(l)).join('\n')), want);
+    const dh = write(d, 'vhdl');
+    for (const args of [['-a', '--std=08', 'model.vhd', 'model_tb.vhd'], ['-e', '--std=08', 'model_tb']]) execFileSync('ghdl', args, { cwd: dh });
+    closeEnough(rows(execFileSync('ghdl', ['-r', '--std=08', 'model_tb'], { cwd: dh }).toString().split('\n').filter((l) => /^-?\d/.test(l)).join('\n')), want);
+  });
+});

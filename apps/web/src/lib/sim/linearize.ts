@@ -13,15 +13,16 @@ export function linearize(dg: Diagram, from: string, to: string, at = 0): Linear
   const ids = new Set(dg.blocks.map((b) => b.id));
   if (!ids.has(from) || !ids.has(to)) throw new Error('Choose blocks that are in the diagram.');
   // Where the model is at `at` (run there as it is).
-  const m = compile(dg), x = Float64Array.from(m.x0), h = Math.max(1e-6, dg.dt), steps = Math.min(200_000, Math.round(at / h));
+  // Delay blocks as their Padé transfer functions throughout (M567), so the states line up and the delay's phase is in.
+  const m = compile(dg, undefined, undefined, true), x = Float64Array.from(m.x0), h = Math.max(1e-6, dg.dt), steps = Math.min(200_000, Math.round(at / h));
   for (let k = 0; k < steps; k++) m.step(k * h, x, h);
   const t = steps * h;
   m.outputs(t, x);
   const u0 = m.y.get(from) ?? 0;
   // The loop opened at `from`: its output held at u, its own states left out.
-  const hold = new Map([[from, u0]]), mh = compile(dg, hold);
+  const hold = new Map([[from, u0]]), mh = compile(dg, hold, undefined, true);
   const kind = dg.blocks.find((b) => b.id === from)!.kind, own = mh.off.get(from);
-  const width = own === undefined ? 0 : kind === 'pid' ? 2 : kind === 'tf' ? mh.info.get(from)!.order : 1;
+  const width = own === undefined ? 0 : kind === 'pid' ? 2 : kind === 'tf' || kind === 'delay' ? mh.info.get(from)!.order : 1;
   const idx = Array.from({ length: mh.ns }, (_, i) => i).filter((i) => own === undefined || i < own || i >= own + width);
   const n = idx.length;
   const f = (xs: Float64Array, u: number) => {

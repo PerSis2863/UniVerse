@@ -861,7 +861,7 @@ assumeAlso | assumeAlso(cond) | Accepted and noted, as assume.
 nthroot | nthroot(x, n) | The real n-th root.
 
 # Control systems
-tf | tf(num, den), tf('s') | A transfer function from its numerator and denominator (highest power first); tf('s') is s itself, so (s + 1)/(s^2 + 2*s + 1) works.
+tf | tf(num, den), tf('s'), tf(num, den, 'InputDelay', T) | A transfer function from its numerator and denominator (highest power first); tf('s') is s itself, so (s + 1)/(s^2 + 2*s + 1) works. A delay of T seconds is folded in as its 4th-order Padé approximation.
 zpk | zpk(zeros, poles, gain) | A transfer function from its zeros, poles and gain.
 ss | ss(A, B, C, D) | A system from state-space matrices (one input, one output), shown as its transfer function.
 pid | pid(Kp, Ki, Kd, Tf) | A PID controller: Kp + Ki/s + Kd·s/(Tf·s + 1).
@@ -876,6 +876,7 @@ dcgain | dcgain(G) | The steady value for a step of 1 (G at s = 0).
 isstable | isstable(G) | True when every pole is in the left half-plane.
 damp | damp(G) | Each pole's natural frequency and damping.
 pidtune | pidtune(G, type), pidtune(G, type, wc, opts), [C, info] = pidtune(…) | A tuned PID for plant G: type 'P', 'I', 'PI', 'PD', 'PID' or 'PIDF'; wc the crossover frequency (rad/s, chosen when not given); info has Kp, Ki, Kd, Tf, CrossoverFrequency, PhaseMargin, Stable.
+pade | pade(T, N) | A delay of T seconds as a transfer function of order N (4 when not given), good while frequency × T stays under about N + 2.
 pidtuneOptions | pidtuneOptions('PhaseMargin', 45, 'N', 10) | Options for pidtune: the phase margin (degrees, 60 by default) and the derivative filter's N.
 stepinfo | stepinfo(G) | Rise time, settling time (2 %), overshoot (%), peak and peak time, steady state.
 step | step(G), step(G, T), [y, t] = step(G) | The response to a step of 1, drawn or returned.

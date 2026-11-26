@@ -5,8 +5,9 @@
 // a loop of them with no state inside is an "algebraic loop" and is refused in plain words.
 
 import { chartStart, chartStep, parseChart, type Chart, type ChartRun } from './chart';
+import { pade } from '../lab/pade';
 
-export type BlockKind = 'step' | 'sine' | 'constant' | 'pulse' | 'ramp' | 'gain' | 'sum' | 'product' | 'saturation' | 'integrator' | 'tf' | 'pid' | 'chart' | 'boardIn' | 'boardOut' | 'scope';
+export type BlockKind = 'step' | 'sine' | 'constant' | 'pulse' | 'ramp' | 'gain' | 'sum' | 'product' | 'saturation' | 'integrator' | 'tf' | 'pid' | 'delay' | 'chart' | 'boardIn' | 'boardOut' | 'scope';
 export interface Block { id: string; kind: BlockKind; x: number; y: number; p: Record<string, number | string> }
 export interface Wire { id: string; from: string; out: number; to: string; in: number }
 /** A requirement on a signal (M566): `signal` is a block id and output (`id#0`). */
@@ -50,6 +51,7 @@ export const KINDS: Record<BlockKind, { name: string; group: string; ins: (p: Bl
   saturation: { name: 'Saturation', group: 'Maths', ins: () => 1, outs: () => 1, p: { lower: -1, upper: 1 } },
   integrator: { name: 'Integrator', group: 'Continuous', ins: () => 1, outs: () => 1, p: { initial: 0 } },
   tf: { name: 'Transfer function', group: 'Continuous', ins: () => 1, outs: () => 1, p: { num: '1', den: '1 1' } },
+  delay: { name: 'Delay', group: 'Continuous', ins: () => 1, outs: () => 1, p: { time: 0.5, initial: 0 } },
   pid: { name: 'PID controller', group: 'Continuous', ins: () => 1, outs: () => 1, p: { Kp: 1, Ki: 0, Kd: 0, N: 100 } },
   chart: { name: 'Chart', group: 'Logic', ins: (p) => chartPorts(p.chart).ins, outs: (p) => chartPorts(p.chart).outs, p: { chart: CHART } },
   boardIn: { name: 'Board input', group: 'Hardware', ins: () => 0, outs: () => 1, p: { pin: 'A0', scale: 1, test: 0 } },
@@ -92,7 +94,9 @@ export function boardLevel(b: Block, v: number) {
 
 /** A diagram made ready to run: its states, the order its blocks are worked out in, and the functions a solver (or a
  * linearisation, a real-time run, a test) steps. `hold` fixes some blocks' outputs (a loop opened there). */
-export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo) {
+/** `padeDelays`: Delay blocks as their 4th-order Padé transfer function (for linearising, M567); otherwise a delay
+ * keeps its input's past and gives it back L seconds later. */
+export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo, padeDelays = false) {
   const blocks = dg.blocks, byId = new Map(blocks.map((b) => [b.id, b]));
   const into = new Map<string, Wire>();
   for (const w of dg.wires) if (byId.has(w.from) && byId.has(w.to)) into.set(`${w.to}:${w.in}`, w);
@@ -102,10 +106,10 @@ export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo) {
   for (const b of blocks) {
     if (b.kind === 'integrator') { off.set(b.id, ns); ns += 1; }
     else if (b.kind === 'pid') { off.set(b.id, ns); ns += 2; }
-    else if (b.kind === 'tf') { const c = canon(coeffs(b.p.num), coeffs(b.p.den)); info.set(b.id, c); off.set(b.id, ns); ns += c.order; }
+    else if (b.kind === 'tf' || (b.kind === 'delay' && padeDelays)) { const c = b.kind === 'tf' ? canon(coeffs(b.p.num), coeffs(b.p.den)) : (() => { const q = pade(Math.max(0, n(b.p.time, 0.5)), 4); return canon(q.n, q.d); })(); info.set(b.id, c); off.set(b.id, ns); ns += c.order; }
   }
   // Direct feedthrough: whether a block's output this instant needs its inputs.
-  const through = (b: Block) => !hold?.has(b.id) && !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'chart', 'boardIn', 'boardOut', 'scope'].includes(b.kind) && !(b.kind === 'tf' && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
+  const through = (b: Block) => !hold?.has(b.id) && !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'chart', 'boardIn', 'boardOut', 'scope'].includes(b.kind) && !(b.kind === 'delay' && !padeDelays) && !((b.kind === 'tf' || b.kind === 'delay') && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
   // Order: a block after the blocks feeding it directly.
   const order: Block[] = [], mark = new Map<string, 0 | 1 | 2>();
   const visit = (b: Block, path: string[]) => {
@@ -120,6 +124,18 @@ export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo) {
   // Charts (M563): each runs at every time step; its outputs hold between steps (so it never makes an algebraic loop).
   const charts = new Map<string, { ch: Chart; run: ChartRun }>();
   for (const b of blocks) if (b.kind === 'chart') { const ch = chartOf(b); charts.set(b.id, { ch, run: chartStart(ch) }); }
+  // Delays (M567): each one's input as it was at every step, read back L seconds later (straight lines between steps).
+  const past = new Map<string, { t: number[]; u: number[] }>();
+  if (!padeDelays) for (const b of blocks) if (b.kind === 'delay') past.set(b.id, { t: [], u: [] });
+  const delayed = (b: Block, t: number) => {
+    const h = past.get(b.id)!, want = t - Math.max(0, n(b.p.time, 0.5));
+    if (!h.t.length || want < h.t[0] - 1e-12) return n(b.p.initial);
+    let lo = 0, hi = h.t.length - 1;
+    if (want >= h.t[hi]) return h.u[hi];
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (h.t[mid] <= want) lo = mid; else hi = mid; }
+    const f = (want - h.t[lo]) / (h.t[hi] - h.t[lo] || 1);
+    return h.u[lo] + f * (h.u[hi] - h.u[lo]);
+  };
   const y = new Map<string, number>(), yo = new Map<string, number[]>();
   const input = (b: Block, i: number) => { const w = into.get(`${b.id}:${i}`); return !w ? 0 : w.out ? (yo.get(w.from)?.[w.out] ?? 0) : (y.get(w.from) ?? 0); };
   /** Every block's output at time t from the states x. */
@@ -139,6 +155,8 @@ export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo) {
         case 'product': v = input(b, 0) * input(b, 1); break;
         case 'saturation': v = Math.min(n(p.upper, 1), Math.max(n(p.lower, -1), input(b, 0))); break;
         case 'integrator': v = x[off.get(b.id)!]; break;
+        case 'delay': if (!padeDelays) { v = delayed(b, t); break; }
+        // falls through: as a transfer function
         case 'tf': { const c = info.get(b.id)!, o = off.get(b.id)!; v = c.D * input(b, 0); for (let k = 0; k < c.order; k++) v += c.C[k] * x[o + k]; break; }
         case 'pid': { const o = off.get(b.id)!, e = input(b, 0), N = n(p.N, 100); v = n(p.Kp, 1) * e + n(p.Ki) * x[o] + n(p.Kd) * N * (e - x[o + 1]); break; }
         case 'boardIn': v = io ? io.read(b) : n(p.test); break;
@@ -155,7 +173,7 @@ export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo) {
       if (o === undefined || hold?.has(b.id)) continue;
       if (b.kind === 'integrator') dx[o] = input(b, 0);
       else if (b.kind === 'pid') { const e = input(b, 0); dx[o] = e; dx[o + 1] = n(b.p.N, 100) * (e - x[o + 1]); }
-      else if (b.kind === 'tf') {
+      else if (b.kind === 'tf' || b.kind === 'delay') {
         const c = info.get(b.id)!, u = input(b, 0);
         if (c.order) { dx[o] = u - c.a.reduce((s, a, k) => s + a * x[o + k], 0); for (let k = 1; k < c.order; k++) dx[o + k] = x[o + k - 1]; }
       }
@@ -174,8 +192,16 @@ export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo) {
   };
   /** The charts take their turn at time t (after the states have moved there); which transition fired, per chart. */
   const update = (t: number, x: Float64Array) => {
-    if (!charts.size) return;
+    if (!charts.size && !past.size) return;
     outputs(t, x);
+    for (const [id, h] of past) {
+      const b = byId.get(id)!;
+      h.t.push(t); h.u.push(input(b, 0));
+      // Keep only what the delay can still ask for.
+      let drop = 0;
+      while (drop < h.t.length - 2 && h.t[drop + 1] < t - n(b.p.time, 0.5) - 1e-9) drop++;
+      if (drop > 256) { h.t.splice(0, drop); h.u.splice(0, drop); }
+    }
     for (const [id, c] of charts) { const b = byId.get(id)!; chartStep(c.ch, c.run, Object.fromEntries(c.ch.inputs.map((name, i) => [name, input(b, i)])), t); }
   };
   return { blocks, byId, into, off, info, order, ns, x0, y, yo, input, outputs, deriv, step, update, charts };

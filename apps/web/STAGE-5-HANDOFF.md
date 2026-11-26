@@ -15722,3 +15722,19 @@ critical run-time errors … reports … to certify to … IEC 61508, ISO 26262,
   coverage, tests, checks, ranges, and what the evidence is for under IEC 61508 / ISO 26262 / DO-178C: not a certificate).
 - Left out: formal proof (model checking every input), MC/DC, importing requirements from ReqIF or Word, static
   analysis of hand-written C (scripts have M399's checker).
+
+## M567 (26 Nov): Hyperion, time delays (a Delay block, delays in the tuner, scripts and generated code)
+
+M562's left-out (the owner, 26 Nov: "please do this all").
+
+- **`pade(L, N)`** (`src/lib/lab/pade.ts`): e^(−sL) as polynomials. Order 4 everywhere: at 6, `rootsOf` (Hyperion's eig)
+  sometimes can't settle the 9th-degree polynomials a delayed plant makes ("eig didn't settle").
+- **Delay block** (Continuous): its input's past kept at every major step (`past`, recorded in `update`, which now runs
+  for delays too) and read back L later with straight lines between steps; `initial` until then; never direct
+  feedthrough. `compile(…, padeDelays)` makes it a Padé transfer function instead: `linearize` uses that for the
+  operating run and the opened loop alike (so the states line up), and a delay's phase reaches the tuner.
+- **Scripts:** `tf(num, den, 'InputDelay' | 'OutputDelay' | 'IODelay', T)` folds the delay in; `pade(T, N)`.
+- **Tuner:** a typed plant has a Delay field. A delay costs phase, so the crossover chosen is lower, the margin kept.
+- **Code:** a delay is a ring of round(L / dt) past inputs (`Ir.delays`, `read` / `write` statements): C and C++ arrays,
+  Structured Text `ARRAY[0..n-1] OF LREAL` (and `DINT` counters now), Verilog `reg` arrays, VHDL an array type in the
+  process. Tested: emulation against the simulation, C to 1e-9, Verilog and VHDL in fixed point.

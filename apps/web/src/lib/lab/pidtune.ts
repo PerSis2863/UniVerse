@@ -1,6 +1,7 @@
 import { LabError } from './parse';
 import { BUILTINS } from './builtins';
 import { num, str, toMat, type Struct, type Value } from './values';
+import { pade } from './pade';
 import { autoFreq, isLti, makeTf, margin, rootsOf, stepinfo, tfOf, type Tf } from './control';
 
 // Hyperion's PID tuner (M562, the owner's picture of MATLAB's PID Tuner: "automatically tune and optimize controllers
@@ -169,4 +170,13 @@ def('pidtune', (a, nout) => {
   const out: Value[] = [makeTf(C.n, C.d)];
   if (nout > 1) out.push({ k: 'struct', f: new Map<string, Value>([['Kp', num(gains.Kp)], ['Ki', num(gains.Ki)], ['Kd', num(gains.Kd)], ['Tf', num(gains.Tf)], ['CrossoverFrequency', num(wc)], ['PhaseMargin', num(r.Pm)], ['Stable', { ...num(r.stable ? 1 : 0) }], ['Type', str(type)]]) });
   return out;
+});
+
+def('pade', (a) => {
+  // pade(T, N): a delay of T seconds as a transfer function of order N (M567); pade(G, N) isn't needed here: tf's
+  // 'InputDelay' already folds the delay in.
+  const T = a[0] ? toMat(a[0]).d[0] : NaN, N = a[1] ? Math.round(toMat(a[1]).d[0]) : 4;
+  if (!(T >= 0) || !(N >= 1 && N <= 10)) throw new LabError('pade(T, N) needs a delay T ≥ 0 seconds and an order N from 1 to 10.');
+  const p = pade(T, N);
+  return [makeTf(p.n, p.d)];
 });

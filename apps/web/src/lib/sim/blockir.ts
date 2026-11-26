@@ -14,7 +14,9 @@ export type E = { k: 'num'; v: number } | { k: 'var'; name: string } | { k: 'un'
 export interface Ir {
   dt: number;
   inputs: { name: string; test: number }[];
-  signals: { name: string; e: E; block: string }[];
+  signals: { name: string; e: E; block: string; read?: string }[];
+  /** Delays (M567): each a ring of n past inputs; the signal reads the oldest, the step then writes the newest. */
+  delays: { buf: string; n: number; init: number; input: E }[];
   outputs: { name: string; e: E }[];
   states: { name: string; init: number; d: E; block: string }[];
   charts: IrChart[];
@@ -38,7 +40,7 @@ export function buildIr(dg: Diagram): Ir {
   const m = compile(dg), names = safeNames(dg), into = m.into;
   const sig = (id: string, out = 0) => { const b = m.byId.get(id)!, nm = names.get(id)!; return b.kind === 'chart' ? `${nm}_${chartOf(b).outputs[out] ?? 'y'}` : nm; };
   const input = (b: Block, i: number): E => { const w = into.get(`${b.id}:${i}`); return w ? v(sig(w.from, w.out)) : num(0); };
-  const ir: Ir = { dt: dg.dt, inputs: [], signals: [], outputs: [], states: [], charts: [] };
+  const ir: Ir = { dt: dg.dt, inputs: [], signals: [], outputs: [], states: [], charts: [], delays: [] };
   for (const b of m.order) {
     const p = b.p, nm = names.get(b.id)!, u = () => input(b, 0);
     let e: E | null = null;
@@ -63,6 +65,13 @@ export function buildIr(dg: Diagram): Ir {
         const N = n(p.N, 100), err = u();
         ir.states.push({ name: `${nm}_i`, init: 0, d: err, block: b.id }, { name: `${nm}_f`, init: 0, d: times(N, bin('-', err, v(`${nm}_f`))), block: b.id });
         e = plus(plus(times(n(p.Kp, 1), err), times(n(p.Ki), v(`${nm}_i`))), times(n(p.Kd) * N, bin('-', err, v(`${nm}_f`))));
+        break;
+      }
+      case 'delay': {
+        const steps = Math.max(1, Math.round(Math.max(0, n(p.time, 0.5)) / dg.dt));
+        if (steps > 100_000) throw new Error(`${nm} would keep ${steps.toLocaleString()} past values: make the time step bigger or the delay shorter.`);
+        ir.delays.push({ buf: `${nm}_buf`, n: steps, init: n(p.initial), input: u() });
+        ir.signals.push({ name: nm, e: v(nm), block: b.id, read: `${nm}_buf` });
         break;
       }
       case 'boardIn': ir.inputs.push({ name: nm, test: n(p.test) }); break;
@@ -108,10 +117,12 @@ export function emulate(ir: Ir, steps: number, inputs: (t: number) => Record<str
   for (const s of ir.states) env[s.name] = s.init;
   for (const c of ir.charts) { for (const x of c.vars) env[`${c.name}_${x}`] = 0; env[`${c.name}_state`] = 0; env[`${c.name}_since`] = 0; runAssigns(chartAssigns(c, c.ch.states[0].entry), env); }
   const out: Record<string, number[]> = Object.fromEntries(ir.outputs.map((o) => [o.name, []]));
+  const bufs = new Map(ir.delays.map((d) => [d.buf, { a: new Array<number>(d.n).fill(d.init), k: 0 }]));
   for (let k = 0; k < steps; k++) {
     Object.assign(env, inputs(env.t));
-    for (const s of ir.signals) env[s.name] = evalE(s.e, env);
+    for (const s of ir.signals) env[s.name] = s.read ? bufs.get(s.read)!.a[bufs.get(s.read)!.k] : evalE(s.e, env);
     for (const o of ir.outputs) out[o.name].push(evalE(o.e, env));
+    for (const d of ir.delays) { const b = bufs.get(d.buf)!; b.a[b.k] = evalE(d.input, env); b.k = (b.k + 1) % d.n; }
     const d = ir.states.map((s) => evalE(s.d, env));
     ir.states.forEach((s, i) => { env[s.name] += ir.dt * d[i]; });
     for (const c of ir.charts) chartTurn(c, env);

@@ -13,14 +13,15 @@ export type Lang = 'c' | 'cpp' | 'st' | 'verilog' | 'vhdl';
 export const LANGS: { id: Lang; name: string }[] = [{ id: 'c', name: 'C' }, { id: 'cpp', name: 'C++' }, { id: 'st', name: 'Structured Text (IEC 61131-3)' }, { id: 'verilog', name: 'Verilog' }, { id: 'vhdl', name: 'VHDL' }];
 export interface CodeFile { name: string; text: string }
 
-type Stmt = { k: 'set'; name: string; e: E } | { k: 'if'; arms: { c: E; body: Stmt[] }[]; other: Stmt[] } | { k: 'case'; name: string; arms: { v: number; body: Stmt[] }[] };
+type Stmt = { k: 'set'; name: string; e: E } | { k: 'read'; name: string; buf: string } | { k: 'write'; buf: string; n: number; e: E } | { k: 'if'; arms: { c: E; body: Stmt[] }[]; other: Stmt[] } | { k: 'case'; name: string; arms: { v: number; body: Stmt[] }[] };
 const V = (name: string): E => ({ k: 'var', name }), N = (v: number): E => ({ k: 'num', v });
 
 /** The step as statements, the same for every language. */
 function steps(ir: Ir): Stmt[] {
   const out: Stmt[] = [];
-  for (const s of ir.signals) out.push({ k: 'set', name: s.name, e: s.e });
+  for (const s of ir.signals) out.push(s.read ? { k: 'read', name: s.name, buf: s.read } : { k: 'set', name: s.name, e: s.e });
   for (const o of ir.outputs) out.push({ k: 'set', name: o.name, e: o.e });
+  for (const d of ir.delays) out.push({ k: 'write', buf: d.buf, n: d.n, e: d.input });
   for (const s of ir.states) out.push({ k: 'set', name: `d_${s.name}`, e: s.d });
   for (const s of ir.states) out.push({ k: 'set', name: s.name, e: { k: 'bin', op: '+', a: V(s.name), b: { k: 'bin', op: '*', a: V('DT'), b: V(`d_${s.name}`) } } });
   for (const c of ir.charts) {
@@ -46,20 +47,23 @@ function steps(ir: Ir): Stmt[] {
 
 /** What each name is: an input, an output, kept from step to step, or worked out each step. */
 function roles(ir: Ir) {
-  const r = new Map<string, 'in' | 'out' | 'keep' | 'local' | 'int'>();
+  const r = new Map<string, 'in' | 'out' | 'keep' | 'local' | 'int' | 'buf'>();
   for (const i of ir.inputs) r.set(i.name, 'in');
   for (const o of ir.outputs) r.set(o.name, 'out');
   for (const s of ir.signals) r.set(s.name, 'local');
   for (const s of ir.states) { r.set(s.name, 'keep'); r.set(`d_${s.name}`, 'local'); }
   r.set('t', 'keep');
+  for (const d of ir.delays) { r.set(d.buf, 'buf'); r.set(`${d.buf}_k`, 'int'); }
   for (const c of ir.charts) { for (const x of [...c.vars, ...c.ch.inputs]) r.set(`${c.name}_${x}`, 'keep'); r.set(`${c.name}_since`, 'keep'); r.set(`${c.name}_state`, 'int'); }
   return r;
 }
 /** Statements printed with a language's own pieces. */
-function printStmts(list: Stmt[], ind: string, p: { set: (name: string, e: E) => string; if: (c: E) => string; elif: (c: E) => string; else: string; endif: string; caseOpen: (n: string) => string; arm: (v: number) => string; armEnd: string; caseEnd: string; caseOther?: string }): string[] {
+function printStmts(list: Stmt[], ind: string, p: { set: (name: string, e: E) => string; if: (c: E) => string; elif: (c: E) => string; else: string; endif: string; caseOpen: (n: string) => string; arm: (v: number) => string; armEnd: string; caseEnd: string; caseOther?: string; read: (name: string, buf: string) => string; write: (buf: string, n: number, e: E) => string }): string[] {
   const out: string[] = [];
   for (const s of list) {
     if (s.k === 'set') out.push(`${ind}${p.set(s.name, s.e)}`);
+    else if (s.k === 'read') out.push(`${ind}${p.read(s.name, s.buf)}`);
+    else if (s.k === 'write') out.push(...p.write(s.buf, s.n, s.e).split('\n').map((l) => `${ind}${l}`));
     else if (s.k === 'if') {
       if (!s.arms.length) { out.push(...printStmts(s.other, ind, p)); continue; }
       s.arms.forEach((a, i) => { out.push(`${ind}${i ? p.elif(a.c) : p.if(a.c)}`); out.push(...printStmts(a.body, `${ind}  `, p)); });
@@ -92,12 +96,14 @@ function cExpr(e: E, ref: (n: string) => string): string {
 const cPieces = (ref: (n: string) => string) => ({
   set: (name: string, e: E) => `${ref(name)} = ${cExpr(e, ref)};`, if: (c: E) => `if (${cExpr(c, ref)}) {`, elif: (c: E) => `} else if (${cExpr(c, ref)}) {`, else: '} else {', endif: '}',
   caseOpen: (n: string) => `switch (${ref(n)}) {`, arm: (v: number) => `case ${v}:`, armEnd: 'break;', caseEnd: '}',
+  read: (name: string, buf: string) => `${ref(name)} = ${ref(buf)}[${ref(`${buf}_k`)}];`,
+  write: (buf: string, n: number, e: E) => `${ref(buf)}[${ref(`${buf}_k`)}] = ${cExpr(e, ref)};\n${ref(`${buf}_k`)} = (${ref(`${buf}_k`)} + 1) % ${n};`,
 });
 
 function genC(ir: Ir, model: string): CodeFile[] {
   const r = roles(ir), keeps = [...r].filter(([, k]) => k === 'keep' || k === 'int'), locals = [...r].filter(([, k]) => k === 'local').map(([nm]) => nm);
-  const ref = (nm: string) => (nm === 'DT' ? `${model.toUpperCase()}_DT` : ({ in: `in->${nm}`, out: `out->${nm}`, keep: `s->${nm}`, int: `s->${nm}` } as Record<string, string>)[r.get(nm) ?? ''] ?? nm);
-  const p = cPieces(ref), init = initLines(ir).map(([nm, e]) => `  ${ref(nm)} = ${cExpr(e, ref)};`);
+  const ref = (nm: string) => (nm === 'DT' ? `${model.toUpperCase()}_DT` : ({ in: `in->${nm}`, out: `out->${nm}`, keep: `s->${nm}`, int: `s->${nm}`, buf: `s->${nm}` } as Record<string, string>)[r.get(nm) ?? ''] ?? nm);
+  const p = cPieces(ref), init = [...initLines(ir).map(([nm, e]) => `  ${ref(nm)} = ${cExpr(e, ref)};`), ...ir.delays.map((d) => `  for (int i = 0; i < ${d.n}; i++) s->${d.buf}[i] = ${cNum(d.init)};`)];
   const h = `/* ${model}.h: made by Hyperion from a block diagram. One call of ${model}_step is one step of ${ir.dt} s. */
 #ifndef ${model.toUpperCase()}_H
 #define ${model.toUpperCase()}_H
@@ -112,6 +118,7 @@ ${ir.outputs.map((o) => `  double ${o.name};`).join('\n')}
 } ${model}_Out;
 typedef struct {
 ${keeps.map(([nm, k]) => `  ${k === 'int' ? 'int' : 'double'} ${nm};`).join('\n')}
+${ir.delays.map((d) => `  double ${d.buf}[${d.n}];`).join('\n')}
 } ${model}_State;
 
 void ${model}_init(${model}_State *s);
@@ -168,6 +175,7 @@ ${ir.outputs.map((o) => `  double ${o.name} = 0.0;  // output`).join('\n')}
   ${cls}() { reset(); }
   void reset() {
 ${initLines(ir).map(([nm, e]) => `    ${nm} = ${cExpr(e, ref)};`).join('\n')}
+${ir.delays.map((d) => `    for (int i = 0; i < ${d.n}; i++) ${d.buf}[i] = ${cNum(d.init)};`).join('\n')}
   }
   void step() {
 ${locals.length ? `    double ${locals.join(', ')};\n` : ''}${printStmts(steps(ir), '    ', p).join('\n')}
@@ -175,6 +183,7 @@ ${locals.length ? `    double ${locals.join(', ')};\n` : ''}${printStmts(steps(i
 
  private:
 ${keeps.map(([nm, k]) => `  ${k === 'int' ? 'int' : 'double'} ${nm} = 0;`).join('\n')}
+${ir.delays.map((d) => `  double ${d.buf}[${d.n}] = {};`).join('\n')}
 };
 `;
   const main = `// main.cpp: runs ${cls} for N steps (default 1000) and prints the outputs.
@@ -197,7 +206,7 @@ int main(int argc, char **argv) {
 
 /** What every kept name starts at: states, the charts' first entry actions. */
 function initLines(ir: Ir): [string, E][] {
-  const out: [string, E][] = [['t', N(0)]];
+  const out: [string, E][] = [['t', N(0)], ...ir.delays.map((d): [string, E] => [`${d.buf}_k`, N(0)])];
   for (const s of ir.states) out.push([s.name, N(s.init)]);
   for (const c of ir.charts) {
     for (const x of [...c.vars, ...c.ch.inputs]) out.push([`${c.name}_${x}`, N(0)]);
@@ -235,11 +244,12 @@ function stExpr(e: E): Typed {
 function genSt(ir: Ir, model: string): CodeFile[] {
   const r = roles(ir), num = (e: E) => { const [s, t] = stExpr(e); return t === 'n' ? s : `SEL(${s}, 0.0, 1.0)`; }, bool = (e: E) => { const [s, t] = stExpr(e); return t === 'b' ? s : `(${s} <> 0.0)`; };
   const p = {
-    set: (nm: string, e: E) => `${nm} := ${r.get(nm) === 'int' ? `LREAL_TO_INT(${num(e)})` : num(e)};`, if: (c: E) => `IF ${bool(c)} THEN`, elif: (c: E) => `ELSIF ${bool(c)} THEN`, else: 'ELSE', endif: 'END_IF;',
+    set: (nm: string, e: E) => `${nm} := ${r.get(nm) === 'int' ? `LREAL_TO_DINT(${num(e)})` : num(e)};`, if: (c: E) => `IF ${bool(c)} THEN`, elif: (c: E) => `ELSIF ${bool(c)} THEN`, else: 'ELSE', endif: 'END_IF;',
     caseOpen: (nm: string) => `CASE ${nm} OF`, arm: (v: number) => `${v}:`, armEnd: '', caseEnd: 'END_CASE;',
+    read: (nm: string, buf: string) => `${nm} := ${buf}[${buf}_k];`, write: (buf: string, n: number, e: E) => `${buf}[${buf}_k] := ${num(e)};\n${buf}_k := (${buf}_k + 1) MOD ${n};`,
   };
-  const decl = (k: string) => [...r].filter(([, kk]) => kk === k).map(([nm]) => `    ${nm} : ${k === 'int' ? 'INT' : 'LREAL'};`);
-  const init = initLines(ir).map(([nm, e]) => `    ${p.set(nm, e)}`);
+  const decl = (k: string) => [...r].filter(([, kk]) => kk === k).map(([nm]) => `    ${nm} : ${k === 'int' ? 'DINT' : 'LREAL'};`);
+  const init = [...initLines(ir).map(([nm, e]) => `    ${p.set(nm, e)}`), ...ir.delays.map((d) => `    FOR i := 0 TO ${d.n - 1} DO ${d.buf}[i] := ${cNum(d.init)}; END_FOR;`)];
   const st = `(* ${model}.st: made by Hyperion from a block diagram. IEC 61131-3 Structured Text.
    Call it once every ${ir.dt} s (a cyclic task with that period); the first call sets it up. *)
 FUNCTION_BLOCK ${model}
@@ -251,7 +261,7 @@ ${decl('out').join('\n')}
   END_VAR
   VAR
     started : BOOL := FALSE;
-${decl('keep').join('\n')}
+${ir.delays.length ? '    i : DINT;\n' : ''}${ir.delays.map((d) => `    ${d.buf} : ARRAY[0..${d.n - 1}] OF LREAL;\n`).join('')}${decl('keep').join('\n')}
 ${decl('int').join('\n')}
 ${decl('local').join('\n')}
   END_VAR
@@ -320,9 +330,10 @@ function genVerilog(ir: Ir, model: string): CodeFile[] {
   const p = {
     set: (nm: string, e: E) => (r.get(nm) === 'int' ? `${nm} = ${e.k === 'num' ? e.v : 0};` : `${nm} = ${num(e)};`), if: (c: E) => `if (${bool(c)}) begin`, elif: (c: E) => `end else if (${bool(c)}) begin`, else: 'end else begin', endif: 'end',
     caseOpen: (nm: string) => `case (${nm})`, arm: (v: number) => `${v}: begin`, armEnd: 'end', caseEnd: 'endcase',
+    read: (nm: string, buf: string) => `${nm} = ${buf}[${buf}_k];`, write: (buf: string, n: number, e: E) => `${buf}[${buf}_k] = ${num(e)};\n${buf}_k = (${buf}_k == ${n - 1}) ? 0 : ${buf}_k + 1;`,
   };
   const stepBody = printStmts(steps(ir), '      ', p);
-  const regs = [...r].filter(([, k]) => k !== 'in' && k !== 'out' && k !== 'int').map(([nm]) => nm);
+  const regs = [...r].filter(([, k]) => k !== 'in' && k !== 'out' && k !== 'int' && k !== 'buf').map(([nm]) => nm);
   const v = `// ${model}.v: made by Hyperion from a block diagram. Signed fixed point Q15.16 (32 bits, 16 after the point).
 // Every rising clock edge with en high is one step of ${ir.dt} s; rst sets it back to the start.
 module ${model} (
@@ -333,7 +344,8 @@ module ${model} (
   localparam signed [31:0] ONE = 32'sd${ONE};
   localparam signed [31:0] DT = ${vLit(q(ir.dt))};
 ${regs.map((nm) => `  reg signed [31:0] ${nm};`).join('\n')}
-${[...r].filter(([, k]) => k === 'int').map(([nm]) => `  reg [7:0] ${nm};`).join('\n')}
+${[...r].filter(([, k]) => k === 'int').map(([nm]) => `  integer ${nm};`).join('\n')}
+${ir.delays.map((d) => `  reg signed [31:0] ${d.buf} [0:${d.n - 1}];`).join('\n')}${ir.delays.length ? '\n  integer i;' : ''}
 
   function signed [31:0] qmul(input signed [31:0] a, input signed [31:0] b);
     reg signed [63:0] p;
@@ -346,6 +358,7 @@ ${[...r].filter(([, k]) => k === 'int').map(([nm]) => `  reg [7:0] ${nm};`).join
   always @(posedge clk) begin
     if (rst) begin
 ${initLines(ir).map(([nm, e]) => `      ${p.set(nm, e)}`).join('\n')}
+${ir.delays.map((d) => `      for (i = 0; i < ${d.n}; i = i + 1) ${d.buf}[i] = ${vLit(q(d.init))};`).join('\n')}
 ${ir.outputs.map((o) => `      ${o.name} = 32'sd0;`).join('\n')}
     end else if (en) begin
 ${stepBody.join('\n')}
@@ -385,9 +398,10 @@ function genVhdl(ir: Ir, model: string): CodeFile[] {
     set: (nm: string, e: E) => (r.get(nm) === 'int' ? `${nm} := ${e.k === 'num' ? e.v : 0};` : r.get(nm) === 'out' ? `${nm} <= ${num(e)};` : `${nm} := ${num(e)};`),
     if: (c: E) => `if ${bool(c)} then`, elif: (c: E) => `elsif ${bool(c)} then`, else: 'else', endif: 'end if;',
     caseOpen: (nm: string) => `case ${nm} is`, arm: (v: number) => `when ${v} =>`, armEnd: '', caseEnd: 'end case;', caseOther: 'when others => null;',
+    read: (nm: string, buf: string) => `${nm} := ${buf}(${buf}_k);`, write: (buf: string, n: number, e: E) => `${buf}(${buf}_k) := ${num(e)};\nif ${buf}_k = ${n - 1} then ${buf}_k := 0; else ${buf}_k := ${buf}_k + 1; end if;`,
   };
   // Outputs are read back in the step (a scope input is often a signal too), so a variable keeps each one.
-  const vars = [...r].filter(([, k]) => k !== 'in' && k !== 'out' && k !== 'int').map(([nm]) => nm);
+  const vars = [...r].filter(([, k]) => k !== 'in' && k !== 'out' && k !== 'int' && k !== 'buf').map(([nm]) => nm);
   const body = printStmts(steps(ir), '        ', p);
   const vhd = `-- ${model}.vhd: made by Hyperion from a block diagram. Signed fixed point Q15.16 (32 bits, 16 after the point).
 -- Every rising clock edge with en = '1' is one step of ${ir.dt} s; rst = '1' sets it back to the start.
@@ -420,11 +434,13 @@ architecture rtl of ${model} is
 begin
   process (clk)
 ${vars.map((nm) => `    variable ${nm} : signed(31 downto 0) := ZERO;`).join('\n')}
-${[...r].filter(([, k]) => k === 'int').map(([nm]) => `    variable ${nm} : integer range 0 to 255 := 0;`).join('\n')}
+${[...r].filter(([, k]) => k === 'int').map(([nm]) => `    variable ${nm} : integer := 0;`).join('\n')}
+${ir.delays.map((d) => `    type ${d.buf}_t is array (0 to ${d.n - 1}) of signed(31 downto 0);\n    variable ${d.buf} : ${d.buf}_t := (others => ${lit(q(d.init))});`).join('\n')}
   begin
     if rising_edge(clk) then
       if rst = '1' then
 ${initLines(ir).map(([nm, e]) => `        ${p.set(nm, e)}`).join('\n')}
+${ir.delays.map((d) => `        ${d.buf} := (others => ${lit(q(d.init))});`).join('\n')}
 ${ir.outputs.map((o) => `        ${o.name} <= ZERO;`).join('\n')}
       elsif en = '1' then
 ${body.join('\n')}

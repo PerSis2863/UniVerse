@@ -59,3 +59,21 @@ describe('PID tuning, fast plants', () => {
     expect(r.info!.Overshoot).toBeLessThan(25);
   });
 });
+
+describe('plants with a delay (M567)', () => {
+  it('a delay costs phase, so the tuned loop is slower but keeps its margin', async () => {
+    const { pade } = await import('./pade');
+    const q = pade(1, 4), conv = (a: number[], b: number[]) => { const o = new Array(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => { o[i + j] += x * y; })); return o; };
+    const G = { n: [1], d: [1, 3, 3, 1] }, Gd = { n: conv([1], q.n), d: conv([1, 3, 3, 1], q.d) };
+    const a = tunePid(G, 'PI'), b = tunePid(Gd, 'PI'), r = pidReport(Gd, b.gains);
+    expect(b.wc).toBeLessThan(a.wc);
+    expect(r.stable).toBe(true);
+    expect(r.Pm).toBeCloseTo(60, 0);
+  });
+  it('tf’s InputDelay and pade in a script', () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("G = tf(1, [1 1], 'InputDelay', 0.5); p = pade(0.5, 2); [C, info] = pidtune(G, 'PI'); ok = info.Stable;");
+    expect((lab.vars.get('ok') as unknown as { d: number[] }).d[0]).toBe(1);
+    expect(lab.vars.get('p')).toBeTruthy();
+  });
+});

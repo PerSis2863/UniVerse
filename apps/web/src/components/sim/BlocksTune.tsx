@@ -63,7 +63,7 @@ function Table({ title, head, rows }: { title: string; head: string[]; rows: [st
 export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; names: Map<string, string>; colours: string[]; setParams: (id: string, p: Record<string, number>) => void }) {
   const pids = dg.blocks.filter((b) => b.kind === 'pid');
   const [source, setSource] = useState<string>(() => pids[0]?.id ?? 'typed');
-  const [num, setNum] = useState('1'), [den, setDen] = useState('1 3 3 1');
+  const [num, setNum] = useState('1'), [den, setDen] = useState('1 3 3 1'), [delay, setDelay] = useState(0);
   const [type, setType] = useState<PidType>('PIDF');
   const [speed, setSpeed] = useState(0), [aggr, setAggr] = useState((85 - 60) / 55);
   const [at, setAt] = useState(0), [N, setN] = useState(10);
@@ -82,10 +82,10 @@ export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; nam
     worker.current = w;
     return () => w.terminate();
   }, []);
-  const logic = JSON.stringify([src, block ? [dg.blocks.map((b) => [b.id, b.kind, b.p]), dg.wires, dg.dt] : tf, type, speed, aggr, at, N, baseline]);
+  const logic = JSON.stringify([src, block ? [dg.blocks.map((b) => [b.id, b.kind, b.p]), dg.wires, dg.dt] : [tf, delay], type, speed, aggr, at, N, baseline]);
   const ask = useEffectEvent(() => {
     asked.current += 1;
-    const plant: ToTune['plant'] = block ? { diagram: dg, pid: block.id, at } : { tf };
+    const plant: ToTune['plant'] = block ? { diagram: dg, pid: block.id, at } : { tf, delay };
     worker.current?.postMessage({ id: asked.current, plant, type, speed, pm: pmOf(aggr), N, baseline } satisfies ToTune);
   });
   useEffect(() => { const t = window.setTimeout(ask, 60); return () => clearTimeout(t); }, [logic]);
@@ -123,6 +123,7 @@ export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; nam
           <>
             <label className={ui.label}>Numerator<input value={num} onChange={(e) => setNum(e.target.value)} className="input mt-1 block w-28 font-mono" /></label>
             <label className={ui.label}>Denominator<input value={den} onChange={(e) => setDen(e.target.value)} className="input mt-1 block w-32 font-mono" /></label>
+            <label className={ui.label}>Delay <span className="font-normal text-zinc-500 dark:text-zinc-400">(s)</span><input type="number" min={0} step="any" value={delay} onChange={(e) => { const v = Number(e.target.value); if (v >= 0 && v <= 1e4) setDelay(v); }} className="input mt-1 block w-20 font-mono" /></label>
           </>
         )}
         <label className={ui.label}>Type

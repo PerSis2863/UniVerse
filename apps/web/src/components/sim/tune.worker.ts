@@ -4,13 +4,16 @@ import '@/lib/lab/interp';
 import { autoTime, bodeOf, minreal, stepOf, type Tf } from '@/lib/lab/control';
 import { autoWc, pidReport, tunePid, type Gains, type PidType } from '@/lib/lab/pidtune';
 import { linearize } from '@/lib/sim/linearize';
+import { pade } from '@/lib/lab/pade';
+
+const conv = (a: number[], b: number[]) => { const o = new Array<number>(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => { o[i + j] += x * y; })); return o; };
 import type { Diagram } from '@/lib/sim/blocks';
 
 // Hyperion Simulate → Blocks → Tune (M562): the PID tuner's work, off the page's thread so the sliders stay smooth.
 // The plant is a typed transfer function or the diagram linearised as a PID block sees it (its output to its input,
 // with the minus the error carries taken off).
 
-export type Plant = { tf: Tf } | { diagram: Diagram; pid: string; at: number };
+export type Plant = { tf: Tf; delay: number } | { diagram: Diagram; pid: string; at: number };
 export interface ToTune { id: number; plant: Plant; type: PidType; speed: number; pm: number; N: number; baseline: Gains }
 export interface Report { stable: boolean; rise: number; settle: number; overshoot: number; peak: number; Gm: number; Wcg: number; Pm: number; Wcp: number }
 export interface FromTune {
@@ -23,7 +26,7 @@ export interface FromTune {
 const report = (r: ReturnType<typeof pidReport>): Report => ({ stable: r.stable, rise: r.info?.RiseTime ?? NaN, settle: r.info?.SettlingTime ?? NaN, overshoot: r.info?.Overshoot ?? NaN, peak: r.info?.Peak ?? NaN, Gm: r.Gm, Wcg: r.Wcg, Pm: r.Pm, Wcp: r.Wcp });
 
 function plantOf(p: Plant): Tf {
-  if ('tf' in p) return p.tf;
+  if ('tf' in p) { const q = pade(p.delay, 4); return p.delay > 0 ? { n: conv(p.tf.n, q.n), d: conv(p.tf.d, q.d) } : p.tf; }
   const into = p.diagram.wires.find((w) => w.to === p.pid && w.in === 0);
   if (!into) throw new Error('Wire something into the PID block first: the error it acts on.');
   const l = linearize(p.diagram, p.pid, into.from, p.at);

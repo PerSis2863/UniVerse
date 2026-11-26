@@ -46,6 +46,7 @@ const FIELDS: Record<BlockKind, Field[]> = {
   tf: [{ key: 'num', label: 'Numerator', text: 'powers of s, highest first: 1 2 = s + 2' }, { key: 'den', label: 'Denominator', text: '1 3 2 = s² + 3s + 2' }],
   pid: [{ key: 'Kp', label: 'Kp (proportional)' }, { key: 'Ki', label: 'Ki (integral)' }, { key: 'Kd', label: 'Kd (derivative)' }, { key: 'N', label: 'Derivative filter N' }],
   chart: [],
+  delay: [{ key: 'time', label: 'Delay', unit: 's' }, { key: 'initial', label: 'Output before then' }],
   boardIn: [{ key: 'pin', label: 'Analog pin', text: 'A0 to A5' }, { key: 'scale', label: 'Full scale (the value at 1023)' }, { key: 'test', label: 'Value with no board' }],
   boardOut: [{ key: 'pin', label: 'Pin (PWM: 3, 5, 6, 9, 10, 11)' }, { key: 'lo', label: 'Input for 0' }, { key: 'hi', label: 'Input for full (255, or on)' }],
   scope: [],
@@ -66,6 +67,7 @@ function summary(b: Block): string {
     case 'tf': return tfInline(coeffs(p.num), coeffs(p.den));
     case 'pid': return `Kp ${v('Kp')}, Ki ${v('Ki')}, Kd ${v('Kd')}`;
     case 'chart': try { return `${chartOf(b).states.length} states`; } catch { return 'a chart with a mistake'; }
+    case 'delay': return `${v('time')} s later`;
     case 'boardIn': return `pin ${String(p.pin)}`;
     case 'boardOut': return `pin ${String(p.pin)}, ${p.mode === 'digital' ? 'on/off' : 'PWM'}`;
     case 'scope': return `${KINDS.scope.ins(p)} input${KINDS.scope.ins(p) > 1 ? 's' : ''}`;
@@ -88,6 +90,7 @@ function Glyph({ b }: { b: Block }) {
     case 'sum': return big('Σ', 24);
     case 'product': return big('×', 24);
     case 'pid': return big('PID', 15);
+    case 'delay': return <><text x={0} y={5} fontSize={14} textAnchor="middle" fill="currentColor" className="font-mono">e⁻ˢᵀ</text></>;
     case 'boardIn': return <><rect x={-16} y={-12} width={32} height={24} rx={3} {...line} strokeWidth={1.4} /><text x={0} y={5} fontSize={11} textAnchor="middle" fill="currentColor" className="font-mono">{String(b.p.pin)}</text><path d="M-26,0 H-16" {...line} /></>;
     case 'boardOut': return <><rect x={-16} y={-12} width={32} height={24} rx={3} {...line} strokeWidth={1.4} /><text x={0} y={5} fontSize={11} textAnchor="middle" fill="currentColor" className="font-mono">D{String(b.p.pin)}</text><path d="M16,0 H26" {...line} /></>;
     case 'chart': return <><rect x={-24} y={-13} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><rect x={4} y={1} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><path d="M-4,-7 C6,-7 14,-6 14,0" {...line} strokeWidth={1.4} /><path d="M11,-3 L14,1 L17,-3" {...line} strokeWidth={1.4} /></>;
