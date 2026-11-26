@@ -353,9 +353,10 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const vs = (q.y[1] - q.y[0]) / 0.05, vc = (c.path.y[1] - c.path.y[0]) / 0.05;
     expect(car.m * vs + car.m * vc).toBeCloseTo((car.m * 50) / 3.6, -3);
     expect(q.y[n]).toBeGreaterThan(q.y[0]);
-    // At the front seat, off its centre of mass, the struck car spins but the striker, hit square on its nose, doesn't;
-    // at 30° the striker turns and is held back along the car (friction).
-    expect(go({}).striker!.turned).toBeCloseTo(0, 9);
+    // At the front seat, off its centre of mass, the struck car spins but the striker, hit square on its nose, doesn't
+    // (with no second touch: M486z's off-centre second touch turns it a little); at 30° the striker turns and is held
+    // back along the car (friction).
+    expect(go({ braked: true }).striker!.turned).toBeCloseTo(0, 9);
     const a = go({ angle: 30 }).striker!;
     expect(Math.abs(a.turned)).toBeGreaterThan(1); expect(a.psi[0]).toBeCloseTo(30, 9);
     // A pole: none.
@@ -372,7 +373,8 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const c = go({}), s2 = c.second!;
     expect(c.touches).toBeGreaterThanOrEqual(1); expect(s2.t).toBeGreaterThan(0.05); expect(s2.t).toBeLessThan(vd.REACT);
     expect(s2.closing).toBeGreaterThan(0.3); expect(s2.closing).toBeLessThan(c.dv);
-    expect(s2.dv).toBeCloseTo(((1.1 * s2.closing) / (1 / car.m + 1 / car.m)) / car.m, 6); expect(s2.y).toBeLessThan(0);
+    // At most what a push through the centres would give (met off them, some goes into turning: M486z).
+    expect(s2.dv).toBeGreaterThan(0); expect(s2.dv).toBeLessThanOrEqual(((1.1 * s2.closing) / (1 / car.m + 1 / car.m)) / car.m + 1e-9); expect(s2.y).toBeLessThan(0);
     // The two never end up inside each other: the striker stays behind the struck car's side.
     expect(c.striker!.y.at(-1)!).toBeLessThan(c.path.y.at(-1)!);
     // At 30° the struck car is carried along and turns away: no second touch.
@@ -381,6 +383,26 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     lab.run("[~, i] = vehicleSideCrash(vehicle(), 50/3.6);");
     const f = (k: string) => toMat((lab.vars.get('i') as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
     expect(f('SecondTouchAt')).toBeCloseTo(s2.t, 9); expect(f('SecondSpeedChange')).toBeCloseTo(s2.dv, 9);
+  });
+  it('the second touch turns the cars; the other driver braking; the car\'s front (M486z)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, go = (o: Parameters<typeof vd.sideCrash>[2]) => vd.sideCrash(car, 50 / 3.6, o);
+    // Square on at the centre the second touch is at the middle of its side: no turn. Aimed at the front seat it
+    // lands off the middle, so it turns the struck car; met on the struck side.
+    expect(go({ hitAt: 0 }).second!.spin).toBeCloseTo(0, 6);
+    const s2 = go({}).second!;
+    expect(Math.abs(s2.spin)).toBeGreaterThan(1); expect(s2.y).toBeCloseTo(-vd.CAR_WIDTH / 2, 1);
+    // Already braking, the striker doesn't catch it up.
+    expect(go({ braked: true }).second).toBeNull(); expect(go({ braked: true }).path.distance).toBeLessThan(go({}).path.distance);
+    // Fronts: an SUV's punishes the face most, one built to spread it least; your own parts as rows.
+    const mp = (front: Parameters<typeof vd.frontalCrash>[2] extends infer O ? O extends { front?: infer F } ? F : never : never) => vd.frontalCrash(car, 50 / 3.6, { into: 'mpdb', front });
+    const typ = mp('typical'), suv = mp('suv'), spread = mp('spread');
+    expect(suv.faceSD).toBeGreaterThan(typ.faceSD); expect(spread.faceSD).toBeLessThan(typ.faceSD); expect(suv.compat).toBeGreaterThan(spread.compat);
+    expect(mp(vd.FRONTS.typical).faceSD).toBeCloseTo(typ.faceSD, 12);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, a] = vehicleCrash(vehicle(), 50/3.6, 'Into', 'mpdb', 'Front', 'suv'); [~, b] = vehicleCrash(vehicle(), 50/3.6, 'Into', 'mpdb', 'Front', [1 0 -0 0.3 0.6]); [~, c] = vehicleSideCrash(vehicle(), 50/3.6, 'OtherBraked', 1);");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('a', 'BarrierSD')).toBeCloseTo(suv.faceSD, 9); expect(f('b', 'BarrierSD')).toBeGreaterThan(0); expect(f('c', 'Touches')).toBe(0);
+    expect(() => lab.run("vehicleCrash(vehicle(), 50/3.6, 'Into', 'mpdb', 'Front', 'bus')")).toThrow(/Front/);
   });
   it('Euro NCAP\'s moving barrier (M486r)', { timeout: 60_000 }, () => {
     const car = vd.CAR_DEFAULT, go = (v: typeof car, o: Parameters<typeof vd.frontalCrash>[2] = {}) => vd.frontalCrash(v, 50 / 3.6, { into: 'mpdb', ...o });

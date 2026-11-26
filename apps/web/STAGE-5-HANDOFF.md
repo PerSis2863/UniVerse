@@ -13606,6 +13606,23 @@ least 50 m). `dcStray` works per train; `shallow` is weighted by each train's st
 logged (`SupplyLog.shallowAs`); ShallowShare = shallowAs / strayAs. `DC_DEPTH` is gone. Checked: a train near its
 substation keeps more near the surface; two trains weight by their stray currents.
 
+## M486z (26 Nov): Hyperion vehicles, the second touch turns the cars; the other driver braking; the car's front
+
+The owner (M486w's and M486y's left-outs). **Side crash:** `strikerAfter` meets the touch at `touchPoint` (the mean of
+the corners of each box inside the other; midway between the centres if only edges cross), with velocities there
+including ω × r and j = −(1 + e)·vₙ / (1/m₁ + 1/m₂ + (r₁×n)²/I₁ + (r₂×n)²/I₂); each car's spin changes by r × j·n / I.
+`Touch.spin` (°/s, the struck car's). Square at the centre: no turn; aimed at the front seat the second touch lands
+~0.7 m behind the middle and turns it ~16°/s. `sideCrash`'s `braked` (the other driver already braking: μ·g from the
+start, no rolling on): no second touch, a shorter slide. Older tests: M486t's "striker doesn't turn" uses `braked`;
+M486w's Δv is now at most the through-the-centres value. **The front:** `FRONTS` (typical, suv, small, spread;
+`FrontPart`), `frontalCrash`'s `front` (a name or parts), `FRONT_PARTS` = typical. At 1,200 / 2,200 kg: typical 85 /
+102 mm, SUV 160 / 195 mm (−2.0 / −8.0), small 91 / 107, spread 66 / 84 (−0.3 / −5.3). The OLC doesn't change with the
+front (the crash's front stiffness comes from the mass). Language: vehicleCrash 'Front' (a name, or rows [share yFrom
+yTo zFrom zTo], −0 meaning the far side), vehicleSideCrash 'OtherBraked', info.SecondSpin. Window: Crash → A moving
+barrier → "The car's front"; Into the side → "The other driver was already braking"; "Touched again" gives the turn.
+Not built: a front's own stiffness (each front still crushes as the mass sets), the cars' tyres turning as they're
+pushed.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

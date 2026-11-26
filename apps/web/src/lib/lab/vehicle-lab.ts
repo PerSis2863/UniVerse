@@ -147,7 +147,22 @@ def('vehicleCrash', (a, nout, lab) => {
   if (!(overlap >= 0.1 && overlap <= 1)) throw new LabError("'Overlap' is the share of the front that hits, 0.1 to 1 (0.4 Euro NCAP's offset, 0.25 the small overlap).");
   if (seat !== 'front' && seat !== 'rear') throw new LabError("'Seat' is 'front' or 'rear'.");
   if (behind !== 'none' && behind !== 'belted' && behind !== 'unbelted') throw new LabError("'Behind' is 'none', 'belted' or 'unbelted'.");
-  const c = vd.frontalCrash(v, sp, { into, other, belt: flag('belts'), bags: flag('airbags'), overlap, seat, behind });
+  // M486z: 'Front' (the moving barrier's face): 'typical', 'suv', 'small', 'spread', or rows [share yFrom yTo zFrom zTo]
+  // (m; y across from the car's outer side, negative counted from the other side; z up from the road).
+  let front: vd.FrontPart[] | keyof typeof vd.FRONTS = 'typical';
+  const fo = o.get('front');
+  if (fo && fo.k === 'str') {
+    const nm = textOf(fo).toLowerCase();
+    if (!(nm in vd.FRONTS)) throw new LabError("'Front' is 'typical', 'suv', 'small', 'spread', or rows [share yFrom yTo zFrom zTo].");
+    front = nm as keyof typeof vd.FRONTS;
+  } else if (fo) {
+    const m = toMat(fo), rows = m.r;
+    if (m.c !== 5 || rows < 1 || rows > 12) throw new LabError("'Front' as parts is 1 to 12 rows of [share yFrom yTo zFrom zTo].");
+    front = Array.from({ length: rows }, (_, i) => { const g = (k: number) => m.d[i + k * rows]; return { name: `part ${i + 1}`, share: g(0), y: [[g(1), g(2)]] as [number, number][], z: [g(3), g(4)] as [number, number] }; });
+    const at = (y: number) => (y < 0 || Object.is(y, -0) ? vd.CAR_WIDTH + y : y);
+    if (front.some((q) => !(q.share >= 0 && q.z[0] >= 0 && q.z[1] > q.z[0] && q.z[1] <= 1.5 && Math.abs(q.y[0][0]) <= vd.CAR_WIDTH && Math.abs(q.y[0][1]) <= vd.CAR_WIDTH && at(q.y[0][1]) > at(q.y[0][0]))) || !front.some((q) => q.share > 0)) throw new LabError("'Front' parts need shares of 0 or more (some above 0), y within the car's 1.8 m width (from below to), and z from below to, 0 to 1.5 m.");
+  }
+  const c = vd.frontalCrash(v, sp, { into, other, belt: flag('belts'), bags: flag('airbags'), overlap, seat, behind, front });
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['WallSpeed', num(c.vEq)], ['Crush', num(c.crush)], ['BarrierCrush', num(c.barrier)], ['TrolleySpeedChange', num(c.trolleyDv)], ['OLC', num(c.olc)], ['BarrierSD', num(c.faceSD)], ['BarrierMax', num(c.faceMax)], ['BottomedOut', num(c.bottomed ? 1 : 0)], ['CompatibilityPenalty', num(c.compat)], ['CompatibilityShare2026', num(c.compatShare)], ['BarrierFace', c.face.length ? mat(c.face.length, c.face[0].length, Float64Array.from({ length: c.face.length * c.face[0].length }, (_, q) => c.face[q % c.face.length][Math.floor(q / c.face.length)])) : mat(0, 0, [])], ['SpeedChange', num(c.dv)], ['AirbagAt', num(c.bagAt)], ['AirbagLate', num(c.late ? 1 : 0)], ['BeltForce', num(c.beltPeak)], ['ChestG', num(c.chestG)], ['Travel', num(c.travelMax)], ['HitWheel', num(c.hitWheel ? 1 : 0)], ['HeadHitWheel', num(c.headHit ? 1 : 0)], ['Intrusion', num(c.intrusion)], ['SlidOffAirbag', num(c.slidOff ? 1 : 0)], ['HitFrontSeat', num(c.hitSeat ? 1 : 0)], ['BackLoad', num(c.backLoad)], ['Injury', str(c.risk)]]) };
   if (nout > 0) return [table([['Time', col(c.t)], ['CarG', col(c.carG)], ['PersonG', col(c.personG)], ['Travel', col(c.travel)]]), info];
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.carG), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
@@ -171,13 +186,13 @@ def('vehicleSideCrash', (a, nout, lab) => {
   if (!(angle >= 0 && angle <= 60)) throw new LabError("'Angle' is degrees from square on, 0 to 60.");
   if (hitAt !== undefined && !(Math.abs(hitAt) <= 3)) throw new LabError("'HitAt' is where the blow lands, metres ahead of the centre of mass (behind: negative), up to 3.");
   if (seatRow !== 'front' && seatRow !== 'rear') throw new LabError("'Row' is 'front' or 'rear'.");
-  const c = vd.sideCrash(v, sp, { into, other, belt: flag('belts', 1), bags: flag('airbags', 1), seat, beside: flag('beside', 0), angle, hitAt, row: seatRow });
+  const c = vd.sideCrash(v, sp, { into, other, belt: flag('belts', 1), bags: flag('airbags', 1), seat, beside: flag('beside', 0), angle, hitAt, row: seatRow, braked: flag('otherbraked', 0) });
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Intrusion', num(c.intrusion)], ['SpeedChange', num(c.dv)], ['AlongSpeedChange', num(c.along)], ['Spin', num(c.spin)], ['Ribs', num(c.ribs)], ['AirbagAt', num(c.bagAt)], ['ChestG', num(c.chestG)], ['HeadG', num(c.headG)], ['HeadHit', num(c.headHit ? 1 : 0)], ['PersonForce', num(c.hitPerson)], ['Injury', str(c.risk)],
     // M486q: where it slides after the blow.
     ['SlideDistance', num(c.path.distance)], ['SlideTurn', num(c.path.turned)], ['Path', table([['Time', col(c.path.t)], ['X', col(c.path.x)], ['Y', col(c.path.y)], ['Turn', col(c.path.psi)]])],
     // M486t: the car that hit it, in the same picture (a pole: none).
     // M486w: touching again.
-    ...(c.striker ? [['SecondTouchAt', num(c.second?.t ?? NaN)], ['SecondClosingSpeed', num(c.second?.closing ?? 0)], ['SecondSpeedChange', num(c.second?.dv ?? 0)], ['Touches', num(c.touches)]] as [string, Value][] : []),
+    ...(c.striker ? [['SecondTouchAt', num(c.second?.t ?? NaN)], ['SecondClosingSpeed', num(c.second?.closing ?? 0)], ['SecondSpeedChange', num(c.second?.dv ?? 0)], ['SecondSpin', num(c.second?.spin ?? 0)], ['Touches', num(c.touches)]] as [string, Value][] : []),
     ...(c.striker ? [['StrikerDistance', num(c.striker.distance)], ['StrikerTurn', num(c.striker.turned)], ['StrikerPath', table([['Time', col(c.striker.t)], ['X', col(c.striker.x)], ['Y', col(c.striker.y)], ['Turn', col(c.striker.psi)]])]] as [string, Value][] : [])]) };
   if (nout > 0) return [table([['Time', col(c.t)], ['CarG', col(c.carG)], ['PersonG', col(c.personG)], ['Gap', col(c.gap)]]), info];
   call(lab, 'plot', row(c.t.map((t) => t * 1000)), row(c.carG), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));

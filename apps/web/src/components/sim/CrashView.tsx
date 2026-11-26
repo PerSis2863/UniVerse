@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
-import { CAR_WIDTH, FACE_CELL, FACE_Z, MPDB_DEPTH, MPDB_ZONE, MPDB_ZONE_Z, SEAT_X, WHEEL_GAP, frontalCrash, sideCrash, type Vehicle } from '@/lib/lab/vehicle';
+import { CAR_WIDTH, FACE_CELL, FRONTS, FACE_Z, MPDB_DEPTH, MPDB_ZONE, MPDB_ZONE_Z, SEAT_X, WHEEL_GAP, frontalCrash, sideCrash, type Vehicle } from '@/lib/lab/vehicle';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Vehicle → Crash (M486j): a head-on crash into a wall or another car, the front person
@@ -32,6 +32,9 @@ export function CrashView({ car }: { car: Vehicle }) {
   const [seat, setSeat] = useState<Seat>('front');
   const [kind, setKind] = useState<Kind>('front');
   const [sideInto, setSideInto] = useState<SideInto>('car');
+  // M486z: the other driver already braking (side), the car's front (moving barrier).
+  const [braked, setBraked] = useState(false);
+  const [front, setFront] = useState<keyof typeof FRONTS>('typical');
   const [sideSeat, setSideSeat] = useState<SideSeat>('near');
   // M486p: the back seat and a blow at an angle.
   const [sideRow, setSideRow] = useState<SideRow>('front');
@@ -39,8 +42,8 @@ export function CrashView({ car }: { car: Vehicle }) {
   // M486q: where the blow is aimed (Euro NCAP: the front seat; a pole can be aimed at the back).
   const [sideAim, setSideAim] = useState<SideAim>('front');
   const cv = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
-  const c = useMemo(() => frontalCrash(car, kmh / 3.6, { into, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', overlap: into === 'mpdb' ? 0.5 : Number(overlap), seat: seat === 'rear' ? 'rear' : 'front', behind: seat === 'pushed' ? 'unbelted' : 'none' }), [car, kmh, into, guard, overlap, seat]);
-  const sc = useMemo(() => sideCrash(car, kmh / 3.6, { into: sideInto, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', seat: sideSeat === 'near' ? 'near' : 'far', beside: sideSeat === 'beside', row: sideRow, angle: Number(sideAngle), hitAt: SEAT_X[sideAim] }), [car, kmh, sideInto, guard, sideSeat, sideRow, sideAngle, sideAim]);
+  const c = useMemo(() => frontalCrash(car, kmh / 3.6, { into, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', overlap: into === 'mpdb' ? 0.5 : Number(overlap), seat: seat === 'rear' ? 'rear' : 'front', behind: seat === 'pushed' ? 'unbelted' : 'none', front }), [car, kmh, into, guard, overlap, seat, front]);
+  const sc = useMemo(() => sideCrash(car, kmh / 3.6, { into: sideInto, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', seat: sideSeat === 'near' ? 'near' : 'far', beside: sideSeat === 'beside', row: sideRow, angle: Number(sideAngle), hitAt: SEAT_X[sideAim], braked }), [car, kmh, sideInto, guard, sideSeat, sideRow, sideAngle, sideAim, braked]);
   const rear = seat === 'rear', side = kind === 'side', d = side ? sc : c;
 
   const draw = useEffectEvent(() => {
@@ -128,7 +131,7 @@ export function CrashView({ car }: { car: Vehicle }) {
   const sideFacts: [string, string][] = [
     ['Result', `${sc.risk === 'low' ? 'Likely to walk away' : sc.risk === 'serious' ? 'Serious injury likely' : 'Severe injury likely'} (rough)`],
     ['The side crushed · the car shoved', `${(sc.intrusion * 100).toFixed(0)} cm · ${(sc.dv * 3.6).toFixed(0)} km/h sideways`],
-    ['Touched again', sc.striker ? (sc.second ? `after ${sc.second.t.toFixed(2)} s at ${(sc.second.closing * 3.6).toFixed(0)} km/h: shoved ${(sc.second.dv * 3.6).toFixed(0)} km/h more${sc.touches > 1 ? ` (${sc.touches} times)` : ''}` : 'no: they came apart') : 'a pole doesn’t follow'],
+    ['Touched again', sc.striker ? (sc.second ? `after ${sc.second.t.toFixed(2)} s at ${(sc.second.closing * 3.6).toFixed(0)} km/h: shoved ${(sc.second.dv * 3.6).toFixed(0)} km/h more, turning ${Math.abs(sc.second.spin).toFixed(0)}°/s${sc.touches > 1 ? ` (${sc.touches} times)` : ''}` : 'no: they came apart') : 'a pole doesn’t follow'],
     ['Chest (3 ms) · ribs squeezed', `${sc.chestG.toFixed(0)} g · ${(sc.ribs * 1000).toFixed(0)} mm (good under 28, poor past 50)`],
     ['The car after the blow', `spinning ${sc.spin.toFixed(0)}°/s${sc.along > 0.05 ? `, shoved ${(sc.along * 3.6).toFixed(0)} km/h along` : ''}`],
     ['Head', sc.headG > 0.5 ? `${sc.headG.toFixed(0)} g${sc.headHit ? (sideSeat === 'beside' ? ', against the other person’s head' : ', against the window side') : ', on the curtain airbag'}` : 'nothing hit'],
@@ -157,8 +160,12 @@ export function CrashView({ car }: { car: Vehicle }) {
         </div>
         {side ? <div className="space-y-1"><span className={label}>Hit by</span>
           <Segmented<SideInto> label="Hit by" value={sideInto} onChange={setSideInto} segments={[{ value: 'car', label: 'A car like it' }, { value: 'pole', label: 'Sliding into a pole' }]} />
+          {sideInto === 'car' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={braked} onChange={(e) => setBraked(e.target.checked)} className="h-4 w-4 accent-violet-600" />The other driver was already braking</label>}
         </div> : <div className="space-y-1"><span className={label}>Into</span>
           <Segmented<Into> label="Into" value={into} onChange={setInto} segments={[{ value: 'wall', label: 'A wall' }, { value: 'barrier', label: 'A soft barrier (Euro NCAP)' }, { value: 'mpdb', label: 'A moving barrier (Euro NCAP)' }, { value: 'car', label: 'A car like it, head on' }]} />
+        </div>}
+        {!side && into === 'mpdb' && <div className="space-y-1"><span className={label}>The car’s front</span>
+          <Segmented<keyof typeof FRONTS> label="The car’s front" value={front} onChange={setFront} segments={[{ value: 'typical', label: 'Typical' }, { value: 'suv', label: 'SUV or pickup' }, { value: 'small', label: 'Small car' }, { value: 'spread', label: 'Built to spread' }]} />
         </div>}
         <div className="space-y-1"><span className={label}>Belt and airbag</span>
           <Segmented<Guard> label="Belt and airbag" value={guard} onChange={setGuard} segments={[{ value: 'none', label: 'Nothing' }, { value: 'belt', label: 'Belt' }, { value: 'bag', label: 'Airbag' }, { value: 'both', label: 'Belt + airbag' }]} />
