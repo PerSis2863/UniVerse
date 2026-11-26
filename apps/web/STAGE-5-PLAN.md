@@ -1934,6 +1934,30 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M545 | Hyperion Simulate, buckling (26 Nov) | **Done** (branch) | Structures → Solution → Buckling: the lowest buckling load factors and their shapes by Lanczos on the geometric stiffness; heat counts; Euler's column within 3%; checked in the browser, light and dark, axe clean. |
 | M546 | Hyperion Simulate, fatigue life (26 Nov) | **Done** (branch) | Structures → Fatigue: back and forth or on and off, the cycles wanted; life and fatigue safety-factor pictures by Basquin and Goodman; checked in the browser, light and dark, axe clean. |
 
+### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
+
+On `claude/youthful-fermi-sbdtcp`, one item per commit, numbered from M544. **Never copy GNU Octave code** (nearly all of
+it is GPL v3, which would bind the whole app): build each function ourselves from its documented behaviour and test it
+against textbook or published answers, as every toolbox so far. Of the organisation's 74 repositories about 35 are
+function packages; the rest (the website, Docker images, CI, Vim syntax, package installers, archived ones) add nothing.
+1. Simulate: **done** M544 heat and stress together, M545 buckling, M546 fatigue life. **Next:** M547 topology
+   optimisation (SIMP on the Structures mesh), M548 electromagnetics (2D magnetostatics and electrostatics: coils,
+   magnets, iron, field lines, force), M549 acoustics (2D Helmholtz: a room's or a pipe's modes, a source's field),
+   M550 STL files into 3D parts.
+2. The language: `pdepe`, `integral2`, `integral3`; an app designer (`uifigure`, `uibutton`, `uislider`, `uiaxes`…:
+   a window with controls built from a script); `webcam` / `snapshot` in image processing (asked first).
+3. Octave packages, in six waves: (1) statistics tests and resampling (`ttest`, `ttest2`, `ranksum`, `signrank`,
+   `kruskalwallis`, `anova1`, `anovan`, `chi2gof`, `normfit`, `fitdist`, `bootstrp`, `bootci`); (2) data files
+   (`jsonencode`/`jsondecode`, YAML, `xmlread`/`xmlwrite`, NetCDF `ncread`/`ncinfo` (netCDF-4 is HDF5: `hdf5.ts` reads
+   it), FITS, MIDI, zip/gzip, base64, hashes, `serialize`); (3) special maths (`expm`/`logm`/`sqrtm`/`funm` by
+   Schur–Parlett, `lambertw`, `gammainc`, `betainc`, `erfinv`, `legendre`, Bessel, Airy, `ellipke`, `expint`, arbitrary
+   precision, Chebyshev approximations like chebfun, `perms`, `rat`/`rats`); (4) strings, dates and maps (`strjust`,
+   `validatestring`, `dec2base`, `textscan`/`strread`, `datetime`/`datenum`/`weekday`/`calendar`/`eomday`/`addtodate`,
+   `containers.Map`/`dictionary`, `typecast`/`hex2num`); (5) web, networks and devices (`webread`/`webwrite`,
+   websockets, MQTT over websockets, joysticks by the Gamepad API; TCP/UDP, SQLite, MySQL/ODBC and Raspberry Pi GPIO only
+   in the computer app, asked first); (6) doctests in help text, Jupyter `.ipynb` open and save, `qrcode`, `impixelinfo`.
+   A new library (SQLite, say) needs the owner's yes first.
+
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
 The owner's list is MathWorks' range (applications, industries, academic disciplines, product capabilities); built as
