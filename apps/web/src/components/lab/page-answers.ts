@@ -66,3 +66,40 @@ answers('wireless', async (body, ms) => {
   if (b.op === 'usbread') return wirelessLink.readUsb(b.n ?? 64, Math.max(100, ms - 500));
   throw new Error('Unknown device question.');
 });
+
+// M555: the webcam. The list of cameras (names appear once the person has allowed the camera), and a picture: the
+// stream is opened once per camera and kept for the visit (the browser shows its camera light), a frame drawn to a
+// canvas at the size asked and sent as RGB bytes.
+const streams = new Map<string, MediaStream>();
+answers('camera', async (body) => {
+  const b = body as { op: string; name?: string; w?: number; h?: number };
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no camera access.');
+  const cams = async () => (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+  let list = await cams();
+  if (b.op === 'list') {
+    // Names are hidden until the camera is allowed once.
+    if (list.length && list.every((d) => !d.label)) { const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach((t) => t.stop()); list = await cams(); }
+    return list.map((d, i) => d.label || `Camera ${i + 1}`);
+  }
+  if (b.op !== 'snap') throw new Error('Unknown camera question.');
+  const dev = list.find((d, i) => (d.label || `Camera ${i + 1}`) === b.name) ?? list[0];
+  const key = dev?.deviceId ?? 'default', w = Math.min(1920, b.w ?? 640), h = Math.min(1080, b.h ?? 480);
+  let stream = streams.get(key);
+  if (!stream || stream.getVideoTracks().every((t) => t.readyState === 'ended')) {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { ...(dev?.deviceId ? { deviceId: { exact: dev.deviceId } } : {}), width: { ideal: w }, height: { ideal: h } } });
+    streams.set(key, stream);
+  }
+  const video = document.createElement('video');
+  video.muted = true; video.playsInline = true; video.srcObject = stream;
+  await video.play();
+  // Give the camera a moment to settle its exposure on the first picture.
+  await new Promise((r) => setTimeout(r, streams.size === 1 && !video.currentTime ? 400 : 50));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
+  g.drawImage(video, 0, 0, w, h);
+  video.pause(); video.srcObject = null;
+  const px = g.getImageData(0, 0, w, h).data, rgb = new Uint8Array(w * h * 3);
+  for (let i = 0, j = 0; i < px.length; i += 4, j += 3) { rgb[j] = px[i]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i + 2]; }
+  return { w, h, rgb };
+});

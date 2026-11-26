@@ -15129,3 +15129,16 @@ figures that live in an app (`own` in LabApp, memoised for the React compiler). 
 uiaxes, a callback's error, delete). Check: `scripts/checks/hyperion-apps-ui.mjs`. Left out: drag-and-drop app designing
 (it is code-built, like MATLAB's programmatic apps), layouts (uigridlayout), tables, tabs and menus inside apps, dot
 syntax (`lbl.Text = …`: use set/get or event.Value).
+
+## M555: Hyperion: the webcam in image processing (26 Nov)
+
+`src/lib/lab/webcam-lab.ts` (loaded by `lab.worker.ts`): **webcamlist**, **webcam** (first, by number or by part of its
+name, 'Resolution' 'WxH', a struct with Name, Resolution, AvailableResolutions) and **snapshot** (rows × columns × 3
+uint8, laid out as `imread` does). The engine's thread has no camera, so it asks the page through M521's waiting
+(`waits.page('camera', …)`: it returns the answer itself, errors come back thrown, undefined on time-out). The page's
+answer is in `components/lab/page-answers.ts` ('camera'): enumerateDevices (labels need one allowed getUserMedia
+first), one stream per camera kept for the visit, a frame drawn to a canvas at the size asked, sent as RGB bytes.
+`camera=(self)` was already in the Permissions-Policy. Help lines added. Tests: `webcam.test.ts` (a stand-in page);
+`scripts/checks/hyperion-webcam-ui.mjs` runs Chromium's fake camera (`--use-fake-device-for-media-stream`): a
+240 × 320 × 3 uint8 picture shown by imshow. Left out: preview(cam) (a live view window) and closing the camera
+(clear cam): the browser's camera light stays on until the tab is left.

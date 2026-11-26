@@ -634,6 +634,9 @@ uicheckbox | c = uicheckbox(fig, 'Text', 'Show grid', 'ValueChangedFcn', @(src, 
 uidropdown | d = uidropdown(fig, 'Items', {'Sine', 'Square'}, 'ValueChangedFcn', @(src, event) …) | A drop-down list in an app window; event.Value is the item chosen.
 uiaxes | ax = uiaxes(fig, 'Position', [20 120 400 250]) | A plot inside an app window: plot(ax, x, y), title(ax, …), cla(ax) draw there.
 uialert | uialert(fig, 'Done!', 'Title') | Shows a message (in the command window).
+webcamlist | names = webcamlist | The cameras on this computer (the browser asks to use the camera the first time).
+webcam | cam = webcam, webcam(2), webcam('USB'), webcam(…, 'Resolution', '1280x720') | Picks a camera (the first by default) for snapshot.
+snapshot | img = snapshot(cam) | Takes a picture with the camera: rows × columns × 3 uint8, ready for imshow and the image functions.
 get | v = get(h, 'Value') | Reads an app part's Value, Text, Limits, Items or Position.
 animatedline | h = animatedline('Color', 'r') | An empty line to grow point by point (addpoints) while a loop draws it.
 addpoints | addpoints(h, x, y) | Adds points to an animated line; drawnow shows them.
