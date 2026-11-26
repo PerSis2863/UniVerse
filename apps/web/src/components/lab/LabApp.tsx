@@ -5,7 +5,7 @@ import { TestResults } from './TestResults';
 import type { TestReport } from '@/lib/lab/verify-lab';
 import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
 import { asksOf, onAsk, onChannel } from './page-answers';
-import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { MACHINE_EXAMPLES } from '@/lib/lab/examples-machines';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
@@ -45,7 +45,12 @@ const OTHER_FIG = 1_000_000;
 // Stop ends a run. Scripts are kept on this device, and so are files (M383: uploaded, or written by code; IndexedDB).
 // Phones get the same parts as tabs.
 
-type Line = { k: 'in' | 'out' | 'err'; t: string };
+type Line = { k: 'in' | 'out' | 'err'; t: string; n?: number };
+// Each printed line gets a steady number, so a long run's streaming output draws only the new line, not the 800 above it.
+let lineNo = 0;
+const LogLine = memo(function LogLine({ l }: { l: Line }) {
+  return <pre className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' ? (l.t.startsWith('>>') ? l.t : `>> ${l.t}`) : <LabText text={l.t} />}</pre>;
+});
 /** 'tool': a line the toolstrip runs (M472): like a command, but always in Hyperion's own engine. */
 type From = 'cmd' | 'tool' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep' | 'test';
 /** Watch it run (M393): a recorded run being played back. */
@@ -170,8 +175,8 @@ export function LabApp() {
   // Saved a moment after the last change (a slider sends many changes a second).
   const save = (next: Script[]) => { setScripts(next); clearTimeout(keepTimer.current); keepTimer.current = window.setTimeout(() => { try { localStorage.setItem(KEEP, JSON.stringify(next)); } catch { /* private mode */ } }, 250); };
   const print = (l: Line) => setLog((prev) => {
-    if (l.t.includes('\f')) return [{ ...l, t: l.t.slice(l.t.lastIndexOf('\f') + 1) }].filter((x) => x.t);
-    return [...prev.slice(-800), l];
+    if (l.t.includes('\f')) return [{ ...l, t: l.t.slice(l.t.lastIndexOf('\f') + 1), n: ++lineNo }].filter((x) => x.t);
+    return [...prev.slice(-800), { ...l, n: ++lineNo }];
   });
 
   /** A script in another language: its thread prints, then hands back its error, figures and variables. */
@@ -534,7 +539,7 @@ export function LabApp() {
       </div>
       <div ref={logBox} role="log" aria-label="Output" tabIndex={0} className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[13px] leading-relaxed" data-no-motion>
         {watching && watch ? <pre className="whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-100"><span className="text-violet-700 dark:text-violet-300">{`Watching: what the run printed up to step ${watch.k + 1}\n`}</span><LabText text={printedUpTo(watch.steps, watch.k)} /></pre> : <>
-        {log.map((l, i) => <pre key={i} className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' ? (l.t.startsWith('>>') ? l.t : `>> ${l.t}`) : <LabText text={l.t} />}</pre>)}
+        {log.map((l, i) => <LogLine key={l.n ?? `i${i}`} l={l} />)}
         </>}
       </div>
       <div className="flex items-start gap-2 border-t border-zinc-200/80 px-3 py-2 font-mono text-[13px] dark:border-white/10">
