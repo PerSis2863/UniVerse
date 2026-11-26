@@ -420,6 +420,20 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     expect(() => lab.run("vehicleCrash(vehicle(), 15, 'Front', [5 0 -0 0.3 0.6])")).toThrow(/Front/);
   });
+  it('the struck car\'s own tyres rolling (M486zb)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, go = (o: Parameters<typeof vd.sideCrash>[2]) => vd.sideCrash(car, 50 / 3.6, o);
+    // Aimed at the back seat at an angle, the blow pushes it along too: rolling, it coasts further that way and goes
+    // further in all; skidding as one block (the default) it stops sooner. The sideways shove is held by the tyres alike.
+    const sk = go({ hitAt: vd.SEAT_X.rear, angle: 30 }), ro = go({ hitAt: vd.SEAT_X.rear, angle: 30, rolling: true });
+    expect(ro.path.distance).toBeGreaterThan(sk.path.distance);
+    expect(Math.abs(ro.path.x[ro.path.x.length - 1])).toBeGreaterThan(Math.abs(sk.path.x[sk.path.x.length - 1]));
+    // A pole too; and the default is unchanged.
+    expect(go({ into: 'pole', angle: 30, rolling: true }).path.distance).toBeGreaterThan(go({ into: 'pole', angle: 30 }).path.distance);
+    expect(go({ rolling: false }).path.distance).toBeCloseTo(go({}).path.distance, 9);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, a] = vehicleSideCrash(vehicle(), 50/3.6, 'Angle', 30, 'HitAt', -0.6, 'StruckRolling', 1);");
+    expect(toMat((lab.vars.get('a') as unknown as { f: Map<string, never> }).f.get('SlideDistance')!).d[0]).toBeCloseTo(ro.path.distance, 9);
+  });
   it('Euro NCAP\'s moving barrier (M486r)', { timeout: 60_000 }, () => {
     const car = vd.CAR_DEFAULT, go = (v: typeof car, o: Parameters<typeof vd.frontalCrash>[2] = {}) => vd.frontalCrash(v, 50 / 3.6, { into: 'mpdb', ...o });
     const c = go(car);

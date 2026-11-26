@@ -701,7 +701,7 @@ export const RIB_K = 1.5e5, SEAT_X = { front: 0.3, rear: -0.6 } as const;
  * was shoved (m), psi its turn (degrees, + nose the way it was shoved), every 0.05 s until it stops. */
 export interface SidePath { t: number[]; x: number[]; y: number[]; psi: number[]; distance: number; turned: number }
 export interface SideCrash { second: Touch | null; touches: number; striker: SidePath | null; path: SidePath; ribs: number; spin: number; along: number; reach: number; t: number[]; carG: number[]; personG: number[]; gap: number[]; intrusion: number; dv: number; bagAt: number; chestG: number; headG: number; headHit: boolean; hitPerson: number; risk: 'low' | 'serious' | 'severe' }
-export function sideCrash(v: Vehicle, speed: number, o: { braked?: boolean; into?: 'car' | 'pole'; other?: number; belt?: boolean; bags?: boolean; seat?: 'near' | 'far'; beside?: boolean; angle?: number; hitAt?: number; row?: 'front' | 'rear' } = {}): SideCrash {
+export function sideCrash(v: Vehicle, speed: number, o: { braked?: boolean; rolling?: boolean; into?: 'car' | 'pole'; other?: number; belt?: boolean; bags?: boolean; seat?: 'near' | 'far'; beside?: boolean; angle?: number; hitAt?: number; row?: 'front' | 'rear' } = {}): SideCrash {
   const pole = o.into === 'pole', m = v.m, m2 = pole ? 1e9 : (o.other ?? m), belt = o.belt ?? true, bags = o.bags ?? true, far = o.seat === 'far', mo = 75, dt = 1e-5, T = 0.15, e = 0.1;
   const k = pole ? POLE_K : SIDE_K, ang = ((o.angle ?? 0) * Math.PI) / 180, hitAt = o.hitAt ?? SEAT_X.front, rear = o.row === 'rear';
   // How much of the striker's push reaches this row's door, and the thorax airbag (front only).
@@ -763,8 +763,8 @@ export function sideCrash(v: Vehicle, speed: number, o: { braked?: boolean; into
   const risk = out.chestG > 60 || headG > 80 || ribs > 0.05 ? 'severe' : out.chestG > 40 || headHit || hitPerson > 4000 || ribs > 0.035 ? 'serious' : 'low';
   // Struck by a car, it stood still; sliding into a pole, it moved at the speed and keeps what the pole didn't take.
   // M486w: struck by a car, the two are stepped on together (they may touch again).
-  const both = pole ? null : strikerAfter(v, m2, speed, ang, hitAt, vs, J, Ja, { vy: vc, vx: Ja / m, w: (spin * Math.PI) / 180 }, o.braked);
-  const path = both ? both.path : slideAfter(v, vc - speed * Math.cos(ang), Math.max(0, speed * Math.abs(Math.sin(ang)) - Ja / m), (spin * Math.PI) / 180);
+  const both = pole ? null : strikerAfter(v, m2, speed, ang, hitAt, vs, J, Ja, { vy: vc, vx: Ja / m, w: (spin * Math.PI) / 180 }, o.braked, o.rolling);
+  const path = both ? both.path : slideAfter(v, vc - speed * Math.cos(ang), Math.max(0, speed * Math.abs(Math.sin(ang)) - Ja / m), (spin * Math.PI) / 180, o.rolling);
   return { ...out, striker: both?.striker ?? null, second: both?.second ?? null, touches: both?.touches ?? 0, path, ribs, spin, along: Ja / m, intrusion: most * reach, dv: vc, bagAt: thorax || bags ? bagAt : NaN, headG, headHit, hitPerson, risk };
 }
 
@@ -806,6 +806,9 @@ function rollStep(P: Box, dt: number) {
   P.vx += (along * c - across * s) * dt; P.vy += (along * s + across * c) * dt;
   P.w += ((T.lf * ff - T.lr * fr) / T.iz) * dt;
 }
+/** M486zb: the struck car's own tyres (`rolling`: its driver wasn't braking, so its wheels roll along it for `REACT`,
+ * then the driver brakes and it skids as one block). */
+const ownTyres = (v: Vehicle, rolling: boolean): Pick<Box, 'rolls' | 'tyres'> => (rolling ? { rolls: (t) => t < REACT, tyres: { m: v.m, iz: v.iz, lf: v.lf, lr: v.lr, cf: v.cf, cr: v.cr, fz: staticLoads(v), mu: v.mu } } : {});
 function boxGap(A: Box, B: Box, hl: number, hw: number) {
   // Separating axes of two equal boxes: the least overlap and its axis (from A to B); negative overlap is a gap.
   const ax = [A.th, A.th + Math.PI / 2, B.th, B.th + Math.PI / 2].map((q) => [Math.cos(q), Math.sin(q)]);
@@ -817,10 +820,10 @@ function boxGap(A: Box, B: Box, hl: number, hw: number) {
   }
   return { overlap: best, n };
 }
-export function strikerAfter(v: Vehicle, m2: number, speed: number, ang: number, hitAt: number, vs: number, J: number, Ja: number, struck: { vy: number; vx: number; w: number }, braked = false) {
+export function strikerAfter(v: Vehicle, m2: number, speed: number, ang: number, hitAt: number, vs: number, J: number, Ja: number, struck: { vy: number; vx: number; w: number }, braked = false, rolling = false) {
   const d = L(v) / 2 + NOSE, iz2 = (v.iz * m2) / v.m, w2 = (d * (Ja * Math.cos(ang) - J * Math.sin(ang))) / iz2;
   const r = Math.hypot(L(v) / 2, (v.roll?.track ?? 1.55) / 2), mu = v.mu * G, hl = (L(v) + 1.6) / 2, hw = CAR_WIDTH / 2;
-  const A: Box = { x: 0, y: 0, th: 0, vx: struck.vx, vy: struck.vy, w: struck.w, a: () => mu, aw: (v.mu * v.m * G * r) / v.iz };
+  const A: Box = { x: 0, y: 0, th: 0, vx: struck.vx, vy: struck.vy, w: struck.w, a: () => mu, aw: (v.mu * v.m * G * r) / v.iz, ...ownTyres(v, rolling) };
   const B: Box = { x: hitAt - d * Math.sin(ang), y: -CAR_WIDTH / 2 - d * Math.cos(ang), th: Math.PI / 2 - ang, vx: speed * Math.sin(ang) - Ja / m2, vy: vs, w: w2, a: (t) => (!braked && t < REACT ? COAST_G * G : mu), aw: (v.mu * m2 * G * r) / iz2, rolls: (t) => !braked && t < REACT, tyres: { m: m2, iz: iz2, lf: v.lf, lr: v.lr, cf: (v.cf * m2) / v.m, cr: (v.cr * m2) / v.m, fz: staticLoads(v).map((f) => (f * m2) / v.m) as [number, number], mu: v.mu } };
   const path: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 }, striker: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 };
   const rec = (t: number) => {
@@ -874,19 +877,23 @@ export function strikerAfter(v: Vehicle, m2: number, speed: number, ang: number,
 /** M486q: the slide after the blow. Its tyres skid sideways, so friction μ·g slows the centre of mass along its path
  * and turns the spin down by the tyres' grip about the centre, μ·m·g·r / Iz (r the wheels' mean distance from the
  * centre of mass, half the wheelbase and half the track): each to rest on its own (a rough, rigid-body picture). */
-export function slideAfter(v: Vehicle, vy: number, vx: number, w: number): SidePath {
-  const dt = 0.005, a = v.mu * G, r = Math.hypot(L(v) / 2, (v.roll?.track ?? 1.55) / 2), aw = (v.mu * v.m * G * r) / v.iz;
+export function slideAfter(v: Vehicle, vy: number, vx: number, w: number, rolling = false): SidePath {
+  const dt = 0.005, a = v.mu * G, r = Math.hypot(L(v) / 2, (v.roll?.track ?? 1.55) / 2);
+  const P: Box = { x: 0, y: 0, th: 0, vx, vy, w, a: () => a, aw: (v.mu * v.m * G * r) / v.iz, ...ownTyres(v, rolling) };
   const p: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 };
-  let x = 0, y = 0, psi = 0;
   for (let i = 0; i * dt <= 6; i++) {
-    if (i % 10 === 0) { p.t.push(i * dt); p.x.push(x); p.y.push(y); p.psi.push((psi * 180) / Math.PI); }
-    const sp = Math.hypot(vx, vy);
-    if (sp < 1e-3 && Math.abs(w) < 1e-3) break;
-    if (sp > 0) { const dv = Math.min(sp, a * dt), f = (sp - dv) / sp; vx *= f; vy *= f; }
-    w = Math.sign(w) * Math.max(0, Math.abs(w) - aw * dt);
-    x += vx * dt; y += vy * dt; psi += w * dt; p.distance += Math.hypot(vx, vy) * dt;
+    const t = i * dt;
+    if (i % 10 === 0) { p.t.push(t); p.x.push(P.x); p.y.push(P.y); p.psi.push((P.th * 180) / Math.PI); }
+    const sp = Math.hypot(P.vx, P.vy);
+    if (sp < 1e-3 && Math.abs(P.w) < 1e-3) break;
+    if (P.rolls?.(t)) rollStep(P, dt);
+    else {
+      if (sp > 0) { const dv = Math.min(sp, a * dt), f = (sp - dv) / sp; P.vx *= f; P.vy *= f; }
+      P.w = Math.sign(P.w) * Math.max(0, Math.abs(P.w) - P.aw * dt);
+    }
+    P.x += P.vx * dt; P.y += P.vy * dt; P.th += P.w * dt; p.distance += Math.hypot(P.vx, P.vy) * dt;
   }
-  p.t.push(p.t[p.t.length - 1] + 0.05); p.x.push(x); p.y.push(y); p.psi.push((psi * 180) / Math.PI); p.turned = (psi * 180) / Math.PI;
+  p.t.push(p.t[p.t.length - 1] + 0.05); p.x.push(P.x); p.y.push(P.y); p.psi.push((P.th * 180) / Math.PI); p.turned = (P.th * 180) / Math.PI;
   return p;
 }
 

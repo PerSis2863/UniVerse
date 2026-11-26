@@ -13636,6 +13636,15 @@ coasting along its length at `COAST_G`, each axle's side force by its slip angle
 up to μ·Fz), so a push off its line turns it (aimed at the back seat: 1.5–2° against 0.2–0.3° before). The struck car
 still skids as one block (its driver taken as on the brake). Not built: the struck car's own tyres rolling along it.
 
+## M486zb (26 Nov): Hyperion vehicles, the struck car's own tyres rolling
+
+The owner (M486za's left-out). `sideCrash`'s `rolling` (language 'StruckRolling', 1; window: Crash → Into the side →
+"This car's driver wasn't braking"): the struck car's wheels roll along it for `REACT` (1 s) by `rollStep` (`ownTyres`:
+its own cornering stiffness and axle loads), then it skids as one block as before (the default, as if braked). Both
+`strikerAfter` and `slideAfter` (a pole) take it; `slideAfter` now steps a `Box` like `strikerAfter`. Aimed at the back
+seat, 50 km/h square: slide 4.4 m and 12° braked, 6.3 m and 48° rolling (one axle's tyres grip while it coasts along,
+so it pivots); at 30°: 2.8 m → 8.5 m; a pole at 32 km/h, 30°: 0.03 m → 0.34 m. The default's numbers are unchanged.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
