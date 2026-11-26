@@ -6,7 +6,7 @@
 
 import { chartStart, chartStep, parseChart, type Chart, type ChartRun } from './chart';
 
-export type BlockKind = 'step' | 'sine' | 'constant' | 'pulse' | 'ramp' | 'gain' | 'sum' | 'product' | 'saturation' | 'integrator' | 'tf' | 'pid' | 'chart' | 'scope';
+export type BlockKind = 'step' | 'sine' | 'constant' | 'pulse' | 'ramp' | 'gain' | 'sum' | 'product' | 'saturation' | 'integrator' | 'tf' | 'pid' | 'chart' | 'boardIn' | 'boardOut' | 'scope';
 export interface Block { id: string; kind: BlockKind; x: number; y: number; p: Record<string, number | string> }
 export interface Wire { id: string; from: string; out: number; to: string; in: number }
 export interface Diagram { blocks: Block[]; wires: Wire[]; stop: number; dt: number }
@@ -49,6 +49,8 @@ export const KINDS: Record<BlockKind, { name: string; group: string; ins: (p: Bl
   tf: { name: 'Transfer function', group: 'Continuous', ins: () => 1, outs: () => 1, p: { num: '1', den: '1 1' } },
   pid: { name: 'PID controller', group: 'Continuous', ins: () => 1, outs: () => 1, p: { Kp: 1, Ki: 0, Kd: 0, N: 100 } },
   chart: { name: 'Chart', group: 'Logic', ins: (p) => chartPorts(p.chart).ins, outs: (p) => chartPorts(p.chart).outs, p: { chart: CHART } },
+  boardIn: { name: 'Board input', group: 'Hardware', ins: () => 0, outs: () => 1, p: { pin: 'A0', scale: 1, test: 0 } },
+  boardOut: { name: 'Board output', group: 'Hardware', ins: () => 1, outs: () => 0, p: { pin: 9, mode: 'pwm', lo: 0, hi: 1 } },
   scope: { name: 'Scope', group: 'Sinks', ins: (p) => Math.max(1, Math.min(4, Number(p.inputs ?? 1))), outs: () => 0, p: { inputs: 1 } },
 };
 
@@ -76,9 +78,18 @@ export const MAX_STEPS = 200_000;
 export interface ChartTrace { active: number[]; fired: number[]; visits: number[] }
 export interface RunResult { t: number[]; scopes: Map<string, number[][]>; charts: Record<string, ChartTrace>; error?: string; capped?: boolean }
 
+/** M564: what a real-time run reads from a board (a Board input's value, already scaled). Offline runs use each
+ * Board input's test value. */
+export interface BoardIo { read: (b: Block) => number }
+/** A Board output's input (lo … hi) as the board's 0–255 PWM, or 0 / 1 for a digital pin. */
+export function boardLevel(b: Block, v: number) {
+  const lo = n(b.p.lo), hi = n(b.p.hi, 1), f = hi === lo ? 0 : Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+  return b.p.mode === 'digital' ? (f >= 0.5 ? 1 : 0) : Math.round(f * 255);
+}
+
 /** A diagram made ready to run: its states, the order its blocks are worked out in, and the functions a solver (or a
  * linearisation, a real-time run, a test) steps. `hold` fixes some blocks' outputs (a loop opened there). */
-export function compile(dg: Diagram, hold?: Map<string, number>) {
+export function compile(dg: Diagram, hold?: Map<string, number>, io?: BoardIo) {
   const blocks = dg.blocks, byId = new Map(blocks.map((b) => [b.id, b]));
   const into = new Map<string, Wire>();
   for (const w of dg.wires) if (byId.has(w.from) && byId.has(w.to)) into.set(`${w.to}:${w.in}`, w);
@@ -91,7 +102,7 @@ export function compile(dg: Diagram, hold?: Map<string, number>) {
     else if (b.kind === 'tf') { const c = canon(coeffs(b.p.num), coeffs(b.p.den)); info.set(b.id, c); off.set(b.id, ns); ns += c.order; }
   }
   // Direct feedthrough: whether a block's output this instant needs its inputs.
-  const through = (b: Block) => !hold?.has(b.id) && !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'chart', 'scope'].includes(b.kind) && !(b.kind === 'tf' && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
+  const through = (b: Block) => !hold?.has(b.id) && !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'chart', 'boardIn', 'boardOut', 'scope'].includes(b.kind) && !(b.kind === 'tf' && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
   // Order: a block after the blocks feeding it directly.
   const order: Block[] = [], mark = new Map<string, 0 | 1 | 2>();
   const visit = (b: Block, path: string[]) => {
@@ -127,6 +138,7 @@ export function compile(dg: Diagram, hold?: Map<string, number>) {
         case 'integrator': v = x[off.get(b.id)!]; break;
         case 'tf': { const c = info.get(b.id)!, o = off.get(b.id)!; v = c.D * input(b, 0); for (let k = 0; k < c.order; k++) v += c.C[k] * x[o + k]; break; }
         case 'pid': { const o = off.get(b.id)!, e = input(b, 0), N = n(p.N, 100); v = n(p.Kp, 1) * e + n(p.Ki) * x[o] + n(p.Kd) * N * (e - x[o + 1]); break; }
+        case 'boardIn': v = io ? io.read(b) : n(p.test); break;
         case 'chart': { const c = charts.get(b.id)!, outs = c.ch.outputs.map((name) => c.run.vars[name] ?? 0); yo.set(b.id, outs); v = outs[0] ?? 0; break; }
       }
       y.set(b.id, v);
@@ -235,6 +247,15 @@ Alarm -> Draining: level < 2 after 1` });
     },
   },
   {
+    // M564: a PI controller here, the board's pin 9 driven and its A5 read back (the simulated Arduino wires them,
+    // a real one needs pin 9 through a resistor–capacitor filter into A5). Run it in Real time.
+    id: 'hil', name: 'Hardware in the loop (an Arduino’s PWM read back)', make: () => {
+      const set = B('step', 20, 80, { time: 1, before: 0.2, after: 0.6 }), sum = B('sum', 150, 80, { signs: '+-' }), pid = B('pid', 280, 80, { Kp: 0.2, Ki: 4, Kd: 0, N: 100 }), sat = B('saturation', 410, 80, { lower: 0, upper: 1 });
+      const out = B('boardOut', 560, 40, { pin: 9, mode: 'pwm', lo: 0, hi: 1 }), inp = B('boardIn', 410, 210, { pin: 'A5', scale: 1, test: 0 }), sc = B('scope', 620, 170, { inputs: 2 });
+      return { stop: 20, dt: 0.005, blocks: [set, sum, pid, sat, out, inp, sc], wires: [W(set, sum), W(sum, pid), W(pid, sat), W(sat, out), W(inp, sum, 1), W(inp, sc), W(set, sc, 1)] };
+    },
+  },
+  {
     id: 'loop', name: 'A first-order loop', make: () => {
       const s = B('step', 20, 80, { time: 0 }), sum = B('sum', 160, 80, { signs: '+-' }), k = B('gain', 300, 80, { k: 2 }), it = B('integrator', 440, 80), sc = B('scope', 610, 80);
       return { stop: 5, dt: 0.001, blocks: [s, sum, k, it, sc], wires: [W(s, sum), W(sum, k), W(k, it), W(it, sc), W(it, sum, 1)] };
@@ -248,7 +269,7 @@ export function readDiagram(raw: unknown): Diagram {
   if (!d || !Array.isArray(d.blocks) || !Array.isArray(d.wires)) return EXAMPLES[0].make();
   const blocks = d.blocks.filter((b) => b && typeof b.kind === 'string' && b.kind in KINDS).slice(0, 120).map((b) => ({
     id: String(b.id), kind: b.kind, x: n(b.x), y: n(b.y),
-    p: Object.fromEntries(Object.entries(KINDS[b.kind].p).map(([k, v]) => [k, typeof b.p?.[k] === typeof v && (k !== 'signs' || /^[+-]{1,6}$/.test(String(b.p[k]))) ? (typeof v === 'string' ? String(b.p[k]).slice(0, k === 'chart' ? 4000 : 80) : b.p[k]) : v])),
+    p: Object.fromEntries(Object.entries(KINDS[b.kind].p).map(([k, v]) => [k, typeof b.p?.[k] === typeof v && (k !== 'signs' || /^[+-]{1,6}$/.test(String(b.p[k]))) && (k !== 'mode' || /^(pwm|digital)$/.test(String(b.p[k]))) && (k !== 'pin' || b.kind !== 'boardIn' || /^A[0-5]$/.test(String(b.p[k]))) ? (typeof v === 'string' ? String(b.p[k]).slice(0, k === 'chart' ? 4000 : 80) : b.p[k]) : v])),
   }));
   const ids = new Set(blocks.map((b) => b.id));
   const wires = d.wires.filter((w) => w && ids.has(String(w.from)) && ids.has(String(w.to))).slice(0, 400).map((w) => ({ id: String(w.id), from: String(w.from), out: n(w.out), to: String(w.to), in: n(w.in) }));

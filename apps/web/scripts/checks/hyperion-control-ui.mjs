@@ -25,6 +25,7 @@ try {
       const b = tools.getByRole('button', { name: tool });
       if (!(await b.count())) continue;
       if (tool === 'Logic') await page.getByLabel('Start from').selectOption('tank');
+      if (tool === 'Real time') await page.getByLabel('Start from').selectOption('hil');
       await b.click();
       await page.waitForTimeout(2500);
       r[`${tool}-text`] = (await page.getByRole('region', { name: /tuner|logic|real time|code|verif/i }).innerText()).slice(0, 600);
@@ -32,6 +33,14 @@ try {
         await page.getByRole('button', { name: 'Play' }).click();
         await page.waitForTimeout(3000);
         r.logicTime = await page.locator('[data-chart-time]').innerText();
+      }
+      if (tool === 'Real time') {
+        await page.getByRole('button', { name: 'Use the simulated Arduino' }).click();
+        await page.waitForTimeout(1500);
+        await page.getByRole('button', { name: 'Run in real time' }).click();
+        await page.waitForTimeout(6000);
+        r.liveTiming = await page.locator('[data-live-timing]').innerText();
+        r.livePins = (await page.getByText('Board pins').locator('..').innerText()).slice(0, 300);
       }
       if (tool === 'Tune') {
         await page.getByRole('button', { name: 'Update block' }).isEnabled({ timeout: 20_000 }).catch(() => {});

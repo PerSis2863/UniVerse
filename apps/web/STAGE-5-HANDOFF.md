@@ -15648,3 +15648,25 @@ where it starts) with `entry:` / `during:` / `exit:` actions (`a = expr; b = exp
   often each state was entered and each transition fired ("never" in amber: a gap for M566's tests).
 - Example "A tank with a supervisor (state chart)": Filling / Draining / Alarm with a dump valve.
 - Left out: hierarchy (states inside states), parallel states, events and messages, history junctions.
+
+## M564 (26 Nov): Hyperion, real-time runs and hardware in the loop
+
+The owner's second picture ("hardware-in-the-loop testing and rapid control prototyping … run real-time simulations").
+The real thing (Speedgoat target machines) is paid hardware; Hyperion's version runs the diagram against the browser's
+clock and talks to an Arduino over Web Serial with StandardFirmata (M474's `serialLink`), or the simulated one.
+
+- **Blocks:** `boardIn` (an analog pin A0–A5, value = raw / 1023 × scale; offline runs use its `test` value) and
+  `boardOut` (a pin as PWM 0–255 or on/off; the input from `lo` to `hi` mapped by `boardLevel`), group Hardware.
+  `compile(dg, hold, io)` takes a `BoardIo` (`read(b)`).
+- **`RealTime`** (`src/lib/sim/realtime.ts`): `advance(wallSeconds)` steps the model (RK4 at dt, charts too) to catch up,
+  carrying the part of a step left over (so model time keeps exactly with the clock); more than `MAX_CATCH_UP` (0.25 s) in
+  one frame is dropped and counted; outputs written only when their level changes. Timing: steps, worst late frame,
+  dropped steps, work a frame.
+- **The window** (`BlocksLive.tsx`, Blocks → Real time): Use the simulated Arduino / Connect a board / Disconnect; Run
+  in real time / Stop (started from the click, not an effect: the hooks lint refuses setState in an effect body); the
+  scopes show the last 10 s, redrawn ~15 times a second while the model steps every frame; the board's pins live.
+  Pins are set up on Run (analog reporting for inputs, PWM or output for outputs).
+- Example "Hardware in the loop (an Arduino's PWM read back)": a PI here drives D9, reads A5 (the simulated Uno wires
+  them; a real one needs an RC filter from D9 into A5). Checked: it settles on the set point through Firmata.
+- Left out: running the model on the board itself (that is M565's generated C, uploaded with the Arduino IDE), sample
+  rates beyond the screen's frame rate for the board's own I/O (Firmata reports every 50 ms).

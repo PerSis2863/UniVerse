@@ -10,6 +10,7 @@ import { NumField, ui } from './bench-ui';
 import { fmt, ScopePlot } from './scope-plot';
 import { BlocksTune } from './BlocksTune';
 import { BlocksLogic } from './BlocksLogic';
+import { BlocksLive } from './BlocksLive';
 import { Segmented } from '@/components/ui/Segmented';
 import type { FromBlocks, ToBlocks } from './blocks.worker';
 
@@ -18,14 +19,14 @@ import type { FromBlocks, ToBlocks } from './blocks.worker';
 // diagram runs as you build it (src/lib/sim/blocks.ts, in a worker) and every Scope block draws its inputs below.
 
 const KEEP = 'uv-sim-blocks';
-type Tool = 'scopes' | 'tune' | 'logic';
+type Tool = 'scopes' | 'tune' | 'logic' | 'live';
 const VW = 760, VH = 340, BW = 88, SNAP = 10;
 const height = (b: Block) => Math.max(54, 18 * (Math.max(KINDS[b.kind].ins(b.p), KINDS[b.kind].outs(b.p)) + 1));
 const inPort = (b: Block, i: number) => ({ x: b.x, y: b.y + (height(b) * (i + 1)) / (KINDS[b.kind].ins(b.p) + 1) });
 const outPort = (b: Block, k = 0) => ({ x: b.x + BW, y: b.y + (height(b) * (k + 1)) / (KINDS[b.kind].outs(b.p) + 1) });
 /** A chart's input and output names (empty while its text has a mistake). */
 const ports = (b: Block) => { if (b.kind !== 'chart') return { ins: [], outs: [] }; try { const c = chartOf(b); return { ins: c.inputs, outs: c.outputs }; } catch { return { ins: [], outs: [] }; } };
-const GROUPS = ['Sources', 'Maths', 'Continuous', 'Logic', 'Sinks'];
+const GROUPS = ['Sources', 'Maths', 'Continuous', 'Logic', 'Hardware', 'Sinks'];
 const LIGHT = ['#7c3aed', '#0e7490', '#b45309', '#047857'], DARK = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399'];
 
 type Field = { key: string; label: string; unit?: string; text?: string };
@@ -43,6 +44,8 @@ const FIELDS: Record<BlockKind, Field[]> = {
   tf: [{ key: 'num', label: 'Numerator', text: 'powers of s, highest first: 1 2 = s + 2' }, { key: 'den', label: 'Denominator', text: '1 3 2 = s² + 3s + 2' }],
   pid: [{ key: 'Kp', label: 'Kp (proportional)' }, { key: 'Ki', label: 'Ki (integral)' }, { key: 'Kd', label: 'Kd (derivative)' }, { key: 'N', label: 'Derivative filter N' }],
   chart: [],
+  boardIn: [{ key: 'pin', label: 'Analog pin', text: 'A0 to A5' }, { key: 'scale', label: 'Full scale (the value at 1023)' }, { key: 'test', label: 'Value with no board' }],
+  boardOut: [{ key: 'pin', label: 'Pin (PWM: 3, 5, 6, 9, 10, 11)' }, { key: 'lo', label: 'Input for 0' }, { key: 'hi', label: 'Input for full (255, or on)' }],
   scope: [],
 };
 
@@ -61,6 +64,8 @@ function summary(b: Block): string {
     case 'tf': return tfInline(coeffs(p.num), coeffs(p.den));
     case 'pid': return `Kp ${v('Kp')}, Ki ${v('Ki')}, Kd ${v('Kd')}`;
     case 'chart': try { return `${chartOf(b).states.length} states`; } catch { return 'a chart with a mistake'; }
+    case 'boardIn': return `pin ${String(p.pin)}`;
+    case 'boardOut': return `pin ${String(p.pin)}, ${p.mode === 'digital' ? 'on/off' : 'PWM'}`;
     case 'scope': return `${KINDS.scope.ins(p)} input${KINDS.scope.ins(p) > 1 ? 's' : ''}`;
     default: return '';
   }
@@ -81,6 +86,8 @@ function Glyph({ b }: { b: Block }) {
     case 'sum': return big('Σ', 24);
     case 'product': return big('×', 24);
     case 'pid': return big('PID', 15);
+    case 'boardIn': return <><rect x={-16} y={-12} width={32} height={24} rx={3} {...line} strokeWidth={1.4} /><text x={0} y={5} fontSize={11} textAnchor="middle" fill="currentColor" className="font-mono">{String(b.p.pin)}</text><path d="M-26,0 H-16" {...line} /></>;
+    case 'boardOut': return <><rect x={-16} y={-12} width={32} height={24} rx={3} {...line} strokeWidth={1.4} /><text x={0} y={5} fontSize={11} textAnchor="middle" fill="currentColor" className="font-mono">D{String(b.p.pin)}</text><path d="M16,0 H26" {...line} /></>;
     case 'chart': return <><rect x={-24} y={-13} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><rect x={4} y={1} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><path d="M-4,-7 C6,-7 14,-6 14,0" {...line} strokeWidth={1.4} /><path d="M11,-3 L14,1 L17,-3" {...line} strokeWidth={1.4} /></>;
     case 'integrator': return <><text x={0} y={-4} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">1</text><line x1={-10} y1={0} x2={10} y2={0} stroke="currentColor" strokeWidth={1.2} /><text x={0} y={14} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">s</text></>;
     case 'tf': {
@@ -248,8 +255,8 @@ export function BlocksBench() {
                   onChange={(e) => {
                     const v = e.target.value;
                     setText((t) => ({ ...t, [`${sel.id}:${f.key}`]: v }));
-                    const ok = f.key === 'signs' ? /^[+-]{1,6}$/.test(v.replace(/−/g, '-').replace(/\s/g, '')) : v.trim() !== '' && v.trim().split(/[\s,]+/).every((x) => Number.isFinite(Number(x)));
-                    if (ok) setParam(sel.id, f.key, f.key === 'signs' ? v.replace(/−/g, '-').replace(/\s/g, '') : v.trim().slice(0, 80));
+                    const ok = f.key === 'pin' ? /^A[0-5]$/.test(v.trim().toUpperCase()) : f.key === 'signs' ? /^[+-]{1,6}$/.test(v.replace(/−/g, '-').replace(/\s/g, '')) : v.trim() !== '' && v.trim().split(/[\s,]+/).every((x) => Number.isFinite(Number(x)));
+                    if (ok) setParam(sel.id, f.key, f.key === 'pin' ? v.trim().toUpperCase() : f.key === 'signs' ? v.replace(/−/g, '-').replace(/\s/g, '') : v.trim().slice(0, 80));
                   }}
                   onBlur={() => setText((t) => { const next = { ...t }; delete next[`${sel.id}:${f.key}`]; return next; })} />
               </label>
@@ -265,6 +272,11 @@ export function BlocksBench() {
                 </label>
               );
             })()}
+            {sel.kind === 'boardOut' && (
+              <label className={label}>Drives the pin as
+                <select value={String(sel.p.mode)} onChange={(e) => setParam(sel.id, 'mode', e.target.value)} className="input mt-1 w-full"><option value="pwm">PWM (0–255)</option><option value="digital">On or off</option></select>
+              </label>
+            )}
             {sel.kind === 'scope' && (
               <label className={label}>Inputs
                 <select value={KINDS.scope.ins(sel.p)} onChange={(e) => setParam(sel.id, 'inputs', Number(e.target.value))} className="input mt-1 w-full">{[1, 2, 3, 4].map((v) => <option key={v} value={v}>{v}</option>)}</select>
@@ -363,13 +375,13 @@ export function BlocksBench() {
             {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!, drag.out).x},${outPort(byId.get(drag.from)!, drag.out).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
           </svg>
         </div>
-        <div role="region" aria-label={{ scopes: 'Scopes', tune: 'PID tuner', logic: 'State chart logic' }[tool]} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
+        <div role="region" aria-label={{ scopes: 'Scopes', tune: 'PID tuner', logic: 'State chart logic', live: 'Real time run' }[tool]} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-600 dark:text-zinc-300">
-            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }, { value: 'logic', label: 'Logic' }]} />
+            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }, { value: 'logic', label: 'Logic' }, { value: 'live', label: 'Real time' }]} />
             {tool === 'scopes' && result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
             {tool === 'scopes' && stale && pending > 0 && <span>running…</span>}
           </div>
-          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : tool === 'logic' ? <BlocksLogic dg={dg} names={names} result={result?.id === pending ? result : null} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
+          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : tool === 'live' ? <BlocksLive dg={dg} names={names} colours={colours} /> : tool === 'logic' ? <BlocksLogic dg={dg} names={names} result={result?.id === pending ? result : null} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               {scopes.map((s) => {
                 const traces = Array.from({ length: KINDS.scope.ins(s.p) }, (_, i) => {
