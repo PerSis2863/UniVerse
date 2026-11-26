@@ -309,7 +309,7 @@ export function tripSpeed(v: Vehicle, kerb = 0.15) {
 // 15 cm; rolling flings people sideways, so it lets them out only when the car also turned over 90° as it tumbled. The
 // roof's crush is taken as spread over its 0.1 s on the ground (the model's own crush is at once). Front airbags: see M486h below.
 export const CURTAIN_HOLD = 6, SCREEN_CRACK = 0.03, SCREEN_OUT = 0.15;
-export interface Inside { headSide: number; headRoof: number; headG: number; thrownOut: number; partly: boolean; screenCracked: number; screenOut: number; frontBags: number; headroom: number; risk: 'low' | 'serious' | 'severe' }
+export interface Inside { heldByFoot: number; bodyCrushed: boolean; footCaught: number; handCaught: number; ankleForce: number; wristForce: number; trapped: boolean; armSpeed: number; armForce: number; legForce: number; armOut: number; armCrushed: boolean; inverted: boolean; headSide: number; headRoof: number; headG: number; thrownOut: number; partly: boolean; screenCracked: number; screenOut: number; frontBags: number; headroom: number; risk: 'low' | 'serious' | 'severe' }
 // M486h: a person's size (a small adult has ~6 cm more over their head and sits a little nearer the roll axis, a tall
 // one ~6 cm less) and their seat: 'near', the side the car tips towards (its roof edge and windows take the first
 // blows), or 'far' (the head swings across the car before anything stops it); no seat given takes the worse of the two
@@ -319,6 +319,23 @@ export const SIZES = { small: 0.06, average: 0, tall: -0.06 } as const, REAR_CRU
 // is highest there), the head swinging 1.15× (between the near seat's and the far one's); no window of its own, so
 // belted nobody there is partly out, unbelted either side's window.
 export const MIDDLE_ROOM = 0.02;
+// M486s: arms and legs. Nothing holds an arm: the hand flails ~1.1× the head's swing (1.3× crossing from the far side),
+// belt or not, and strikes the door, the pillar or the glass, ~4 kg stopped in 2 cm (`ARM_M`, `ARM_STOP`; the upper arm
+// breaks from about 2.5 kN, `ARM_BREAK`). The knees sit lower, nearer the roll axis (`LEG_R` 0.35 m, a belt holding the
+// hips: 0.7 of that) and hit the door or the console, ~10 kg in 3 cm (`LEG_M`, `LEG_STOP`; a tibia from about 4 kN).
+// An arm goes out of a broken side window on its own side (no curtain over it) once the roll flings it at half a g,
+// ω²·r > g/2, easier than a body; if the car then lands on that side it's crushed between the car and the road.
+export const ARM_M = 4, ARM_STOP = 0.02, ARM_BREAK = 2500, LEG_M = 10, LEG_STOP = 0.03, LEG_R = 0.35, LEG_BREAK = 4000;
+// M486v: hands and feet caught. In the front the feet sit among the pedals, in the back under the front seat's frame and
+// rails; the hands fly into the gaps between the seat's frame and the door or the console. A foot hooks when what it's
+// attached to pulls away from the floor: unbelted, once the roll throws the body off its seat (ω²·r past g) or it falls
+// onto the roof; belted (the hips held), only if the leg flails past `HOOK_SPEED` 3 m/s. A hand hooks when the arm
+// flails past `HAND_HOOK` 2 m/s (a hand is smaller and finds a gap more easily). A hooked foot stops what moves away from it: belted, the lower leg and foot (`SHIN_M` 5 kg) at the
+// leg's speed in 1 cm; unbelted, half the body at the speed it was thrown or fell, in 5 cm (the knee and hip giving):
+// `ankleForce` (an ankle breaks from about 3.5 kN, `ANKLE_BREAK`). A hooked hand stops the forearm (`HAND_M` 1.5 kg) in
+// 1 cm: `wristForce` (from about 2 kN, `WRIST_BREAK`). Caught and the car resting on its side or roof: `trapped`, held
+// by the limb until cut free (an unbelted body hanging from a caught foot). Thresholds, not chances: rough.
+export const FOOT_HOLD = 1500, HOOK_SPEED = 3, HAND_HOOK = 2, SHIN_M = 5, ANKLE_BREAK = 3500, HAND_M = 1.5, WRIST_BREAK = 2000;
 export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; seat?: 'near' | 'far' | 'middle'; row?: 'front' | 'rear' } = {}): Inside {
   // M486i: the back row sits ~3 cm nearer the roof (it slopes down) but further from the windscreen pillars, where the
   // roof gives most: about 0.7 of the crush reaches it; no front airbags there.
@@ -352,10 +369,47 @@ export function inside(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: b
   const fling = Math.sqrt(G / r);
   let out = NaN;
   for (let i = 0; i < tb.t.length && Number.isNaN(out); i++) if ((glass(tb.t[i], belt) || screen(tb.t[i])) && Math.abs(tb.w[i]) > fling) out = tb.t[i];
-  const thrownOut = belt ? NaN : out, partly = belt && !Number.isNaN(out);
-  // Rough bands: thrown out, a head over 150 g, or upside down with the roof 5 cm into their heads is severe.
-  const risk = !Number.isNaN(thrownOut) || headG > 150 || (inverted && headroom < -0.05) ? 'severe' : headG > 80 || partly || headroom < 0 ? 'serious' : 'low';
-  return { headSide, headRoof, headG, thrownOut, partly, screenCracked, screenOut, frontBags: rear ? NaN : tb.frontAt, headroom, risk };
+  let thrownOut = belt ? NaN : out, partly = belt && !Number.isNaN(out);
+  // Arms and legs (M486s).
+  const cross = side === 1 ? 1.3 : mid ? 1.15 : 1, armSpeed = dw * r * 1.1 * cross, legSpeed = dw * LEG_R * (belt ? 0.7 : 1) * cross;
+  const armForce = (ARM_M * armSpeed * armSpeed) / (2 * ARM_STOP), legForce = (LEG_M * legSpeed * legSpeed) / (2 * LEG_STOP);
+  let armOut = NaN, armCrushed = false;
+  if (!mid) for (let i = 0; i < tb.t.length; i++) {
+    if (Number.isNaN(armOut) && glass(tb.t[i], true) && tb.w[i] * tb.w[i] * r > G / 2) armOut = tb.t[i];
+    // Its own side down on the road afterwards (the near side at a half turn's odd quarters: the roll angle near ±90°
+    // with that side under): the car's own weight on it.
+    else if (!Number.isNaN(armOut) && tb.t[i] > armOut && Math.abs(Math.sin(tb.th[i])) > 0.9 && (side === 1 ? -1 : 1) * Math.sign(Math.sin(tb.th[i])) > 0 && tb.z[i] < sh.t / 2 + 0.15) armCrushed = true;
+  }
+  // Hands and feet caught (M486v): when, and the force on the ankle or wrist.
+  let footCaught = NaN, handCaught = NaN, thrown = 0;
+  for (let i = 0; i < tb.t.length; i++) {
+    const lift = tb.w[i] * tb.w[i] * r > G || Math.cos(tb.th[i]) < -0.5;
+    if (Number.isNaN(footCaught) && (belt ? legSpeed > HOOK_SPEED && Math.abs(tb.w[i]) > 0 : lift)) footCaught = tb.t[i];
+    if (Number.isNaN(handCaught) && armSpeed > HAND_HOOK && Math.abs(tb.w[i]) > 0) handCaught = tb.t[i];
+    if (lift) thrown = Math.max(thrown, Math.abs(tb.w[i]) * r);
+  }
+  const fall = inverted ? Math.sqrt(2 * G * (Math.max(0, room - crush) + 0.15)) : 0;
+  const ankleForce = Number.isNaN(footCaught) ? 0 : belt ? (SHIN_M * legSpeed * legSpeed) / 0.02 : (37.5 * Math.max(thrown, fall) ** 2) / 0.1;
+  const wristForce = Number.isNaN(handCaught) ? 0 : (HAND_M * armSpeed * armSpeed) / 0.02;
+  // M486x: a foot caught before the body is flung out of an opening holds it half in while the fling, 75 kg·ω²·r at
+  // that moment, stays under `FOOT_HOLD` 1.5 kN (about twice the body's weight: what a foot hooked under a pedal or a
+  // seat rail grips before it slides out, far less than breaks the ankle); past it the foot pulls free (that pull on the
+  // ankle) and they're thrown out: a slower roll holds them, a fast one flings them clear. Held, the body hangs out of the window or the windscreen's frame as the car rolls
+  // on: if the car then lands on a side or its roof (its edge at the road) it comes down on them (`bodyCrushed`), the
+  // worst outcome of all.
+  let heldByFoot = NaN, bodyCrushed = false, ankle = ankleForce;
+  if (!belt && !Number.isNaN(out) && footCaught <= out) {
+    const k = tb.t.indexOf(out), pull = 75 * tb.w[k] * tb.w[k] * r;
+    if (pull <= FOOT_HOLD) {
+      heldByFoot = out; thrownOut = NaN; partly = true;
+      for (let i = k + 1; i < tb.t.length && !bodyCrushed; i++) if ((Math.abs(Math.sin(tb.th[i])) > 0.9 || Math.cos(tb.th[i]) < -0.9) && tb.z[i] < sh.t / 2 + 0.15) bodyCrushed = true;
+    } else ankle = Math.max(ankle, pull);
+  }
+  const trapped = (!Number.isNaN(footCaught) || !Number.isNaN(handCaught)) && Number.isNaN(thrownOut) && tb.rests !== 'wheels';
+  // Rough bands: thrown out, a head over 150 g, an arm crushed, or upside down with the roof 5 cm into their heads is
+  // severe; a broken arm or leg serious.
+  const risk = !Number.isNaN(thrownOut) || bodyCrushed || headG > 150 || armCrushed || (inverted && headroom < -0.05) ? 'severe' : headG > 80 || partly || headroom < 0 || armForce > ARM_BREAK || legForce > LEG_BREAK || ankle > ANKLE_BREAK || wristForce > WRIST_BREAK ? 'serious' : 'low';
+  return { heldByFoot, bodyCrushed, footCaught, handCaught, ankleForce: ankle, wristForce, trapped, armSpeed, armForce, legForce, armOut, armCrushed, inverted, headSide, headRoof, headG, thrownOut, partly, screenCracked, screenOut, frontBags: rear ? NaN : tb.frontAt, headroom, risk };
 }
 /** M486i: everyone at once: the four outer seats (front and back, the side it tips to and the other). */
 export const SEATS = [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['rear', 'far']] as const;
@@ -364,20 +418,39 @@ export const SEATS = [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['r
 // pillar), so they meet at the swinging one's speed, heads stopped in 5 cm (`HEADS_STOP`), and both feel it. Unbelted,
 // the body comes behind the head: 1.5× the blow. The near person is hit; the far one hits; the middle one both.
 export const HEADS_STOP = 0.05;
-export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; middle?: boolean } = {}) {
-  const { middle, ...who } = o;
-  const seats: (readonly ['front' | 'rear', 'near' | 'far' | 'middle'])[] = middle ? [['front', 'near'], ['front', 'far'], ['rear', 'near'], ['rear', 'middle'], ['rear', 'far']] : [...SEATS];
-  const all = seats.map(([row, seat]) => ({ row, seat, knock: 0, ...inside(v, tb, { ...who, row, seat }) }));
-  const order = { near: 0, middle: 1, far: 2 } as const;
+// M486o: a bench's front middle seat too (`frontMiddle`), and bodies, not only heads: unbelted, the whole body slides
+// across with the roll (its middle nearer the roll axis than the head: 0.7 of the head's swing) and lands on the next
+// person on the side it tips to, stopped over 10 cm of the other's body (`BODY_STOP`): `bodyLoad`, the force (N) between
+// them, 75 kg·v²/2s (ribs break from about 3–4 kN). Belted bodies stay in their seats (only heads meet).
+export const BODY_STOP = 0.1, BODY_SHARE = 0.7;
+// M486s: upside down, unbelted people fall onto the roof lining, the one on the side it tipped to first; each next one
+// in the row lands on those already there, from `PILE_FALL` 0.4 m (the seat to the roof over their heads, less the bodies
+// below), stopped over 10 cm of them, and stays on top: `pileLoad`, the force (N) on each from those landing and lying
+// above (75 kg each). Someone already thrown out isn't in the pile.
+export const PILE_FALL = 0.4;
+export function everyone(v: Vehicle, tb: Tumble, o: { belt?: boolean; curtains?: boolean; size?: keyof typeof SIZES; middle?: boolean; frontMiddle?: boolean } = {}) {
+  const { middle, frontMiddle, ...who } = o;
+  const seats: (readonly ['front' | 'rear', 'near' | 'far' | 'middle'])[] = [['front', 'near'], ...(frontMiddle ? [['front', 'middle'] as const] : []), ['front', 'far'], ['rear', 'near'], ...(middle ? [['rear', 'middle'] as const] : []), ['rear', 'far']];
+  const all = seats.map(([row, seat]) => ({ row, seat, knock: 0, bodyLoad: 0, pileLoad: 0, onTop: 0, ...inside(v, tb, { ...who, row, seat }) }));
+  const order = { near: 0, middle: 1, far: 2 } as const, loose = o.belt === false;
   for (const row of ['front', 'rear'] as const) {
     const line = all.filter((x) => x.row === row).sort((a, b) => order[a.seat] - order[b.seat]);
     for (let i = 1; i < line.length; i++) {
-      const sp = line[i].headSide, g = ((sp * sp) / (2 * HEADS_STOP) / G) * (o.belt === false ? 1.5 : 1);
-      for (const x of [line[i], line[i - 1]]) { x.knock = Math.max(x.knock, g); x.headG = Math.max(x.headG, g); }
+      const sp = line[i].headSide, g = ((sp * sp) / (2 * HEADS_STOP) / G) * (loose ? 1.5 : 1);
+      const bs = BODY_SHARE * sp, bf = loose ? (75 * bs * bs) / (2 * BODY_STOP) : 0;
+      for (const x of [line[i], line[i - 1]]) { x.knock = Math.max(x.knock, g); x.headG = Math.max(x.headG, g); x.bodyLoad = Math.max(x.bodyLoad, bf); }
+    }
+    // The pile on the roof (M486s).
+    if (loose && line.some((x) => x.inverted)) {
+      const pile = line.filter((x) => Number.isNaN(x.thrownOut)), land = (75 * 2 * G * PILE_FALL) / (2 * BODY_STOP);
+      pile.forEach((x, k) => { x.onTop = pile.length - 1 - k; x.pileLoad = x.onTop ? land + 75 * G * x.onTop : 0; });
     }
   }
-  // The rough bands again with the knocks counted.
-  for (const x of all) if (x.headG > 150) x.risk = 'severe'; else if (x.headG > 80 && x.risk === 'low') x.risk = 'serious';
+  // The rough bands again with the knocks counted (a body landing on you with over 4 kN is serious, 8 kN severe).
+  for (const x of all) {
+    if (x.headG > 150 || Math.max(x.bodyLoad, x.pileLoad) > 8000) x.risk = 'severe';
+    else if ((x.headG > 80 || Math.max(x.bodyLoad, x.pileLoad) > 4000) && x.risk === 'low') x.risk = 'serious';
+  }
   return all;
 }
 
@@ -403,29 +476,162 @@ export const NCAP_CRUSH = 0.65, BELT_K = 2e5, BELT_LIMIT = 12000, BAG_GAP = 0.2,
 // is thrown into the front seat's back, which pushes the front person into their belt and airbag too (people knocking
 // into each other). The crash is into something rigid (a wall, or a car taken as one), harsher than Euro NCAP's soft
 // barrier. Rough figures.
+// M486n: Euro NCAP's soft barrier ('barrier'): aluminium honeycomb on a rigid block, crushing at a steady ~300 kN per
+// metre of width it is hit over (`BARRIER_N`; the car's width 1.8 m times the overlap) up to `BARRIER_DEPTH` 0.54 m deep,
+// then rigid. It sits in series with the car's front: while the front would push harder than that, the honeycomb
+// gives instead (and keeps its shape: no spring-back).
+export const BARRIER_N = 3e5, BARRIER_DEPTH = 0.54, CAR_WIDTH = 1.8;
+// M486r: Euro NCAP's newer moving barrier (MPDB, since 2020): a 1,400 kg trolley driving at the car, both at 50 km/h,
+// half the front's width in it. Its face is progressive: honeycomb that gets stiffer the deeper it's pushed (here
+// `MPDB_N0` per metre of width at the face rising to `MPDB_N1` at its full `MPDB_DEPTH`), so a stiff front crushes it
+// deep and unevenly, which Euro NCAP marks down (the car's compatibility). The trolley slows as the car does.
+export const MPDB_MASS = 1400, MPDB_DEPTH = 0.6, MPDB_N0 = 2e5, MPDB_N1 = 1.2e6;
+// M486u: Euro NCAP's two scores for the moving barrier (TB 027). The barrier's face, scanned after, over Euro NCAP's
+// area (`MPDB_ZONE`: across, from 0.2 m in from its edge to 45% of the car's width; up, from 0.25 to 0.65 m above the
+// road): the standard deviation of the depth, every point counted, undented ones too: a front that spreads its load
+// crushes it evenly (good, 50 mm or less), one with stiff rails punches holes (poor, 150 mm or more). Bottoming out:
+// 630 mm of a face Euro NCAP's is ~722 deep (here `MPDB_BOTTOM` of ours) over 4 × 4 cm or more. The occupant load
+// criterion (OLC) is a virtual person in the trolley: free for 65 mm, then slowed evenly so that after 235 mm more they
+// move with the trolley; that even slowing, in g, from 25 (good) to 40.
+// M486y: the face in two directions, cells 2 × 2 cm. The front pushes through its parts (`FRONT_PARTS`: each a share of
+// its stiffness spread over its own rectangle, across from the car's outer side and up from the road): the two main
+// rails, the bumper beam across them, the lower load path (the subframe) and the softer grille, radiator and bonnet
+// edge. The cells over the overlap add up to the front the crash used; each cell and the honeycomb before it push alike
+// at the most the car and trolley came together; the face's softer front layer and the fascia spread each push over
+// ~`FACE_SPREAD` 0.1 m. Shapes rough (a typical car's, ours).
+// The penalty (0 to 8 points off the test's score) is Euro NCAP's own table (TB 027 Figure 2; its examples agree): with
+// s and o the SD's and OLC's shares of their ranges, 2·o + s·(2 + 4·o) (0–2 by SD alone at 25 g or less, 2–8 at 40 g),
+// +2 for bottoming out, at most 8. From 2026 (CP 007) the same table, scaled: up to 25% of the test's score (`compatShare`).
+export const MPDB_ZONE = [0.2, 0.45] as const, MPDB_ZONE_Z = [0.25, 0.65] as const, MPDB_BOTTOM = 0.63 / 0.722, FACE_CELL = 0.02, FACE_Z = [0.15, 0.85] as const, FACE_SPREAD = 0.1;
+/** The front's parts: [share of the stiffness, across from the outer side (m, from–to; "W" counted from the other side
+ * when negative), up from the road (m)]. */
+export interface FrontPart { name: string; share: number; y: [number, number][]; z: [number, number] }
+// M486z: fronts to choose from (`frontalCrash`'s `front`), and your own: a typical car's; an SUV or pickup's, built
+// higher and stiffer at the rails, with little below the beam (its rails ride over a lower car's, what Euro NCAP's
+// face punishes); a small car's, lower and lighter-built; and one built to spread its load, a strong full-width beam
+// tied to a lower load path (what Euro NCAP rewards). Shares rough, shapes from typical cars of each kind.
+export const FRONTS: Record<'typical' | 'suv' | 'small' | 'spread', FrontPart[]> = {
+  typical: [
+    // The rails' ends as their crash boxes spread them onto the beam.
+    { name: 'main rails', share: 0.3, y: [[0.2, 0.6], [-0.6, -0.2]], z: [0.35, 0.6] },
+    { name: 'bumper beam', share: 0.25, y: [[0.1, -0.1]], z: [0.4, 0.52] },
+    { name: 'engine and gearbox', share: 0.25, y: [[0.4, -0.4]], z: [0.3, 0.75] },
+    { name: 'lower load path', share: 0.1, y: [[0.3, -0.3]], z: [0.22, 0.32] },
+    { name: 'grille and bonnet edge', share: 0.1, y: [[0, -0]], z: [0.32, 0.8] },
+  ],
+  suv: [
+    { name: 'main rails', share: 0.4, y: [[0.2, 0.55], [-0.55, -0.2]], z: [0.45, 0.72] },
+    { name: 'bumper beam', share: 0.2, y: [[0.15, -0.15]], z: [0.5, 0.62] },
+    { name: 'engine and gearbox', share: 0.25, y: [[0.4, -0.4]], z: [0.42, 0.85] },
+    { name: 'lower load path', share: 0.05, y: [[0.4, -0.4]], z: [0.32, 0.42] },
+    { name: 'grille and bonnet edge', share: 0.1, y: [[0, -0]], z: [0.45, 0.85] },
+  ],
+  small: [
+    { name: 'main rails', share: 0.3, y: [[0.2, 0.55], [-0.55, -0.2]], z: [0.33, 0.55] },
+    { name: 'bumper beam', share: 0.25, y: [[0.1, -0.1]], z: [0.38, 0.5] },
+    { name: 'engine and gearbox', share: 0.25, y: [[0.4, -0.4]], z: [0.28, 0.65] },
+    { name: 'lower load path', share: 0.1, y: [[0.3, -0.3]], z: [0.2, 0.3] },
+    { name: 'grille and bonnet edge', share: 0.1, y: [[0, -0]], z: [0.3, 0.72] },
+  ],
+  spread: [
+    { name: 'main rails', share: 0.2, y: [[0.2, 0.6], [-0.6, -0.2]], z: [0.35, 0.6] },
+    { name: 'bumper beam', share: 0.35, y: [[0.05, -0.05]], z: [0.36, 0.58] },
+    { name: 'engine and gearbox', share: 0.2, y: [[0.4, -0.4]], z: [0.3, 0.75] },
+    { name: 'lower load path', share: 0.15, y: [[0.15, -0.15]], z: [0.22, 0.34] },
+    { name: 'grille and bonnet edge', share: 0.1, y: [[0, -0]], z: [0.32, 0.8] },
+  ],
+};
+export const FRONT_PARTS = FRONTS.typical;
+// M486za: each front's own stiffness, against a typical car's of the same mass (which crushes 0.65 m at 56 km/h): an SUV
+// or pickup's rails and frame are built stiffer for its weight; a small car has less room to crush, so it is built a
+// little stiffer for its mass; a front built to spread its load sits near typical. Your own parts: their shares added up
+// (a typical car's add to 1). Rough.
+export const FRONT_STIFF: Record<keyof typeof FRONTS, number> = { typical: 1, suv: 1.3, small: 1.15, spread: 1.05 };
+export const frontStiff = (f: keyof typeof FRONTS | FrontPart[] = 'typical') => (Array.isArray(f) ? f.reduce((t, q) => t + q.share, 0) : FRONT_STIFF[f]);
+/** Euro NCAP's compatibility penalty (TB 027): points off, 0 to 8. */
+export function compatPenalty(sdMm: number, olcG: number, bottomed: boolean) {
+  const sh = (x: number, a: number, b: number) => Math.max(0, Math.min(1, (x - a) / (b - a))), s = sh(sdMm, 50, 150), o = sh(olcG, 25, 40);
+  return Math.min(8, 2 * o + s * (2 + 4 * o) + (bottomed ? 2 : 0));
+}
+export function mpdbScore(speed: number, tv: number[], dt: number, ov: number, front: (x: number) => number, closed: number, parts: FrontPart[] = FRONT_PARTS) {
+  // The OLC: free flight until 65 mm ahead of the trolley, then the even slowing that ends at 300 mm, level with it.
+  const V = (k: number) => tv[Math.min(k, tv.length - 1)];
+  let k1 = 0, rel = 0;
+  for (; rel < 0.065 && k1 < 1e5; k1++) rel += (speed - V(k1)) * dt;
+  const ride = (a: number) => {
+    let r = 0;
+    for (let k = k1; k < k1 + 1e5; k++) { const vd = speed - a * (k - k1) * dt; if (vd <= V(k)) return r; r += (vd - V(k)) * dt; }
+    return r;
+  };
+  let lo = 0, hi = 1000 * G;
+  for (let j = 0; j < 50; j++) { const mid = (lo + hi) / 2; if (ride(mid) > 0.235) lo = mid; else hi = mid; }
+  const olc = (lo + hi) / 2 / G;
+  // The face: cells across the overlap (from the car's outer side, the face's edge) and up, each with its parts' share.
+  const W = CAR_WIDTH, c = FACE_CELL, nx = Math.max(1, Math.round((W * ov) / c)), nz = Math.round((FACE_Z[1] - FACE_Z[0]) / c);
+  const at = (y: number) => (y < 0 || Object.is(y, -0) ? W + y : y), area = (q: FrontPart) => q.y.reduce((t, [a, b]) => t + (at(b) - at(a)), 0) * (q.z[1] - q.z[0]);
+  const wt = Array.from({ length: nz }, (_, r) => Array.from({ length: nx }, (_, i) => {
+    const y = (i + 0.5) * c, z = FACE_Z[1] - (r + 0.5) * c;
+    return parts.reduce((t, q) => t + (z >= q.z[0] && z < q.z[1] && q.y.some(([a, b]) => y >= at(a) && y < at(b)) ? (q.share * c * c) / area(q) : 0), 0);
+  }));
+  // The face's softer front layer and the car's bumper fascia spread each push over ~`FACE_SPREAD` (a Gaussian blur of
+  // the parts' map, across and up).
+  const rad = Math.ceil((2 * FACE_SPREAD) / c), ker = Array.from({ length: 2 * rad + 1 }, (_, k) => Math.exp(-(((k - rad) * c) ** 2) / (2 * FACE_SPREAD ** 2))), ks = ker.reduce((a, b) => a + b, 0);
+  const blurRow = (row: number[]) => row.map((_, i) => ker.reduce((t, k, j) => t + k * (row[i + j - rad] ?? 0), 0) / ks);
+  const across = wt.map(blurRow), cols = across[0].map((_, i) => blurRow(across.map((row) => row[i])));
+  wt.forEach((row, r) => row.forEach((_, i) => { row[i] = cols[i][r]; }));
+  const tot = wt.flat().reduce((a, b) => a + b, 0) || 1, soft = (x: number) => (MPDB_N0 + ((MPDB_N1 - MPDB_N0) * x) / MPDB_DEPTH) * ((c * c) / (FACE_Z[1] - FACE_Z[0])); // the face's N per metre of width, spread up its height
+  const face = wt.map((row) => row.map((q) => {
+    const f = (x: number) => (front(Math.max(0, closed - x)) * q) / tot;
+    if (!q || f(0) <= soft(0)) return 0;
+    let a = 0, b = Math.min(MPDB_DEPTH, closed);
+    for (let j = 0; j < 40; j++) { const mid = (a + b) / 2; if (f(mid) > soft(mid)) a = mid; else b = mid; }
+    return (a + b) / 2;
+  }));
+  const inZone = (r: number, i: number) => { const y = (i + 0.5) * c, z = FACE_Z[1] - (r + 0.5) * c; return y >= MPDB_ZONE[0] && y <= MPDB_ZONE[1] * W && z >= MPDB_ZONE_Z[0] && z <= MPDB_ZONE_Z[1]; };
+  const zone = face.flatMap((row, r) => row.filter((_, i) => inZone(r, i))), mean = zone.reduce((a, b) => a + b, 0) / Math.max(zone.length, 1);
+  const faceSD = Math.sqrt(zone.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(zone.length, 1));
+  const deep = (r: number, i: number) => r < nz && i < nx && inZone(r, i) && face[r][i] >= MPDB_BOTTOM * MPDB_DEPTH;
+  let bottomed = false;
+  for (let r = 0; r < nz - 1 && !bottomed; r++) for (let i = 0; i < nx - 1; i++) if (deep(r, i) && deep(r + 1, i) && deep(r, i + 1) && deep(r + 1, i + 1)) { bottomed = true; break; }
+  const compat = compatPenalty(faceSD * 1000, olc, bottomed);
+  return { olc, faceSD, faceMax: Math.max(...face.flat()), bottomed, face, compat, compatShare: (compat / 8) * 0.25 };
+}
 export const FRONT_ROOM = 0.8, SEATBACK_KNEE = 0.25, SEATBACK_HEAD = 0.45, REAR_BELT_LIMIT = 16000, SEATBACK_K = 1.5e5, SEATBACK_MAX = 12000;
-export interface Crash { t: number[]; carG: number[]; personG: number[]; travel: number[]; crush: number; dv: number; bagAt: number; late: boolean; beltPeak: number; hitWheel: boolean; headHit: boolean; chestG: number; travelMax: number; vEq: number; intrusion: number; slidOff: boolean; hitSeat: boolean; backLoad: number; risk: 'low' | 'serious' | 'severe' }
+export interface Crash { olc: number; faceSD: number; faceMax: number; bottomed: boolean; compat: number; compatShare: number; face: number[][]; trolleyDv: number; barrier: number; t: number[]; carG: number[]; personG: number[]; travel: number[]; crush: number; dv: number; bagAt: number; late: boolean; beltPeak: number; hitWheel: boolean; headHit: boolean; chestG: number; travelMax: number; vEq: number; intrusion: number; slidOff: boolean; hitSeat: boolean; backLoad: number; risk: 'low' | 'serious' | 'severe' }
 /** The front's stiffness share for an overlap (1 is the full width). */
 export const overlapShare = (ov: number) => (ov >= 1 ? 1 : ov >= 0.3 ? 0.5 + (5 / 7) * (ov - 0.3) : (0.5 * ov) / 0.3);
-export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'car'; other?: number; belt?: boolean; bags?: boolean; overlap?: number; seat?: 'front' | 'rear'; behind?: 'none' | 'belted' | 'unbelted' } = {}): Crash {
-  const m = v.m, m2 = o.other ?? m, belt = o.belt ?? true, rear = o.seat === 'rear', bags = (o.bags ?? true) && !rear, mo = 75, dt = 1e-5, T = 0.25;
-  const ov = Math.max(0.1, Math.min(1, o.overlap ?? 1)), share = overlapShare(ov), side = 0.7 * (1 - ov) ** 2;
+export function frontalCrash(v: Vehicle, speed: number, o: { front?: keyof typeof FRONTS | FrontPart[]; into?: 'wall' | 'car' | 'barrier' | 'mpdb'; other?: number; belt?: boolean; bags?: boolean; overlap?: number; seat?: 'front' | 'rear'; behind?: 'none' | 'belted' | 'unbelted' } = {}): Crash {
+  const mpdb = o.into === 'mpdb', m = v.m, m2 = o.other ?? (mpdb ? MPDB_MASS : m), belt = o.belt ?? true, rear = o.seat === 'rear', bags = (o.bags ?? true) && !rear, mo = 75, dt = 1e-5, T = 0.25;
+  const ov = Math.max(0.1, Math.min(1, o.overlap ?? (mpdb ? 0.5 : 1))), share = overlapShare(ov), side = 0.7 * (1 - ov) ** 2;
   // An unbelted person behind the front one (the back seat itself has nobody behind it).
   const pushed = !rear && o.behind === 'unbelted';
-  const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k0 = (m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
+  const vEq = o.into === 'car' ? (2 * speed * m2) / (m + m2) : speed, k0 = (frontStiff(o.front) * m * (56 / 3.6) ** 2) / NCAP_CRUSH ** 2, e = 0.1;
   let xc = 0, vc = vEq, xo = 0, vo = vEq, xb = 0, vb = vEq, crush = 0, sens = 0, bagAt = NaN, beltPeak = 0, hitWheel = false, travelMax = 0, late = false, backLoad = 0, slidOff = false;
-  const out: Crash = { t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, intrusion: 0, slidOff: false, hitSeat: false, backLoad: 0, risk: 'low' };
+  const out: Crash = { olc: NaN, faceSD: NaN, faceMax: NaN, bottomed: false, compat: NaN, compatShare: NaN, face: [], trolleyDv: 0, barrier: 0, t: [], carG: [], personG: [], travel: [], crush: 0, dv: 0, bagAt: NaN, late: false, beltPeak: 0, hitWheel: false, headHit: false, chestG: 0, travelMax: 0, vEq, intrusion: 0, slidOff: false, hitSeat: false, backLoad: 0, risk: 'low' };
   const win = Math.round(0.003 / dt), recent: number[] = [];
   // The front's force for a crush: k·share up to FRONT_ROOM, 2.5 times as stiff past it.
   const kk = k0 * share, front = (x: number) => (x <= FRONT_ROOM ? kk * x : kk * FRONT_ROOM + 2.5 * kk * (x - FRONT_ROOM));
   // Into a seat's back (knees, then the chest), folding at SEATBACK_MAX.
   const seatback = (x: number) => Math.min(SEATBACK_MAX, (x > SEATBACK_KNEE ? Math.min(KNEE_K * (x - SEATBACK_KNEE), KNEE_MAX) : 0) + (x > SEATBACK_HEAD + 0.1 ? SEATBACK_K * (x - SEATBACK_HEAD - 0.1) : 0));
-  let sum = 0;
+  // The barrier's crushing force for the width hit, and the front's crush for a force (its curve turned round).
+  // The moving barrier's (M486r) face grows stiffer with depth; the trolley `xt` comes the other way at the same speed.
+  const wide = CAR_WIDTH * ov, soft = (x: number) => (o.into === 'barrier' ? BARRIER_N * wide : mpdb ? (MPDB_N0 + ((MPDB_N1 - MPDB_N0) * x) / MPDB_DEPTH) * wide : 0);
+  const depth = mpdb ? MPDB_DEPTH : BARRIER_DEPTH, frontInv = (F: number) => (F <= kk * FRONT_ROOM ? F / kk : FRONT_ROOM + (F - kk * FRONT_ROOM) / (2.5 * kk));
+  let sum = 0, xbar = 0, xt = 0, vt = mpdb ? -speed : 0, closed = 0;
+  const tv: number[] = [];
   for (let i = 0; i * dt <= T; i++) {
     const t = i * dt;
     // The wall pushes while the front is squeezed: loading on the front's curve, unloading on k/e² from the most crush.
-    let Fw = 0;
-    if (xc >= crush) { crush = xc; Fw = front(xc); } else Fw = Math.max(0, front(crush) - (kk / (e * e)) * (crush - xc));
+    // The soft barrier (M486n) takes up what it crushes; the car's front gets the rest.
+    let Fw = 0, xf = xc - xt - xbar;
+    if (soft(xbar) && xf >= crush && front(xf) > soft(xbar) && xbar < depth) {
+      // The honeycomb gives until it pushes as hard as the front: front(d − x) = soft(x), x between where it was and its depth.
+      const dd = xc - xt;
+      let lo = xbar, hi = Math.min(depth, dd);
+      for (let j = 0; j < 40; j++) { const mid = (lo + hi) / 2; if (front(dd - mid) > soft(mid)) lo = mid; else hi = mid; }
+      xbar = Math.max(xbar, Math.min(depth, dd - frontInv(soft(lo)))); xf = dd - xbar;
+    }
+    if (xf >= crush) { crush = xf; Fw = front(xf); } else Fw = Math.max(0, front(crush) - (kk / (e * e)) * (crush - xf));
     const ac = -Fw / m, intr = Math.max(0, crush - FRONT_ROOM);
     sens += ((-ac / G - sens) * dt) / 0.03;
     if (bags && Number.isNaN(bagAt) && sens > FRONT_G) { bagAt = t; late = xo - xc > 0.125; }
@@ -453,7 +659,8 @@ export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'ca
     out.chestG = Math.max(out.chestG, sum / recent.length);
     if (i % 100 === 0) { out.t.push(t); out.carG.push(-ac / G); out.personG.push(-ao / G); out.travel.push(xr); }
     vc += ac * dt; vo += ao * dt; xc += vc * dt; xo += vo * dt;
-    if (vc < 0 && Fw === 0 && vo <= vc + 1e-3 && (!pushed || vb <= vc + 1e-3) && t > 0.05) break;
+    if (mpdb) { vt += (Fw / m2) * dt; xt += vt * dt; closed = Math.max(closed, xc - xt); if (i % 10 === 0) tv.push(-vt); }
+    if (mpdb ? vc - vt < 0 : vc < 0 && Fw === 0 && vo <= vc + 1e-3 && (!pushed || vb <= vc + 1e-3) && t > 0.05) break;
   }
   const intrusion = Math.max(0, crush - FRONT_ROOM);
   // The head nods ~15 cm further than the chest: with no airbag in front of it (or past its edge), it reaches the wheel
@@ -462,7 +669,8 @@ export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'ca
   const hitSeat = rear && travelMax + 0.15 > SEATBACK_HEAD;
   // Thrown over a folded seat's back (80 cm or more from the back seat) is severe too.
   const risk = hitWheel || out.chestG > 60 || intrusion > 0.25 || (rear && travelMax > 0.8) ? 'severe' : out.chestG > 40 || headHit || hitSeat || intrusion > 0.1 ? 'serious' : 'low';
-  return { ...out, crush, dv: vEq - vc, bagAt, late, beltPeak, hitWheel, headHit, travelMax, intrusion, slidOff, hitSeat, backLoad, risk };
+  // Like hitting a wall at: the closing speed's share the car takes, as head on into a car.
+  return { ...out, ...(mpdb ? { vEq: (2 * speed * m2) / (m + m2), ...mpdbScore(speed, tv, 10 * dt, ov, front, closed, Array.isArray(o.front) ? o.front : FRONTS[o.front ?? 'typical']) } : {}), trolleyDv: mpdb ? vt + speed : 0, crush, barrier: xbar, dv: vEq - vc, bagAt, late, beltPeak, hitWheel, headHit, travelMax, intrusion, slidOff, hitSeat, backLoad, risk };
 }
 
 // M486l: a side crash. Another car (`other` kg, a car like it by default; Euro NCAP's barrier is 1,400 kg at 50 km/h)
@@ -479,14 +687,31 @@ export function frontalCrash(v: Vehicle, speed: number, o: { into?: 'wall' | 'ca
 // (the shoulder belt slips off: 60 kN/m after 10 cm, up to 5 kN), into the person beside them (`beside`, 35 cm away,
 // shoulder to shoulder 100 kN/m; heads 10 cm after the shoulders, stopped in 5 cm) or the console and the struck door. Chest g is the 3 ms average. Rough figures.
 export const SIDE_K = 1.1e6, POLE_K = 7.4e5, DOOR_GAP = 0.15, SIDE_BAG = 0.1, SIDE_BAG_N = 8000, SIDE_BAG_K = 8e4, TRIM_K = 2e5, SIDE_FIRE = 5, HEAD_GAP = 0.2, FAR_GAP = 0.6, BESIDE_GAP = 0.35, BODY_K = 1e5;
-export interface SideCrash { t: number[]; carG: number[]; personG: number[]; gap: number[]; intrusion: number; dv: number; bagAt: number; chestG: number; headG: number; headHit: boolean; hitPerson: number; risk: 'low' | 'serious' | 'severe' }
-export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole'; other?: number; belt?: boolean; bags?: boolean; seat?: 'near' | 'far'; beside?: boolean } = {}): SideCrash {
+// M486p: the car spinning, crashes at an angle, the back seats and rib squeeze. The blow lands `hitAt` metres ahead of
+// the centre of mass (Euro NCAP aims at the front seat: 0.3 m), so its impulse J spins the car, ω = J·hitAt / Iz; at an
+// `angle` (degrees from square) only the square part v·cos(angle) crushes, and the sliding part is rubbed off by
+// friction (0.5·J at most, the reduced mass times v·sin(angle) at most), shoving the car along and spinning it about its
+// 0.9 m half-width too. `row: 'rear'` sits 0.6 m behind the centre: the door there comes in by how much of the striker
+// reaches it (a car's front is ~1.7 m wide: all within 0.5 m of where it aims, nothing 1.5 m past that; a pole only
+// within 15 cm, nothing 60 cm past), and the back has curtains but no thorax airbag. Ribs: 0.2 of the push on the door's
+// side squeezes the ribs (the arm, shoulder and pelvis take the rest), a thorax airbag's push spread out, 0.3 as hard,
+// the chest 150 kN/m (`RIB_K`); Euro NCAP's dummy is good under 28 mm, poor past 50 (here serious past 35, severe 50).
+export const RIB_K = 1.5e5, SEAT_X = { front: 0.3, rear: -0.6 } as const;
+/** M486q: where the struck car slides after the blow (from where it was hit): x along its length (+ forward), y the way it
+ * was shoved (m), psi its turn (degrees, + nose the way it was shoved), every 0.05 s until it stops. */
+export interface SidePath { t: number[]; x: number[]; y: number[]; psi: number[]; distance: number; turned: number }
+export interface SideCrash { second: Touch | null; touches: number; striker: SidePath | null; path: SidePath; ribs: number; spin: number; along: number; reach: number; t: number[]; carG: number[]; personG: number[]; gap: number[]; intrusion: number; dv: number; bagAt: number; chestG: number; headG: number; headHit: boolean; hitPerson: number; risk: 'low' | 'serious' | 'severe' }
+export function sideCrash(v: Vehicle, speed: number, o: { braked?: boolean; rolling?: boolean; into?: 'car' | 'pole'; other?: number; belt?: boolean; bags?: boolean; seat?: 'near' | 'far'; beside?: boolean; angle?: number; hitAt?: number; row?: 'front' | 'rear' } = {}): SideCrash {
   const pole = o.into === 'pole', m = v.m, m2 = pole ? 1e9 : (o.other ?? m), belt = o.belt ?? true, bags = o.bags ?? true, far = o.seat === 'far', mo = 75, dt = 1e-5, T = 0.15, e = 0.1;
-  const k = pole ? POLE_K : SIDE_K;
+  const k = pole ? POLE_K : SIDE_K, ang = ((o.angle ?? 0) * Math.PI) / 180, hitAt = o.hitAt ?? SEAT_X.front, rear = o.row === 'rear';
+  // How much of the striker's push reaches this row's door, and the thorax airbag (front only).
+  const dx = Math.abs((rear ? SEAT_X.rear : SEAT_X.front) - hitAt), reach = pole ? Math.max(0, Math.min(1, 1 - Math.max(0, dx - 0.15) / 0.6)) : Math.max(0, Math.min(1, 1 - Math.max(0, dx - 0.5) / 1.5));
+  const thorax = bags && !rear;
+  let J = 0, ribs = 0;
   // Ground positions along the blow: the striker's face, the car, the near person's chest (its side towards the door),
   // the far person's (both measured from the door's inner panel at the start).
-  let xs = 0, vs = speed, xc = 0, vc = 0, xn = DOOR_GAP, vn = 0, xf = DOOR_GAP + FAR_GAP, vf = 0, most = 0, sens = 0, bagAt = NaN, headG = 0, hitPerson = 0, minHead = Infinity;
-  const nearIn = !far || !!o.beside, farIn = far || !!o.beside, out: SideCrash = { t: [], carG: [], personG: [], gap: [], intrusion: 0, dv: 0, bagAt: NaN, chestG: 0, headG: 0, headHit: false, hitPerson: 0, risk: 'low' };
+  let xs = 0, vs = speed * Math.cos(ang), xc = 0, vc = 0, xn = DOOR_GAP, vn = 0, xf = DOOR_GAP + FAR_GAP, vf = 0, most = 0, sens = 0, bagAt = NaN, headG = 0, hitPerson = 0, minHead = Infinity;
+  const nearIn = !far || !!o.beside, farIn = far || !!o.beside, out: SideCrash = { second: null, touches: 0, striker: null, path: { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 }, ribs: 0, spin: 0, along: 0, reach, t: [], carG: [], personG: [], gap: [], intrusion: 0, dv: 0, bagAt: NaN, chestG: 0, headG: 0, headHit: false, hitPerson: 0, risk: 'low' };
   const win = Math.round(0.003 / dt), recent: number[] = [];
   let sum = 0;
   for (let i = 0; i * dt <= T; i++) {
@@ -496,9 +721,10 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
     const ac = F / m;
     sens += ((ac / G - sens) * dt) / 0.003;
     if (bags && Number.isNaN(bagAt) && sens > SIDE_FIRE) bagAt = t;
-    const full = !Number.isNaN(bagAt) && t > bagAt + 0.008, door = xs;
-    // The door's panel (or the thorax airbag in front of it) on whoever is nearest it.
-    const onDoor = (x: number) => { const pen = door - x; return (pen > 0 ? TRIM_K * (full ? 0.6 : 1) * pen : 0) + (full && pen > -SIDE_BAG ? Math.min(SIDE_BAG_N, SIDE_BAG_K * (pen + SIDE_BAG)) : 0); };
+    const full = thorax && !Number.isNaN(bagAt) && t > bagAt + 0.008, door = xc + reach * (xs - xc);
+    // The door's panel (or the thorax airbag in front of it) on whoever is nearest it: [trim, airbag].
+    const parts = (x: number): [number, number] => { const pen = door - x; return [pen > 0 ? TRIM_K * (full ? 0.6 : 1) * pen : 0, full && pen > -SIDE_BAG ? Math.min(SIDE_BAG_N, SIDE_BAG_K * (pen + SIDE_BAG)) : 0]; };
+    const onDoor = (x: number) => { const [a, b] = parts(x); return a + b; };
     let Fn = 0, Fc = 0;
     if (nearIn) Fn = onDoor(xn);
     // The far person: the lap belt (pulling them back towards their seat, against the blow they lag), then the near
@@ -509,6 +735,10 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
     if (nearIn && farIn && xf - xn < body) Fc = BODY_K * (body - (xf - xn));
     const Ff = lap + Fc + (nearIn ? 0 : onDoor(xf));
     hitPerson = Math.max(hitPerson, Fc);
+    // The ribs of the person asked about: the door's side (trim, the airbag half as hard), or the other person's shoulder.
+    const pr = far ? (nearIn ? [Fc, 0] : parts(xf)) : parts(xn);
+    ribs = Math.max(ribs, (0.2 * (pr[0] + 0.3 * pr[1])) / RIB_K);
+    J += F * dt;
     const an = (Fn - Fc) / mo, af = Ff / mo, me = far ? af : an;
     // The head leans 1.3× as far as the chest (relative to the car). Near: 20 cm from the window; far: past the other
     // person's head (10 cm after the shoulders meet) or, with nobody there, the window across the car. The speed it
@@ -516,7 +746,7 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
     const who = far ? xf : xn, lean = far ? leanF : leanN;
     const toHead = far && nearIn ? xf - xn - body + 0.1 - 0.3 * (leanF - leanN) : who - door + HEAD_GAP - DOOR_GAP - 0.3 * lean;
     if (toHead <= 0 && minHead > 0) {
-      const closing = far && nearIn ? Math.max(0, vn - vf) : Math.max(0, vs - (far ? vf : vn)), stop = far && nearIn ? 0.05 : bags ? 0.15 : 0.02;
+      const closing = far && nearIn ? Math.max(0, vn - vf) : Math.max(0, vc + reach * (vs - vc) - (far ? vf : vn)), stop = far && nearIn ? 0.05 : bags ? 0.15 : 0.02;
       headG = Math.max(headG, (closing * closing) / (2 * stop) / G);
     }
     minHead = Math.min(minHead, toHead);
@@ -527,8 +757,144 @@ export function sideCrash(v: Vehicle, speed: number, o: { into?: 'car' | 'pole';
   }
   // Hit something hard: the head reached the window side with no curtain, or another person's head.
   const headHit = minHead <= 0 && (!bags || (far && nearIn));
-  const risk = out.chestG > 60 || headG > 80 ? 'severe' : out.chestG > 40 || headHit || hitPerson > 4000 ? 'serious' : 'low';
-  return { ...out, intrusion: most, dv: vc, bagAt, headG, headHit, hitPerson, risk };
+  // At an angle: friction rubs off the sliding part (at most 0.5·J, at most what stops the sliding).
+  const mr = pole ? m : (m * m2) / (m + m2), Ja = Math.min(0.5 * J, mr * speed * Math.abs(Math.sin(ang)));
+  const iz = v.iz, spin = ((J * Math.abs(hitAt) + Ja * (CAR_WIDTH / 2)) / iz) * (180 / Math.PI);
+  const risk = out.chestG > 60 || headG > 80 || ribs > 0.05 ? 'severe' : out.chestG > 40 || headHit || hitPerson > 4000 || ribs > 0.035 ? 'serious' : 'low';
+  // Struck by a car, it stood still; sliding into a pole, it moved at the speed and keeps what the pole didn't take.
+  // M486w: struck by a car, the two are stepped on together (they may touch again).
+  const both = pole ? null : strikerAfter(v, m2, speed, ang, hitAt, vs, J, Ja, { vy: vc, vx: Ja / m, w: (spin * Math.PI) / 180 }, o.braked, o.rolling);
+  const path = both ? both.path : slideAfter(v, vc - speed * Math.cos(ang), Math.max(0, speed * Math.abs(Math.sin(ang)) - Ja / m), (spin * Math.PI) / 180, o.rolling);
+  return { ...out, striker: both?.striker ?? null, second: both?.second ?? null, touches: both?.touches ?? 0, path, ribs, spin, along: Ja / m, intrusion: most * reach, dv: vc, bagAt: thorax || bags ? bagAt : NaN, headG, headHit, hitPerson, risk };
+}
+
+/** M486t: the car that did the hitting, after the blow, in the struck car's picture (x along the struck car from its
+ * centre, + forward; y the way it was shoved; psi its heading, degrees from square, + towards the struck car's front).
+ * Its nose (`NOSE` past the wheelbase's middle: the front overhang) starts at the struck car's side where it aimed. It
+ * keeps the square part's speed the crash left it (`vs`), the sliding part less what friction rubbed off (Ja / m₂), and
+ * spins from both pushes on its nose: τ = d·(Ja·cos a − J·sin a), d the nose's distance from its centre of mass, its
+ * Iz scaled from this car's by mass.
+ * M486w: then its driver takes `REACT` 1 s to brake (it rolls on, slowed only by `COAST_G` 0.1 g: drag and the
+ * damaged engine), then brakes at μ·g, while the struck car skids sideways at μ·g from the start, so the striker
+ * usually catches it up: the two are stepped together, as boxes (each car's length and width), and when they touch
+ * again after opening at least `REOPEN` 5 cm (the first blow leaves the nose ~10 cm short, crushed), they meet like
+ * the first time: restitution 0.1 along the line their boxes overlap least, at the point they touch (M486z: so it
+ * turns them too; `braked`: the other driver was already braking, so it brakes at μ·g from the start):
+ * `second` is the first such touch (when, where on the struck car, the closing speed and the struck car's change of
+ * speed), `touches` how many. Rough. */
+export const NOSE = 0.9, REACT = 1, COAST_G = 0.1, REOPEN = 0.05;
+export interface Touch { t: number; x: number; y: number; closing: number; dv: number; spin: number }
+/** Where two equal boxes touch: the mean of the corners of each inside the other; midway between the centres if none. */
+function touchPoint(A: Box, B: Box, hl: number, hw: number): [number, number] {
+  const corners = (P: Box) => [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([a, b]) => [P.x + a * hl * Math.cos(P.th) - b * hw * Math.sin(P.th), P.y + a * hl * Math.sin(P.th) + b * hw * Math.cos(P.th)]);
+  const inside = (P: Box, [x, y]: number[]) => { const dx = x - P.x, dy = y - P.y; return Math.abs(dx * Math.cos(P.th) + dy * Math.sin(P.th)) <= hl && Math.abs(-dx * Math.sin(P.th) + dy * Math.cos(P.th)) <= hw; };
+  const pts = [...corners(B).filter((q) => inside(A, q)), ...corners(A).filter((q) => inside(B, q))];
+  if (!pts.length) return [(A.x + B.x) / 2, (A.y + B.y) / 2];
+  return [pts.reduce((t, q) => t + q[0], 0) / pts.length, pts.reduce((t, q) => t + q[1], 0) / pts.length];
+}
+interface Tyres { m: number; iz: number; lf: number; lr: number; cf: number; cr: number; fz: [number, number]; mu: number }
+interface Box { x: number; y: number; th: number; vx: number; vy: number; w: number; a: (t: number) => number; aw: number; rolls?: (t: number) => boolean; tyres?: Tyres }
+/** M486za: a car whose wheels still roll (the other driver's second before braking): it coasts along its length at
+ * `COAST_G`, while each axle's tyres push across it by their slip angle (cornering stiffness, up to μ·Fz): pushed
+ * sideways it resists like a car, its path bends towards where it points and it turns towards where it's going. */
+function rollStep(P: Box, dt: number) {
+  const T = P.tyres!, c = Math.cos(P.th), s = Math.sin(P.th);
+  const u = P.vx * c + P.vy * s, side = -P.vx * s + P.vy * c, ref = Math.max(Math.abs(u), 0.5);
+  const fy = (lat: number, C: number, fz: number) => -Math.sign(lat) * Math.min(C * Math.abs(Math.atan2(lat, ref)), T.mu * fz);
+  const ff = fy(side + P.w * T.lf, T.cf, T.fz[0]), fr = fy(side - P.w * T.lr, T.cr, T.fz[1]);
+  const along = -Math.sign(u) * Math.min(COAST_G * G, Math.abs(u) / dt), across = (ff + fr) / T.m;
+  P.vx += (along * c - across * s) * dt; P.vy += (along * s + across * c) * dt;
+  P.w += ((T.lf * ff - T.lr * fr) / T.iz) * dt;
+}
+/** M486zb: the struck car's own tyres (`rolling`: its driver wasn't braking, so its wheels roll along it for `REACT`,
+ * then the driver brakes and it skids as one block). */
+const ownTyres = (v: Vehicle, rolling: boolean): Pick<Box, 'rolls' | 'tyres'> => (rolling ? { rolls: (t) => t < REACT, tyres: { m: v.m, iz: v.iz, lf: v.lf, lr: v.lr, cf: v.cf, cr: v.cr, fz: staticLoads(v), mu: v.mu } } : {});
+function boxGap(A: Box, B: Box, hl: number, hw: number) {
+  // Separating axes of two equal boxes: the least overlap and its axis (from A to B); negative overlap is a gap.
+  const ax = [A.th, A.th + Math.PI / 2, B.th, B.th + Math.PI / 2].map((q) => [Math.cos(q), Math.sin(q)]);
+  const dx = B.x - A.x, dy = B.y - A.y, r = (th: number, u: number[]) => hl * Math.abs(Math.cos(th) * u[0] + Math.sin(th) * u[1]) + hw * Math.abs(-Math.sin(th) * u[0] + Math.cos(th) * u[1]);
+  let best = Infinity, n = [0, 1];
+  for (const u of ax) {
+    const d = dx * u[0] + dy * u[1], o = r(A.th, u) + r(B.th, u) - Math.abs(d);
+    if (o < best) { best = o; n = d >= 0 ? u : [-u[0], -u[1]]; }
+  }
+  return { overlap: best, n };
+}
+export function strikerAfter(v: Vehicle, m2: number, speed: number, ang: number, hitAt: number, vs: number, J: number, Ja: number, struck: { vy: number; vx: number; w: number }, braked = false, rolling = false) {
+  const d = L(v) / 2 + NOSE, iz2 = (v.iz * m2) / v.m, w2 = (d * (Ja * Math.cos(ang) - J * Math.sin(ang))) / iz2;
+  const r = Math.hypot(L(v) / 2, (v.roll?.track ?? 1.55) / 2), mu = v.mu * G, hl = (L(v) + 1.6) / 2, hw = CAR_WIDTH / 2;
+  const A: Box = { x: 0, y: 0, th: 0, vx: struck.vx, vy: struck.vy, w: struck.w, a: () => mu, aw: (v.mu * v.m * G * r) / v.iz, ...ownTyres(v, rolling) };
+  const B: Box = { x: hitAt - d * Math.sin(ang), y: -CAR_WIDTH / 2 - d * Math.cos(ang), th: Math.PI / 2 - ang, vx: speed * Math.sin(ang) - Ja / m2, vy: vs, w: w2, a: (t) => (!braked && t < REACT ? COAST_G * G : mu), aw: (v.mu * m2 * G * r) / iz2, rolls: (t) => !braked && t < REACT, tyres: { m: m2, iz: iz2, lf: v.lf, lr: v.lr, cf: (v.cf * m2) / v.m, cr: (v.cr * m2) / v.m, fz: staticLoads(v).map((f) => (f * m2) / v.m) as [number, number], mu: v.mu } };
+  const path: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 }, striker: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 };
+  const rec = (t: number) => {
+    path.t.push(t); path.x.push(A.x); path.y.push(A.y); path.psi.push((A.th * 180) / Math.PI);
+    striker.t.push(t); striker.x.push(B.x); striker.y.push(B.y); striker.psi.push(((Math.PI / 2 - B.th) * 180) / Math.PI);
+  };
+  const dt = 0.005, e = 0.1;
+  let open = false, second: Touch | null = null, touches = 0, i = 0;
+  for (; i * dt <= 8; i++) {
+    const t = i * dt;
+    if (i % 10 === 0) rec(t);
+    let moving = false;
+    for (const [P, own] of [[A, path], [B, striker]] as const) {
+      const sp = Math.hypot(P.vx, P.vy);
+      if (P.rolls?.(t)) rollStep(P, dt);
+      else {
+        if (sp > 0) { const dv = Math.min(sp, P.a(t) * dt), f = (sp - dv) / sp; P.vx *= f; P.vy *= f; }
+        P.w = Math.sign(P.w) * Math.max(0, Math.abs(P.w) - P.aw * dt);
+      }
+      P.x += P.vx * dt; P.y += P.vy * dt; P.th += P.w * dt; own.distance += Math.hypot(P.vx, P.vy) * dt;
+      if (Math.hypot(P.vx, P.vy) > 1e-3 || Math.abs(P.w) > 1e-3) moving = true;
+    }
+    const g = boxGap(A, B, hl, hw);
+    if (g.overlap < -REOPEN) open = true;
+    // Once they've come apart, any overlap while closing is met (a new touch only after they part again: in between,
+    // one pushing the other along).
+    // M486z: met where they touch (the corners of each inside the other, or midway between the centres when only
+    // edges cross), so the push turns both: velocities there include ω × r, the impulse j = −(1 + e)·vₙ /
+    // (1/m₁ + 1/m₂ + (r₁×n)²/I₁ + (r₂×n)²/I₂), each car's spin changed by its r × j·n / I.
+    const [px, py] = touchPoint(A, B, hl, hw), ra = [px - A.x, py - A.y], rb = [px - B.x, py - B.y], n = g.n;
+    const vn = (B.vx - B.w * rb[1] - (A.vx - A.w * ra[1])) * n[0] + (B.vy + B.w * rb[0] - (A.vy + A.w * ra[0])) * n[1];
+    if ((open || touches) && g.overlap > 0 && vn < 0) {
+      const ca = ra[0] * n[1] - ra[1] * n[0], cb = rb[0] * n[1] - rb[1] * n[0];
+      const j = (-(1 + e) * vn) / (1 / v.m + 1 / m2 + (ca * ca) / v.iz + (cb * cb) / iz2);
+      A.vx -= (j * n[0]) / v.m; A.vy -= (j * n[1]) / v.m; A.w -= (j * ca) / v.iz;
+      B.vx += (j * n[0]) / m2; B.vy += (j * n[1]) / m2; B.w += (j * cb) / iz2;
+      if (open) {
+        // Where on the struck car, in its own frame.
+        const c = Math.cos(A.th), sn = Math.sin(A.th);
+        if (!second) second = { t, x: c * ra[0] + sn * ra[1], y: -sn * ra[0] + c * ra[1], closing: -vn, dv: j / v.m, spin: (((j * ca) / v.iz) * 180) / Math.PI };
+        touches++; open = false;
+      }
+    }
+    if (!moving) break;
+  }
+  rec(i * dt);
+  path.turned = path.psi[path.psi.length - 1]; striker.turned = striker.psi[striker.psi.length - 1] - (ang * 180) / Math.PI;
+  return { path, striker, second, touches };
+}
+
+/** M486q: the slide after the blow. Its tyres skid sideways, so friction μ·g slows the centre of mass along its path
+ * and turns the spin down by the tyres' grip about the centre, μ·m·g·r / Iz (r the wheels' mean distance from the
+ * centre of mass, half the wheelbase and half the track): each to rest on its own (a rough, rigid-body picture). */
+export function slideAfter(v: Vehicle, vy: number, vx: number, w: number, rolling = false): SidePath {
+  const dt = 0.005, a = v.mu * G, r = Math.hypot(L(v) / 2, (v.roll?.track ?? 1.55) / 2);
+  const P: Box = { x: 0, y: 0, th: 0, vx, vy, w, a: () => a, aw: (v.mu * v.m * G * r) / v.iz, ...ownTyres(v, rolling) };
+  const p: SidePath = { t: [], x: [], y: [], psi: [], distance: 0, turned: 0 };
+  for (let i = 0; i * dt <= 6; i++) {
+    const t = i * dt;
+    if (i % 10 === 0) { p.t.push(t); p.x.push(P.x); p.y.push(P.y); p.psi.push((P.th * 180) / Math.PI); }
+    const sp = Math.hypot(P.vx, P.vy);
+    if (sp < 1e-3 && Math.abs(P.w) < 1e-3) break;
+    if (P.rolls?.(t)) rollStep(P, dt);
+    else {
+      if (sp > 0) { const dv = Math.min(sp, a * dt), f = (sp - dv) / sp; P.vx *= f; P.vy *= f; }
+      P.w = Math.sign(P.w) * Math.max(0, Math.abs(P.w) - P.aw * dt);
+    }
+    P.x += P.vx * dt; P.y += P.vy * dt; P.th += P.w * dt; p.distance += Math.hypot(P.vx, P.vy) * dt;
+  }
+  p.t.push(p.t[p.t.length - 1] + 0.05); p.x.push(P.x); p.y.push(P.y); p.psi.push((P.th * 180) / Math.PI); p.turned = (P.th * 180) / Math.PI;
+  return p;
 }
 
 // ——— Steady state ———

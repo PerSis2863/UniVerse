@@ -154,6 +154,19 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   if (wind.turbulence && num1('turbulencetail')) wind.turbulence.tailLag = true;
   // M489j: 'TurbulenceFin', 1: the fin meets the side gusts after the wing.
   if (wind.turbulence && num1('turbulencefin')) wind.turbulence.finLag = true;
+  // M489k: 'FinHeight', m: the fin's height above the roll axis (0.9 for a light aeroplane), so its delayed side push
+  // rolls it too (turns 'TurbulenceFin' on).
+  const fh = num1('finheight');
+  if (fh !== undefined) {
+    if (!(fh > 0 && fh <= 5)) throw new LabError("'FinHeight' is the fin's height above the roll axis, above 0 up to 5 m.");
+    if (wind.turbulence) { wind.turbulence.finLag = true; wind.turbulence.finRoll = true; }
+  }
+  // M489l: 'DownwashLag', 1 (or dε/dα, 0 to 1): the wing's downwash reaches the tail lt / V late.
+  const dw = num1('downwashlag');
+  if (dw !== undefined && dw !== 0) {
+    if (!(dw > 0 && dw <= 1)) throw new LabError("'DownwashLag' is 1 (the downwash reaches the tail late) or dε/dα itself, above 0 up to 1.");
+    wind.downwashLag = true; if (dw < 1) ac.deda = dw;
+  }
   // Wind shear (M489d): 'Shear', the exponent (1/7 open country; the 'Wind' is then what blows 10 m up), and
   // 'Microburst', [north east (m) radius (m) outflow (m/s) down (m/s)].
   const shx = num1('shear');
@@ -169,7 +182,7 @@ def('aircraftSim6DOF', (a, nout, lab) => {
   if (!(arm > 0 && arm <= 10)) throw new LabError("'EngineArm' is how far out each engine is, above 0 up to 10 m.");
   const engines: fl.Engines | undefined = ne === 2 || fail ? { count: ne as 1 | 2, arm, fail: fail && { at: fail[0], which: ((fail[1] ?? 2) - 1) as 0 | 1 }, feather: !!num1('feather') } : undefined;
   const head = fn('holdheading', 'The heading to hold');
-  const r = fl.flight6(ac, T, {
+  const r = fl.flight6(fh ? { ...ac, zf: fh } : ac, T, {
     engines, prop: pd ? { dir: pd as 1 | -1, inertia: num1('propinertia') } : undefined,
     V0, h0, lat: latOf(o.get('lateral')), wind,
     elevator: fn('elevator', 'The elevator'), aileron: fn('aileron', 'The aileron'), rudder: fn('rudder', 'The rudder'), throttle: fn('throttle', 'The throttle'),

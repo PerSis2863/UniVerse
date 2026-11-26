@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
-import { EMF_FAULT_LIMIT, EMF_LIMIT, RAIL_LIMIT, ROUTES, SUPPLIES, TRAINS, faultEmf, railLine, routeLength, spaced, storageFor, supplyFor, CARSON_50HZ } from '@/lib/lab/rail';
+import { EMF_FAULT_LIMIT, EMF_LIMIT, RAIL_LIMIT, ROUTES, SUPPLIES, TRAINS, dcSoil, faultEmf, railLine, routeLength, spaced, soilRho, storageFor, supplyFor, CARSON_50HZ } from '@/lib/lab/rail';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Railway → Several trains (M491b): trains leaving one after another along the same
@@ -39,7 +39,9 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
   const [acEarth, setAcEarth] = useState(false);
   // M491n: the soil (Ω·m) on AC lines: how deep the ground's return current runs (and the cable's coupling; M491o: the
   // line's own feed too).
-  const [soil, setSoil] = useState<'20' | '100' | '2000'>('100');
+  // M491p: 'layers': 5 m of wet clay over dry rock.
+  // M491q: 'three': 3 m of clay over 30 m of sand over rock.
+  const [soil, setSoil] = useState<'20' | '100' | '2000' | 'layers' | 'three'>('100');
   const graph = useRef<HTMLCanvasElement>(null), volts = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
 
   const route = useMemo(() => ROUTES[routeName](), [routeName]), L = routeLength(route);
@@ -53,8 +55,9 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     if (sup && cross) sup.crossBond = true;
     if (sup && !sup.ac && earth) sup.earth = Number(earth);
     if (sup?.ac && acEarth) sup.earth = CARSON_50HZ;
-    if (sup?.ac && soil !== '100') sup.soil = Number(soil);
-    const cable = { sep: cableM, rho: Number(soil) }, feed = sup ? supplyFor(sup, 0.5, cable) : null;
+    // M491r: on DC lines too (the soil changes the leakage and how much stray current runs near pipes).
+    if (sup && soil === 'layers') { sup.soil = 2000; sup.topsoil = { rho: 20, depth: 5 }; } else if (sup && soil === 'three') { sup.soil = 2000; sup.topsoil = [{ rho: 20, depth: 3 }, { rho: 300, depth: 30 }]; } else if (sup && soil !== '100') sup.soil = Number(soil);
+    const cable = { sep: cableM, rho: (sup && soilRho(sup)) ?? (soil === 'layers' || soil === 'three' ? 100 : Number(soil)) }, feed = sup ? supplyFor(sup, 0.5, cable) : null;
     return { ...railLine(route, list, { signals, block: routeName === 'metro' ? block : block * 4, supply: feed?.step }), log: feed?.log ?? null, sup, fault: sup?.ac ? Math.max(...faultEmf(sup, cable).map((x) => x.emf)) : 0 };
   }, [route, routeName, L, count, gap, signals, block, freightFirst, power, subKm, kind, store, cableM, bonded, cross, earth, acEarth, soil]);
 
@@ -123,6 +126,7 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     ['Lowest voltage', `${run.sup?.ac ? `${(Math.min(...lg.minVolt) / 1000).toFixed(1)} kV` : `${Math.min(...lg.minVolt).toFixed(0)} V`}${lg.tripped > 0 ? `, tripped ${lg.tripped.toFixed(0)} s` : ''}`],
     ['From the substations · lost', `${lg.fromSubsKwh.toFixed(0)} kWh · ${lg.lossKwh.toFixed(0)} kWh`],
     ...(run.sup && !run.sup.ac ? [['Rails to earth · stray current', `${lg.maxRail.toFixed(0)} V · ${((lg.strayAs / Math.max(lg.t.length * 0.5, 1e-9)) * 1000).toFixed(0)} mA`] as [string, string]] : []),
+    ...(run.sup && !run.sup.ac && dcSoil(run.sup) ? [['Stray current in the top 2 m (pipes)', `${((lg.shallowAs / Math.max(lg.t.length * 0.5, 1e-9)) * 1000).toFixed(0)} mA (${((lg.shallowAs / Math.max(lg.strayAs, 1e-12)) * 100).toFixed(0)}%)`] as [string, string]] : []),
     ...(run.sup?.ac ? [['Rails to earth, most', `${lg.maxRail.toFixed(0)} V${lg.maxRail > RAIL_LIMIT ? ' (over 60)' : ''}`] as [string, string]] : []),
     run.sup?.ac ? ['In a cable beside it, running · a fault', `${lg.maxEmf.toFixed(0)} V${lg.maxEmf > EMF_LIMIT ? ' (over 60)' : ''} · ${run.fault.toFixed(0)} V${run.fault > EMF_FAULT_LIMIT ? ' (over 430)' : ''}`]
       : run.sup?.storage ? ['Braking reused · burnt · stored', `${lg.regenUsedKwh.toFixed(0)} · ${lg.regenWastedKwh.toFixed(0)} · ${lg.storedKwh.toFixed(0)} kWh`]
@@ -156,7 +160,7 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
         {power && routeName === 'intercity' && kind !== 'dc' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={bonded} onChange={(e) => setBonded(e.target.checked)} className="h-4 w-4 accent-violet-600" />Rails bonded to earth at the substations</label>}
         {power && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={cross} onChange={(e) => setCross(e.target.checked)} className="h-4 w-4 accent-violet-600" />Both tracks’ rails tied together (half the rails’ voltage)</label>}
         {power && (routeName === 'metro' || kind === 'dc') && <div className="space-y-1"><span className="text-[13px] text-zinc-700 dark:text-zinc-200">The ground’s own resistance</span><Segmented<'' | '0.01' | '0.1'> label="The ground’s own resistance" value={earth} onChange={setEarth} segments={[{ value: '', label: 'Not counted' }, { value: '0.01', label: 'Wet clay' }, { value: '0.1', label: 'Dry rock' }]} /></div>}
-        {power && routeName === 'intercity' && kind !== 'dc' && <div className="space-y-1"><span className="text-[13px] text-zinc-700 dark:text-zinc-200">The soil (how deep the return current runs)</span><Segmented<'20' | '100' | '2000'> label="The soil" value={soil} onChange={setSoil} segments={[{ value: '20', label: 'Wet clay' }, { value: '100', label: 'Normal' }, { value: '2000', label: 'Dry rock' }]} /></div>}
+        {power && <div className="space-y-1"><span className="text-[13px] text-zinc-700 dark:text-zinc-200">{routeName === 'intercity' && kind !== 'dc' ? 'The soil (how deep the return current runs)' : 'The soil (where the stray current runs)'}</span><Segmented<'20' | '100' | '2000' | 'layers' | 'three'> label="The soil" value={soil} onChange={setSoil} segments={[{ value: '20', label: 'Wet clay' }, { value: '100', label: 'Normal' }, { value: '2000', label: 'Dry rock' }, { value: 'layers', label: '5 m of clay over rock' }, { value: 'three', label: 'Clay, sand, then rock' }]} /></div>}
         {power && routeName === 'intercity' && kind !== 'dc' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={acEarth} onChange={(e) => setAcEarth(e.target.checked)} className="h-4 w-4 accent-violet-600" />Count the ground’s own resistance (0.05 Ω/km at 50 Hz)</label>}
         {power && routeName === 'intercity' && kind !== 'dc' && range('A telephone cable beside it, at', cableM, 10, 300, 10, `${cableM} m`, setCableM)}
         {power && routeName === 'intercity' && kind !== 'dc' && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">The line’s current, returning partly through the ground, induces a voltage along the cable ({kind === 'ac25at' ? 'autotransformers cancel about nine tenths of it' : 'the rails cancel about half'}). Allowed: 60 V while trains run, 430 V during a fault (shown for a short at the far end of a section).</p>}

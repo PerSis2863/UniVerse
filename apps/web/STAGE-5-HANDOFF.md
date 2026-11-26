@@ -13565,6 +13565,255 @@ speeds in a rollover are a few m/s, so knocks are a few g belted, up to ~15 unbe
 "Five seats" and "Heads knocking together". Rough figures. Not built: a front middle seat drawn in the window (the
 language takes 'Seat', 'middle', 'Row', 'front'), bodies (not only heads) loading each other in a rollover.
 
+## M489k (25 Nov): Hyperion aeroplanes, the fin above the wing rolling it in side gusts
+
+The owner, 25 Nov (M489j's left-out). `flight.ts`: `Aircraft.zf` (the fin's centre of pressure above the roll axis,
+0.9 m when not given) and `Wind.turbulence.finRoll` (with `finLag`): the fin's own push from its delayed side gust is
+cnr's share of M489j's yaw gust, and being zf above the roll axis and lt behind, it rolls by L = −(zf / lt)·N
+(`Ctl.fin`, added to the roll moment in `deriv6`). Off by default. Checked: the roll changes, more for a taller fin,
+the yaw much the same. Language 'FinHeight', m (0 to 5; turns 'TurbulenceFin' on). Window: All six → Rough → "The fin
+sits above the wing (its push rolls it too)". Not built: the fin's height for steady sideslip (already in clb), the
+downwash's own lag.
+
+## M491p (25 Nov): Hyperion railways, soils in layers
+
+The owner, 25 Nov (M491o's left-out). `rail.ts`: `Supply.topsoil` { rho, depth } over `soil` (the ground beneath, 100 when
+not given); `soilRho(sup)`: the return current spreads down to Carson's depth D and the layers carry it side by side,
+1/ρ = (h/D)/ρ_top + (1 − h/D)/ρ_below (all ρ_top once the layer is deeper than D), D found from that ρ by a few rounds.
+`railVolts` and `feedZ` use it; one layer or none as before. Checked: a deep top layer is all that counts, a thin one
+hardly; 5 m of wet clay over dry rock ~sits between them and agrees with its own depth; rail volts and feed follow it.
+Language 'Topsoil', [resistivity depth]. Window: Several trains → 25 kV → The soil → "5 m of clay over rock" (also the
+telephone cable's soil). Not built: more than two layers, the layers' effect on DC stray current.
+
+## M486n (25 Nov): Hyperion vehicles, Euro NCAP's soft barrier
+
+The owner, 25 Nov (M486k's left-out). `vehicle.ts` `frontalCrash(…, { into: 'barrier' })`: aluminium honeycomb on a rigid
+block, crushing at `BARRIER_N` 300 kN per metre of the width hit (`CAR_WIDTH` 1.8 m × overlap) up to `BARRIER_DEPTH`
+0.54 m, then rigid; in series with the front (while the front would push harder, the honeycomb gives: `frontInv`, the
+front's curve turned round); no spring-back. `Crash.barrier` is its crush. Checked: the offset test (64 km/h, 40%)
+crushes the honeycomb its whole depth, the front less, nothing into the cabin, low risk (against ~16 cm in from a
+rigid wall); full width at 56 km/h it barely gives (the front is about as stiff). Language: vehicleCrash 'Into'
+'barrier', info.BarrierCrush. Window: Crash → Into → "A soft barrier (Euro NCAP)". Not built: the newer moving
+barrier (MPDB), the honeycomb's stiffer bumper row.
+
+## M486o (25 Nov): Hyperion vehicles, a bench's front middle seat and bodies landing on each other
+
+The owner, 25 Nov (M486m's left-outs). `vehicle.ts` `everyone(…, { frontMiddle })` adds a bench's front middle seat (the
+rows are near, middle, far in order). Unbelted, whole bodies slide across with the roll (their middle 0.7 of the
+head's swing, `BODY_SHARE`) and land on the next person on the side it tips to, stopped over 10 cm (`BODY_STOP`):
+`bodyLoad` = 75 kg·v²/2s on both (ribs break from about 3–4 kN; over 4 kN serious, 8 kN severe in the risk). Belted
+bodies stay in their seats. The model's rollover swing speeds are a few m/s, so the loads come out about 1–3 kN.
+Language: vehicleTrip 'FrontMiddle', 1; info.Seats gains BodyLoad. Window: Kerb → Seat → "Front middle (bench)" (six
+seats then), the fact "Bodies landing on each other". Rough figures. Not built: people's arms and legs, a person
+landing on the roof lining with others on top.
+
+## M486p (25 Nov): Hyperion vehicles, a side crash's spin, angle, back seats and ribs
+
+The owner, 25 Nov (M486l's left-outs). `vehicle.ts` `sideCrash(…, { angle, hitAt, row })`: the blow lands `hitAt` m ahead
+of the centre of mass (0.3, `SEAT_X.front`, where Euro NCAP aims), so its impulse J spins the car, ω = J·hitAt / Iz;
+at an `angle` only v·cos(angle) crushes, and friction rubs off the sliding part (at most 0.5·J and the reduced mass
+times v·sin(angle)), shoving the car along (`along`) and adding its spin about the 0.9 m half-width. `row: 'rear'`
+sits 0.6 m behind the centre: its door comes in by `reach` (a car's front reaches fully within 0.5 m of its aim and
+not 1.5 m past that; a pole within 15 cm and not 60 cm past); curtains but no thorax airbag there. `ribs`: 0.2 of the
+door's push (a thorax airbag's 0.3 as hard) over `RIB_K` 150 kN/m; serious past 35 mm, severe past 50 in the risk.
+Checked: ~36 mm with airbags, ~53 without at 50 km/h; no spin when hit at the centre; 30° crushes less, shoves and
+spins more; the back's door comes in less, none from a pole aimed at the front seat. Language: vehicleSideCrash
+'Angle', 'HitAt', 'Row'; info AlongSpeedChange, Spin, Ribs. Window: Crash → Into the side → "Row" (Front / Back),
+"Angle" (Square on / 15° / 30°), facts for ribs and the car's spin. Rough figures. Not built: the car's path after the
+blow drawn, a pole aimed at the back seat in the window (the language takes 'HitAt').
+
+## M491q (25 Nov): Hyperion railways, more than two soil layers
+
+The owner, 25 Nov (M491p's left-out). `rail.ts` `Supply.topsoil` takes one `SoilLayer` or a list from the top down;
+`soilRho` gives each layer the share of Carson's depth D it fills (1/ρ = Σ (h_i/D)/ρ_i + the rest below), D found from
+that ρ as before. Checked: a list of one is the single layer; two equal layers act as one of their total depth; 3 m of
+clay over 30 m of sand over rock is lower than the clay over rock alone and agrees with its own depth. Language
+'Topsoil', [ρ1 h1; ρ2 h2; …] (up to 10 rows). Window: Several trains → 25 kV → The soil → "Clay, sand, then rock".
+Not built: the layers' effect on DC stray current.
+
+## M489l (25 Nov): Hyperion aeroplanes, the downwash reaching the tail late
+
+The owner, 25 Nov (M489k's left-out). `flight.ts` `Wind.downwashLag` and `Aircraft.deda` (dε/dα, 2·cla / (π·aspect ratio)
+when not given, ~0.44 for the default): the point model turns the tail's downwash with the wing's angle now; really it
+is the angle lt / V ago. `flight6` keeps the angle of attack for lagN steps and adds the tail's extra angle
+−dε/dα·(α_then − α_now) as a pitch gust V·dε/dα·(α_then − α_now) / lt (the classic Cmα̇ from the aeroplane's own
+pitching, and from gusts too: with `tailLag` the tail then meets exactly the gust and the downwash of lt / V ago).
+Checked: an elevator kick dies away sooner, a smaller dε/dα in between; steady flight untouched. Language
+'DownwashLag', 1 (or dε/dα itself, 0 to 1). Window: All six → Rough → "The air the wing turns down reaches the tail late".
+Rough: the whole of cmq taken as the tail's.
+
+## M486q (25 Nov): Hyperion vehicles, where a side crash leaves the car, a pole aimed at the back seat
+
+The owner, 25 Nov (M486p's left-outs). `vehicle.ts` `slideAfter(v, vy, vx, w)` and `SideCrash.path` (t, x along the
+car, y the way it was shoved, psi; `distance`, `turned`): after the blow the tyres skid, μ·g slowing the centre of mass
+along its path and μ·m·g·r / Iz the spin (r the wheels' mean distance from the centre), each to rest. Struck by a car it
+stood still; sliding into a pole it keeps what the pole didn't take (a little rebound, the sliding along). Checked: hit
+at the centre square on it slides straight v²/2μg without turning; at the front seat it turns; at 30° it is carried
+along; a pole leaves it nearly where it hit. Language: vehicleSideCrash info.SlideDistance, SlideTurn, Path (a table).
+Window: Crash → Into the side → "Aimed at" (The front seat / The back seat: `hitAt` `SEAT_X`), and the slide drawn from
+above in the chart's top right corner (the car every fifth of the way, the red mark where the blow came in). Rough.
+
+## M486r (25 Nov): Hyperion vehicles, Euro NCAP's moving barrier (MPDB)
+
+The owner, 25 Nov (M486n's left-out). `vehicle.ts` `frontalCrash(…, { into: 'mpdb' })`: a 1,400 kg trolley (`MPDB_MASS`, or
+`other`) comes the other way at the same speed, half the front in it (`overlap` 0.5 unless given); its face stiffens
+with depth, `MPDB_N0` 200 kN to `MPDB_N1` 1.2 MN per metre of width over `MPDB_DEPTH` 0.6 m (shapes rough, not the
+real honeycomb's curve), in series with the front (the depth where the two push alike found by halving each step). The
+trolley moves (`xt`, `vt`), so the crush is the gap closed. `Crash.trolleyDv`; `vEq` reported as head on into a car.
+Checked: momentum shared (1,500·Δv = 1,400·Δv_trolley), the honeycomb within its depth, a heavier car crushes it deeper
+(what Euro NCAP marks down). Language: vehicleCrash 'Into' 'mpdb', info.TrolleySpeedChange. Window: Crash → Into → "A
+moving barrier (Euro NCAP)" (the overlap choice hidden: always half). Not built: Euro NCAP's compatibility score from
+the barrier's scanned face, the occupant load criterion (OLC).
+
+## M486s (25 Nov): Hyperion vehicles, arms and legs in a rollover, people piled on the roof
+
+The owner, 25 Nov (M486o's left-outs). `vehicle.ts` `inside` gains `armSpeed`, `armForce`, `legForce`, `armOut`,
+`armCrushed`, `inverted`: the hand flails 1.1× the head's swing (belt or not; 1.3× from the far side), ~4 kg stopped in 2
+cm (`ARM_M`, `ARM_STOP`; breaks from `ARM_BREAK` 2.5 kN); the knees at `LEG_R` 0.35 m from the roll axis (0.7 with a
+belt), ~10 kg in 3 cm (`LEG_BREAK` 4 kN). An arm goes out of its own side's broken window (no curtain) when ω²·r passes
+g/2, and is crushed if that side then lands on the road (severe). `everyone` gains `pileLoad` and `onTop`: unbelted and
+upside down, a row falls onto the roof lining, the side it tipped to first, the rest on top from `PILE_FALL` 0.4 m,
+stopped over 10 cm, lying there (75 kg each); someone thrown out isn't in the pile. The model's swing speeds are a few
+m/s, so arms and legs come out at a few hundred newtons: breaks only in hard rolls. Checked: far arms harder, belts
+hold legs not arms, the near arm out and crushed in two half turns onto the roof, curtains keep it in, a pile of three
+in the back row with the near one under. Language: vehicleTrip info ArmForce, LegForce, ArmOutAt, ArmCrushed; Seats
+gains PileLoad, OnTop, ArmForce, LegForce, ArmCrushed. Window: Kerb → facts "Arm · leg (hitting the side)" and "Piled on
+the roof". Rough figures. Not built: hands and feet caught in the pedals or the seat frames.
+
+## M486t (25 Nov): Hyperion vehicles, a side crash: the car that hit it, after
+
+The owner, 25 Nov (M486s's list of left-outs). `vehicle.ts` `strikerAfter` and `SideCrash.striker` (a `SidePath` in the
+struck car's picture: x along it from its centre, y the way it was shoved, psi the striker's heading in degrees from
+square, + towards the struck car's front; `null` for a pole). Its nose (`NOSE` 0.9 m past the wheelbase's middle) starts
+at the struck car's side where it aimed; it keeps the square speed the crash left it and the sliding speed less what
+friction rubbed off (Ja / m₂), spins from both pushes on its nose (τ = d·(Ja·cos a − J·sin a), its Iz scaled by mass),
+then brakes at μ·g through `slideAfter`. Checked: square at the centre it rolls straight on, momentum shared; square at
+the front seat the struck car spins but the striker doesn't; at 30° it turns. Language: vehicleSideCrash info
+StrikerDistance, StrikerTurn, StrikerPath. Window: the "After" box draws it dashed red. Not built: the two cars
+touching again as they slide.
+
+## M486u (25 Nov): Hyperion vehicles, the moving barrier's two Euro NCAP scores
+
+The owner, 25 Nov (M486r's left-out). Euro NCAP's own rules (AOP v9.3 §3.3, TB 027): `vehicle.ts` `mpdbScore`, run by
+`frontalCrash` for `into: 'mpdb'`. **OLC** from the trolley's speed (`tv`, every 0.1 ms): a virtual person free for 65 mm,
+then slowed evenly so after 235 mm more they move with the trolley (bisection on the slowing). **The face**: strips 1 cm
+wide across the overlap; the two rails (0.3 m wide, 0.25 m in from each side) carry `RAIL_SHARE` 0.6 of the front's
+stiffness, scaled so the overlap's strips add to the crash's front; each strip and the honeycomb before it push alike at
+the most the car and trolley came together. SD over Euro NCAP's zone (0.2 m in to 45% of the car's width; even in
+height); bottoming out at `MPDB_BOTTOM` (630 of 722 mm) over 4 cm. **Penalty**, our reading of the "two interlinked
+sliding scales" (TB 027 gives no formula): 2·o + s·(2 + 4·o), s and o the SD's (50–150 mm) and OLC's (25–40 g) shares,
++2 bottoming, at most 8. Figures: 1,100 kg 23 g, 98 mm, −1.0; 1,500 kg 29 g, 111 mm, −2.4; 2,200 kg 37 g, 133 mm, −5.9.
+Checked: heavier is worse on all three; a trolley stopped dead gives v²/(2·0.235)/g. Language: vehicleCrash info OLC,
+BarrierSD, BarrierMax, BottomedOut, CompatibilityPenalty. Window: Crash → A moving barrier, two more facts. Rough: the face
+model is ours; the main crash still dents the face evenly (`barrier`).
+
+## M486v (25 Nov): Hyperion vehicles, hands and feet caught in a rollover
+
+The owner, 25 Nov (M486s's left-out). `vehicle.ts` `inside` gains `footCaught`, `handCaught` (s, NaN if not),
+`ankleForce`, `wristForce`, `trapped`. A foot hooks among the pedals (front) or under the front seat's frame (back) when
+the body pulls away from the floor: unbelted, once ω²·r passes g or it falls onto the roof; belted only if the leg flails
+past `HOOK_SPEED` 3 m/s (the model's legs never do: belts keep feet down). A hand hooks when the arm flails past
+`HAND_HOOK` 2 m/s (the far side's in a 12 m/s trip). Hooked: belted, the shin (5 kg) stopped in 1 cm; unbelted, half the
+body at the speed it was thrown or fell, in 5 cm (`ANKLE_BREAK` 3.5 kN); the forearm (1.5 kg) in 1 cm (`WRIST_BREAK` 2
+kN). `trapped`: caught, still inside and resting on its side or roof. Thresholds, not chances. Language: vehicleTrip info
+FootCaughtAt, HandCaughtAt, AnkleForce, WristForce, Trapped; Seats gains AnkleForce, WristForce, Trapped. Window: Kerb →
+"Caught: foot · hand". Not built: a caught foot holding someone half in as they're thrown out.
+
+## M491r (25 Nov): Hyperion railways, the soil on DC lines
+
+The owner, 25 Nov (M491q's left-out). `rail.ts` `dcSoil(sup)` (from `soil` / `topsoil`; undefined when neither): DC has
+no Carson's depth, so the leaking current is taken to spread down `DC_DEPTH` 100 m, the layers side by side (`mixRho`,
+now shared with `soilRho`). (1) The spreading resistance of a long strip on the ground, ρ·ln(2000/3)/π/1000 Ω·km (~0.2
+at 100 Ω·m), is added to the rails' leakage in `dcStray`: dry rock lets out less. (2) `shallow`, the share of the stray
+current in the top `PIPE_DEPTH` 2 m where pipes lie: 2% in even ground, 34% with 5 m of wet clay over rock, under 0.1%
+with dry sand over clay. No soil given: as before. Language: railLine supply struct ShallowShare (DC). Window: Railway →
+Several trains: the soil choice now on DC lines too, and "Stray current in the top 2 m (pipes)". Rough: the 100 m.
+
+## M486w (26 Nov): Hyperion vehicles, a side crash: the two cars touching again
+
+The owner (M486t's left-out). `vehicle.ts` `strikerAfter` now steps both cars together after the blow (5 ms) as boxes
+(each car's length and width; `boxGap`, separating axes) and returns `{ path, striker, second, touches }`; `sideCrash`
+gains `second` (`Touch`: t, x and y on the struck car in its own frame, closing speed, the struck car's Δv) and
+`touches`. The striker's driver takes `REACT` 1 s to brake (rolling on at `COAST_G` 0.1 g), the struck car skids at μ·g
+at once, so the striker catches it up ~0.35 s later (about 6 km/h closing): once they've opened `REOPEN` 5 cm, any
+overlap while closing is met with restitution 0.1 along the least-overlap axis through the centres (no spin from it);
+a new touch counts only after they part again (in between it's pushing). The struck car now goes further (3.4 → 4.3 m
+square on); at 30° no second touch. Older tests changed: M486q's v²/2μg is checked on `slideAfter` alone, M486t's
+momentum over the first 0.05 s. Language: SecondTouchAt, SecondClosingSpeed, SecondSpeedChange, Touches. Window:
+"Touched again" and an amber dot in the "After" box. Not built: the second touch's spin, a striker that brakes before.
+
+## M486x (26 Nov): Hyperion vehicles, a caught foot holding someone half in
+
+The owner (M486v's left-out). `inside`: unbelted, a foot caught before they'd be flung out holds them half in while
+75 kg·ω²·r stays under `FOOT_HOLD` 1.5 kN (a hooked foot's grip, ~twice body weight; at first 3.5 kN, the ankle's
+strength, but then nobody was ever thrown out: the fling is 1.2–2.4 kN): `heldByFoot` (s), `partly`, no `thrownOut`;
+if the car then lands on a side or its roof, `bodyCrushed` (severe). Past it the foot pulls free (that pull on the
+ankle). The default car: held at 15–16 m/s trips, thrown clear at 22; the saloon (roll model) is held at 18, so
+M486g's test takes "thrown out or held". Language: HeldByFootAt, BodyCrushed (Seats: HeldByFoot, BodyCrushed). Window:
+Kerb → "Caught: foot · hand" says so.
+
+## M486y (26 Nov): Hyperion vehicles, the barrier face in two directions; Euro NCAP's own table
+
+The owner (M486u's left-outs). TB 027 Figure 2 (Euro NCAP's table of penalty by SD and OLC) matches M486u's reading
+exactly: `compatPenalty(sdMm, olcG, bottomed)` = 2·o + s·(2 + 4·o) (+2, at most 8), tested on its cells (its SD = 50%
+column at 36–39 g leaves the straight line every other column and its own 40 g follow, by up to 0.17: Euro NCAP's
+quirk, not used). CP 007 (2026) is the same table scaled to 25% of the test's score: `compatShare`. The face: 2 cm
+cells, 0.15–0.85 m up, across the overlap; `FRONT_PARTS` (rails 0.3 of the front's stiffness, beam 0.25, engine and
+gearbox 0.25, lower load path 0.1, grille and bonnet edge 0.1, each over its own rectangle), blurred by `FACE_SPREAD`
+0.1 m (without it every car bottomed out at ~230 mm SD); the honeycomb's N per metre of width spread up the face's
+0.7 m. Measured over 0.25–0.65 m up (Euro NCAP's area), every cell counted; bottoming out over a 2 × 2 block (4 × 4 cm).
+Figures now: 1,100 kg 81 mm, 23 g, −0.6; 1,500 kg 95 mm, 29 g, −1.9; 2,200 kg 102 mm, bottomed, 37 g, −6.3. Language:
+BarrierFace (matrix), CompatibilityShare2026. Window: the dented face drawn top right (violet deeper, the area dashed).
+Still rough: the shapes are a typical car's, ours.
+
+## M491s (26 Nov): Hyperion railways, how deep DC stray current spreads, from the line
+
+The owner (M491r's left-out). `dcSoil(sup, dist)`: between where the current goes into the ground (near the train)
+and comes out (near its substation), d apart, half of it runs shallower than ~d/2 in even ground, so each train's
+stray current fills the layers down to d/2 (at least `DC_MIN_DEPTH` 10 m), and the spreading resistance uses L = d (at
+least 50 m). `dcStray` works per train; `shallow` is weighted by each train's stray current and `shallowStray` (A) is
+logged (`SupplyLog.shallowAs`); ShallowShare = shallowAs / strayAs. `DC_DEPTH` is gone. Checked: a train near its
+substation keeps more near the surface; two trains weight by their stray currents.
+
+## M486z (26 Nov): Hyperion vehicles, the second touch turns the cars; the other driver braking; the car's front
+
+The owner (M486w's and M486y's left-outs). **Side crash:** `strikerAfter` meets the touch at `touchPoint` (the mean of
+the corners of each box inside the other; midway between the centres if only edges cross), with velocities there
+including ω × r and j = −(1 + e)·vₙ / (1/m₁ + 1/m₂ + (r₁×n)²/I₁ + (r₂×n)²/I₂); each car's spin changes by r × j·n / I.
+`Touch.spin` (°/s, the struck car's). Square at the centre: no turn; aimed at the front seat the second touch lands
+~0.7 m behind the middle and turns it ~16°/s. `sideCrash`'s `braked` (the other driver already braking: μ·g from the
+start, no rolling on): no second touch, a shorter slide. Older tests: M486t's "striker doesn't turn" uses `braked`;
+M486w's Δv is now at most the through-the-centres value. **The front:** `FRONTS` (typical, suv, small, spread;
+`FrontPart`), `frontalCrash`'s `front` (a name or parts), `FRONT_PARTS` = typical. At 1,200 / 2,200 kg: typical 85 /
+102 mm, SUV 160 / 195 mm (−2.0 / −8.0), small 91 / 107, spread 66 / 84 (−0.3 / −5.3). The OLC doesn't change with the
+front (the crash's front stiffness comes from the mass). Language: vehicleCrash 'Front' (a name, or rows [share yFrom
+yTo zFrom zTo], −0 meaning the far side), vehicleSideCrash 'OtherBraked', info.SecondSpin. Window: Crash → A moving
+barrier → "The car's front"; Into the side → "The other driver was already braking"; "Touched again" gives the turn.
+Not built: a front's own stiffness (each front still crushes as the mass sets), the cars' tyres turning as they're
+pushed.
+
+## M486za (26 Nov): Hyperion vehicles, each front's own stiffness; the rolling striker's tyres
+
+The owner (M486z's left-outs). **Front stiffness:** `FRONT_STIFF` (typical 1, suv 1.3, small 1.15, spread 1.05) and
+`frontStiff(front)` (your own parts: their shares added up, a typical car's add to 1); `frontalCrash`'s k0 is multiplied
+by it in every crash, not only the moving barrier. At 56 km/h into a wall (1,500 kg): typical 0.65 m and 38 g peak (as
+before), SUV 0.57 m and 43 g, small 0.61 m, spread 0.63 m; chest g unchanged (the belt sets it). The moving barrier:
+SUV's penalty 5.6 → 6.2, small 4.1 → 4.4. M486z's barrier depths in its note were with every front at typical
+stiffness. Language: 'Front' rows' shares must add to 0.3–3. Window: "The car's front" now shows for every head-on
+crash. **Tyres:** in `strikerAfter` the striker while still rolling (unbraked, before `REACT`) moves by `rollStep`:
+coasting along its length at `COAST_G`, each axle's side force by its slip angle (cornering stiffness scaled by mass,
+up to μ·Fz), so a push off its line turns it (aimed at the back seat: 1.5–2° against 0.2–0.3° before). The struck car
+still skids as one block (its driver taken as on the brake). Not built: the struck car's own tyres rolling along it.
+
+## M486zb (26 Nov): Hyperion vehicles, the struck car's own tyres rolling
+
+The owner (M486za's left-out). `sideCrash`'s `rolling` (language 'StruckRolling', 1; window: Crash → Into the side →
+"This car's driver wasn't braking"): the struck car's wheels roll along it for `REACT` (1 s) by `rollStep` (`ownTyres`:
+its own cornering stiffness and axle loads), then it skids as one block as before (the default, as if braked). Both
+`strikerAfter` and `slideAfter` (a pole) take it; `slideAfter` now steps a `Box` like `strikerAfter`. Aimed at the back
+seat, 50 km/h square: slide 4.4 m and 12° braked, 6.3 m and 48° rolling (one axle's tyres grip while it coasts along,
+so it pivots); at 30°: 2.8 m → 8.5 m; a pole at 32 km/h, 30°: 0.03 m → 0.34 m. The default's numbers are unchanged.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
