@@ -24,9 +24,15 @@ try {
       if (only && only !== tool) continue;
       const b = tools.getByRole('button', { name: tool });
       if (!(await b.count())) continue;
+      if (tool === 'Logic') await page.getByLabel('Start from').selectOption('tank');
       await b.click();
       await page.waitForTimeout(2500);
       r[`${tool}-text`] = (await page.getByRole('region', { name: /tuner|logic|real time|code|verif/i }).innerText()).slice(0, 600);
+      if (tool === 'Logic') {
+        await page.getByRole('button', { name: 'Play' }).click();
+        await page.waitForTimeout(3000);
+        r.logicTime = await page.locator('[data-chart-time]').innerText();
+      }
       if (tool === 'Tune') {
         await page.getByRole('button', { name: 'Update block' }).isEnabled({ timeout: 20_000 }).catch(() => {});
         r.tuned = await page.getByRole('table').first().innerText();

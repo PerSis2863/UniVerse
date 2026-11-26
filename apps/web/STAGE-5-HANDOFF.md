@@ -15625,3 +15625,26 @@ under the board (`BlocksBench.tsx`, `Tool`); this one is **Tune**.
   first (the modules import each other; otherwise "Cannot access 'BUILTINS' before initialization").
 - `ScopePlot` moved to `scope-plot.tsx` (shared). Check: `scripts/checks/hyperion-control-ui.mjs` (ONLY=Tune).
 - Left out: MIMO, plants with delays, 2-DOF PIDs, tuning in discrete time.
+
+## M563 (26 Nov): Hyperion, state charts for supervisory logic
+
+The owner's second picture-paragraph ("develop and verify state machines for supervisory control and error handling;
+use graphical animation to analyze and debug supervisory logic while it is executing"). A **Chart** block (library group
+Logic) holds a state machine in plain lines (`src/lib/sim/chart.ts`): `inputs:`, `outputs:`, `state Name` (the first is
+where it starts) with `entry:` / `during:` / `exit:` actions (`a = expr; b = expr`), transitions `A -> B: condition after T
+/ actions`, tried in the order written, one per step. Expressions are parsed into a tree (`Expr`, `parseExpr`, `evalExpr`:
++ − * / ^, comparisons, && || !, abs min max sqrt sin cos exp floor, `t` = seconds in the state): the code generators
+(M565) print the same tree. Mistakes name their line; inputs can't be set; names used must be inputs, outputs or set.
+
+- **Blocks:** `KINDS[].outs` is now a function (a chart has one output per name); a wire's `out` picks which (`yo` in
+  `compile`, `input` reads it). Charts aren't direct feedthrough: they run in `update(t, x)` after each RK4 step (and
+  at 0), so their outputs hold between steps and never make an algebraic loop. `RunResult.charts`: the active state at
+  each recorded time, transitions fired and states entered. `chartOf` caches the parse per text; `chartPorts` counts
+  ports from the text even with a mistake elsewhere; the chart text is kept up to 4,000 characters (`readDiagram`).
+- **The page:** ports labelled with the chart's names, several output dots, the input selects list every output; the
+  chart is edited in a textarea with its mistake shown; editing a chart never drops its wires. **Logic** tool
+  (`BlocksLogic.tsx`): the chart drawn (states in a grid, bent arrows with their conditions), Play (the run in ~8 s) and
+  a time slider light the active state and the transition that led there; a strip of the active state over time; how
+  often each state was entered and each transition fired ("never" in amber: a gap for M566's tests).
+- Example "A tank with a supervisor (state chart)": Filling / Draining / Alarm with a dump valve.
+- Left out: hierarchy (states inside states), parallel states, events and messages, history junctions.

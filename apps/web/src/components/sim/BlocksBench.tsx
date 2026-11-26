@@ -5,10 +5,11 @@ import { Trash2 } from 'lucide-react';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import { tfInline } from '@/lib/lab/lti-text';
-import { blockId, coeffs, EXAMPLES, KINDS, MAX_STEPS, newBlock, readDiagram, type Block, type BlockKind, type Diagram } from '@/lib/sim/blocks';
+import { blockId, chartOf, coeffs, EXAMPLES, KINDS, MAX_STEPS, newBlock, readDiagram, type Block, type BlockKind, type Diagram } from '@/lib/sim/blocks';
 import { NumField, ui } from './bench-ui';
 import { fmt, ScopePlot } from './scope-plot';
 import { BlocksTune } from './BlocksTune';
+import { BlocksLogic } from './BlocksLogic';
 import { Segmented } from '@/components/ui/Segmented';
 import type { FromBlocks, ToBlocks } from './blocks.worker';
 
@@ -17,12 +18,14 @@ import type { FromBlocks, ToBlocks } from './blocks.worker';
 // diagram runs as you build it (src/lib/sim/blocks.ts, in a worker) and every Scope block draws its inputs below.
 
 const KEEP = 'uv-sim-blocks';
-type Tool = 'scopes' | 'tune';
+type Tool = 'scopes' | 'tune' | 'logic';
 const VW = 760, VH = 340, BW = 88, SNAP = 10;
-const height = (b: Block) => Math.max(54, 18 * (KINDS[b.kind].ins(b.p) + 1));
+const height = (b: Block) => Math.max(54, 18 * (Math.max(KINDS[b.kind].ins(b.p), KINDS[b.kind].outs(b.p)) + 1));
 const inPort = (b: Block, i: number) => ({ x: b.x, y: b.y + (height(b) * (i + 1)) / (KINDS[b.kind].ins(b.p) + 1) });
-const outPort = (b: Block) => ({ x: b.x + BW, y: b.y + height(b) / 2 });
-const GROUPS = ['Sources', 'Maths', 'Continuous', 'Sinks'];
+const outPort = (b: Block, k = 0) => ({ x: b.x + BW, y: b.y + (height(b) * (k + 1)) / (KINDS[b.kind].outs(b.p) + 1) });
+/** A chart's input and output names (empty while its text has a mistake). */
+const ports = (b: Block) => { if (b.kind !== 'chart') return { ins: [], outs: [] }; try { const c = chartOf(b); return { ins: c.inputs, outs: c.outputs }; } catch { return { ins: [], outs: [] }; } };
+const GROUPS = ['Sources', 'Maths', 'Continuous', 'Logic', 'Sinks'];
 const LIGHT = ['#7c3aed', '#0e7490', '#b45309', '#047857'], DARK = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399'];
 
 type Field = { key: string; label: string; unit?: string; text?: string };
@@ -39,6 +42,7 @@ const FIELDS: Record<BlockKind, Field[]> = {
   integrator: [{ key: 'initial', label: 'Starts at' }],
   tf: [{ key: 'num', label: 'Numerator', text: 'powers of s, highest first: 1 2 = s + 2' }, { key: 'den', label: 'Denominator', text: '1 3 2 = s² + 3s + 2' }],
   pid: [{ key: 'Kp', label: 'Kp (proportional)' }, { key: 'Ki', label: 'Ki (integral)' }, { key: 'Kd', label: 'Kd (derivative)' }, { key: 'N', label: 'Derivative filter N' }],
+  chart: [],
   scope: [],
 };
 
@@ -56,6 +60,7 @@ function summary(b: Block): string {
     case 'integrator': return `starts at ${v('initial')}`;
     case 'tf': return tfInline(coeffs(p.num), coeffs(p.den));
     case 'pid': return `Kp ${v('Kp')}, Ki ${v('Ki')}, Kd ${v('Kd')}`;
+    case 'chart': try { return `${chartOf(b).states.length} states`; } catch { return 'a chart with a mistake'; }
     case 'scope': return `${KINDS.scope.ins(p)} input${KINDS.scope.ins(p) > 1 ? 's' : ''}`;
     default: return '';
   }
@@ -76,6 +81,7 @@ function Glyph({ b }: { b: Block }) {
     case 'sum': return big('Σ', 24);
     case 'product': return big('×', 24);
     case 'pid': return big('PID', 15);
+    case 'chart': return <><rect x={-24} y={-13} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><rect x={4} y={1} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><path d="M-4,-7 C6,-7 14,-6 14,0" {...line} strokeWidth={1.4} /><path d="M11,-3 L14,1 L17,-3" {...line} strokeWidth={1.4} /></>;
     case 'integrator': return <><text x={0} y={-4} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">1</text><line x1={-10} y1={0} x2={10} y2={0} stroke="currentColor" strokeWidth={1.2} /><text x={0} y={14} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">s</text></>;
     case 'tf': {
       const cut = (t: string) => (t.length > 12 ? `${t.slice(0, 11)}…` : t);
@@ -90,7 +96,7 @@ export function BlocksBench() {
   const dark = useDarkMode(), colours = dark ? DARK : LIGHT;
   const [dg, setDgNow] = useState<Diagram>(() => { try { return readDiagram(JSON.parse(localStorage.getItem(KEEP) ?? 'null')); } catch { return EXAMPLES[0].make(); } });
   const [chosen, setChosen] = useState<string | null>(null);
-  const [drag, setDrag] = useState<{ move: string; dx: number; dy: number } | { from: string; x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<{ move: string; dx: number; dy: number } | { from: string; out: number; x: number; y: number } | null>(null);
   const [result, setResult] = useState<FromBlocks | null>(null);
   const [text, setText] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(0);
@@ -132,7 +138,7 @@ export function BlocksBench() {
     return { x: q.x, y: q.y };
   };
   const place = (b: Block, x: number, y: number) => ({ ...b, x: Math.max(0, Math.min(VW - BW, Math.round(x / SNAP) * SNAP)), y: Math.max(0, Math.min(VH - height(b) - 18, Math.round(y / SNAP) * SNAP)) });
-  const connect = (from: string, to: string, port: number) => setDg((d) => ({ ...d, wires: [...d.wires.filter((w) => !(w.to === to && w.in === port)), { id: blockId('w'), from, out: 0, to, in: port }] }));
+  const connect = (from: string, out: number, to: string, port: number) => setDg((d) => ({ ...d, wires: [...d.wires.filter((w) => !(w.to === to && w.in === port)), { id: blockId('w'), from, out, to, in: port }] }));
   const unwire = (to: string, port: number) => setDg((d) => ({ ...d, wires: d.wires.filter((w) => !(w.to === to && w.in === port)) }));
 
   const move = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -151,7 +157,7 @@ export function BlocksBench() {
         const b = dg.blocks.find((bb) => q.x >= bb.x && q.x <= bb.x + BW && q.y >= bb.y && q.y <= bb.y + height(bb) && KINDS[bb.kind].ins(bb.p) > 0);
         if (b) { const n = KINDS[b.kind].ins(b.p), free = Array.from({ length: n }, (_, i) => i).find((i) => !dg.wires.some((w) => w.to === b.id && w.in === i)); best = { b, i: free ?? 0, d: 0 }; }
       }
-      if (best) connect(drag.from, best.b.id, best.i);
+      if (best) connect(drag.from, drag.out, best.b.id, best.i);
     }
     setDrag(null);
   };
@@ -170,7 +176,8 @@ export function BlocksBench() {
   const setParam = (id: string, key: string, value: number | string) => setDg((d) => {
     const blocks = d.blocks.map((b) => (b.id === id ? { ...b, p: { ...b.p, [key]: value } } : b)), b = blocks.find((bb) => bb.id === id)!;
     // Fewer inputs (a sum's signs, a scope's inputs): wires into the ones gone go too.
-    return { ...d, blocks, wires: d.wires.filter((w) => w.to !== id || w.in < KINDS[b.kind].ins(b.p)) };
+    // (A chart's wires stay while its text is edited: a half-typed line would drop them.)
+    return { ...d, blocks, wires: key === 'chart' ? d.wires : d.wires.filter((w) => w.to !== id || w.in < KINDS[b.kind].ins(b.p)) };
   });
   const setParams = (id: string, p: Record<string, number>) => setDg((d) => ({ ...d, blocks: d.blocks.map((b) => (b.id === id ? { ...b, p: { ...b.p, ...p } } : b)) }));
   useEffect(() => {
@@ -197,7 +204,7 @@ export function BlocksBench() {
     for (const w of dg.wires) {
       const a = byId.get(w.from), b = byId.get(w.to);
       if (!a || !b) continue;
-      const p = outPort(a), q = inPort(b, w.in), skip = [a.id, b.id], x0 = Math.min(p.x, q.x) - 20, x1 = Math.max(p.x, q.x) + 20;
+      const p = outPort(a, w.out), q = inPort(b, w.in), skip = [a.id, b.id], x0 = Math.min(p.x, q.x) - 20, x1 = Math.max(p.x, q.x) + 20;
       const spanned = boxes.filter((bx) => bx.x1 > x0 && bx.x0 < x1);
       if (q.x - p.x >= 10) {
         const mx = Math.round((p.x + q.x) / 2);
@@ -247,6 +254,17 @@ export function BlocksBench() {
                   onBlur={() => setText((t) => { const next = { ...t }; delete next[`${sel.id}:${f.key}`]; return next; })} />
               </label>
             ) : <NumField key={f.key} label={f.label} unit={f.unit} value={Number(sel.p[f.key])} onChange={(v) => setParam(sel.id, f.key, v)} />)}
+            {sel.kind === 'chart' && (() => {
+              let problem = '';
+              try { chartOf(sel); } catch (err) { problem = (err as Error).message; }
+              return (
+                <label className={label}>The chart <span className="font-normal text-zinc-500 dark:text-zinc-400">(inputs:, outputs:, state Name, entry: / during: / exit: actions, A -&gt; B: condition after seconds / actions)</span>
+                  <textarea value={String(sel.p.chart)} rows={14} spellCheck={false} translate="no" className="input mt-1 w-full font-mono text-xs leading-relaxed"
+                    onChange={(e) => setParam(sel.id, 'chart', e.target.value.slice(0, 4000))} aria-invalid={!!problem} aria-describedby={problem ? 'uv-chart-problem' : undefined} />
+                  {problem && <span id="uv-chart-problem" className="mt-1 block text-xs font-normal text-red-700 dark:text-red-400">{problem}</span>}
+                </label>
+              );
+            })()}
             {sel.kind === 'scope' && (
               <label className={label}>Inputs
                 <select value={KINDS.scope.ins(sel.p)} onChange={(e) => setParam(sel.id, 'inputs', Number(e.target.value))} className="input mt-1 w-full">{[1, 2, 3, 4].map((v) => <option key={v} value={v}>{v}</option>)}</select>
@@ -256,9 +274,9 @@ export function BlocksBench() {
               const w = dg.wires.find((ww) => ww.to === sel.id && ww.in === i);
               return (
                 <label key={i} className={label}>Input {i + 1}{sel.kind === 'sum' ? ` (${String(sel.p.signs)[i] === '-' ? 'minus' : 'plus'})` : ''} comes from
-                  <select value={w?.from ?? ''} onChange={(e) => (e.target.value ? connect(e.target.value, sel.id, i) : unwire(sel.id, i))} className="input mt-1 w-full">
+                  <select value={w ? `${w.from}#${w.out}` : ''} onChange={(e) => { const [from, out] = e.target.value.split('#'); if (from) connect(from, Number(out) || 0, sel.id, i); else unwire(sel.id, i); }} className="input mt-1 w-full">
                     <option value="">Nothing (0)</option>
-                    {dg.blocks.filter((b) => KINDS[b.kind].outs > 0).map((b) => <option key={b.id} value={b.id}>{names.get(b.id)}</option>)}
+                    {dg.blocks.flatMap((b) => Array.from({ length: KINDS[b.kind].outs(b.p) }, (_, k) => <option key={`${b.id}#${k}`} value={`${b.id}#${k}`}>{names.get(b.id)}{KINDS[b.kind].outs(b.p) > 1 ? `: ${ports(b).outs[k] ?? `output ${k + 1}`}` : ''}</option>))}
                   </select>
                 </label>
               );
@@ -304,7 +322,7 @@ export function BlocksBench() {
               );
             })}
             {dg.blocks.map((b) => {
-              const h = height(b), on = b.id === chosen, ins = KINDS[b.kind].ins(b.p), o = outPort(b);
+              const h = height(b), on = b.id === chosen, ins = KINDS[b.kind].ins(b.p);
               return (
                 <g key={b.id}>
                   <g role="button" tabIndex={0} aria-label={`${names.get(b.id)}: ${summary(b)}`} aria-pressed={on} className="cursor-grab outline-none"
@@ -314,7 +332,7 @@ export function BlocksBench() {
                     <text x={b.x + BW / 2} y={b.y + h + 14} fontSize={11} textAnchor="middle" className="fill-zinc-600 dark:fill-zinc-300">{names.get(b.id)}</text>
                   </g>
                   {/* The picture sits outside the button, so its name is the block's name alone. */}
-                  <g transform={`translate(${b.x + BW / 2} ${b.y + h / 2})`} className="pointer-events-none text-zinc-800 dark:text-zinc-100" aria-hidden><Glyph b={b} /></g>
+                  <g transform={`translate(${b.x + BW / 2} ${b.y + h / 2})`} opacity={b.kind === 'chart' ? 0.35 : 1} className="pointer-events-none text-zinc-800 dark:text-zinc-100" aria-hidden><Glyph b={b} /></g>
                   {Array.from({ length: ins }, (_, i) => {
                     const p = inPort(b, i);
                     return <g key={i} aria-hidden>
@@ -322,25 +340,36 @@ export function BlocksBench() {
                       {b.kind === 'sum' && <text x={p.x + 8} y={p.y + 4} fontSize={12} className="fill-zinc-700 font-mono dark:fill-zinc-200">{String(b.p.signs)[i] === '-' ? '−' : '+'}</text>}
                     </g>;
                   })}
-                  {KINDS[b.kind].outs > 0 && (
-                    <g aria-hidden className="cursor-crosshair" onPointerDown={(e) => { e.stopPropagation(); svg.current?.setPointerCapture(e.pointerId); const q = toWorld(e); setDrag({ from: b.id, x: q.x, y: q.y }); }}>
-                      <circle cx={o.x} cy={o.y} r={11} fill="transparent" />
-                      <circle cx={o.x} cy={o.y} r={4.5} className="fill-violet-600 dark:fill-violet-400" />
-                    </g>
-                  )}
+                  {Array.from({ length: KINDS[b.kind].outs(b.p) }, (_, k) => {
+                    const o = outPort(b, k);
+                    return (
+                      <g key={`o${k}`} aria-hidden className="cursor-crosshair" onPointerDown={(e) => { e.stopPropagation(); svg.current?.setPointerCapture(e.pointerId); const q = toWorld(e); setDrag({ from: b.id, out: k, x: q.x, y: q.y }); }}>
+                        <circle cx={o.x} cy={o.y} r={11} fill="transparent" />
+                        <circle cx={o.x} cy={o.y} r={4.5} className="fill-violet-600 dark:fill-violet-400" />
+                      </g>
+                    );
+                  })}
+                  {b.kind === 'chart' && (() => {
+                    // A chart's input and output names beside its ports.
+                    const pn = ports(b), cut = (t: string) => (t.length > 7 ? `${t.slice(0, 6)}…` : t);
+                    return <g aria-hidden className="pointer-events-none fill-zinc-600 dark:fill-zinc-300" fontSize={9.5}>
+                      {pn.ins.map((nm, i) => <text key={`i${nm}`} x={b.x + 7} y={inPort(b, i).y + 3.5}>{cut(nm)}</text>)}
+                      {pn.outs.map((nm, k) => <text key={`o${nm}`} x={b.x + BW - 7} y={outPort(b, k).y + 3.5} textAnchor="end">{cut(nm)}</text>)}
+                    </g>;
+                  })()}
                 </g>
               );
             })}
-            {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!).x},${outPort(byId.get(drag.from)!).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
+            {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!, drag.out).x},${outPort(byId.get(drag.from)!, drag.out).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
           </svg>
         </div>
-        <div role="region" aria-label={tool === 'scopes' ? 'Scopes' : 'PID tuner'} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
+        <div role="region" aria-label={{ scopes: 'Scopes', tune: 'PID tuner', logic: 'State chart logic' }[tool]} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-600 dark:text-zinc-300">
-            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }]} />
+            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }, { value: 'logic', label: 'Logic' }]} />
             {tool === 'scopes' && result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
             {tool === 'scopes' && stale && pending > 0 && <span>running…</span>}
           </div>
-          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
+          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : tool === 'logic' ? <BlocksLogic dg={dg} names={names} result={result?.id === pending ? result : null} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               {scopes.map((s) => {
                 const traces = Array.from({ length: KINDS.scope.ins(s.p) }, (_, i) => {
