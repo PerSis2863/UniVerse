@@ -21,6 +21,9 @@ export interface Model {
   dim?: '2d' | '3d';
   /** The shaking swept in a harmonic response (M463). */
   harmonic?: Harmonic;
+  /** M544: the part warmed from the temperature it was made at: not at all, one even change (°C), or Heat's temperatures
+   * on the same part (less `made`, °C). */
+  warming?: Warming;
 }
 
 /** A ready-made shape's name and sizes, or the hand-drawn one's (no sizes: its corners are drawn). */
@@ -90,10 +93,17 @@ export function readModel(raw: unknown): Model {
     gravity: m.gravity === true,
     dim: m.dim === '3d' ? '3d' : '2d',
     harmonic: readHarmonic(m.harmonic),
+    warming: readWarming(m.warming),
     ...(m.template === 'custom' ? { custom: readCustom(m.custom) } : {}),
     supports: Array.isArray(m.supports) ? m.supports.filter((s) => s && ['fixed', 'slideX', 'slideY'].includes(s.kind)).map((s) => ({ id: String(s.id), kind: s.kind, edges: strs(s.edges) })) : base.supports,
     loads: Array.isArray(m.loads) ? m.loads.filter((l) => l && ['force', 'pressure', 'bearing'].includes(l.kind)).map((l): Load => (l.kind === 'pressure' ? { id: String(l.id), kind: 'pressure', edges: strs(l.edges), p: num(l.p, 1) } : { id: String(l.id), kind: l.kind, edges: strs(l.edges), F: num(l.F, 1000), angle: num(l.angle, -90) })) : base.loads,
   };
+}
+
+/** Kept warming read back safely (M544). */
+export function readWarming(raw: unknown): Warming {
+  const w = (raw ?? {}) as Partial<Warming>, num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(-1000, Math.min(3000, v)) : d);
+  return { kind: w.kind === 'even' || w.kind === 'heat' ? w.kind : 'none', dT: num(w.dT, WARMING_START.dT), made: num(w.made, WARMING_START.made) };
 }
 
 /** Kept sweep settings read back safely (M463). */
@@ -106,8 +116,12 @@ export function readHarmonic(raw: unknown): Harmonic {
   };
 }
 
+export interface Warming { kind: 'none' | 'even' | 'heat'; dT: number; made: number }
+export const WARMING_START: Warming = { kind: 'none', dT: 50, made: 20 };
+
 export function studyOf(m: Model): Study {
-  return { thickness: m.thickness, material: MATERIALS.find((x) => x.id === m.material) ?? MATERIALS[0], supports: m.supports, loads: m.loads, gravity: m.gravity };
+  return { thickness: m.thickness, material: MATERIALS.find((x) => x.id === m.material) ?? MATERIALS[0], supports: m.supports, loads: m.loads, gravity: m.gravity,
+    ...(m.warming?.kind === 'even' && m.warming.dT ? { warming: m.warming.dT } : {}) };
 }
 
 /** What stops a solve, in plain words (null when it can run). */

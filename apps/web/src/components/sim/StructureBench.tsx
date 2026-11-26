@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
+import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Thermometer, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -10,7 +10,8 @@ import { cn } from '@/lib/utils';
 import { shapeOf, TEMPLATES } from '@/lib/sim/part';
 import { ShapeSketch } from './ShapeSketch';
 import { MATERIALS, peak, type Load, type SupportKind } from '@/lib/sim/structure';
-import { edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, templateInfo, verdict, type Field, type Model } from '@/lib/sim/model';
+import { WARMING_START, edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, templateInfo, verdict, type Field, type Model, type Warming } from '@/lib/sim/model';
+import { readHeat } from '@/lib/sim/heat-model';
 import type { Fineness } from '@/lib/sim/mesh';
 import { SimCanvas, type Shown, type SimView } from './SimCanvas';
 import { Sim3DView } from './Sim3DView';
@@ -25,9 +26,12 @@ import type { Analysis, FromSim, ToSim } from './sim.worker';
 // colours follow the sizes and the loads as they are typed.
 
 const KEEP = 'uv-sim-structure';
-type Sel = { k: 'geometry' | 'material' | 'mesh' | 'solution' } | { k: 'support' | 'load'; id: string };
+type Sel = { k: 'geometry' | 'material' | 'mesh' | 'warming' | 'solution' } | { k: 'support' | 'load'; id: string };
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const DIRECTIONS = [{ a: -90, label: 'Down' }, { a: 90, label: 'Up' }, { a: 0, label: 'Right' }, { a: 180, label: 'Left' }];
+
+/** M544: the Heat bench's study as kept on this device (its temperatures can warm this part). */
+const keptHeat = () => { try { return readHeat(JSON.parse(localStorage.getItem('uv-sim-heat') ?? 'null')); } catch { return undefined; } };
 
 export function StructureBench() {
   const dark = useDarkMode(), still = useMedia('(prefers-reduced-motion: reduce)');
@@ -59,7 +63,7 @@ export function StructureBench() {
     if (running.current) { waiting.current = m; return; }
     running.current = true;
     setBusy(true);
-    worker.current.postMessage({ id: ++seq.current, model: m, solve: !modelProblem(m, analysis === 'modal'), analysis, harmonic: m.harmonic ?? HARMONIC_START, at: atHz } satisfies ToSim);
+    worker.current.postMessage({ id: ++seq.current, model: m, solve: !modelProblem(m, analysis === 'modal'), analysis, harmonic: m.harmonic ?? HARMONIC_START, at: atHz, ...(m.warming?.kind === 'heat' ? { heatFor: keptHeat() } : {}) } satisfies ToSim);
   });
   useEffect(() => {
     const w = new Worker(new URL('./sim.worker.ts', import.meta.url));
@@ -85,6 +89,7 @@ export function StructureBench() {
   const res = is3d ? solidRes : result;
   const mode = modal?.modes[Math.min(modeAt, modal.modes.length - 1)] ?? null;
   const material = MATERIALS.find((m) => m.id === model.material) ?? MATERIALS[0];
+  const warm = model.warming ?? WARMING_START;
   const tpl = templateInfo(model.template);
   const maxVm = res ? peak(res.vm).value : 0, maxU = res ? peak(res.u).value : 0;
   const says = res ? verdict(maxVm, material.yieldMPa, material.name) : null;
@@ -171,6 +176,10 @@ export function StructureBench() {
         <input type="checkbox" checked={model.gravity} onChange={(e) => setModel((m) => ({ ...m, gravity: e.target.checked }))} className="h-4 w-4 accent-violet-600" />
         <Weight className="h-3.5 w-3.5 text-zinc-500" aria-hidden />Its own weight (gravity, down)
       </label>
+      <button type="button" className={cn(item, 'ps-4', isSel('warming') && on)} aria-current={isSel('warming') || undefined} onClick={() => setSel({ k: 'warming' })}>
+        <Thermometer className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">Warming<span className="font-normal text-zinc-500 dark:text-zinc-400">: {warm.kind === 'none' ? 'none' : warm.kind === 'even' ? `${warm.dT > 0 ? '+' : ''}${warm.dT} °C` : 'from Heat'}</span></span>
+      </button>
       <div className="px-2 pt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solution</div>
       {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity], ['harmonic', 'Shaking', Waves]] as const).map(([a, name, Icon]) => {
         const here = analysis === a, solved = here && (a === 'static' ? !!res : a === 'modal' ? !!modal : !!shaken);
@@ -226,6 +235,23 @@ export function StructureBench() {
             <div key={k}><dt className="text-zinc-500 dark:text-zinc-400">{k}</dt><dd className="font-mono tabular-nums text-zinc-900 dark:text-white">{v}</dd></div>
           ))}
         </dl>
+      </div>
+    );
+  } else if (sel.k === 'warming') {
+    const setWarm = (f: (w: Warming) => Warming) => setModel((m) => ({ ...m, warming: f(m.warming ?? WARMING_START) }));
+    details = (
+      <div className="space-y-3">
+        <div><span className={label}>The part is warmed</span>
+          <div className="mt-1"><Segmented<Warming['kind']> label="The part is warmed" value={warm.kind} onChange={(v) => setWarm((w) => ({ ...w, kind: v }))} segments={[{ value: 'none', label: 'Not at all' }, { value: 'even', label: 'Evenly' }, { value: 'heat', label: 'From Heat' }]} /></div>
+        </div>
+        {warm.kind === 'even' && <NumField label="Temperature change" unit="°C, a minus cools it" value={warm.dT} onChange={(v) => setWarm((w) => ({ ...w, dT: v }))} />}
+        {warm.kind === 'heat' && <NumField label="Temperature it was made at" unit="°C" value={warm.made} onChange={(v) => setWarm((w) => ({ ...w, made: v }))} />}
+        {warm.kind !== 'none' && out?.error && <p className="rounded-lg bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">{out.error}</p>}
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+          {material.name} grows {+(material.alpha * 1e6).toPrecision(3)} millionths of its length for every degree. Where the supports stop it growing, they push back, and that is thermal stress: a part held at both ends and warmed by {Math.abs(warm.dT) || 50} °C would be squeezed by {+(material.E * material.alpha * (Math.abs(warm.dT) || 50)).toPrecision(3)} MPa.
+          {warm.kind === 'heat' && ' The temperatures come from Simulate → Heat, solved on this same mesh: give Heat the same shape and sizes, and its held temperatures, heat flowing in and air. This study’s material and thickness are used.'}
+          {is3d && ' Warming is worked out on the flat part only for now: switch to 2D to see it.'}
+        </p>
       </div>
     );
   } else if (sel.k === 'mesh') {

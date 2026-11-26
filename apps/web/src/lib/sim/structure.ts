@@ -7,18 +7,19 @@ import { rcm, Skyline } from './skyline';
 // how far every point moves, the stresses everywhere (von Mises, principal, x, y, shear), how safe the part is against
 // its material's yield strength, and the forces the supports carry (which must balance the loads).
 
-/** k: thermal conductivity W/(m·K), c: specific heat J/(kg·K) (for Heat, M407). */
-export interface Material { id: string; name: string; E: number; nu: number; rho: number; yieldMPa: number; k: number; c: number }
+/** k: thermal conductivity W/(m·K), c: specific heat J/(kg·K) (for Heat, M407); alpha: how much it grows per degree
+ * (1/K, M544: heat and stress together). */
+export interface Material { id: string; name: string; E: number; nu: number; rho: number; yieldMPa: number; k: number; c: number; alpha: number }
 /** E and yield in MPa, density in kg/m³ (common handbook values). */
 export const MATERIALS: Material[] = [
-  { id: 'steel', name: 'Structural steel', E: 200_000, nu: 0.3, rho: 7850, yieldMPa: 250, k: 60.5, c: 434 },
-  { id: 'stainless', name: 'Stainless steel 304', E: 193_000, nu: 0.29, rho: 8000, yieldMPa: 215, k: 16.2, c: 500 },
-  { id: 'aluminium', name: 'Aluminium 6061-T6', E: 68_900, nu: 0.33, rho: 2700, yieldMPa: 276, k: 167, c: 896 },
-  { id: 'titanium', name: 'Titanium Ti-6Al-4V', E: 113_800, nu: 0.342, rho: 4430, yieldMPa: 880, k: 6.7, c: 526 },
-  { id: 'copper', name: 'Copper', E: 110_000, nu: 0.34, rho: 8960, yieldMPa: 70, k: 401, c: 385 },
-  { id: 'brass', name: 'Brass', E: 100_000, nu: 0.34, rho: 8500, yieldMPa: 200, k: 109, c: 380 },
-  { id: 'abs', name: 'ABS plastic', E: 2_300, nu: 0.35, rho: 1050, yieldMPa: 40, k: 0.17, c: 1400 },
-  { id: 'nylon', name: 'Nylon 6', E: 2_700, nu: 0.39, rho: 1140, yieldMPa: 70, k: 0.25, c: 1700 },
+  { id: 'steel', name: 'Structural steel', E: 200_000, nu: 0.3, rho: 7850, yieldMPa: 250, k: 60.5, c: 434, alpha: 12e-6 },
+  { id: 'stainless', name: 'Stainless steel 304', E: 193_000, nu: 0.29, rho: 8000, yieldMPa: 215, k: 16.2, c: 500, alpha: 17.3e-6 },
+  { id: 'aluminium', name: 'Aluminium 6061-T6', E: 68_900, nu: 0.33, rho: 2700, yieldMPa: 276, k: 167, c: 896, alpha: 23.6e-6 },
+  { id: 'titanium', name: 'Titanium Ti-6Al-4V', E: 113_800, nu: 0.342, rho: 4430, yieldMPa: 880, k: 6.7, c: 526, alpha: 8.6e-6 },
+  { id: 'copper', name: 'Copper', E: 110_000, nu: 0.34, rho: 8960, yieldMPa: 70, k: 401, c: 385, alpha: 16.5e-6 },
+  { id: 'brass', name: 'Brass', E: 100_000, nu: 0.34, rho: 8500, yieldMPa: 200, k: 109, c: 380, alpha: 19e-6 },
+  { id: 'abs', name: 'ABS plastic', E: 2_300, nu: 0.35, rho: 1050, yieldMPa: 40, k: 0.17, c: 1400, alpha: 90e-6 },
+  { id: 'nylon', name: 'Nylon 6', E: 2_700, nu: 0.39, rho: 1140, yieldMPa: 70, k: 0.25, c: 1700, alpha: 80e-6 },
 ];
 
 /** fixed: held still; slideX: may slide along x only (y held); slideY: may slide along y only (x held). */
@@ -31,7 +32,10 @@ export type Load =
   | { id: string; kind: 'pressure'; edges: string[]; p: number }
   /** A bolt or pin in a hole pulled with a total force (N): it presses on the side of the hole it is pulled towards. */
   | { id: string; kind: 'bearing'; edges: string[]; F: number; angle: number };
-export interface Study { thickness: number; material: Material; supports: Support[]; loads: Load[]; gravity: boolean }
+/** M544: the part warmed (or cooled) from the temperature it was made at, °C: one change everywhere or one per node (from
+ * Heat on the same mesh). Held edges then push back on the growth, which is where thermal stress comes from. */
+export type Warming = number | ArrayLike<number>;
+export interface Study { thickness: number; material: Material; supports: Support[]; loads: Load[]; gravity: boolean; warming?: Warming }
 
 export interface Reaction { id: string; fx: number; fy: number }
 export interface StaticResult {
@@ -65,6 +69,16 @@ export function slopes(mesh: Mesh, e: number, xi: number, eta: number) {
 
 /** Plane-stress elasticity (MPa). */
 const elastic = (m: Material) => { const k = m.E / (1 - m.nu * m.nu); return { d11: k, d12: k * m.nu, d33: (k * (1 - m.nu)) / 2 }; };
+/** The stress a free growth α·ΔT would make if fully held, in x and in y (plane stress: E·α·ΔT/(1−ν)), per °C. */
+const heldPerDegree = (m: Material) => (m.E * m.alpha) / (1 - m.nu);
+/** The warming at each node (°C), or null when there is none. */
+export function warmingAt(mesh: Mesh, w: Warming | undefined): Float64Array | null {
+  if (w === undefined) return null;
+  const nn = mesh.x.length;
+  if (typeof w === 'number') return w ? new Float64Array(nn).fill(w) : null;
+  if (w.length !== nn) throw new Error('The temperatures do not match this mesh: run Heat again on the same part.');
+  return Float64Array.from(w);
+}
 
 /** Element e's 12×12 stiffness (N/mm), and its area (mm²). */
 export function elementStiffness(mesh: Mesh, e: number, m: Material, t: number, out = new Float64Array(144)) {
@@ -173,8 +187,21 @@ export function solveStatic(mesh: Mesh, study: Study): StaticResult {
       for (let i = 0; i < 6; i++) fy[mesh.tri[e * 6 + i]] -= N[i] * b * (det / 6);
     }
   }
+  // M544: warming pushes every element outwards from inside (∫ Bᵀ·D·ε_th): forces inside the part that add up to nothing,
+  // so they change no reaction's total, only what held edges must push back with.
+  const dT = warmingAt(mesh, study.warming), tx = new Float64Array(nn), ty = new Float64Array(nn);
+  if (dT) {
+    const per = heldPerDegree(m);
+    for (let e = 0; e < ne; e++) for (const [xi, eta] of G) {
+      const { bx, by, N, det } = slopes(mesh, e, xi, eta);
+      let d = 0;
+      for (let i = 0; i < 6; i++) d += N[i] * dT[mesh.tri[e * 6 + i]];
+      const q = per * d * (det / 6) * t;
+      for (let i = 0; i < 6; i++) { const n = mesh.tri[e * 6 + i]; tx[n] += bx[i] * q; ty[n] += by[i] * q; }
+    }
+  }
   const f = new Float64Array(2 * nn);
-  for (let n = 0; n < nn; n++) { f[dof(n, 0)] = fx[n]; f[dof(n, 1)] = fy[n]; }
+  for (let n = 0; n < nn; n++) { f[dof(n, 0)] = fx[n] + tx[n]; f[dof(n, 1)] = fy[n] + ty[n]; }
   // Supports: each held unknown belongs to the first support that holds it (for its reaction).
   const { held, owner } = heldBy(mesh, study.supports, dof);
   if (!held.some((v) => v)) throw new Error('Add a support first: a part held nowhere just flies away.');
@@ -198,17 +225,17 @@ export function solveStatic(mesh: Mesh, study: Study): StaticResult {
   for (let n = 0; n < nn; n++) for (const c of [0, 1]) {
     const d = dof(n, c);
     if (owner[d] < 0) continue;
-    const r = inner[d] - (c ? fy[n] : fx[n]);
+    const r = inner[d] - (c ? fy[n] + ty[n] : fx[n] + tx[n]);
     if (c) reactions[owner[d]].fy += r; else reactions[owner[d]].fx += r;
   }
   let ax = 0, ay = 0;
   for (let n = 0; n < nn; n++) { ax += fx[n]; ay += fy[n]; }
-  const { sx, sy, sxy, vm, s1, s2, safety } = stressOf(mesh, m, ux, uy);
+  const { sx, sy, sxy, vm, s1, s2, safety } = stressOf(mesh, m, ux, uy, dT);
   return { ux, uy, u, sx, sy, sxy, vm, s1, s2, safety, reactions, applied: { fx: ax, fy: ay }, massKg: area * t * 1e-9 * m.rho, dofs: 2 * nn, profile: K.size };
 }
 
 /** The stresses at nodes for a movement (each element's own at its nodes, averaged where elements meet). */
-export function stressOf(mesh: Mesh, m: Material, ux: Float64Array, uy: Float64Array) {
+export function stressOf(mesh: Mesh, m: Material, ux: Float64Array, uy: Float64Array, dT: Float64Array | null = null) {
   const nn = mesh.x.length, ne = mesh.tri.length / 6;
   const { d11, d12, d33 } = elastic(m);
   const sx = new Float64Array(nn), sy = new Float64Array(nn), sxy = new Float64Array(nn), cnt = new Float64Array(nn);
@@ -218,7 +245,9 @@ export function stressOf(mesh: Mesh, m: Material, ux: Float64Array, uy: Float64A
       let ex = 0, ey = 0, g = 0;
       for (let i = 0; i < 6; i++) { const n = mesh.tri[e * 6 + i]; ex += bx[i] * ux[n]; ey += by[i] * uy[n]; g += by[i] * ux[n] + bx[i] * uy[n]; }
       const n = mesh.tri[e * 6 + k];
-      sx[n] += d11 * ex + d12 * ey; sy[n] += d12 * ex + d11 * ey; sxy[n] += d33 * g; cnt[n]++;
+      // Only the strain beyond the free growth α·ΔT makes stress (M544).
+      const th = dT ? heldPerDegree(m) * dT[n] : 0;
+      sx[n] += d11 * ex + d12 * ey - th; sy[n] += d12 * ex + d11 * ey - th; sxy[n] += d33 * g; cnt[n]++;
     });
   }
   const vm = new Float64Array(nn), s1 = new Float64Array(nn), s2 = new Float64Array(nn), safety = new Float64Array(nn);

@@ -14967,3 +14967,15 @@ light; a thick disc edge-on covers more. Not built: a smooth curved mesh is spli
 the rest stay a little hollow-hulled), the disc's own thickness doesn't shadow its far side's glow (the light passes
 the slab once per entry), and no light from the disc's inner edge wall.
 
+## M544: Hyperion Simulate, heat and stress together (26 Nov)
+
+The owner, 26 Nov ("do all of them start now", the list after the Hyperion review): the Ansys side of Simulate first.
+Structures → **Warming** (in the outline under gravity): not at all, evenly (one temperature change, °C), or **from
+Heat** (Simulate → Heat solved on this same mesh, less the temperature the part was made at). `Material.alpha` (1/K,
+handbook values) on every material; `Study.warming` is a number or one value per node (`warmingAt`). The solver adds
+∫Bᵀ·D·ε_th per element (forces inside the part that sum to nothing) and `stressOf` takes off E·α·ΔT/(1−ν) (plane
+stress) so only strain beyond the free growth makes stress; reactions subtract the thermal forces too. Tested against
+textbook answers: a free bar grows α·ΔT·L with no stress, a bar held at both ends is squeezed by E·α·ΔT, an uneven
+warming balances. "From Heat" needs Heat on the same template, sizes and outline (`heatWarming` in `sim.worker.ts`;
+Heat's own material and thickness give way to the study's); otherwise the panel says so. Left out: warming in 3D parts
+and in Vibration (the panel says 3D is flat-only for now). Check: `scripts/checks/hyperion-warming-ui.mjs`.

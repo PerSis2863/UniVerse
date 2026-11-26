@@ -12,7 +12,7 @@ import { extrude, solveSolid, type SolidMesh, type SolidResult } from '@/lib/sim
 
 export type Analysis = 'static' | 'modal' | 'harmonic';
 /** M463: for 'harmonic', the sweep's settings and the frequency to show the part at (Hz; the strongest peak when absent). */
-export type ToSim = { id: number; model: Model; solve: boolean; analysis: Analysis; harmonic?: Harmonic; at?: number } | { id: number; heat: HeatModel; solve: boolean };
+export type ToSim = { id: number; model: Model; solve: boolean; analysis: Analysis; harmonic?: Harmonic; at?: number; heatFor?: HeatModel } | { id: number; heat: HeatModel; solve: boolean };
 export interface HarmonicOut { sweep: HarmonicResult; hz: number; ux: Float64Array; uy: Float64Array; swing: Float64Array; vm: Float64Array }
 export interface MeshOut { x: Float64Array; y: Float64Array; tri: Uint32Array; corners: number; segs: Record<string, [number, number, number][]>; minAngle: number }
 export interface SolidOut { x: Float64Array; y: Float64Array; z: Float64Array; surface: Uint32Array; tets: number; dofs: number }
@@ -36,6 +36,15 @@ function solidOf(model: Model): SolidMesh {
 }
 
 let kept: { key: string; mesh: Mesh } | null = null;
+
+/** M544: the Heat bench's temperatures on this same mesh, less the temperature the part was made at. Heat must be set up on
+ * the same shape and sizes (its edges' names then match); its own material and thickness give way to this study's. */
+function heatWarming(mesh: Mesh, model: Model, heat: HeatModel | undefined): Float64Array {
+  const same = heat && heat.template === model.template && JSON.stringify(heat.values) === JSON.stringify(model.values) && JSON.stringify(heat.custom ?? null) === JSON.stringify(model.custom ?? null);
+  if (!heat || !same) throw new Error('Heat is set up on a different part: open Heat, give it the same shape and sizes, or use one even temperature change.');
+  const T = solveHeat(mesh, heatStudyOf({ ...heat, material: model.material, thickness: model.thickness })).T, made = model.warming?.made ?? 20;
+  return T.map((t) => t - made);
+}
 /** The modes for a harmonic sweep (M463): kept while only the loads or the sweep's settings change. */
 let keptBasis: { key: string; basis: Basis } | null = null;
 
@@ -62,7 +71,7 @@ self.onmessage = (e: MessageEvent<ToSim>) => {
       const hz = msg.at !== undefined && msg.at >= 0 ? msg.at : strongest?.f ?? 0;
       harmonic = { sweep, hz, ...harmonicField(mesh, st, msg.harmonic, keptBasis.basis, hz, sweep.watch) };
     }
-    else result = solveStatic(mesh, studyOf(msg.model));
+    else result = solveStatic(mesh, { ...studyOf(msg.model), ...(msg.model.warming?.kind === 'heat' ? { warming: heatWarming(mesh, msg.model, msg.heatFor) } : {}) });
   } catch (err) { error = err instanceof Error ? err.message : String(err); }
   const t2 = performance.now();
   const out: MeshOut | null = mesh ? { x: mesh.x, y: mesh.y, tri: mesh.tri, corners: mesh.corners, segs: Object.fromEntries(mesh.segs), minAngle: mesh.minAngle } : null;
