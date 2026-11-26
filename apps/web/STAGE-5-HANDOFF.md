@@ -15190,3 +15190,13 @@ stats.ts' norminv), **ellipke** (AGM), **expint** (E₁: series below 1, continu
 fractions); **chebcoeffs / chebval / chebroots** (Chebyshev points of the first kind, Clenshaw, the colleague
 matrix's eigenvalues polished by Newton on the series: `eig` alone gave 1e-4). gammainc / betainc came in M556; vpa
 was already there (sym-lab.ts). Tests: tabulated values to 10–14 digits, the J_{5/2} closed form, matrix identities.
+
+## M559: Hyperion: text, dates and maps (the Octave packages' fourth wave, 26 Nov)
+
+The Octave packages' fourth wave (strings, miscellaneous, financial dates, containers), written fresh in `src/lib/lab/text-lab.ts` (no Octave code).
+
+- **Text:** `strjust`, `validatestring`, `dec2base` / `base2dec`, `typecast`, `num2hex` / `hex2num`, `textscan`, `strread`.
+- **Dates:** `datenum` (serial days, day 1 = 1 Jan year 0, as MATLAB), `weekday`, `eomday`, `calendar`, `addtodate`.
+- **Maps:** `containers.Map(keys, values)` and `dictionary`; `m(key)` reads, `m(key) = v` writes (a map is a handle: every copy sees the change), `keys`, `values`, `isKey`, `remove`, `numEntries`, `m.Count`.
+- **How maps hook in:** a `Struct` with `keyed` set; `interp.ts` has `keyHooks` (get/set) checked before ordinary struct indexing, like `indexHooks`. `containers` returns a struct whose `Map` field is the builtin named `containers.Map`, so `containers.Map(...)` works without new syntax. Help needs a line for every builtin key, that one included.
+- Tests: `text.test.ts`.

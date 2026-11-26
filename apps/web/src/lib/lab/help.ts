@@ -337,6 +337,28 @@ rats | s = rats(x) | x written as fractions.
 chebcoeffs | c = chebcoeffs(@f, n, [a b]) | The Chebyshev series of f on [a, b] to degree n (chebfun's idea: a function as a few numbers).
 chebval | y = chebval(c, x, [a b]) | A Chebyshev series' values.
 chebroots | r = chebroots(c, [a b]) | The real roots of a Chebyshev series in its interval.
+strjust | strjust(s, 'right') | Text moved right, left or to the 'center' within its width.
+validatestring | v = validatestring('app', {'apple', 'banana'}) | The option a word starts (any case), or an error naming the choices.
+dec2base | dec2base(d, base, len) | A whole number in any base from 2 to 36, as text.
+base2dec | base2dec('FF', 16) | Text in a base back to a number.
+typecast | typecast(x, 'uint32') | The same bytes read as another number type.
+num2hex | num2hex(x) | A double's 16 hex digits.
+hex2num | hex2num('400921fb54442d18') | 16 hex digits back to the double.
+textscan | C = textscan(text, '%s %f', 'Delimiter', ',') | Reads delimited text into a cell: one column per field (%*… skips).
+strread | [a, b] = strread(text, '%s %f') | Like textscan, each field its own output.
+datenum | n = datenum(2026, 11, 26) or datenum('2026-11-26 14:30') | A date as MATLAB's day number (1 = 1 January, year 0).
+weekday | [n, name] = weekday(d) | The day of the week (1 = Sunday) and its short name.
+eomday | eomday(y, m) | The last day of a month.
+calendar | C = calendar(y, m) | A month as 6 weeks × 7 days (Sunday first).
+addtodate | addtodate(d, n, 'month') | A date moved by years, months, weeks, days, hours, minutes or seconds (month ends kept).
+containers | m = containers.Map({'a', 'b'}, {1, 2}) | A map from keys to values (shared by its copies): m('a'), m('c') = 3, keys(m), values(m), isKey(m, k), remove(m, k), m.Count.
+containers.Map | m = containers.Map(keys, values) or containers.Map('KeyType', 'double', 'ValueType', 'any') | Makes a map; see containers.
+dictionary | d = dictionary(keys, values) | A map that copies like a value: d(key), d(key) = v, keys, values, isKey, numEntries.
+keys | k = keys(m) | A map's keys, sorted.
+values | v = values(m) or values(m, {k1, k2}) | A map's values (in keys' order), or those of some keys.
+isKey | tf = isKey(m, k) | Whether a map has a key (or each of a cell of keys).
+remove | m = remove(m, k) | Takes a key (or several) out of a map.
+numEntries | n = numEntries(d) | How many keys a map has.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
 fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.

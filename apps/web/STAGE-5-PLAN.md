@@ -1945,6 +1945,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M556 | Hyperion: statistics tests and resampling (the Octave packages' first wave, 26 Nov) | **Done** (branch) | Distributions (t, χ², F, beta, gamma, binomial, Poisson), gammainc/betainc, t-tests, rank tests, ANOVA, Kruskal–Wallis, χ² fit, normfit, fitdist, bootstrap CIs; tested against printed tables. |
 | M557 | Hyperion: data files (the Octave packages' second wave, 26 Nov) | **Done** (branch) | JSON, YAML, XML structs, NetCDF (classic and 4), FITS images, zip/gzip, base64, MD5/SHA hashes and byte streams; tested against published values and files built to the specs. |
 | M558 | Hyperion: special maths (the Octave packages' third wave, 26 Nov) | **Done** (branch) | expm/sqrtm/logm/funm, Bessel J/Y/I/K and Airy of any order, lambertw, erfinv, ellipke, expint, legendre, perms, rat/rats, Chebyshev series with roots; tested against tabulated values. |
+| M559 | Hyperion: text, dates and maps (the Octave packages' fourth wave, 26 Nov) | **Done** (branch) | strjust, textscan, typecast, datenum, calendar, containers.Map and dictionary (text-lab.ts, keyHooks in interp.ts) |
 
 ### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
 
