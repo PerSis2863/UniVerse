@@ -875,6 +875,8 @@ tzero | tzero(G) | The zeros (as zero).
 dcgain | dcgain(G) | The steady value for a step of 1 (G at s = 0).
 isstable | isstable(G) | True when every pole is in the left half-plane.
 damp | damp(G) | Each pole's natural frequency and damping.
+pidtune | pidtune(G, type), pidtune(G, type, wc, opts), [C, info] = pidtune(…) | A tuned PID for plant G: type 'P', 'I', 'PI', 'PD', 'PID' or 'PIDF'; wc the crossover frequency (rad/s, chosen when not given); info has Kp, Ki, Kd, Tf, CrossoverFrequency, PhaseMargin, Stable.
+pidtuneOptions | pidtuneOptions('PhaseMargin', 45, 'N', 10) | Options for pidtune: the phase margin (degrees, 60 by default) and the derivative filter's N.
 stepinfo | stepinfo(G) | Rise time, settling time (2 %), overshoot (%), peak and peak time, steady state.
 step | step(G), step(G, T), [y, t] = step(G) | The response to a step of 1, drawn or returned.
 impulse | impulse(G), [y, t] = impulse(G) | The response to an impulse.

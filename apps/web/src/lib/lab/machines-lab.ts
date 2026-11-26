@@ -10,3 +10,4 @@ import './ev-lab';
 import './flight-lab';
 import './space-lab';
 import './rail-lab';
+import './pidtune';

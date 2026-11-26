@@ -15596,3 +15596,32 @@ The Octave packages' sixth and last wave, written fresh (no Octave code). With i
 - **impixel(I, cols, rows)** and **impixelinfo**: the figure gets `pixelinfo` (`data-pixelinfo` on its SVG, `data-px="W H flipped"` on each picture); the page reads the pixel under the pointer (`src/components/lab/pixel-info.ts`) and shows "Pixel info: (X, Y) = (c, r) value" under the figure. It shows the colour drawn (for uint8 RGB or grey pictures, their own values). The PNG is decoded through an `<img>`, not `fetch`: the site's policy blocks `data:` connections.
 - Not done: Octave's command form `test sq` (write `test('sq')`; adding the names to the command words would change how `test = 3` reads).
 - Tests: `octtest.test.ts`. Browser check: `scripts/checks/hyperion-octave6-ui.mjs` (light and dark, axe clean, no page errors).
+
+## M562 (26 Nov): Hyperion, the PID tuner and linearising a diagram
+
+The owner (26 Nov, four pictures of MATLAB's control-design page: the PID Tuner, hardware in the loop, production code,
+verification; "can you make all this Hyperion app"). Five items, M562–M566, all in Simulate → Blocks, a row of tools
+under the board (`BlocksBench.tsx`, `Tool`); this one is **Tune**.
+
+- **Blocks refactor:** `blocks.ts`'s `compile(dg, hold?)` returns the model's parts (`order`, `ns`, `x0`, `y`, `input`,
+  `outputs`, `deriv`, `step` = one RK4 step); `simulate` uses it. `hold` fixes chosen blocks' outputs (a loop opened
+  there; their states don't move and they aren't direct feedthrough). Later tools (real time, code, tests) build on it.
+- **Linearise** (`src/lib/sim/linearize.ts`): run to time `at`, hold block `from` at its output there, central
+  differences over every other state and the held input give A, B, C, D; `ssToTf` by Faddeev–LeVerrier. Saturations
+  pinned at a limit give 0 (the window says so).
+- **Tuning** (`src/lib/lab/pidtune.ts`, pure maths over `control.ts`): at wc the loop has gain 1 and the wanted phase
+  margin; a PID's third number from Ti = 4 Td; PIDF's filter Tf = Kd / (Kp N) folded in by correcting the aim. With no
+  wc: the most integral gain with the integral's corner at or below wc (z ≤ wc), at most ten times the plant's fastest
+  pole or zero, closed loop checked stable (1/(s+1)³ as a PI: Kp 1.15, Ki 0.454 at 0.525 rad/s; MATLAB 1.14, 0.454 at
+  0.52). P and I: the plant's own phase. `pidReport`: closed-loop step numbers (stepinfo), margins, stability, the
+  tracking, disturbance and effort transfer functions. **Trap:** `control.ts`'s time responses assume a monic
+  denominator (makeTf makes one); tf objects made by hand must be made monic (`monic` in `pidReport`), or steps are
+  nonsense (it gave 900 % overshoots). Language: `pidtune`, `pidtuneOptions` (registered from `machines-lab.ts`).
+- **The window** (`BlocksTune.tsx`, `tune.worker.ts`): the plant is the diagram as a PID block sees it (its output to the
+  block feeding its input, minus that, `minreal` 1e-5) or a typed transfer function; Type; Response time slider (wc =
+  auto × 10^±1), Transient behaviour (phase margin 85° → 30°); plots Reference tracking, Disturbance, Controller effort,
+  Bode; tables Controller parameters and Performance and robustness, Tuned beside the block's gains; **Update block**
+  writes Kp, Ki, Kd and N = 1/Tf. **Trap:** a worker that imports the engine's modules imports `@/lib/lab/interp`
+  first (the modules import each other; otherwise "Cannot access 'BUILTINS' before initialization").
+- `ScopePlot` moved to `scope-plot.tsx` (shared). Check: `scripts/checks/hyperion-control-ui.mjs` (ONLY=Tune).
+- Left out: MIMO, plants with delays, 2-DOF PIDs, tuning in discrete time.

@@ -48,8 +48,9 @@ export const MAX_STEPS = 200_000;
 
 export interface RunResult { t: number[]; scopes: Map<string, number[][]>; error?: string; capped?: boolean }
 
-/** Runs the diagram from 0 to its stop time. */
-export function simulate(dg: Diagram): RunResult {
+/** A diagram made ready to run: its states, the order its blocks are worked out in, and the functions a solver (or a
+ * linearisation, a real-time run, a test) steps. `hold` fixes some blocks' outputs (a loop opened there). */
+export function compile(dg: Diagram, hold?: Map<string, number>) {
   const blocks = dg.blocks, byId = new Map(blocks.map((b) => [b.id, b]));
   const into = new Map<string, Wire>();
   for (const w of dg.wires) if (byId.has(w.from) && byId.has(w.to)) into.set(`${w.to}:${w.in}`, w);
@@ -62,7 +63,7 @@ export function simulate(dg: Diagram): RunResult {
     else if (b.kind === 'tf') { const c = canon(coeffs(b.p.num), coeffs(b.p.den)); info.set(b.id, c); off.set(b.id, ns); ns += c.order; }
   }
   // Direct feedthrough: whether a block's output this instant needs its inputs.
-  const through = (b: Block) => !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'scope'].includes(b.kind) && !(b.kind === 'tf' && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
+  const through = (b: Block) => !hold?.has(b.id) && !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'scope'].includes(b.kind) && !(b.kind === 'tf' && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
   // Order: a block after the blocks feeding it directly.
   const order: Block[] = [], mark = new Map<string, 0 | 1 | 2>();
   const visit = (b: Block, path: string[]) => {
@@ -81,6 +82,7 @@ export function simulate(dg: Diagram): RunResult {
     for (const b of order) {
       const p = b.p;
       let v = 0;
+      if (hold?.has(b.id)) { y.set(b.id, hold.get(b.id)!); continue; }
       switch (b.kind) {
         case 'step': v = t >= n(p.time, 1) ? n(p.after, 1) : n(p.before); break;
         case 'sine': v = n(p.amplitude, 1) * Math.sin(2 * Math.PI * n(p.frequency, 1) * t + (n(p.phase) * Math.PI) / 180); break;
@@ -103,7 +105,7 @@ export function simulate(dg: Diagram): RunResult {
     const dx = new Float64Array(ns);
     for (const b of blocks) {
       const o = off.get(b.id);
-      if (o === undefined) continue;
+      if (o === undefined || hold?.has(b.id)) continue;
       if (b.kind === 'integrator') dx[o] = input(b, 0);
       else if (b.kind === 'pid') { const e = input(b, 0); dx[o] = e; dx[o + 1] = n(b.p.N, 100) * (e - x[o + 1]); }
       else if (b.kind === 'tf') {
@@ -113,20 +115,31 @@ export function simulate(dg: Diagram): RunResult {
     }
     return dx;
   };
-  const x = new Float64Array(ns);
-  for (const b of blocks) if (b.kind === 'integrator') x[off.get(b.id)!] = n(b.p.initial);
+  const x0 = new Float64Array(ns);
+  for (const b of blocks) if (b.kind === 'integrator') x0[off.get(b.id)!] = n(b.p.initial);
+  /** One 4th-order Runge–Kutta step of h from t (x changed in place). */
+  const step = (t: number, x: Float64Array, h: number) => {
+    const k1 = deriv(t, x), x2 = x.map((v, i) => v + (h / 2) * k1[i]);
+    const k2 = deriv(t + h / 2, x2), x3 = x.map((v, i) => v + (h / 2) * k2[i]);
+    const k3 = deriv(t + h / 2, x3), x4 = x.map((v, i) => v + h * k3[i]);
+    const k4 = deriv(t + h, x4);
+    for (let i = 0; i < ns; i++) x[i] += (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+  };
+  return { blocks, byId, into, off, info, order, ns, x0, y, input, outputs, deriv, step };
+}
+export type Model = ReturnType<typeof compile>;
+
+/** Runs the diagram from 0 to its stop time. */
+export function simulate(dg: Diagram): RunResult {
+  const m = compile(dg), { blocks, into, input, x0: x } = m;
   const h = Math.max(1e-6, dg.dt), want = Math.ceil(dg.stop / h - 1e-9), steps = Math.min(MAX_STEPS, want);
   const every = Math.max(1, Math.floor(steps / 2000)), t: number[] = [], scopes = new Map<string, number[][]>();
   for (const b of blocks) if (b.kind === 'scope') scopes.set(b.id, Array.from({ length: KINDS.scope.ins(b.p) }, () => []));
-  const record = (tt: number) => { outputs(tt, x); t.push(tt); for (const b of blocks) if (b.kind === 'scope') scopes.get(b.id)!.forEach((arr, i) => arr.push(into.has(`${b.id}:${i}`) ? input(b, i) : NaN)); };
+  const record = (tt: number) => { m.outputs(tt, x); t.push(tt); for (const b of blocks) if (b.kind === 'scope') scopes.get(b.id)!.forEach((arr, i) => arr.push(into.has(`${b.id}:${i}`) ? input(b, i) : NaN)); };
   for (let k = 0; k < steps; k++) {
     const tk = k * h;
     if (k % every === 0) record(tk);
-    const k1 = deriv(tk, x), x2 = x.map((v, i) => v + (h / 2) * k1[i]);
-    const k2 = deriv(tk + h / 2, x2), x3 = x.map((v, i) => v + (h / 2) * k2[i]);
-    const k3 = deriv(tk + h / 2, x3), x4 = x.map((v, i) => v + h * k3[i]);
-    const k4 = deriv(tk + h, x4);
-    for (let i = 0; i < ns; i++) x[i] += (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+    m.step(tk, x, h);
     if (!x.every(Number.isFinite)) return { t, scopes, error: `The model blew up at t = ${+tk.toPrecision(3)} s (a value became infinite): the loop is unstable or the step is too big.` };
   }
   record(steps * h);

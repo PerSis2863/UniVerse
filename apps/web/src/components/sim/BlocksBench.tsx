@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 import { tfInline } from '@/lib/lab/lti-text';
 import { blockId, coeffs, EXAMPLES, KINDS, MAX_STEPS, newBlock, readDiagram, type Block, type BlockKind, type Diagram } from '@/lib/sim/blocks';
 import { NumField, ui } from './bench-ui';
+import { fmt, ScopePlot } from './scope-plot';
+import { BlocksTune } from './BlocksTune';
+import { Segmented } from '@/components/ui/Segmented';
 import type { FromBlocks, ToBlocks } from './blocks.worker';
 
 // Hyperion Simulate → Blocks (M415): model-based design. Add blocks from the library, drag them about, drag from a
@@ -14,6 +17,7 @@ import type { FromBlocks, ToBlocks } from './blocks.worker';
 // diagram runs as you build it (src/lib/sim/blocks.ts, in a worker) and every Scope block draws its inputs below.
 
 const KEEP = 'uv-sim-blocks';
+type Tool = 'scopes' | 'tune';
 const VW = 760, VH = 340, BW = 88, SNAP = 10;
 const height = (b: Block) => Math.max(54, 18 * (KINDS[b.kind].ins(b.p) + 1));
 const inPort = (b: Block, i: number) => ({ x: b.x, y: b.y + (height(b) * (i + 1)) / (KINDS[b.kind].ins(b.p) + 1) });
@@ -38,7 +42,6 @@ const FIELDS: Record<BlockKind, Field[]> = {
   scope: [],
 };
 
-const fmt = (v: number) => (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : String(+v.toPrecision(4)));
 function summary(b: Block): string {
   const p = b.p, v = (k: string) => fmt(Number(p[k]));
   switch (b.kind) {
@@ -83,46 +86,6 @@ function Glyph({ b }: { b: Block }) {
   }
 }
 
-/** Nice round tick values from lo to hi. */
-function ticks(lo: number, hi: number, count = 5) {
-  if (!(hi > lo)) { hi = lo + 1; lo -= 1; }
-  const raw = (hi - lo) / count, p = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].map((k) => k * p).find((k) => k >= raw) ?? raw;
-  const out: number[] = [];
-  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(+v.toPrecision(12));
-  return out;
-}
-
-function ScopePlot({ title, t, traces, colours }: { title: string; t: number[]; traces: { label: string; v: number[] }[]; colours: string[] }) {
-  const PW = 900, PH = 240, L = 58, R = 14, T = 10, Bt = 40;
-  const all = traces.flatMap((tr) => tr.v.filter(Number.isFinite));
-  const lo0 = all.length ? Math.min(...all) : -1, hi0 = all.length ? Math.max(...all) : 1, padY = (hi0 - lo0) * 0.08 || Math.abs(hi0) * 0.1 || 1;
-  const yt = ticks(lo0 - padY, hi0 + padY), lo = Math.min(yt[0], lo0 - padY), hi = Math.max(yt.at(-1)!, hi0 + padY);
-  const tEnd = t.at(-1) ?? 1, xt = ticks(0, tEnd, 6).filter((v) => v <= tEnd + 1e-9);
-  const X = (tt: number) => L + (tt / (tEnd || 1)) * (PW - L - R), Y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (PH - T - Bt);
-  return (
-    <figure className="min-w-0 rounded-lg border border-zinc-200 p-2 dark:border-white/10">
-      <figcaption className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-300">
-        <span className="font-semibold text-zinc-900 dark:text-white">{title}</span>
-        {traces.map((tr, i) => {
-          const v = tr.v.filter(Number.isFinite);
-          return <span key={i} className="inline-flex items-center gap-1"><span className="h-2 w-3 rounded-sm" style={{ background: colours[i] }} aria-hidden />{tr.label}{v.length > 0 && <span className="font-mono tabular-nums text-zinc-500 dark:text-zinc-400">ends {fmt(v.at(-1)!)}, peak {fmt(Math.max(...v))}</span>}</span>;
-        })}
-      </figcaption>
-      <svg viewBox={`0 0 ${PW} ${PH}`} className="h-auto w-full" role="img" aria-label={`${title}: ${traces.map((tr) => { const v = tr.v.filter(Number.isFinite); return `${tr.label} ${v.length ? `ends at ${fmt(v.at(-1)!)}` : 'not wired'}`; }).join('; ')}`}>
-        {yt.map((v) => <g key={`y${v}`}><line x1={L} x2={PW - R} y1={Y(v)} y2={Y(v)} className={v === 0 ? 'stroke-zinc-400 dark:stroke-zinc-500' : 'stroke-zinc-200 dark:stroke-white/10'} strokeWidth={1} /><text x={L - 6} y={Y(v) + 4} fontSize={12} textAnchor="end" className="fill-zinc-600 font-mono dark:fill-zinc-300">{fmt(v)}</text></g>)}
-        {xt.map((v) => <g key={`x${v}`}><line x1={X(v)} x2={X(v)} y1={T} y2={PH - Bt} className="stroke-zinc-200 dark:stroke-white/10" strokeWidth={1} /><text x={X(v)} y={PH - Bt + 16} fontSize={12} textAnchor="middle" className="fill-zinc-600 font-mono dark:fill-zinc-300">{fmt(v)}</text></g>)}
-        <text x={(L + PW - R) / 2} y={PH - 3} fontSize={12} textAnchor="middle" className="fill-zinc-500 dark:fill-zinc-400">time (s)</text>
-        {traces.map((tr, i) => {
-          // At most ~1,200 points drawn (the run keeps up to ~2,000).
-          const every = Math.max(1, Math.ceil(t.length / 1200)), pts: string[] = [];
-          for (let k = 0; k < t.length; k += every) if (Number.isFinite(tr.v[k])) pts.push(`${X(t[k]).toFixed(1)},${Y(Math.max(lo, Math.min(hi, tr.v[k]))).toFixed(1)}`);
-          return <polyline key={i} points={pts.join(' ')} fill="none" stroke={colours[i]} strokeWidth={1.8} strokeLinejoin="round" />;
-        })}
-      </svg>
-    </figure>
-  );
-}
-
 export function BlocksBench() {
   const dark = useDarkMode(), colours = dark ? DARK : LIGHT;
   const [dg, setDgNow] = useState<Diagram>(() => { try { return readDiagram(JSON.parse(localStorage.getItem(KEEP) ?? 'null')); } catch { return EXAMPLES[0].make(); } });
@@ -131,6 +94,7 @@ export function BlocksBench() {
   const [result, setResult] = useState<FromBlocks | null>(null);
   const [text, setText] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(0);
+  const [tool, setTool] = useState<Tool>('scopes');
   const svg = useRef<SVGSVGElement>(null), keepTimer = useRef(0), worker = useRef<Worker | null>(null), asked = useRef(0);
   const setDg = (f: (d: Diagram) => Diagram) => setDgNow((d) => {
     const next = f(d);
@@ -208,6 +172,7 @@ export function BlocksBench() {
     // Fewer inputs (a sum's signs, a scope's inputs): wires into the ones gone go too.
     return { ...d, blocks, wires: d.wires.filter((w) => w.to !== id || w.in < KINDS[b.kind].ins(b.p)) };
   });
+  const setParams = (id: string, p: Record<string, number>) => setDg((d) => ({ ...d, blocks: d.blocks.map((b) => (b.id === id ? { ...b, p: { ...b.p, ...p } } : b)) }));
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -369,13 +334,13 @@ export function BlocksBench() {
             {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!).x},${outPort(byId.get(drag.from)!).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
           </svg>
         </div>
-        <div role="region" aria-label="Scopes" tabIndex={0} className="max-h-[48%] shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10" data-no-motion>
-          <p className="mb-2 flex flex-wrap items-center gap-x-3 text-xs text-zinc-600 dark:text-zinc-300">
-            <span className="font-semibold text-zinc-900 dark:text-white">Scopes</span>
-            {result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
-            {stale && pending > 0 && <span>running…</span>}
-          </p>
-          {scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
+        <div role="region" aria-label={tool === 'scopes' ? 'Scopes' : 'PID tuner'} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-600 dark:text-zinc-300">
+            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }]} />
+            {tool === 'scopes' && result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
+            {tool === 'scopes' && stale && pending > 0 && <span>running…</span>}
+          </div>
+          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               {scopes.map((s) => {
                 const traces = Array.from({ length: KINDS.scope.ins(s.p) }, (_, i) => {
