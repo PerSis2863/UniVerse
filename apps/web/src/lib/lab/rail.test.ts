@@ -330,21 +330,28 @@ describe('Hyperion railways (M491)', () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     expect(() => lab.run("railLine('intercity', trainModel('intercity'), [0], 'Supply', 'ac25', 'Soil', 2000, 'Topsoil', [20 0])")).toThrow(/Topsoil/);
   });
-  it('the soil on DC lines (M491r)', () => {
-    const m = { ...rl.SUPPLIES.metro(5200), subs: [0, 5200], leak: 3 }, at = (o: object) => rl.dcStray({ ...m, ...o }, [1000], [2000]);
-    // No soil given: as before. Even 100 Ω·m ground: 2% near the surface, the spreading resistance ρ·ln(667)/π per km.
+  it('the soil on DC lines (M491r), its depth from the line (M491s)', () => {
+    const m = { ...rl.SUPPLIES.metro(5200), subs: [0, 5200], leak: 3 }, at = (o: object, x = 1000) => rl.dcStray({ ...m, ...o }, [x], [2000]);
+    // No soil given: as before. Even 100 Ω·m ground: the spreading resistance ρ·ln(2L/3)/π per km, L the distance.
     expect(Number.isNaN(at({}).shallow)).toBe(true);
-    const even = rl.dcSoil({ soil: 100 })!;
-    expect(even.shallow).toBeCloseTo(0.02, 12); expect(even.spread).toBeCloseTo((100 * Math.log(2000 / 3)) / Math.PI / 1000, 12);
+    const even = rl.dcSoil({ soil: 100 }, 1000)!;
+    expect(even.depth).toBe(500); expect(even.shallow).toBeCloseTo(2 / 500, 12); expect(even.spread).toBeCloseTo((100 * Math.log(2000 / 3)) / Math.PI / 1000, 12);
     expect(at({ soil: 100 }).stray).toBeLessThan(at({}).stray);
-    // Dry rock lets out less; a wet clay top over it keeps a third of what leaks near the pipes.
+    // Dry rock lets out less; a wet clay top over it keeps more near the pipes.
     expect(at({ soil: 2000 }).stray).toBeLessThan(at({ soil: 20 }).stray);
-    const clay = rl.dcSoil({ soil: 2000, topsoil: { rho: 20, depth: 5 } })!;
+    const clay = rl.dcSoil({ soil: 2000, topsoil: { rho: 20, depth: 5 } }, 200)!;
     expect(clay.shallow).toBeCloseTo((2 / 20) / (5 / 20 + 95 / 2000), 12);
-    expect(rl.dcSoil({ soil: 20, topsoil: { rho: 2000, depth: 5 } })!.shallow).toBeLessThan(0.001);
+    expect(rl.dcSoil({ soil: 20, topsoil: { rho: 2000, depth: 5 } }, 200)!.shallow).toBeLessThan(0.001);
+    // The depth follows the train's distance from its substation: near it, shallow; far out, deep (at least 10 m).
+    const lay = { soil: 2000, topsoil: { rho: 20, depth: 5 } };
+    expect(at(lay, 100).shallow).toBeGreaterThan(at(lay, 2000).shallow); expect(rl.dcSoil(lay, 1)!.depth).toBe(rl.DC_MIN_DEPTH);
+    // Two trains: the share is weighted by each one's stray current.
+    const two = rl.dcStray({ ...m, ...lay }, [100, 2000], [2000, 2000]), a = at(lay, 100), b = at(lay, 2000);
+    expect(two.shallow).toBeCloseTo((a.stray * a.shallow + b.stray * b.shallow) / (a.stray + b.stray), 9);
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     lab.run("[t, r, s] = railLine('metro', trainModel('metro'), [0], 'Supply', 'metro', 'Soil', 2000, 'Topsoil', [20 5]); q = s.ShallowShare;");
-    expect(toMat(lab.vars.get('q')!).d[0]).toBeCloseTo(clay.shallow, 12);
+    const q = toMat(lab.vars.get('q')!).d[0];
+    expect(q).toBeGreaterThan(0); expect(q).toBeLessThan(1);
   });
   it('more than two soil layers (M491q)', () => {
     // A list of one is the single layer; two equal layers are one of their total depth; a middle layer sits between.

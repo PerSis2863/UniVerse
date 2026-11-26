@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
-import { MPDB_DEPTH, SEAT_X, WHEEL_GAP, frontalCrash, sideCrash, type Vehicle } from '@/lib/lab/vehicle';
+import { CAR_WIDTH, FACE_CELL, FACE_Z, MPDB_DEPTH, MPDB_ZONE, MPDB_ZONE_Z, SEAT_X, WHEEL_GAP, frontalCrash, sideCrash, type Vehicle } from '@/lib/lab/vehicle';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Vehicle → Crash (M486j): a head-on crash into a wall or another car, the front person
@@ -95,6 +95,29 @@ export function CrashView({ car }: { car: Vehicle }) {
       // Where the blow came from (the struck side, at the aim).
       const ax = ox + sc2 * SEAT_X[sideAim], ay = oy - (sc2 * cw) / 2;
       g.fillStyle = '#dc2626'; g.beginPath(); g.moveTo(ax, ay - 1); g.lineTo(ax - 4, ay - 9); g.lineTo(ax + 4, ay - 9); g.fill();
+      // M486w: where they touched again (an amber dot on the struck car where it was then).
+      const s2 = sc.second;
+      if (s2) {
+        const k = Math.min(p.t.length - 1, Math.round(s2.t / 0.05)), a = (p.psi[k] * Math.PI) / 180;
+        const wx = p.x[k] + Math.cos(a) * s2.x - Math.sin(a) * s2.y, wy = p.y[k] + Math.sin(a) * s2.x + Math.cos(a) * s2.y;
+        g.fillStyle = '#f59e0b'; g.beginPath(); g.arc(ox + sc2 * wx, oy + sc2 * wy, 4, 0, 2 * Math.PI); g.fill();
+      }
+    }
+    // M486y: the moving barrier's dented face, as scanned (seen from the car: its outer side at the left), deeper darker,
+    // Euro NCAP's measuring area dashed.
+    if (!side && into === 'mpdb' && c.face.length && W > 360) {
+      const f = c.face, rows = f.length, cols = f[0].length, px = 3, bw = Math.max(cols * px + 16, 170), bh = rows * px + 30, bx = W - R - bw - 6, by = T + 4, fx = bx + 8, fy = by + 22;
+      g.fillStyle = dark ? 'rgba(39,39,42,0.92)' : 'rgba(250,250,250,0.92)'; g.strokeStyle = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+      g.beginPath(); g.roundRect(bx, by, bw, bh, 8); g.fill(); g.stroke();
+      g.fillStyle = dark ? '#a1a1aa' : '#52525b'; g.fillText(`Barrier face: ${(c.faceSD * 1000).toFixed(0)} mm uneven`, bx + 8, by + 14);
+      for (let r = 0; r < rows; r++) for (let i = 0; i < cols; i++) {
+        const q = Math.min(1, f[r][i] / MPDB_DEPTH);
+        g.fillStyle = q <= 0 ? (dark ? '#3f3f46' : '#e4e4e7') : `rgba(124,58,237,${(0.15 + 0.85 * q).toFixed(3)})`;
+        g.fillRect(fx + i * px, fy + r * px, px, px);
+      }
+      const zx = (y: number) => fx + (y / FACE_CELL) * px, zy = (z: number) => fy + ((FACE_Z[1] - z) / FACE_CELL) * px;
+      g.strokeStyle = '#dc2626'; g.setLineDash([3, 2]); g.lineWidth = 1;
+      g.strokeRect(zx(MPDB_ZONE[0]), zy(MPDB_ZONE_Z[1]), zx(MPDB_ZONE[1] * CAR_WIDTH) - zx(MPDB_ZONE[0]), zy(MPDB_ZONE_Z[0]) - zy(MPDB_ZONE_Z[1])); g.setLineDash([]);
     }
     if (!Number.isNaN(d.bagAt) && d.bagAt <= tMax) { g.fillStyle = '#f59e0b'; g.beginPath(); g.arc(X(d.bagAt), Y(0), 5, 0, 2 * Math.PI); g.fill(); g.fillText('airbag fires', X(d.bagAt) + 7, Y(0) - 6); }
   });
@@ -105,6 +128,7 @@ export function CrashView({ car }: { car: Vehicle }) {
   const sideFacts: [string, string][] = [
     ['Result', `${sc.risk === 'low' ? 'Likely to walk away' : sc.risk === 'serious' ? 'Serious injury likely' : 'Severe injury likely'} (rough)`],
     ['The side crushed · the car shoved', `${(sc.intrusion * 100).toFixed(0)} cm · ${(sc.dv * 3.6).toFixed(0)} km/h sideways`],
+    ['Touched again', sc.striker ? (sc.second ? `after ${sc.second.t.toFixed(2)} s at ${(sc.second.closing * 3.6).toFixed(0)} km/h: shoved ${(sc.second.dv * 3.6).toFixed(0)} km/h more${sc.touches > 1 ? ` (${sc.touches} times)` : ''}` : 'no: they came apart') : 'a pole doesn’t follow'],
     ['Chest (3 ms) · ribs squeezed', `${sc.chestG.toFixed(0)} g · ${(sc.ribs * 1000).toFixed(0)} mm (good under 28, poor past 50)`],
     ['The car after the blow', `spinning ${sc.spin.toFixed(0)}°/s${sc.along > 0.05 ? `, shoved ${(sc.along * 3.6).toFixed(0)} km/h along` : ''}`],
     ['Head', sc.headG > 0.5 ? `${sc.headG.toFixed(0)} g${sc.headHit ? (sideSeat === 'beside' ? ', against the other person’s head' : ', against the window side') : ', on the curtain airbag'}` : 'nothing hit'],
@@ -118,7 +142,7 @@ export function CrashView({ car }: { car: Vehicle }) {
     ['Front airbag', rear ? 'none in the back' : Number.isNaN(c.bagAt) ? (guard === 'none' || guard === 'belt' ? 'none fitted' : 'didn’t fire') : `fired at ${(c.bagAt * 1000).toFixed(0)} ms${c.late ? ' (late)' : ''}${c.slidOff ? ', the head slid off its edge' : ''}`],
     ['Into the cabin', c.intrusion > 0.005 ? `${(c.intrusion * 100).toFixed(0)} cm (footwell and dashboard)` : 'nothing'],
     // M486u: Euro NCAP's compatibility scores for the moving barrier.
-    ...(into === 'mpdb' ? [['Barrier face dented · trolley OLC', `${(c.faceSD * 1000).toFixed(0)} mm uneven (deepest ${(c.faceMax * 100).toFixed(0)} cm${c.bottomed ? ', bottomed out' : ''}) · ${c.olc.toFixed(0)} g`], ['Compatibility (Euro NCAP)', `−${c.compat.toFixed(1)} of 8 points${c.compat < 1 ? ': kind to the other car' : c.compat > 5 ? ': hard on the other car' : ''}`]] as [string, string][] : []),
+    ...(into === 'mpdb' ? [['Barrier face dented · trolley OLC', `${(c.faceSD * 1000).toFixed(0)} mm uneven (deepest ${(c.faceMax * 100).toFixed(0)} cm${c.bottomed ? ', bottomed out' : ''}) · ${c.olc.toFixed(0)} g`], ['Compatibility (Euro NCAP)', `−${c.compat.toFixed(1)} of 8 points (2026 rules: −${(c.compatShare * 100).toFixed(0)}% of the test's score)${c.compat < 1 ? ': kind to the other car' : c.compat > 5 ? ': hard on the other car' : ''}`]] as [string, string][] : []),
     ['Pushed from behind', seat === 'pushed' ? `${(c.backLoad / 1000).toFixed(1)} kN into the seat's back` : 'nobody unbelted behind'],
   ];
   const facts = side ? sideFacts : frontFacts;

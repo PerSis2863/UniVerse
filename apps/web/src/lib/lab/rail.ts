@@ -244,7 +244,7 @@ export const SUPPLIES: Record<string, (L: number) => Supply> = {
 };
 /** Substations every `every` metres from the start, the last at the end. */
 export function spaced(L: number, every: number) { const n = Math.max(1, Math.round(L / every)); return Array.from({ length: n + 1 }, (_, i) => (L * i) / n); }
-export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number; neutral: number; stuck: number; soc: number[][]; storedKwh: number; returnedKwh: number; emf: number[]; maxEmf: number; maxRail: number; strayAs: number }
+export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number; neutral: number; stuck: number; soc: number[][]; storedKwh: number; returnedKwh: number; emf: number[]; maxEmf: number; maxRail: number; strayAs: number; shallowAs: number }
 /** One moment: the voltage at each train and what each substation gives, for trains at `s` drawing `p` (W). */
 export function solveSupply(sup: Supply, s: number[], p: number[], soc: number[] = [], cable?: Cable) {
   if (sup.ac) return sup.storage ? acWithStorage(sup, s, p, soc, cable) : solveAc(sup, s, p, cable);
@@ -311,11 +311,11 @@ export function solveSupply(sup: Supply, s: number[], p: number[], soc: number[]
     if (i < n - 1) loss += G[i] * (V[i] - V[i + 1]) ** 2;
   });
   const dc = dcStray(sup, s, s.map((_, k) => (given[k] > 0 ? given[k] / Math.max(volts[k], 1) : 0)));
-  return { volts, subPower: subP, loss, given, storePower, emf: 0, rail: dc.rail, stray: dc.stray };
+  return { volts, subPower: subP, loss, given, storePower, emf: 0, rail: dc.rail, stray: dc.stray, shallowStray: dc.shallowStray };
 }
 /** A supply for `railLine`: returns the step function it calls and the log it fills. */
 export function supplyFor(sup: Supply, dt: number, cable?: Cable) {
-  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0, neutral: 0, stuck: 0, soc: [], storedKwh: 0, returnedKwh: 0, emf: [], maxEmf: 0, maxRail: 0, strayAs: 0 };
+  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0, neutral: 0, stuck: 0, soc: [], storedKwh: 0, returnedKwh: 0, emf: [], maxEmf: 0, maxRail: 0, strayAs: 0, shallowAs: 0 };
   let time = 0;
   const gap: number[] = [], soc = (sup.storage?.at ?? []).map(() => 0.5);
   const step = (s: number[], p: number[]) => {
@@ -329,7 +329,7 @@ export function supplyFor(sup: Supply, dt: number, cable?: Cable) {
       });
       log.soc.push(soc.slice());
     }
-    log.emf.push(r.emf); log.maxEmf = Math.max(log.maxEmf, r.emf); log.maxRail = Math.max(log.maxRail, ...r.rail); log.strayAs += r.stray * dt;
+    log.emf.push(r.emf); log.maxEmf = Math.max(log.maxEmf, r.emf); log.maxRail = Math.max(log.maxRail, ...r.rail); log.strayAs += r.stray * dt; log.shallowAs += (r.shallowStray || 0) * dt;
     const back = p.reduce((q, x) => q + Math.max(0, -x), 0), givenBack = r.given.reduce((q, x) => q + Math.max(0, -x), 0);
     log.t.push(time); log.volts.push(r.volts); log.subPower.push(r.subPower.map((x) => x / 1000)); log.lossKw.push(r.loss / 1000);
     const running = r.volts.filter((_, k) => p[k] !== 0);
@@ -422,18 +422,21 @@ export function soilRho(sup: Pick<Supply, 'soil' | 'topsoil'>): number | undefin
   }
   return rho;
 }
-// M491r: the soil on DC lines. Direct current has no Carson's depth: leaking from the rails it spreads through the
-// ground down to roughly `DC_DEPTH` (100 m; rough), the layers side by side as on AC. Two things follow: (1) getting
-// into the ground costs the spreading resistance of a long strip on it, ρ·ln(2L/w)/π per length (L a km, w the 3 m
-// ballast bed): ~0.2 Ω·km at 100 Ω·m, more than half the leakage of old track on dry rock, nothing much on wet clay;
-// it adds to the rails' leakage resistance. (2) the share of the stray current running in the top `PIPE_DEPTH` 2 m,
-// where pipes, cables and foundations lie (`shallow`): a wet clay top keeps it there, dry sand over clay sends it down.
-export const DC_DEPTH = 100, PIPE_DEPTH = 2;
-export function dcSoil(sup: Pick<Supply, 'soil' | 'topsoil'>) {
+// M491r: the soil on DC lines. Direct current has no Carson's depth. Two things follow: (1) getting into the ground
+// costs the spreading resistance of a long strip on it, ρ·ln(2L/w)/(π·L) for a strip L long (w the 3 m ballast bed),
+// written per km of track: ρ·ln(2L/w)/π/1000 Ω·km (~0.3 at 100 Ω·m for a 2 km stretch); it adds to the rails'
+// leakage resistance: dry rock lets out less, wet clay hardly changes it. (2) the share of the stray current running
+// in the top `PIPE_DEPTH` 2 m, where pipes, cables and foundations lie (`shallow`): a wet clay top keeps it there.
+// M491s: how deep it spreads comes from the line: the current goes into the ground near the train and comes out near
+// its substation, d apart, and between two such places half of it runs shallower than about d/2 (a uniform ground), so
+// each train's stray current fills the layers down to d/2 (at least `DC_MIN_DEPTH` 10 m), L = d (at least 50 m): a
+// train near its substation keeps its stray current shallow, one far out sends it deep. With layers that matters.
+export const PIPE_DEPTH = 2, DC_MIN_DEPTH = 10;
+export function dcSoil(sup: Pick<Supply, 'soil' | 'topsoil'>, dist = 2000) {
   const layers = layersOf(sup);
   if (!layers.length && sup.soil === undefined) return undefined;
-  const below = sup.soil ?? 100, rho = mixRho(layers, below, DC_DEPTH), top = mixRho(layers, below, PIPE_DEPTH);
-  return { rho, spread: (rho * Math.log(2000 / 3)) / Math.PI / 1000, shallow: ((PIPE_DEPTH / top) / (DC_DEPTH / rho)) };
+  const D = Math.max(DC_MIN_DEPTH, dist / 2), L = Math.max(50, dist), below = sup.soil ?? 100, rho = mixRho(layers, below, D), top = mixRho(layers, below, PIPE_DEPTH);
+  return { depth: D, rho, spread: (rho * Math.log((2 * L) / 3)) / Math.PI / 1000, shallow: Math.min(1, (PIPE_DEPTH / top) / (D / rho)) };
 }
 /** The AC line's own feeding impedance per km (M491o): the contact wire with the rails and the ground coming back. The
  * share of the current returning through the ground (the screening factor) runs at Carson's depth, so the soil changes
@@ -472,17 +475,18 @@ export function railVolts(sup: Supply, s: number[], amps: number[]) {
 // rails at both ends, so u = r·I·tanh(γd/2)/γ under the train and the stray current r·I/(r + r_g)·(1 − sech(γd/2)):
 // the short-section forms above when γd is small, and never more than r/(r + r_g) of I however poor the insulation.
 export function dcStray(sup: Supply, s: number[], amps: number[]) {
-  // M491r: the soil's spreading resistance in series with the ballast's leakage; `shallow` the share near the surface.
-  const soil = dcSoil(sup), shallow = soil?.shallow ?? NaN;
-  const two = sup.crossBond ? 2 : 1, rr = (0.4 * sup.rline) / two, R = ((sup.leak ?? 10) + (soil?.spread ?? 0)) / two, rg = sup.earth;
-  const d = s.map((x) => Math.min(...sup.subs.map((y) => Math.abs(y - x))) / 1000);
-  if (rg === undefined) return { shallow, rail: amps.map((I, k) => (I * rr * d[k]) / 2), stray: amps.reduce((q, I, k) => q + (I * rr * d[k] * d[k]) / (8 * R), 0) };
-  const gm = Math.sqrt((rr + rg) / R);
-  return {
-    shallow,
-    rail: amps.map((I, k) => (gm * d[k] > 1e-9 ? (rr * I * Math.tanh((gm * d[k]) / 2)) / gm : (I * rr * d[k]) / 2)),
-    stray: amps.reduce((q, I, k) => q + ((rr * I) / (rr + rg)) * (1 - 1 / Math.cosh((gm * d[k]) / 2)), 0),
-  };
+  // M491r–M491s: each train's own soil (its depth from its distance to the substation): the spreading resistance in
+  // series with the ballast's leakage; `shallow` the stray current's share near the surface, weighted by each train's.
+  const two = sup.crossBond ? 2 : 1, rr = (0.4 * sup.rline) / two, rg = sup.earth;
+  const d = s.map((x) => Math.min(...sup.subs.map((y) => Math.abs(y - x))) / 1000), soils = d.map((x) => dcSoil(sup, x * 1000));
+  const R = soils.map((q) => ((sup.leak ?? 10) + (q?.spread ?? 0)) / two);
+  const each = amps.map((I, k) => {
+    if (rg === undefined) return { rail: (I * rr * d[k]) / 2, stray: (I * rr * d[k] * d[k]) / (8 * R[k]) };
+    const gm = Math.sqrt((rr + rg) / R[k]);
+    return { rail: gm * d[k] > 1e-9 ? (rr * I * Math.tanh((gm * d[k]) / 2)) / gm : (I * rr * d[k]) / 2, stray: ((rr * I) / (rr + rg)) * (1 - 1 / Math.cosh((gm * d[k]) / 2)) };
+  });
+  const stray = each.reduce((q, e) => q + e.stray, 0), near = soils[0] ? each.reduce((q, e, k) => q + e.stray * soils[k]!.shallow, 0) : NaN;
+  return { rail: each.map((e) => e.rail), stray, shallowStray: near, shallow: stray > 0 ? near / stray : soils[0]?.shallow ?? NaN };
 }
 export const IRON_KG_PER_AYEAR = 9.13;
 /** AC with storage units: each unit a load at its place (+ charging, − giving), its power from the voltage there, the
@@ -551,7 +555,7 @@ function solveAc(sup: Supply, s: number[], p: number[], cable: Cable = { sep: 30
     }
   });
   // A substation's power from the grid: Re(E·conj(I)); negative while braking trains feed back more than others draw.
-  return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given, storePower: [] as number[], emf, rail: railVolts(sup, s, I.map(cabs)), stray: 0 };
+  return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given, storePower: [] as number[], emf, rail: railVolts(sup, s, I.map(cabs)), stray: 0, shallowStray: 0 };
 }
 
 // ——— Single track both ways, with a timetable (M491e) ———

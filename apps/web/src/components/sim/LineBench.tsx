@@ -126,7 +126,7 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     ['Lowest voltage', `${run.sup?.ac ? `${(Math.min(...lg.minVolt) / 1000).toFixed(1)} kV` : `${Math.min(...lg.minVolt).toFixed(0)} V`}${lg.tripped > 0 ? `, tripped ${lg.tripped.toFixed(0)} s` : ''}`],
     ['From the substations · lost', `${lg.fromSubsKwh.toFixed(0)} kWh · ${lg.lossKwh.toFixed(0)} kWh`],
     ...(run.sup && !run.sup.ac ? [['Rails to earth · stray current', `${lg.maxRail.toFixed(0)} V · ${((lg.strayAs / Math.max(lg.t.length * 0.5, 1e-9)) * 1000).toFixed(0)} mA`] as [string, string]] : []),
-    ...(run.sup && !run.sup.ac && dcSoil(run.sup) ? [['Stray current in the top 2 m (pipes)', `${((dcSoil(run.sup)!.shallow * lg.strayAs) / Math.max(lg.t.length * 0.5, 1e-9) * 1000).toFixed(0)} mA (${(dcSoil(run.sup)!.shallow * 100).toFixed(0)}%)`] as [string, string]] : []),
+    ...(run.sup && !run.sup.ac && dcSoil(run.sup) ? [['Stray current in the top 2 m (pipes)', `${((lg.shallowAs / Math.max(lg.t.length * 0.5, 1e-9)) * 1000).toFixed(0)} mA (${((lg.shallowAs / Math.max(lg.strayAs, 1e-12)) * 100).toFixed(0)}%)`] as [string, string]] : []),
     ...(run.sup?.ac ? [['Rails to earth, most', `${lg.maxRail.toFixed(0)} V${lg.maxRail > RAIL_LIMIT ? ' (over 60)' : ''}`] as [string, string]] : []),
     run.sup?.ac ? ['In a cable beside it, running · a fault', `${lg.maxEmf.toFixed(0)} V${lg.maxEmf > EMF_LIMIT ? ' (over 60)' : ''} · ${run.fault.toFixed(0)} V${run.fault > EMF_FAULT_LIMIT ? ' (over 430)' : ''}`]
       : run.sup?.storage ? ['Braking reused · burnt · stored', `${lg.regenUsedKwh.toFixed(0)} · ${lg.regenWastedKwh.toFixed(0)} · ${lg.storedKwh.toFixed(0)} kWh`]

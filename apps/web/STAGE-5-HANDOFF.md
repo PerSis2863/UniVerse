@@ -13560,6 +13560,52 @@ current in the top `PIPE_DEPTH` 2 m where pipes lie: 2% in even ground, 34% with
 with dry sand over clay. No soil given: as before. Language: railLine supply struct ShallowShare (DC). Window: Railway →
 Several trains: the soil choice now on DC lines too, and "Stray current in the top 2 m (pipes)". Rough: the 100 m.
 
+## M486w (26 Nov): Hyperion vehicles, a side crash: the two cars touching again
+
+The owner (M486t's left-out). `vehicle.ts` `strikerAfter` now steps both cars together after the blow (5 ms) as boxes
+(each car's length and width; `boxGap`, separating axes) and returns `{ path, striker, second, touches }`; `sideCrash`
+gains `second` (`Touch`: t, x and y on the struck car in its own frame, closing speed, the struck car's Δv) and
+`touches`. The striker's driver takes `REACT` 1 s to brake (rolling on at `COAST_G` 0.1 g), the struck car skids at μ·g
+at once, so the striker catches it up ~0.35 s later (about 6 km/h closing): once they've opened `REOPEN` 5 cm, any
+overlap while closing is met with restitution 0.1 along the least-overlap axis through the centres (no spin from it);
+a new touch counts only after they part again (in between it's pushing). The struck car now goes further (3.4 → 4.3 m
+square on); at 30° no second touch. Older tests changed: M486q's v²/2μg is checked on `slideAfter` alone, M486t's
+momentum over the first 0.05 s. Language: SecondTouchAt, SecondClosingSpeed, SecondSpeedChange, Touches. Window:
+"Touched again" and an amber dot in the "After" box. Not built: the second touch's spin, a striker that brakes before.
+
+## M486x (26 Nov): Hyperion vehicles, a caught foot holding someone half in
+
+The owner (M486v's left-out). `inside`: unbelted, a foot caught before they'd be flung out holds them half in while
+75 kg·ω²·r stays under `FOOT_HOLD` 1.5 kN (a hooked foot's grip, ~twice body weight; at first 3.5 kN, the ankle's
+strength, but then nobody was ever thrown out: the fling is 1.2–2.4 kN): `heldByFoot` (s), `partly`, no `thrownOut`;
+if the car then lands on a side or its roof, `bodyCrushed` (severe). Past it the foot pulls free (that pull on the
+ankle). The default car: held at 15–16 m/s trips, thrown clear at 22; the saloon (roll model) is held at 18, so
+M486g's test takes "thrown out or held". Language: HeldByFootAt, BodyCrushed (Seats: HeldByFoot, BodyCrushed). Window:
+Kerb → "Caught: foot · hand" says so.
+
+## M486y (26 Nov): Hyperion vehicles, the barrier face in two directions; Euro NCAP's own table
+
+The owner (M486u's left-outs). TB 027 Figure 2 (Euro NCAP's table of penalty by SD and OLC) matches M486u's reading
+exactly: `compatPenalty(sdMm, olcG, bottomed)` = 2·o + s·(2 + 4·o) (+2, at most 8), tested on its cells (its SD = 50%
+column at 36–39 g leaves the straight line every other column and its own 40 g follow, by up to 0.17: Euro NCAP's
+quirk, not used). CP 007 (2026) is the same table scaled to 25% of the test's score: `compatShare`. The face: 2 cm
+cells, 0.15–0.85 m up, across the overlap; `FRONT_PARTS` (rails 0.3 of the front's stiffness, beam 0.25, engine and
+gearbox 0.25, lower load path 0.1, grille and bonnet edge 0.1, each over its own rectangle), blurred by `FACE_SPREAD`
+0.1 m (without it every car bottomed out at ~230 mm SD); the honeycomb's N per metre of width spread up the face's
+0.7 m. Measured over 0.25–0.65 m up (Euro NCAP's area), every cell counted; bottoming out over a 2 × 2 block (4 × 4 cm).
+Figures now: 1,100 kg 81 mm, 23 g, −0.6; 1,500 kg 95 mm, 29 g, −1.9; 2,200 kg 102 mm, bottomed, 37 g, −6.3. Language:
+BarrierFace (matrix), CompatibilityShare2026. Window: the dented face drawn top right (violet deeper, the area dashed).
+Still rough: the shapes are a typical car's, ours.
+
+## M491s (26 Nov): Hyperion railways, how deep DC stray current spreads, from the line
+
+The owner (M491r's left-out). `dcSoil(sup, dist)`: between where the current goes into the ground (near the train)
+and comes out (near its substation), d apart, half of it runs shallower than ~d/2 in even ground, so each train's
+stray current fills the layers down to d/2 (at least `DC_MIN_DEPTH` 10 m), and the spreading resistance uses L = d (at
+least 50 m). `dcStray` works per train; `shallow` is weighted by each train's stray current and `shallowStray` (A) is
+logged (`SupplyLog.shallowAs`); ShallowShare = shallowAs / strayAs. `DC_DEPTH` is gone. Checked: a train near its
+substation keeps more near the surface; two trains weight by their stray currents.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
