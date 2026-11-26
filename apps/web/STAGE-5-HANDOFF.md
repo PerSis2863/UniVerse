@@ -15587,3 +15587,12 @@ The Octave packages' sixth and last wave, written fresh (no Octave code). With i
 - **impixel(I, cols, rows)** and **impixelinfo**: the figure gets `pixelinfo` (`data-pixelinfo` on its SVG, `data-px="W H flipped"` on each picture); the page reads the pixel under the pointer (`src/components/lab/pixel-info.ts`) and shows "Pixel info: (X, Y) = (c, r) value" under the figure. It shows the colour drawn (for uint8 RGB or grey pictures, their own values). The PNG is decoded through an `<img>`, not `fetch`: the site's policy blocks `data:` connections.
 - Not done: Octave's command form `test sq` (write `test('sq')`; adding the names to the command words would change how `test = 3` reads).
 - Tests: `octtest.test.ts`. Browser check: `scripts/checks/hyperion-octave6-ui.mjs` (light and dark, axe clean, no page errors).
+
+## M562: Ghidra's add-on retrained: 85% → 94% on the exam (26 Nov)
+
+Ghidra's add-on retrained on the owner's RunPod (26 Nov; the owner: "train ghidra to next level"), with M549's new skills (Aether's guide, Hyperion's set-up) in its lessons. The first try (pod a847mjxn4wi18y) stopped after ~2.9 h with its log lost; this one (pod ql82nh3q6mnab1, Community A100 SXM 80 GB, US$1.39/h, 07:11–09:40 UTC, about US$3.50) ran `scripts/ai/ghidra-gpu.sh` with the log kept (`tee /root/train.log`, `STOP_WHEN_DONE=0`) and finished cleanly. The pod is terminated.
+
+- **The exam:** 2058 → 2266 of 2410 (85% → 94%). 28 skills higher with it, now in `ADDON_SKILLS` (the scores are in the file's comment); four lower and kept off it: reading-level 92→80, docs 85→80, school-insights 90→88, support-plans 100→98. `assistant` (the chat, 77→82) uses the add-on for the first time.
+- **Uploaded as `ghidra-20261126-0926`** (it replaces `ghidra-20261123-1827`). The owner sets `GHIDRA_LORA` to it in Cloudflare; until then the old add-on answers the new list's skills too (only the variable changes which one).
+- **Still weak, for a later run:** sim-setup 78% (the load's kind), health 74% (a high finding with a healthy score), social 80% (green or health claims), assistant 82% (wrong details). The lessons step refused most often: meetings' Friday due dates (156), health summaries' length (99), sim-setup's load kind (56).
+- Next time: rent Community first (Secure costs about twice as much); keep `tee` and `STOP_WHEN_DONE=0` so a failure can be read before the pod goes.
