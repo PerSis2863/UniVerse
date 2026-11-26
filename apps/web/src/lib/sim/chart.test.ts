@@ -61,3 +61,63 @@ High -> Low: u < 0.5 after 1 / n = n + 10`);
     expect(b.at(-1)).toBe(2);
   });
 });
+
+describe('states inside states (M569)', () => {
+  const text = `inputs: u, fault
+outputs: y, n
+state Running
+  entry: n = n + 1
+  during: y = y
+state Slow in Running
+  entry: y = 2
+state Fast in Running
+  entry: y = 3
+state Fault
+  entry: y = -1
+Running -> Fault: fault > 0.5
+Slow -> Fast: u > 1
+Fast -> Slow: u < 1
+Fault -> Running: fault < 0.5 after 1`;
+  it('enters the first inner state, the outer transition wins from inside, and comes back to the first inner state', () => {
+    const ch = parseChart(text), r = chartStart(ch), name = () => ch.states[r.active].name;
+    expect([name(), r.vars.y, r.vars.n]).toEqual(['Running.Slow', 2, 1]);
+    chartStep(ch, r, { u: 2, fault: 0 }, 0.1);
+    expect([name(), r.vars.y]).toEqual(['Running.Fast', 3]);
+    chartStep(ch, r, { u: 0, fault: 1 }, 0.2); // both Fast → Slow and Running → Fault hold: the outer one fires
+    expect([name(), r.vars.y]).toEqual(['Fault', -1]);
+    chartStep(ch, r, { u: 0, fault: 0 }, 0.5);
+    expect(name()).toBe('Fault');
+    chartStep(ch, r, { u: 0, fault: 0 }, 1.3);
+    expect([name(), r.vars.y, r.vars.n]).toEqual(['Running.Slow', 2, 2]);
+    expect(ch.parents).toEqual([['Running'], ['Running'], []]);
+  });
+  it('an outer state’s after counts from when the outer state was entered, not the inner one', () => {
+    const ch = parseChart(`inputs: u
+outputs: y
+state A
+state A1 in A
+state A2 in A
+state B
+  entry: y = 1
+A1 -> A2: u > 0
+A -> B: 1 after 2`);
+    const r = chartStart(ch, 0);
+    chartStep(ch, r, { u: 1 }, 1.5); // into A2 at 1.5 s; A has been active since 0
+    expect(ch.states[r.active].name).toBe('A.A2');
+    chartStep(ch, r, { u: 1 }, 2.1);
+    expect(ch.states[r.active].name).toBe('B');
+  });
+  it('a hierarchical chart runs in a diagram and its generated C matches', async () => {
+    const { buildIr, emulate } = await import('./blockir');
+    const s = newBlock('pulse', 0, 0), c = newBlock('chart', 0, 0), sc = newBlock('scope', 0, 0);
+    s.p = { ...s.p, amplitude: 2, period: 4 };
+    c.p.chart = text.replace('inputs: u, fault', 'inputs: u');
+    c.p.chart = String(c.p.chart).replace(/fault > 0.5/, 't > 3').replace(/fault < 0.5 after 1/, '1 after 1');
+    const d: Diagram = { stop: 20, dt: 0.01, blocks: [s, c, sc], wires: [{ id: 'a', from: s.id, out: 0, to: c.id, in: 0 }, { id: 'b', from: c.id, out: 0, to: sc.id, in: 0 }] };
+    const r = simulate(d);
+    expect(r.error).toBeUndefined();
+    expect(new Set([...r.scopes.values()][0][0])).toEqual(new Set([2, 3, -1]));
+    const ir = buildIr(d), o = emulate(ir, 2000);
+    expect(new Set(o[ir.outputs[0].name])).toEqual(new Set([2, 3, -1]));
+  });
+});

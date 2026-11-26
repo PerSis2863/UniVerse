@@ -211,7 +211,7 @@ function initLines(ir: Ir): [string, E][] {
   for (const c of ir.charts) {
     for (const x of [...c.vars, ...c.ch.inputs]) out.push([`${c.name}_${x}`, N(0)]);
     out.push([`${c.name}_state`, N(0)], [`${c.name}_since`, N(0)]);
-    for (const a of chartAssigns(c, c.ch.states[0].entry)) out.push([a.name, a.e]);
+    for (const a of chartAssigns(c, c.ch.init ?? c.ch.states[0].entry)) out.push([a.name, a.e]);
   }
   return out;
 }

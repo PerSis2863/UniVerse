@@ -93,7 +93,7 @@ export function buildIr(dg: Diagram): Ir {
 export function chartExpr(c: IrChart, e: Expr): E {
   switch (e.k) {
     case 'num': return e;
-    case 'var': return e.name === 't' ? bin('-', v('t'), v(`${c.name}_since`)) : v(`${c.name}_${e.name}`);
+    case 'var': return e.name === 't' ? bin('-', v('t'), v(`${c.name}_since`)) : e.name === 'time' ? v('t') : v(`${c.name}_${e.name}`);
     case 'un': return { k: 'un', op: e.op, a: chartExpr(c, e.a) };
     case 'bin': return bin(e.op, chartExpr(c, e.a), chartExpr(c, e.b));
     case 'call': return { k: 'call', fn: e.fn, args: e.args.map((a) => chartExpr(c, a)) };
@@ -115,7 +115,7 @@ export function evalE(e: E, env: Record<string, number>): number {
 export function emulate(ir: Ir, steps: number, inputs: (t: number) => Record<string, number> = () => Object.fromEntries(ir.inputs.map((i) => [i.name, i.test]))) {
   const env: Record<string, number> = { t: 0 };
   for (const s of ir.states) env[s.name] = s.init;
-  for (const c of ir.charts) { for (const x of c.vars) env[`${c.name}_${x}`] = 0; env[`${c.name}_state`] = 0; env[`${c.name}_since`] = 0; runAssigns(chartAssigns(c, c.ch.states[0].entry), env); }
+  for (const c of ir.charts) { for (const x of c.vars) env[`${c.name}_${x}`] = 0; env[`${c.name}_state`] = 0; env[`${c.name}_since`] = 0; runAssigns(chartAssigns(c, c.ch.init ?? c.ch.states[0].entry), env); }
   const out: Record<string, number[]> = Object.fromEntries(ir.outputs.map((o) => [o.name, []]));
   const bufs = new Map(ir.delays.map((d) => [d.buf, { a: new Array<number>(d.n).fill(d.init), k: 0 }]));
   for (let k = 0; k < steps; k++) {

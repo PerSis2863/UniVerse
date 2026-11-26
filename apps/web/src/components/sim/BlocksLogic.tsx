@@ -13,11 +13,11 @@ import type { FromBlocks } from './blocks.worker';
 // the active state lit and the transition that led there marked; a strip of which state was active when, and how
 // often each state was entered and each transition fired (one that never ran is flagged: a gap in the tests, M566).
 
-const SW = 150, SH = 54, GX = 230, GY = 120;
+const SW = 150, SH = 54, GX = 230, GY = 130;
 
 function layout(ch: Chart) {
   const cols = Math.max(1, Math.ceil(Math.sqrt(ch.states.length * 1.6)));
-  return ch.states.map((_, i) => ({ x: 30 + (i % cols) * GX, y: 30 + Math.floor(i / cols) * GY }));
+  return ch.states.map((_, i) => ({ x: 40 + (i % cols) * GX, y: 50 + Math.floor(i / cols) * GY }));
 }
 
 function ChartDrawing({ ch, active, via }: { ch: Chart; active: number; via: number }) {
@@ -31,8 +31,17 @@ function ChartDrawing({ ch, active, via }: { ch: Chart; active: number; via: num
         <marker id="uv-chart-arrow" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" className="fill-zinc-500 dark:fill-zinc-400" /></marker>
         <marker id="uv-chart-arrow-on" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" className="fill-violet-600 dark:fill-violet-400" /></marker>
       </defs>
+      {/* States inside states (M569): a dashed box round each outer state's inner states, its name on top. */}
+      {[...new Set((ch.parents ?? []).flat())].map((outer) => {
+        const inside = (ch.parents ?? []).map((ps, i) => (ps.includes(outer) ? i : -1)).filter((i) => i >= 0), depth = Math.max(...inside.map((i) => ch.parents![i].length - ch.parents![i].indexOf(outer)));
+        const pad = 10 * depth, x0 = Math.min(...inside.map((i) => pos[i].x)) - pad, y0 = Math.min(...inside.map((i) => pos[i].y)) - pad - 14, x1 = Math.max(...inside.map((i) => pos[i].x)) + SW + pad, y1 = Math.max(...inside.map((i) => pos[i].y)) + SH + pad;
+        return <g key={outer}><rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} rx={14} fill="none" strokeDasharray="5 4" className="stroke-zinc-400 dark:stroke-zinc-500" /><text x={x0 + 10} y={y0 + 13} fontSize={11} fontWeight={600} className="fill-zinc-700 dark:fill-zinc-200">{outer}</text></g>;
+      })}
       {ch.trans.map((tr, k) => {
-        const on = k === via;
+        // An outer state's transition is one per inner state once flattened: drawn once, lit when any of them fires.
+        const same = (o: typeof tr) => o.line === tr.line && o.to === tr.to && / \(from \w+\)$/.test(o.text);
+        if (same(tr) && ch.trans.findIndex(same) !== k) return null;
+        const on = k === via || (same(tr) && via >= 0 && same(ch.trans[via]));
         let d: string, lx: number, ly: number;
         if (tr.from === tr.to) {
           const p = pos[tr.from];
@@ -60,7 +69,7 @@ function ChartDrawing({ ch, active, via }: { ch: Chart; active: number; via: num
           <g key={st.name}>
             <rect x={p.x} y={p.y} width={SW} height={SH} rx={12} strokeWidth={on ? 2.4 : 1.3} className={on ? 'fill-violet-100 stroke-violet-600 dark:fill-violet-500/25 dark:stroke-violet-400' : 'fill-white stroke-zinc-300 dark:fill-zinc-900 dark:stroke-white/20'} />
             {i === 0 && <><circle cx={p.x - 16} cy={p.y + SH / 2} r={4} className="fill-zinc-600 dark:fill-zinc-300" /><line x1={p.x - 12} y1={p.y + SH / 2} x2={p.x - 2} y2={p.y + SH / 2} className="stroke-zinc-600 dark:stroke-zinc-300" strokeWidth={1.5} markerEnd="url(#uv-chart-arrow)" /></>}
-            <text x={p.x + SW / 2} y={p.y + 23} fontSize={13} fontWeight={600} textAnchor="middle" className="fill-zinc-900 dark:fill-white">{st.name}</text>
+            <text x={p.x + SW / 2} y={p.y + 23} fontSize={13} fontWeight={600} textAnchor="middle" className="fill-zinc-900 dark:fill-white">{st.name.split('.').pop()}</text>
             <text x={p.x + SW / 2} y={p.y + 41} fontSize={10} textAnchor="middle" className="fill-zinc-600 font-mono dark:fill-zinc-300">{acts.length > 26 ? `${acts.slice(0, 25)}…` : acts}</text>
           </g>
         );

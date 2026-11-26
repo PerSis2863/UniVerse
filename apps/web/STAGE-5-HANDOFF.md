@@ -15756,3 +15756,22 @@ has two or more PID blocks (`src/lib/sim/tune-all.ts`, `tuneAll`, run in `tune.w
   stability from its own Jacobian (`closedLoopStable`: finite differences of every state, poles of its characteristic
   polynomial). Example "Two coupled loops (tune them together)", a 2×2 plant; both loops reach 60° (PI and PIDF).
 - Left out: true simultaneous (structured H∞) tuning as MATLAB's systune does, decouplers.
+
+## M569 (26 Nov): Hyperion, states inside states in charts
+
+M563's left-out. A chart state can sit inside another: `state Slow in Running` (the outer one written first).
+
+- **Meaning** (Stateflow's, simply): entering an outer state enters its first inner state, down to an innermost one; an
+  outer state's transitions are tried before its inner states' (outermost first) and leave whichever inner state is
+  active; outer during actions run before inner ones; a transition exits from the active innermost state up to (not
+  including) the deepest state holding both ends, then enters down to the target's first innermost state.
+- **How:** `parseChart` flattens such a chart (`flatten` in `chart.ts`) into an ordinary one over its innermost states
+  (named `Running.Slow`), so the simulator, coverage, Verify and all five code generators work unchanged. Outer states
+  keep when they were entered in hidden locals `_since_X` (set to the new name `time`, the absolute time, which chart
+  expressions may use too); an outer state's `t` and `after` read `time − _since_X`; entry actions see t = 0. `Chart.init`
+  holds the starting chain of entries (used by `chartStart`, the code's set-up and `emulate`), `Chart.parents` each
+  leaf's outer states (the Logic drawing puts a dashed box round each outer state's inner ones and draws an outer
+  transition once). Reserved: `time`, `in`.
+- Example "A machine with modes (states inside states)"; tests: the first inner state on entry, the outer transition
+  winning from inside, an outer `after` counted from the outer state's entry, generated C matching the emulation.
+- Left out: parallel (AND) states, history junctions, inner transitions that don't leave the outer state.

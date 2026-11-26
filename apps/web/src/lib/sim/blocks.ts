@@ -295,6 +295,28 @@ Alarm -> Draining: level < 2 after 1` });
     },
   },
   {
+    // M569: states inside states. Running holds Slow and Fast; a fault from either leaves Running for Fault, and after
+    // a second clear the machine comes back to Running's first state, Slow.
+    id: 'modes', name: 'A machine with modes (states inside states)', make: () => {
+      const speed = B('pulse', 20, 40, { amplitude: 2, period: 4, width: 50 }), fault = B('sine', 20, 200, { amplitude: 0.6, frequency: 0.06, phase: 0 });
+      const chart = B('chart', 260, 110, { chart: `inputs: u, fault
+outputs: y
+state Running
+state Slow in Running
+  entry: y = 2
+state Fast in Running
+  entry: y = 3
+state Fault
+  entry: y = -1
+Running -> Fault: fault > 0.5
+Slow -> Fast: u > 1
+Fast -> Slow: u < 1
+Fault -> Running: fault < 0.5 after 1` });
+      const sc = B('scope', 520, 110, { inputs: 3 });
+      return { stop: 40, dt: 0.01, blocks: [speed, fault, chart, sc], wires: [W(speed, chart), W(fault, chart, 1), W(chart, sc), W(speed, sc, 1), W(fault, sc, 2)] };
+    },
+  },
+  {
     id: 'loop', name: 'A first-order loop', make: () => {
       const s = B('step', 20, 80, { time: 0 }), sum = B('sum', 160, 80, { signs: '+-' }), k = B('gain', 300, 80, { k: 2 }), it = B('integrator', 440, 80), sc = B('scope', 610, 80);
       return { stop: 5, dt: 0.001, blocks: [s, sum, k, it, sc], wires: [W(s, sum), W(sum, k), W(k, it), W(it, sc), W(it, sum, 1)] };

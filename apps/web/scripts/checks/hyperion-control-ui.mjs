@@ -20,13 +20,14 @@ try {
     await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
     await page.getByRole('group', { name: 'Kind of simulation' }).getByRole('button', { name: 'Blocks' }).click({ timeout: 120_000 });
     const tools = page.getByRole('group', { name: 'Tools' });
-    for (const tool of ['Tune', 'Logic', 'Real time', 'Code', 'Verify', 'Tune all']) {
+    for (const tool of ['Tune', 'Logic', 'Real time', 'Code', 'Verify', 'Tune all', 'Modes']) {
       if (only && only !== tool) continue;
-      const b = tools.getByRole('button', { name: tool === 'Tune all' ? 'Tune' : tool, exact: true });
+      const b = tools.getByRole('button', { name: tool === 'Tune all' ? 'Tune' : tool === 'Modes' ? 'Logic' : tool, exact: true });
       if (!(await b.count())) continue;
       if (tool === 'Logic') await page.getByLabel('Start from').selectOption('tank');
       if (tool === 'Real time') await page.getByLabel('Start from').selectOption('hil');
       if (tool === 'Tune all') await page.getByLabel('Start from').selectOption('twoloops');
+      if (tool === 'Modes') await page.getByLabel('Start from').selectOption('modes');
       await b.click();
       await page.waitForTimeout(2500);
       r[`${tool}-text`] = (await page.getByRole('region', { name: /tuner|logic|real time|code|verif/i }).innerText()).slice(0, 600);

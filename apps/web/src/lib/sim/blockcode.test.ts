@@ -29,7 +29,7 @@ describe('code from block diagrams', () => {
   });
 
   it.skipIf(!hasCc)('C: compiled with -Wall -Werror, the same numbers as Hyperion, a chart included', () => {
-    for (const id of ['cruise', 'tank', 'spring', 'hil']) {
+    for (const id of ['cruise', 'tank', 'spring', 'hil', 'modes']) {
       const d = ex(id), dir = write(d, 'c');
       execFileSync('cc', ['-std=c99', '-Wall', '-Wextra', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), join(dir, 'model.c'), '-lm'], { cwd: dir });
       const got = rows(execFileSync(join(dir, 'run'), ['3000']).toString()), want = expected(d, 3000);
