@@ -11,6 +11,7 @@ import '@/lib/lab/optim-lab';
 import { appsOut, fireAppEvent, type AppOut } from '@/lib/lab/app-lab';
 import '@/lib/lab/webcam-lab';
 import '@/lib/lab/calc-lab';
+import '@/lib/lab/stats-lab';
 import '@/lib/lab/maint-lab';
 import '@/lib/lab/dsp-lab';
 import '@/lib/lab/energy-lab';

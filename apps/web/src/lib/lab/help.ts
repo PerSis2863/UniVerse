@@ -261,6 +261,39 @@ integral | integral(f, a, b) | Integral of a function from a to b.
 integral2 | integral2(f, xmin, xmax, ymin, ymax) | A double integral of f(x, y); ymin and ymax may be functions of x, for a region that isn't a box: integral2(@(x, y) 1, 0, 1, 0, @(x) x).
 integral3 | integral3(f, xmin, xmax, ymin, ymax, zmin, zmax) | A triple integral of f(x, y, z); the y limits may be functions of x, the z limits functions of x and y.
 pdepe | sol = pdepe(m, @pdefun, @icfun, @bcfun, xmesh, tspan) | Partial differential equations in one space dimension: c·∂u/∂t = x⁻ᵐ∂/∂x(xᵐ·f) + s, with [c, f, s] = pdefun(x, t, u, dudx), u0 = icfun(x), [pl, ql, pr, qr] = bcfun(xl, ul, xr, ur, t) (each end p + q·f = 0); m = 0 slab, 1 cylinder, 2 sphere. sol(i, j, k): time i, point j, component k.
+gammaln | gammaln(x) | The logarithm of the gamma function (no overflow for big x).
+gammainc | gammainc(x, a) | The regularised lower incomplete gamma function P(a, x).
+betainc | betainc(x, a, b) | The regularised incomplete beta function.
+tcdf | tcdf(x, v) | Student's t distribution's cumulative probability with v degrees of freedom; tinv(p, v) inverts it, tpdf(x, v) is its density.
+tinv | tinv(p, v) | The t value with probability p below it (critical values: tinv(0.975, 10)).
+tpdf | tpdf(x, v) | Student's t density.
+chi2cdf | chi2cdf(x, v) | The χ² distribution's cumulative probability; chi2inv(p, v), chi2pdf(x, v).
+chi2inv | chi2inv(p, v) | The χ² value with probability p below it.
+chi2pdf | chi2pdf(x, v) | The χ² density.
+fcdf | fcdf(x, v1, v2) | The F distribution's cumulative probability; finv(p, v1, v2), fpdf(x, v1, v2).
+finv | finv(p, v1, v2) | The F value with probability p below it.
+fpdf | fpdf(x, v1, v2) | The F density.
+betacdf | betacdf(x, a, b) | The beta distribution's cumulative probability; betapdf for its density.
+betapdf | betapdf(x, a, b) | The beta density.
+gamcdf | gamcdf(x, a, b) | The gamma distribution's cumulative probability (shape a, scale b); gampdf for its density.
+gampdf | gampdf(x, a, b) | The gamma density.
+binocdf | binocdf(x, n, p) | The binomial distribution's cumulative probability; binopdf(x, n, p) the chance of exactly x.
+binopdf | binopdf(x, n, p) | The chance of exactly x successes in n tries.
+poisscdf | poisscdf(x, lambda) | The Poisson distribution's cumulative probability; poisspdf(x, lambda) the chance of exactly x.
+poisspdf | poisspdf(x, lambda) | The chance of exactly x events.
+tiedrank | [r, tieadj] = tiedrank(x) | Ranks, ties given their average rank.
+ttest | [h, p, ci, stats] = ttest(x, m) or ttest(x, y) | One-sample t-test of mean m (or paired, x against y). Options 'Alpha', 'Tail' ('both', 'right', 'left'). h = 1 rejects at that level.
+ttest2 | [h, p, ci, stats] = ttest2(x, y, 'Vartype', 'unequal') | Two-sample t-test (pooled, or Welch's with 'unequal').
+ranksum | [p, h, stats] = ranksum(x, y) | Wilcoxon rank-sum (Mann–Whitney) test: exact for small samples without ties.
+signrank | [p, h, stats] = signrank(x, m) or signrank(x, y) | Wilcoxon signed-rank test of median m (or of paired differences): exact up to 15.
+anova1 | [p, tbl, stats] = anova1(y, group) | One-way analysis of variance: a matrix's columns, or values and their group labels.
+anova2 | [p, tbl] = anova2(y, reps) | Two-way analysis of variance (columns one factor, blocks of reps rows the other; interaction when reps > 1).
+kruskalwallis | [p, tbl, stats] = kruskalwallis(y, group) | The rank version of one-way ANOVA.
+chi2gof | [h, p, stats] = chi2gof(x, 'NBins', 10) | χ² goodness of fit to a normal distribution.
+normfit | [mu, sigma, muci, sigmaci] = normfit(x) | The normal distribution's mean and spread with confidence intervals.
+fitdist | pd = fitdist(x, 'Normal') | Fits a distribution by maximum likelihood: Normal, Exponential, Poisson, Lognormal, Gamma.
+bootstrp | b = bootstrp(nboot, @fun, data) | The statistic of nboot resamples (with replacement), for its spread.
+bootci | ci = bootci(nboot, @fun, data) or bootci(nboot, {@fun, data}, 'Type', 'per') | A bootstrap confidence interval: bias-corrected and accelerated (BCa) or percentile.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
 fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.

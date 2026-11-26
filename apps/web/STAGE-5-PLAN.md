@@ -1942,6 +1942,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M553 | Hyperion: integral2, integral3 and pdepe (26 Nov) | **Done** (branch) | Double and triple integrals (regions with function limits too) and 1D partial differential equations by the method of lines with a stiff solver; textbook-tested; help for each. |
 | M554 | Hyperion: your own app windows (uifigure, 26 Nov) | **Done** (branch) | uifigure with buttons, sliders, labels, fields, check boxes, drop-downs and plots; callbacks run in the workspace; floating windows over the Code window; tested in the browser, light and dark, axe clean. |
 | M555 | Hyperion: the webcam in image processing (26 Nov) | **Done** (branch) | webcamlist, webcam and snapshot: a picture from the computer's camera as an image array, asked through the page (the browser asks permission); tested with a fake camera in the browser. |
+| M556 | Hyperion: statistics tests and resampling (the Octave packages' first wave, 26 Nov) | **Done** (branch) | Distributions (t, χ², F, beta, gamma, binomial, Poisson), gammainc/betainc, t-tests, rank tests, ANOVA, Kruskal–Wallis, χ² fit, normfit, fitdist, bootstrap CIs; tested against printed tables. |
 
 ### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
 

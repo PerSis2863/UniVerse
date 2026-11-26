@@ -5,6 +5,7 @@ import '@/lib/lab/files';
 import '@/lib/lab/ml-lab';
 import '@/lib/lab/optim-lab';
 import '@/lib/lab/calc-lab';
+import '@/lib/lab/stats-lab';
 import '@/lib/lab/maint-lab';
 import '@/lib/lab/energy-lab';
 import '@/lib/lab/grid-lab';

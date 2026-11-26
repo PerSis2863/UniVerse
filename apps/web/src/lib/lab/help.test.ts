@@ -5,6 +5,7 @@ import './files';
 import './ml-lab';
 import './optim-lab';
 import './calc-lab';
+import './stats-lab';
 import './maint-lab';
 import './dsp-lab';
 import './energy-lab';

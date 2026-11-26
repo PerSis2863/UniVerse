@@ -15142,3 +15142,19 @@ first), one stream per camera kept for the visit, a frame drawn to a canvas at t
 `scripts/checks/hyperion-webcam-ui.mjs` runs Chromium's fake camera (`--use-fake-device-for-media-stream`): a
 240 × 320 × 3 uint8 picture shown by imshow. Left out: preview(cam) (a live view window) and closing the camera
 (clear cam): the browser's camera light stays on until the tab is left.
+
+## M556: Hyperion: statistics tests and resampling (the Octave packages' first wave, 26 Nov)
+
+The first GNU Octave wave (statistics, statistics-resampling), written from the documented behaviour (no Octave
+code: GPL). `src/lib/lab/stats.ts` (pure): gammaln (Lanczos), gammainc and betainc (Numerical Recipes' series and
+continued fractions, ~1e-12), an accurate normal cdf through gammainc (the older `erf` in signal.ts is a 1e-7
+approximation: left as it is), inverses by bisection to the last bit; t, χ², F, beta, gamma, binomial, Poisson; the
+tests: ttest (one-sample, paired), ttest2 (pooled or Welch), ranksum (exact by counting subsets when ≤ 20 and no
+ties, else normal with tie and continuity corrections), signrank (exact ≤ 15), anova1, anova2 (reps), kruskalwallis
+(tie correction), chi2gof (normal, merging bins under 5 expected), normfit, fitdist (Normal, Exponential, Poisson,
+Lognormal, Gamma by Newton on the shape), bootstrap and bootci (BCa by default, 'per'). `stats-lab.ts` gives them
+MATLAB's names, argument orders and outputs (tables as cell arrays, stats structs; options Alpha, Tail, Vartype,
+NBins, Type), plus the pdfs and tiedrank; random numbers from the engine's `random` (rng repeats a bootstrap).
+Loaded by both workers and help.test.ts; help lines for each. Tests: against printed tables (tinv(0.975,10),
+chi2inv, finv, norminv to 8–10 digits), exact rank tests, worked ANOVA and Kruskal–Wallis. Left out: anovan
+(unbalanced several-factor ANOVA), multcompare, other fitdist families (Weibull, beta…).
