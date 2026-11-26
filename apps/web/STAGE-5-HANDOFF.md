@@ -15080,3 +15080,20 @@ ms; paused while the tab is hidden; Reduce Motion starts paused). Drag S and L. 
 closed room's lowest three modes within 3% of (c/2)·√((m/W)²+(n/H)²), a wall >5 dB quieter behind it. In the
 browser the resonance study read 34.4, 48.9, 59.9, 84.4 Hz against 34.3, 49.0, 59.8, 84.3. Check:
 `scripts/checks/hyperion-sound-ui.mjs`.
+
+## M552: Hyperion Simulate, parts from STL files (26 Nov)
+
+Simulate → **3D file**, a new tab (`src/lib/sim/stl.ts`, `components/sim/FileBench.tsx`, `stl.worker.ts`): stress in a
+part from an STL file (binary or text; binary when its size matches its triangle count, since text files can start
+with "solid" too). The surface is filled with boxes (a box is inside when the line through its middle along x crosses
+the surface an odd number of times before it; triangles listed per row of the y–z grid), each direction's spacing
+stretched so whole boxes fit the part's extent exactly, each box cut into six tetrahedra along its main diagonal (the
+same cut everywhere, so faces always match), and those made 10-node by `quadraticTets` (moved out of `extrude` in
+`solid.ts`, shared). The file's z is up (CAD's habit; the solver's y is up), and `size` is reported in the file's
+order. The six sides of the box around it are named (Bottom, Top, Left, Right, Front, Back) and each can be free,
+held or pushed (N, down / up / left / right: the 3D solver's loads lie in x and y). About 14,000 unknowns (~3 s for a
+60 × 30 × 15 mm block); the box size is shown ("fine details smaller than that are smoothed out"). The file stays in
+the tab only (reopen it after a reload); a sample bar opens first. Tested: binary and text read alike, a box's volume,
+a bar from a file under tension at F/A within 5% and stretching FL/(EA). Check: `scripts/checks/hyperion-file-ui.mjs`
+(it writes a binary STL and opens it through the picker). Left out: holding or loading a chosen face that isn't one
+of the six sides, loads out of the x–y plane, keeping the file across reloads.
