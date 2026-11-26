@@ -55,10 +55,10 @@ export const KINDS: Record<BlockKind, { name: string; group: string; ins: (p: Bl
 };
 
 export const coeffs = (v: number | string | undefined) => String(v ?? '').trim().split(/[\s,]+/).filter(Boolean).map(Number).filter(Number.isFinite);
-const n = (v: number | string | undefined, d = 0) => { const x = Number(v); return Number.isFinite(x) ? x : d; };
+export const n = (v: number | string | undefined, d = 0) => { const x = Number(v); return Number.isFinite(x) ? x : d; };
 
 /** A transfer function's controllable canonical form (numerator and denominator highest power first). */
-function canon(numer: number[], denom: number[]) {
+export function canon(numer: number[], denom: number[]) {
   let d = [...denom];
   while (d.length > 1 && d[0] === 0) d.shift();
   if (!d.length || d[0] === 0) throw new Error('A transfer function block needs a denominator that isn’t 0.');

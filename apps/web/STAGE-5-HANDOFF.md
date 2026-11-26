@@ -15670,3 +15670,28 @@ clock and talks to an Arduino over Web Serial with StandardFirmata (M474's `seri
   them; a real one needs an RC filter from D9 into A5). Checked: it settles on the set point through Firmata.
 - Left out: running the model on the board itself (that is M565's generated C, uploaded with the Arduino IDE), sample
   rates beyond the screen's frame rate for the board's own I/O (Firmata reports every 50 ms).
+
+## M565 (26 Nov): Hyperion, code from block diagrams (C, C++, Structured Text, Verilog, VHDL)
+
+The owner's third picture ("generating optimized C, C++, IEC 61131-3 Structured Text, … Verilog, or VHDL code directly
+from … Simulink"). Blocks → **Code**.
+
+- **One step, every language** (`src/lib/sim/blockir.ts`): `buildIr` turns the diagram into signals (in `compile`'s
+  order), outputs (every wired Scope input, `scope1_2`; every Board output), states with their derivatives and charts;
+  names are `kind + count` (`gain1`, `chart1_pump`: `safeNames`). A step: signals, outputs, derivatives, states += DT ·
+  d (forward Euler, as generated code with a fixed-step solver), charts (inputs copied in, CASE on the state, the first
+  transition whose condition holds and whose `after` has passed), t += DT. `emulate(ir, steps)` runs exactly that in JS:
+  the reference the tests hold the compiled code against. Inputs: the Board inputs (already scaled values).
+- **Printers** (`src/lib/sim/blockcode.ts`, `generateCode(dg, lang, name)`): one statement tree (`Stmt`: set / if / case)
+  printed per language. C (model.h, model.c with `model_init` / `model_step`, main.c), C++ (a class, main.cpp),
+  Structured Text (a FUNCTION_BLOCK, LREAL, BOOL only where the language demands: `SEL`, `<>`, `AND`; `started` runs the
+  set-up on the first call), Verilog and VHDL in Q15.16 fixed point (`qmul` keeps 64 bits then shifts; one step per clock
+  edge with en; test benches print the outputs). Fixed point refuses sin, cos, exp, sqrt, floor, dividing by a signal
+  and powers other than 2 and 3, by name; numbers past ±32,767 too.
+- **Checked** (`blockcode.test.ts`): C with `-Wall -Wextra -Werror` and C++ give the emulation's numbers to 1e-9 for four
+  examples (a chart included); Verilog in Icarus and VHDL in GHDL within 0.02 on all but 2 % of steps (a chart may switch a
+  step apart: 0.01 s is 655/65,536 in Q15.16). The tests skip a compiler the machine lacks (CI has cc and c++; iverilog
+  and ghdl were installed here with apt). Euler against Runge–Kutta: the spring at dt 0.0005 agrees to 2 decimals.
+- **The window** (`BlocksCode.tsx`): language, name, the files as tabs, Copy, Download all (a ZIP by fflate).
+- Left out: Ladder Diagram, CUDA, fixed-point C (M524 does that for scripts), choosing word lengths for the HDL,
+  multirate diagrams, the PLC vendor's project file (paste the .st into TIA Portal / CODESYS / Studio 5000).

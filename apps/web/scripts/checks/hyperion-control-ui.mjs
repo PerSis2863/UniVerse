@@ -42,6 +42,9 @@ try {
         r.liveTiming = await page.locator('[data-live-timing]').innerText();
         r.livePins = (await page.getByText('Board pins').locator('..').innerText()).slice(0, 300);
       }
+      if (tool === 'Code') {
+        for (const lang of ['cpp', 'st', 'verilog', 'vhdl']) { await page.getByLabel('Language').selectOption(lang); await page.waitForTimeout(300); r[`code-${lang}`] = (await page.locator('[data-code-file]').innerText()).slice(0, 80); }
+      }
       if (tool === 'Tune') {
         await page.getByRole('button', { name: 'Update block' }).isEnabled({ timeout: 20_000 }).catch(() => {});
         r.tuned = await page.getByRole('table').first().innerText();
