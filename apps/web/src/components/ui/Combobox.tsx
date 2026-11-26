@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'r
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { pop } from '@/lib/motion';
 
 export interface ComboOption {
   label: string;
@@ -320,10 +321,7 @@ export function Combobox({
             id={listId}
             role="listbox"
             aria-multiselectable={multiple || undefined}
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.1 } }}
-            transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
+            initial={pop.from} animate={pop.to} exit={pop.out} transition={pop.spring}
             style={{ transformOrigin: 'top center' }}
             onMouseDown={(e) => e.preventDefault()} // keep focus in the input
             className="absolute z-50 start-0 end-0 mt-1.5 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-xl shadow-black/10 dark:shadow-black/40 p-1"

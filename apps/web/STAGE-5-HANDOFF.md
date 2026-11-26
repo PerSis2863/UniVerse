@@ -12602,3 +12602,26 @@ measured in M468 (no long task at CPU ×1), so this is the app's window and two 
 - **The command window** (`LabApp`): each printed line has a steady number (`n`) and is a memo'd `LogLine`, so a run's
   streaming output draws only the new line, not up to 800 above it (index keys shifted every row once at the cap).
 - **[owner]:** after merging, GitHub → Actions → "Hyperion desktop" → Run workflow with "publish" ticked (version 1.2.0).
+
+
+## M479 (26 Nov): every menu and window opens and closes like the search window
+
+The owner, 26 Nov (a picture of the top bar: search, light/dark, language, bell, account): "when i click on the search
+button it shows a smooth transition of opening and expanding… make it like that for the areas or where ever you can…
+i dont care if it takes time to load but i need everything ultra smooth". Opening already followed the search window
+on most menus (M351, M355, M372); the gaps were closing and four parts with older openings.
+- **Closing, everywhere (`leave` in `src/lib/scroll-motion.ts`):** a floating part the motion layer eased in after a
+  press (`floats`: absolute / fixed, no framer-motion inline styles) that is taken away within 1.5 s of a press or any
+  key (Escape) leaves as the search window does: a copy of it (inert, `aria-hidden`, no ids, `data-ghost`,
+  `data-no-motion`) is put back where it was, fades and shrinks to 97% and 4 px up in 0.14 s (the transform added, so
+  a centring one stays), then is removed. MutationObserver callbacks run before the frame is drawn, so it never
+  blinks. Skipped: a part only moved (still connected), one already faded by its own exit (`faded`: framer-motion's
+  opacity 0 on it or its first child, e.g. `Popover`), right after a page change, more than 3 at once, Reduce Motion.
+- **Openings:** `.spot-in` in `globals.css` (from 94% and 6 px up on `--spring-glide`, 0.32 s): the language menu
+  (growing from its button's corner), windows (`Sheet`) on a computer, and alerts (`confirmDialog` / `promptDialog`,
+  from 112% before); `Combobox`'s list uses `pop`. Their closings: `Sheet` on a computer and the alert's card leave as
+  `pop.out` (0.14 s, ease-in, to 97%). Phones keep the bottom sheet's slide (iOS's).
+- Tried in a browser at 1280 on the student home: the language menu and the top bar's, account and cards' menus opened
+  and closed with Escape: one closing each, no copy left after 0.3 s, no page errors.
+- **Rule:** a new hand-made menu needs nothing for its opening or closing; if it has its own exit (framer-motion's
+  `exit`), the layer leaves it alone.

@@ -58,7 +58,7 @@ export function DialogHost() {
   useEffect(() => {
     if (!pending) return;
     // A new dialog right after one that's fading out: shown at once, fully.
-    if (rootRef.current) { for (const a of rootRef.current.getAnimations()) a.cancel(); rootRef.current.style.pointerEvents = ''; }
+    if (rootRef.current) { for (const a of rootRef.current.getAnimations({ subtree: true })) if (!(a instanceof CSSAnimation)) a.cancel(); rootRef.current.style.pointerEvents = ''; }
     const t = setTimeout(() => (pending.kind === 'prompt' ? inputRef.current?.select() : confirmRef.current?.focus()), 30);
     return () => clearTimeout(t);
   }, [pending]);
@@ -73,6 +73,8 @@ export function DialogHost() {
     if (el && !reducedMotion()) {
       el.style.pointerEvents = 'none';
       el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease-out', fill: 'forwards' }).finished.then(finish, finish);
+      // The card leaves as the search window does (M479): to 97% and a touch up, easing in.
+      el.firstElementChild?.animate([{ transform: 'none' }, { transform: 'translateY(-4px) scale(0.97)' }], { duration: 140, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' });
     } else finish();
     if (p.kind === 'confirm') { if (ok && p.destructive) haptic('warning'); p.resolve(ok); }
     else p.resolve(ok ? value.trim() || null : null);

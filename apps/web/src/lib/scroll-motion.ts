@@ -336,6 +336,7 @@ type Press = { t: number; x: number; y: number; near: Element | null; controls: 
 let press: Press = { t: -1e9, x: 0, y: 0, near: null, controls: null, roots: [] };
 const NEAR = '[role="dialog"], [role="tabpanel"], [role="region"], section, article, li, form, aside, .card, .panel';
 function pressed(e: Event) {
+  input = performance.now();
   let x: number, y: number;
   const from = (e instanceof KeyboardEvent ? document.activeElement : e.target) as Element | null;
   if (e instanceof KeyboardEvent) {
@@ -372,10 +373,13 @@ function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Se
   if (!out.length) return;
   const fold = window.innerHeight;
   // Reads first (one layout), then the writes.
-  const shown = out.slice(0, 40).map((el) => ({ el, r: el.getBoundingClientRect() }))
-    .filter(({ el, r }) => r.height > 0 && r.top < fold && r.bottom > 0 && !moving(el) && !out.some((o) => o !== el && o.contains(el)))
+  const near = out.slice(0, 40).map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .filter(({ el, r }) => r.height > 0 && r.top < fold && r.bottom > 0 && !out.some((o) => o !== el && o.contains(el)))
     .map((x) => ({ ...x, float: ['absolute', 'fixed'].includes(getComputedStyle(x.el).position) }))
-    .filter((x) => since <= 800 || linked(x.el, x.float)).slice(0, 6);
+    .filter((x) => since <= 800 || linked(x.el, x.float));
+  // M479: it leaves smoothly too, unless framer-motion moves it (its inline styles: it has an exit of its own).
+  for (const x of near) if (x.float && !x.el.style.opacity && !x.el.style.transform) floats.add(x.el);
+  const shown = near.filter((x) => !moving(x.el)).slice(0, 6);
   for (const { el, r, float } of shown) {
     press.roots.push(el);
     if (float) {
@@ -387,6 +391,41 @@ function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Se
       el.animate([{ transform: 'translate3d(0, 8px, 0)' }, { transform: 'translate3d(0, 0, 0)' }], { duration: 260, easing: EASE_GLIDE, composite: 'add' });
       el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
     }
+  }
+}
+
+/** M479 (the owner, 26 Nov, of the search window: "make it like that for the areas or where ever you can"): a floating
+ *  part that opened after a press (a menu, a drop-down, a pop-up; `floats`) and is taken away soon after a press or a
+ *  key (Escape) leaves as the search window does: a copy of it, inert and hidden from screen readers, stays where it
+ *  was for 0.14 s, fading to 97% and a touch up (`pop.out`), then goes. Mutation callbacks run before the frame is
+ *  drawn, so it never blinks. At most 3 at once; never after a page change (the page's own entrance). */
+const floats = new WeakSet<Element>();
+let input = -1e9;
+const LEAVE_EASE = 'cubic-bezier(0.4, 0, 1, 1)';
+const faded = (e: Element | null) => e instanceof HTMLElement && e.style.opacity !== '' && Number(e.style.opacity) < 0.05;
+function leave(records: MutationRecord[]) {
+  if (performance.now() - input > 1500 || pageJustEntered()) return;
+  let n = 0;
+  for (const rec of records) for (const el of rec.removedNodes) {
+    // Still on the page: moved (a list reordered), not taken away.
+    if (n >= 3 || !(el instanceof HTMLElement) || !floats.has(el) || el.isConnected) continue;
+    floats.delete(el);
+    const parent = rec.target, next = rec.nextSibling;
+    // Already faded by its own exit (framer-motion leaves opacity 0 on it or the panel inside it): nothing to do.
+    if (!parent.isConnected || (next && next.parentNode !== parent) || faded(el) || faded(el.firstElementChild)) continue;
+    const ghost = el.cloneNode(true) as HTMLElement;
+    for (const x of [ghost, ...ghost.querySelectorAll('[id]')]) x.removeAttribute('id');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.inert = true;
+    ghost.dataset.noMotion = '';
+    ghost.dataset.ghost = '';
+    ghost.style.pointerEvents = 'none';
+    parent.insertBefore(ghost, next);
+    n++;
+    const gone = () => ghost.remove();
+    // The shrink adds to its own transform (a centring one stays), as the opening does.
+    ghost.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-4px) scale(0.97)' }], { duration: 140, easing: LEAVE_EASE, fill: 'forwards', composite: 'add' });
+    ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: LEAVE_EASE, fill: 'forwards' }).finished.then(gone, gone);
   }
 }
 
@@ -421,7 +460,8 @@ export function startScrollMotion(): () => void {
     // their changes first, before anything is measured (M211).
     const records = all.filter((rec) => !quiet(rec.target));
     if (!records.length) return;
-    for (const rec of records) for (const n of rec.addedNodes) if (n.nodeType === Node.ELEMENT_NODE && queued.length < 200) queued.push(n as Element);
+    leave(records);
+    for (const rec of records) for (const n of rec.addedNodes) if (n instanceof Element && !(n instanceof HTMLElement && 'ghost' in n.dataset) && queued.length < 200) queued.push(n);
     if (queued.length && !timer) timer = setTimeout(flush, 120);
     // A whole page building at once (hundreds of changes) is no row arriving: the page's own entrance
     // moves it. Small arrivals are looked at just before the next frame is drawn, when the browser lays

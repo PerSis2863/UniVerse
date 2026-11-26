@@ -1001,10 +1001,14 @@ html, body { overflow-x: clip; max-width: 100%; }
 /* Phones: the sheet slides all the way up from the bottom edge, like an iOS sheet. Larger screens:
    a soft pop. */
 @keyframes sheet-in { from { transform: translate3d(0, 100%, 0); } }
-@keyframes pop-in { from { opacity: 0; transform: scale(0.96); } }
+/* M479 (the owner, 26 Nov: "make it like [the search window] where ever you can"): the search window's opening,
+   Spotlight's (`pop` in motion.ts): from 94% and a touch above, settling on the glide spring. Larger screens' windows
+   and alerts open this way; menus and pop-ups too (Popover, the motion layer). */
+@keyframes spot-in { from { opacity: 0; transform: translateY(-6px) scale(0.94); } }
+.spot-in { animation: spot-in 320ms var(--spring-glide, var(--ease-ios)); }
 .backdrop-in { animation: backdrop-in 240ms ease-out; }
 .sheet-in { animation: sheet-in 460ms var(--ease-ios); }
-@media (min-width: 640px) { .sheet-in { animation: pop-in 280ms var(--ease-ios); } }
+@media (min-width: 640px) { .sheet-in { animation: spot-in 320ms var(--spring-glide, var(--ease-ios)); } }
 
 /* Grabber on bottom sheets (phones) — hints that the sheet can be swiped down */
 @media (max-width: 639px) {
@@ -1335,9 +1339,8 @@ html[data-scrolled] .nav-edge {
 :is(a, button).ios-cell:active { background: var(--fill); scale: 1; }
 .ios-icon-tile { display: inline-flex; align-items: center; justify-content: center; width: 1.875rem; height: 1.875rem; border-radius: 0.5rem; color: #fff; flex-shrink: 0; }
 
-/* Alerts: pop in from slightly larger, like UIAlertController. */
-@keyframes alert-in { from { opacity: 0; transform: scale(1.12); } }
-.alert-in { animation: alert-in 280ms var(--ease-ios); }
+/* Alerts: the search window's opening too (M479; they came in from 112% before). */
+.alert-in { animation: spot-in 320ms var(--spring-glide, var(--ease-ios)); }
 .ios-alert {
   background: var(--material-thick);
   -webkit-backdrop-filter: blur(30px) saturate(190%);
@@ -1502,7 +1505,7 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
    there, nothing freezes: decorative loops stop, and things that slide or rise in just fade in. */
 @media (prefers-reduced-motion: reduce) {
   .universe-u-beam, .universe-n-beam, .universe-node-pulse, .universe-ping { animation: none; }
-  .sheet-in, .fade-up, .alert-in { animation-name: backdrop-in; }
+  .sheet-in, .fade-up, .alert-in, .spot-in { animation-name: backdrop-in; }
 }
 
 /* Studio (Stage 5 · B9.15): the checkerboard behind see-through parts of a picture. */
