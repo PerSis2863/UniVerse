@@ -13565,6 +13565,255 @@ speeds in a rollover are a few m/s, so knocks are a few g belted, up to ~15 unbe
 "Five seats" and "Heads knocking together". Rough figures. Not built: a front middle seat drawn in the window (the
 language takes 'Seat', 'middle', 'Row', 'front'), bodies (not only heads) loading each other in a rollover.
 
+## M489k (25 Nov): Hyperion aeroplanes, the fin above the wing rolling it in side gusts
+
+The owner, 25 Nov (M489j's left-out). `flight.ts`: `Aircraft.zf` (the fin's centre of pressure above the roll axis,
+0.9 m when not given) and `Wind.turbulence.finRoll` (with `finLag`): the fin's own push from its delayed side gust is
+cnr's share of M489j's yaw gust, and being zf above the roll axis and lt behind, it rolls by L = −(zf / lt)·N
+(`Ctl.fin`, added to the roll moment in `deriv6`). Off by default. Checked: the roll changes, more for a taller fin,
+the yaw much the same. Language 'FinHeight', m (0 to 5; turns 'TurbulenceFin' on). Window: All six → Rough → "The fin
+sits above the wing (its push rolls it too)". Not built: the fin's height for steady sideslip (already in clb), the
+downwash's own lag.
+
+## M491p (25 Nov): Hyperion railways, soils in layers
+
+The owner, 25 Nov (M491o's left-out). `rail.ts`: `Supply.topsoil` { rho, depth } over `soil` (the ground beneath, 100 when
+not given); `soilRho(sup)`: the return current spreads down to Carson's depth D and the layers carry it side by side,
+1/ρ = (h/D)/ρ_top + (1 − h/D)/ρ_below (all ρ_top once the layer is deeper than D), D found from that ρ by a few rounds.
+`railVolts` and `feedZ` use it; one layer or none as before. Checked: a deep top layer is all that counts, a thin one
+hardly; 5 m of wet clay over dry rock ~sits between them and agrees with its own depth; rail volts and feed follow it.
+Language 'Topsoil', [resistivity depth]. Window: Several trains → 25 kV → The soil → "5 m of clay over rock" (also the
+telephone cable's soil). Not built: more than two layers, the layers' effect on DC stray current.
+
+## M486n (25 Nov): Hyperion vehicles, Euro NCAP's soft barrier
+
+The owner, 25 Nov (M486k's left-out). `vehicle.ts` `frontalCrash(…, { into: 'barrier' })`: aluminium honeycomb on a rigid
+block, crushing at `BARRIER_N` 300 kN per metre of the width hit (`CAR_WIDTH` 1.8 m × overlap) up to `BARRIER_DEPTH`
+0.54 m, then rigid; in series with the front (while the front would push harder, the honeycomb gives: `frontInv`, the
+front's curve turned round); no spring-back. `Crash.barrier` is its crush. Checked: the offset test (64 km/h, 40%)
+crushes the honeycomb its whole depth, the front less, nothing into the cabin, low risk (against ~16 cm in from a
+rigid wall); full width at 56 km/h it barely gives (the front is about as stiff). Language: vehicleCrash 'Into'
+'barrier', info.BarrierCrush. Window: Crash → Into → "A soft barrier (Euro NCAP)". Not built: the newer moving
+barrier (MPDB), the honeycomb's stiffer bumper row.
+
+## M486o (25 Nov): Hyperion vehicles, a bench's front middle seat and bodies landing on each other
+
+The owner, 25 Nov (M486m's left-outs). `vehicle.ts` `everyone(…, { frontMiddle })` adds a bench's front middle seat (the
+rows are near, middle, far in order). Unbelted, whole bodies slide across with the roll (their middle 0.7 of the
+head's swing, `BODY_SHARE`) and land on the next person on the side it tips to, stopped over 10 cm (`BODY_STOP`):
+`bodyLoad` = 75 kg·v²/2s on both (ribs break from about 3–4 kN; over 4 kN serious, 8 kN severe in the risk). Belted
+bodies stay in their seats. The model's rollover swing speeds are a few m/s, so the loads come out about 1–3 kN.
+Language: vehicleTrip 'FrontMiddle', 1; info.Seats gains BodyLoad. Window: Kerb → Seat → "Front middle (bench)" (six
+seats then), the fact "Bodies landing on each other". Rough figures. Not built: people's arms and legs, a person
+landing on the roof lining with others on top.
+
+## M486p (25 Nov): Hyperion vehicles, a side crash's spin, angle, back seats and ribs
+
+The owner, 25 Nov (M486l's left-outs). `vehicle.ts` `sideCrash(…, { angle, hitAt, row })`: the blow lands `hitAt` m ahead
+of the centre of mass (0.3, `SEAT_X.front`, where Euro NCAP aims), so its impulse J spins the car, ω = J·hitAt / Iz;
+at an `angle` only v·cos(angle) crushes, and friction rubs off the sliding part (at most 0.5·J and the reduced mass
+times v·sin(angle)), shoving the car along (`along`) and adding its spin about the 0.9 m half-width. `row: 'rear'`
+sits 0.6 m behind the centre: its door comes in by `reach` (a car's front reaches fully within 0.5 m of its aim and
+not 1.5 m past that; a pole within 15 cm and not 60 cm past); curtains but no thorax airbag there. `ribs`: 0.2 of the
+door's push (a thorax airbag's 0.3 as hard) over `RIB_K` 150 kN/m; serious past 35 mm, severe past 50 in the risk.
+Checked: ~36 mm with airbags, ~53 without at 50 km/h; no spin when hit at the centre; 30° crushes less, shoves and
+spins more; the back's door comes in less, none from a pole aimed at the front seat. Language: vehicleSideCrash
+'Angle', 'HitAt', 'Row'; info AlongSpeedChange, Spin, Ribs. Window: Crash → Into the side → "Row" (Front / Back),
+"Angle" (Square on / 15° / 30°), facts for ribs and the car's spin. Rough figures. Not built: the car's path after the
+blow drawn, a pole aimed at the back seat in the window (the language takes 'HitAt').
+
+## M491q (25 Nov): Hyperion railways, more than two soil layers
+
+The owner, 25 Nov (M491p's left-out). `rail.ts` `Supply.topsoil` takes one `SoilLayer` or a list from the top down;
+`soilRho` gives each layer the share of Carson's depth D it fills (1/ρ = Σ (h_i/D)/ρ_i + the rest below), D found from
+that ρ as before. Checked: a list of one is the single layer; two equal layers act as one of their total depth; 3 m of
+clay over 30 m of sand over rock is lower than the clay over rock alone and agrees with its own depth. Language
+'Topsoil', [ρ1 h1; ρ2 h2; …] (up to 10 rows). Window: Several trains → 25 kV → The soil → "Clay, sand, then rock".
+Not built: the layers' effect on DC stray current.
+
+## M489l (25 Nov): Hyperion aeroplanes, the downwash reaching the tail late
+
+The owner, 25 Nov (M489k's left-out). `flight.ts` `Wind.downwashLag` and `Aircraft.deda` (dε/dα, 2·cla / (π·aspect ratio)
+when not given, ~0.44 for the default): the point model turns the tail's downwash with the wing's angle now; really it
+is the angle lt / V ago. `flight6` keeps the angle of attack for lagN steps and adds the tail's extra angle
+−dε/dα·(α_then − α_now) as a pitch gust V·dε/dα·(α_then − α_now) / lt (the classic Cmα̇ from the aeroplane's own
+pitching, and from gusts too: with `tailLag` the tail then meets exactly the gust and the downwash of lt / V ago).
+Checked: an elevator kick dies away sooner, a smaller dε/dα in between; steady flight untouched. Language
+'DownwashLag', 1 (or dε/dα itself, 0 to 1). Window: All six → Rough → "The air the wing turns down reaches the tail late".
+Rough: the whole of cmq taken as the tail's.
+
+## M486q (25 Nov): Hyperion vehicles, where a side crash leaves the car, a pole aimed at the back seat
+
+The owner, 25 Nov (M486p's left-outs). `vehicle.ts` `slideAfter(v, vy, vx, w)` and `SideCrash.path` (t, x along the
+car, y the way it was shoved, psi; `distance`, `turned`): after the blow the tyres skid, μ·g slowing the centre of mass
+along its path and μ·m·g·r / Iz the spin (r the wheels' mean distance from the centre), each to rest. Struck by a car it
+stood still; sliding into a pole it keeps what the pole didn't take (a little rebound, the sliding along). Checked: hit
+at the centre square on it slides straight v²/2μg without turning; at the front seat it turns; at 30° it is carried
+along; a pole leaves it nearly where it hit. Language: vehicleSideCrash info.SlideDistance, SlideTurn, Path (a table).
+Window: Crash → Into the side → "Aimed at" (The front seat / The back seat: `hitAt` `SEAT_X`), and the slide drawn from
+above in the chart's top right corner (the car every fifth of the way, the red mark where the blow came in). Rough.
+
+## M486r (25 Nov): Hyperion vehicles, Euro NCAP's moving barrier (MPDB)
+
+The owner, 25 Nov (M486n's left-out). `vehicle.ts` `frontalCrash(…, { into: 'mpdb' })`: a 1,400 kg trolley (`MPDB_MASS`, or
+`other`) comes the other way at the same speed, half the front in it (`overlap` 0.5 unless given); its face stiffens
+with depth, `MPDB_N0` 200 kN to `MPDB_N1` 1.2 MN per metre of width over `MPDB_DEPTH` 0.6 m (shapes rough, not the
+real honeycomb's curve), in series with the front (the depth where the two push alike found by halving each step). The
+trolley moves (`xt`, `vt`), so the crush is the gap closed. `Crash.trolleyDv`; `vEq` reported as head on into a car.
+Checked: momentum shared (1,500·Δv = 1,400·Δv_trolley), the honeycomb within its depth, a heavier car crushes it deeper
+(what Euro NCAP marks down). Language: vehicleCrash 'Into' 'mpdb', info.TrolleySpeedChange. Window: Crash → Into → "A
+moving barrier (Euro NCAP)" (the overlap choice hidden: always half). Not built: Euro NCAP's compatibility score from
+the barrier's scanned face, the occupant load criterion (OLC).
+
+## M486s (25 Nov): Hyperion vehicles, arms and legs in a rollover, people piled on the roof
+
+The owner, 25 Nov (M486o's left-outs). `vehicle.ts` `inside` gains `armSpeed`, `armForce`, `legForce`, `armOut`,
+`armCrushed`, `inverted`: the hand flails 1.1× the head's swing (belt or not; 1.3× from the far side), ~4 kg stopped in 2
+cm (`ARM_M`, `ARM_STOP`; breaks from `ARM_BREAK` 2.5 kN); the knees at `LEG_R` 0.35 m from the roll axis (0.7 with a
+belt), ~10 kg in 3 cm (`LEG_BREAK` 4 kN). An arm goes out of its own side's broken window (no curtain) when ω²·r passes
+g/2, and is crushed if that side then lands on the road (severe). `everyone` gains `pileLoad` and `onTop`: unbelted and
+upside down, a row falls onto the roof lining, the side it tipped to first, the rest on top from `PILE_FALL` 0.4 m,
+stopped over 10 cm, lying there (75 kg each); someone thrown out isn't in the pile. The model's swing speeds are a few
+m/s, so arms and legs come out at a few hundred newtons: breaks only in hard rolls. Checked: far arms harder, belts
+hold legs not arms, the near arm out and crushed in two half turns onto the roof, curtains keep it in, a pile of three
+in the back row with the near one under. Language: vehicleTrip info ArmForce, LegForce, ArmOutAt, ArmCrushed; Seats
+gains PileLoad, OnTop, ArmForce, LegForce, ArmCrushed. Window: Kerb → facts "Arm · leg (hitting the side)" and "Piled on
+the roof". Rough figures. Not built: hands and feet caught in the pedals or the seat frames.
+
+## M486t (25 Nov): Hyperion vehicles, a side crash: the car that hit it, after
+
+The owner, 25 Nov (M486s's list of left-outs). `vehicle.ts` `strikerAfter` and `SideCrash.striker` (a `SidePath` in the
+struck car's picture: x along it from its centre, y the way it was shoved, psi the striker's heading in degrees from
+square, + towards the struck car's front; `null` for a pole). Its nose (`NOSE` 0.9 m past the wheelbase's middle) starts
+at the struck car's side where it aimed; it keeps the square speed the crash left it and the sliding speed less what
+friction rubbed off (Ja / m₂), spins from both pushes on its nose (τ = d·(Ja·cos a − J·sin a), its Iz scaled by mass),
+then brakes at μ·g through `slideAfter`. Checked: square at the centre it rolls straight on, momentum shared; square at
+the front seat the struck car spins but the striker doesn't; at 30° it turns. Language: vehicleSideCrash info
+StrikerDistance, StrikerTurn, StrikerPath. Window: the "After" box draws it dashed red. Not built: the two cars
+touching again as they slide.
+
+## M486u (25 Nov): Hyperion vehicles, the moving barrier's two Euro NCAP scores
+
+The owner, 25 Nov (M486r's left-out). Euro NCAP's own rules (AOP v9.3 §3.3, TB 027): `vehicle.ts` `mpdbScore`, run by
+`frontalCrash` for `into: 'mpdb'`. **OLC** from the trolley's speed (`tv`, every 0.1 ms): a virtual person free for 65 mm,
+then slowed evenly so after 235 mm more they move with the trolley (bisection on the slowing). **The face**: strips 1 cm
+wide across the overlap; the two rails (0.3 m wide, 0.25 m in from each side) carry `RAIL_SHARE` 0.6 of the front's
+stiffness, scaled so the overlap's strips add to the crash's front; each strip and the honeycomb before it push alike at
+the most the car and trolley came together. SD over Euro NCAP's zone (0.2 m in to 45% of the car's width; even in
+height); bottoming out at `MPDB_BOTTOM` (630 of 722 mm) over 4 cm. **Penalty**, our reading of the "two interlinked
+sliding scales" (TB 027 gives no formula): 2·o + s·(2 + 4·o), s and o the SD's (50–150 mm) and OLC's (25–40 g) shares,
++2 bottoming, at most 8. Figures: 1,100 kg 23 g, 98 mm, −1.0; 1,500 kg 29 g, 111 mm, −2.4; 2,200 kg 37 g, 133 mm, −5.9.
+Checked: heavier is worse on all three; a trolley stopped dead gives v²/(2·0.235)/g. Language: vehicleCrash info OLC,
+BarrierSD, BarrierMax, BottomedOut, CompatibilityPenalty. Window: Crash → A moving barrier, two more facts. Rough: the face
+model is ours; the main crash still dents the face evenly (`barrier`).
+
+## M486v (25 Nov): Hyperion vehicles, hands and feet caught in a rollover
+
+The owner, 25 Nov (M486s's left-out). `vehicle.ts` `inside` gains `footCaught`, `handCaught` (s, NaN if not),
+`ankleForce`, `wristForce`, `trapped`. A foot hooks among the pedals (front) or under the front seat's frame (back) when
+the body pulls away from the floor: unbelted, once ω²·r passes g or it falls onto the roof; belted only if the leg flails
+past `HOOK_SPEED` 3 m/s (the model's legs never do: belts keep feet down). A hand hooks when the arm flails past
+`HAND_HOOK` 2 m/s (the far side's in a 12 m/s trip). Hooked: belted, the shin (5 kg) stopped in 1 cm; unbelted, half the
+body at the speed it was thrown or fell, in 5 cm (`ANKLE_BREAK` 3.5 kN); the forearm (1.5 kg) in 1 cm (`WRIST_BREAK` 2
+kN). `trapped`: caught, still inside and resting on its side or roof. Thresholds, not chances. Language: vehicleTrip info
+FootCaughtAt, HandCaughtAt, AnkleForce, WristForce, Trapped; Seats gains AnkleForce, WristForce, Trapped. Window: Kerb →
+"Caught: foot · hand". Not built: a caught foot holding someone half in as they're thrown out.
+
+## M491r (25 Nov): Hyperion railways, the soil on DC lines
+
+The owner, 25 Nov (M491q's left-out). `rail.ts` `dcSoil(sup)` (from `soil` / `topsoil`; undefined when neither): DC has
+no Carson's depth, so the leaking current is taken to spread down `DC_DEPTH` 100 m, the layers side by side (`mixRho`,
+now shared with `soilRho`). (1) The spreading resistance of a long strip on the ground, ρ·ln(2000/3)/π/1000 Ω·km (~0.2
+at 100 Ω·m), is added to the rails' leakage in `dcStray`: dry rock lets out less. (2) `shallow`, the share of the stray
+current in the top `PIPE_DEPTH` 2 m where pipes lie: 2% in even ground, 34% with 5 m of wet clay over rock, under 0.1%
+with dry sand over clay. No soil given: as before. Language: railLine supply struct ShallowShare (DC). Window: Railway →
+Several trains: the soil choice now on DC lines too, and "Stray current in the top 2 m (pipes)". Rough: the 100 m.
+
+## M486w (26 Nov): Hyperion vehicles, a side crash: the two cars touching again
+
+The owner (M486t's left-out). `vehicle.ts` `strikerAfter` now steps both cars together after the blow (5 ms) as boxes
+(each car's length and width; `boxGap`, separating axes) and returns `{ path, striker, second, touches }`; `sideCrash`
+gains `second` (`Touch`: t, x and y on the struck car in its own frame, closing speed, the struck car's Δv) and
+`touches`. The striker's driver takes `REACT` 1 s to brake (rolling on at `COAST_G` 0.1 g), the struck car skids at μ·g
+at once, so the striker catches it up ~0.35 s later (about 6 km/h closing): once they've opened `REOPEN` 5 cm, any
+overlap while closing is met with restitution 0.1 along the least-overlap axis through the centres (no spin from it);
+a new touch counts only after they part again (in between it's pushing). The struck car now goes further (3.4 → 4.3 m
+square on); at 30° no second touch. Older tests changed: M486q's v²/2μg is checked on `slideAfter` alone, M486t's
+momentum over the first 0.05 s. Language: SecondTouchAt, SecondClosingSpeed, SecondSpeedChange, Touches. Window:
+"Touched again" and an amber dot in the "After" box. Not built: the second touch's spin, a striker that brakes before.
+
+## M486x (26 Nov): Hyperion vehicles, a caught foot holding someone half in
+
+The owner (M486v's left-out). `inside`: unbelted, a foot caught before they'd be flung out holds them half in while
+75 kg·ω²·r stays under `FOOT_HOLD` 1.5 kN (a hooked foot's grip, ~twice body weight; at first 3.5 kN, the ankle's
+strength, but then nobody was ever thrown out: the fling is 1.2–2.4 kN): `heldByFoot` (s), `partly`, no `thrownOut`;
+if the car then lands on a side or its roof, `bodyCrushed` (severe). Past it the foot pulls free (that pull on the
+ankle). The default car: held at 15–16 m/s trips, thrown clear at 22; the saloon (roll model) is held at 18, so
+M486g's test takes "thrown out or held". Language: HeldByFootAt, BodyCrushed (Seats: HeldByFoot, BodyCrushed). Window:
+Kerb → "Caught: foot · hand" says so.
+
+## M486y (26 Nov): Hyperion vehicles, the barrier face in two directions; Euro NCAP's own table
+
+The owner (M486u's left-outs). TB 027 Figure 2 (Euro NCAP's table of penalty by SD and OLC) matches M486u's reading
+exactly: `compatPenalty(sdMm, olcG, bottomed)` = 2·o + s·(2 + 4·o) (+2, at most 8), tested on its cells (its SD = 50%
+column at 36–39 g leaves the straight line every other column and its own 40 g follow, by up to 0.17: Euro NCAP's
+quirk, not used). CP 007 (2026) is the same table scaled to 25% of the test's score: `compatShare`. The face: 2 cm
+cells, 0.15–0.85 m up, across the overlap; `FRONT_PARTS` (rails 0.3 of the front's stiffness, beam 0.25, engine and
+gearbox 0.25, lower load path 0.1, grille and bonnet edge 0.1, each over its own rectangle), blurred by `FACE_SPREAD`
+0.1 m (without it every car bottomed out at ~230 mm SD); the honeycomb's N per metre of width spread up the face's
+0.7 m. Measured over 0.25–0.65 m up (Euro NCAP's area), every cell counted; bottoming out over a 2 × 2 block (4 × 4 cm).
+Figures now: 1,100 kg 81 mm, 23 g, −0.6; 1,500 kg 95 mm, 29 g, −1.9; 2,200 kg 102 mm, bottomed, 37 g, −6.3. Language:
+BarrierFace (matrix), CompatibilityShare2026. Window: the dented face drawn top right (violet deeper, the area dashed).
+Still rough: the shapes are a typical car's, ours.
+
+## M491s (26 Nov): Hyperion railways, how deep DC stray current spreads, from the line
+
+The owner (M491r's left-out). `dcSoil(sup, dist)`: between where the current goes into the ground (near the train)
+and comes out (near its substation), d apart, half of it runs shallower than ~d/2 in even ground, so each train's
+stray current fills the layers down to d/2 (at least `DC_MIN_DEPTH` 10 m), and the spreading resistance uses L = d (at
+least 50 m). `dcStray` works per train; `shallow` is weighted by each train's stray current and `shallowStray` (A) is
+logged (`SupplyLog.shallowAs`); ShallowShare = shallowAs / strayAs. `DC_DEPTH` is gone. Checked: a train near its
+substation keeps more near the surface; two trains weight by their stray currents.
+
+## M486z (26 Nov): Hyperion vehicles, the second touch turns the cars; the other driver braking; the car's front
+
+The owner (M486w's and M486y's left-outs). **Side crash:** `strikerAfter` meets the touch at `touchPoint` (the mean of
+the corners of each box inside the other; midway between the centres if only edges cross), with velocities there
+including ω × r and j = −(1 + e)·vₙ / (1/m₁ + 1/m₂ + (r₁×n)²/I₁ + (r₂×n)²/I₂); each car's spin changes by r × j·n / I.
+`Touch.spin` (°/s, the struck car's). Square at the centre: no turn; aimed at the front seat the second touch lands
+~0.7 m behind the middle and turns it ~16°/s. `sideCrash`'s `braked` (the other driver already braking: μ·g from the
+start, no rolling on): no second touch, a shorter slide. Older tests: M486t's "striker doesn't turn" uses `braked`;
+M486w's Δv is now at most the through-the-centres value. **The front:** `FRONTS` (typical, suv, small, spread;
+`FrontPart`), `frontalCrash`'s `front` (a name or parts), `FRONT_PARTS` = typical. At 1,200 / 2,200 kg: typical 85 /
+102 mm, SUV 160 / 195 mm (−2.0 / −8.0), small 91 / 107, spread 66 / 84 (−0.3 / −5.3). The OLC doesn't change with the
+front (the crash's front stiffness comes from the mass). Language: vehicleCrash 'Front' (a name, or rows [share yFrom
+yTo zFrom zTo], −0 meaning the far side), vehicleSideCrash 'OtherBraked', info.SecondSpin. Window: Crash → A moving
+barrier → "The car's front"; Into the side → "The other driver was already braking"; "Touched again" gives the turn.
+Not built: a front's own stiffness (each front still crushes as the mass sets), the cars' tyres turning as they're
+pushed.
+
+## M486za (26 Nov): Hyperion vehicles, each front's own stiffness; the rolling striker's tyres
+
+The owner (M486z's left-outs). **Front stiffness:** `FRONT_STIFF` (typical 1, suv 1.3, small 1.15, spread 1.05) and
+`frontStiff(front)` (your own parts: their shares added up, a typical car's add to 1); `frontalCrash`'s k0 is multiplied
+by it in every crash, not only the moving barrier. At 56 km/h into a wall (1,500 kg): typical 0.65 m and 38 g peak (as
+before), SUV 0.57 m and 43 g, small 0.61 m, spread 0.63 m; chest g unchanged (the belt sets it). The moving barrier:
+SUV's penalty 5.6 → 6.2, small 4.1 → 4.4. M486z's barrier depths in its note were with every front at typical
+stiffness. Language: 'Front' rows' shares must add to 0.3–3. Window: "The car's front" now shows for every head-on
+crash. **Tyres:** in `strikerAfter` the striker while still rolling (unbraked, before `REACT`) moves by `rollStep`:
+coasting along its length at `COAST_G`, each axle's side force by its slip angle (cornering stiffness scaled by mass,
+up to μ·Fz), so a push off its line turns it (aimed at the back seat: 1.5–2° against 0.2–0.3° before). The struck car
+still skids as one block (its driver taken as on the brake). Not built: the struck car's own tyres rolling along it.
+
+## M486zb (26 Nov): Hyperion vehicles, the struck car's own tyres rolling
+
+The owner (M486za's left-out). `sideCrash`'s `rolling` (language 'StruckRolling', 1; window: Crash → Into the side →
+"This car's driver wasn't braking"): the struck car's wheels roll along it for `REACT` (1 s) by `rollStep` (`ownTyres`:
+its own cornering stiffness and axle loads), then it skids as one block as before (the default, as if braked). Both
+`strikerAfter` and `slideAfter` (a pole) take it; `slideAfter` now steps a `Box` like `strikerAfter`. Aimed at the back
+seat, 50 km/h square: slide 4.4 m and 12° braked, 6.3 m and 48° rolling (one axle's tyres grip while it coasts along,
+so it pivots); at 30°: 2.8 m → 8.5 m; a pole at 32 km/h, 30°: 0.03 m → 0.34 m. The default's numbers are unchanged.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
@@ -13719,6 +13968,16 @@ prompt: 'select_account' })` on the Google provider in `login/page.tsx` and `reg
 it). Not set inside `popupSignIn`: `setCustomParameters` replaces the whole object and would drop Microsoft's `tenant`.
 Web only: the computer app loads the live site, so it needs no new build, only the merge.
 
+## M455: a check for problems, one library advisory fixed (25 Nov)
+
+The owner asked for a check for errors, bugs and security. The live `error_reports` have nothing new since 17 Nov: the
+open rows are old ones already fixed (M221's `_retryCache`, M73's "too many SQL variables"), bots on old chunks, or
+third-party scripts (reCAPTCHA, Firebase). The owner can mark them resolved in the console. `pnpm check` passed
+(2317 tests). `pnpm audit --prod` found one high advisory, GHSA-7589-6fvf-x4pw in `effect` (a slow regex in
+`Schema.TemplateLiteral`), pulled in only by Prisma's config loader (`@prisma/config`, build and CLI time; no request
+reaches it). Pinned `"effect@<3.22.1": "3.22.4"` in the root overrides; `prisma validate` and `generate` still work.
+Also looked at: the two `$queryRawUnsafe` calls in `owner-insights.ts` (safe: a typed literal and `?` values), and
+committed key-looking strings (only Firebase's public web key and test placeholders).
 ## M481 (23 Nov): Hyperion, embedded AI (models made small and written out as C)
 
 `src/lib/lab/embedded.ts` and `embedded-lab.ts`, for the toolbox's neural networks (ClassificationNeuralNetwork,
@@ -14957,3 +15216,229 @@ light; a thick disc edge-on covers more. Not built: a smooth curved mesh is spli
 the rest stay a little hollow-hulled), the disc's own thickness doesn't shadow its far side's glow (the light passes
 the slab once per entry), and no light from the disc's inner edge wall.
 
+## M544: Hyperion Simulate, heat and stress together (26 Nov)
+
+The owner, 26 Nov ("do all of them start now", the list after the Hyperion review): the Ansys side of Simulate first.
+Structures → **Warming** (in the outline under gravity): not at all, evenly (one temperature change, °C), or **from
+Heat** (Simulate → Heat solved on this same mesh, less the temperature the part was made at). `Material.alpha` (1/K,
+handbook values) on every material; `Study.warming` is a number or one value per node (`warmingAt`). The solver adds
+∫Bᵀ·D·ε_th per element (forces inside the part that sum to nothing) and `stressOf` takes off E·α·ΔT/(1−ν) (plane
+stress) so only strain beyond the free growth makes stress; reactions subtract the thermal forces too. Tested against
+textbook answers: a free bar grows α·ΔT·L with no stress, a bar held at both ends is squeezed by E·α·ΔT, an uneven
+warming balances. "From Heat" needs Heat on the same template, sizes and outline (`heatWarming` in `sim.worker.ts`;
+Heat's own material and thickness give way to the study's); otherwise the panel says so. Left out: warming in 3D parts
+and in Vibration (the panel says 3D is flat-only for now). Check: `scripts/checks/hyperion-warming-ui.mjs`.
+
+## M545: Hyperion Simulate, buckling (26 Nov)
+
+Structures → Solution → **Buckling** (beside Stress and bending, Vibration and Shaking): linear (eigenvalue) buckling.
+`src/lib/sim/buckle.ts`: the loads are solved first (`solveStatic`, warming included), each element's stress at its
+integration points (`gaussStress`, less the thermal part) builds the geometric stiffness Kg = ∫∇Nᵀ·σ·∇N (the same for
+x and y movements), and Lanczos on K⁻¹(−Kg) in K's inner product (an unfactored copy of K for the products) gives
+1/λ for the lowest buckling load factors λ (× the loads). Shapes are scaled to a largest movement of 1. Loads that
+only pull give `none`. In the part's own plane only (a column, a strip on edge, a web): plate buckling out of the
+plane needs plate elements (not built). Tested: a cantilever column within 3% of Euler's π²EI/(4L²), its second
+mode about 9× the first, a pulled column none, a held bar buckling from heat. The panel says "×N the loads", red
+under 3. Check: `scripts/checks/hyperion-buckling-ui.mjs` (the start beam pushed end-on: ×163, Euler ×164.5).
+
+## M546: Hyperion Simulate, fatigue life (26 Nov)
+
+Structures → **Fatigue** (in the outline under Warming): how the loads repeat (back and forth: fully reversed; on and
+off: 0 to the loads) and the cycles it must last. Every material got `utsMPa`, `sf`, `b` (Basquin's σa = sf·(2N)^b;
+teaching values, the panel says so). `fatigueOf` in `structure.ts`: von Mises carrying the sign of the larger principal
+stress; reversed: amplitude |S|; on and off: amplitude and mean |S|/2, the mean by Goodman only when it pulls; the life
+`life` as log₁₀ cycles capped at 9, and `fsafety` against the amplitude allowed at the life wanted. Two new pictures in
+Show (Fatigue life, Fatigue safety factor), both coloured with low as danger. Tested against Basquin and Goodman by
+hand. Also: `SimCanvas` draws a field that is the same everywhere in the calm colour (it was the danger end, red).
+Left out: fatigue on 3D parts (the panel says so), variable loads over time (rainflow + Miner live in the scripts'
+materials toolbox, M504). Check: `scripts/checks/hyperion-fatigue-ui.mjs`.
+
+## M547: Hyperion Simulate, the lightest shape (topology optimisation, 26 Nov)
+
+Structures → Solution → **Lightest shape**: topology optimisation by SIMP (`src/lib/sim/topo.ts`). Each element's
+density x (0–1) scales its full-material stiffness by 0.001 + x³·0.999; each round solves, takes the compliance's
+sensitivity −3x²·uᵀk·u, smooths it with Sigmund's filter (radius about one element by default: wider gave grey edges
+and a part twice as bendy; a grid of cells finds the neighbours), and moves material by the optimality criteria
+(bisection on the multiplier, move 0.2) until the share asked for is kept; stops when no density moves 0.002 after
+30 rounds, at most 120. Keep 20–60% (`Model.topo.keep`). The picture: density at the nodes (red solid, blue carved
+away), undeformed, no animation. The part's own weight and warming are left out (they would change with the shape).
+Tested: 40% kept to ±1%, mostly solid or empty, evenly spread = 16× as bendy as solid, the shape found under 2.8×. The
+bracket at 40%: 2.48× the solid part, 0.191 kg, a truss of struts, ~350 ms. Check: `scripts/checks/hyperion-topology-ui.mjs`.
+
+## M548: Hyperion Simulate, Fields: electromagnetics (26 Nov)
+
+Simulate → **Fields**, a new bench (`src/lib/sim/fields.ts`, `components/sim/FieldsBench.tsx`, `fields.worker.ts`):
+2D electromagnetics by bilinear finite elements on a square grid (~160 cells across), matrix-free conjugate gradients
+with Jacobi. Magnetic: A (Wb/m), ∇·(ν∇A) = −J − ∇×(ν₀Br), A = 0 on the box; coils (A/mm², minus out of the page),
+magnets (remanence, north angle), iron (μr) that **saturates** at 2 T (B = Bsat + μ₀(H − Hsat): repeated solves
+with each iron cell's secant ν, half-way each round, until none moves 1%; without it the electromagnet read 70 T).
+Electric: V, ∇·(ε∇V) = 0, electrodes held, the box's sides natural (the field leaves); two electrodes give C = 2W/ΔV².
+Forces by Maxwell's stress on the loop of cells just outside each part's box (trapezoid weights at the corners: without
+them +12%). Field lines / equipotentials by marching squares of the potential. Five ready studies (electromagnet,
+two wires, magnets and a plate, plate capacitor, coaxial cable); parts by numbers or dragged in the picture.
+Tested: a wire's field μ₀I/(2πr) within 5%, two wires' pull μ₀I²/(2πd) within 10%, iron multiplies a coil's field,
+a capacitor's E = V/d, C within 35% of ε·w/d (fringing), a dielectric ×4, a magnet's north. The electromagnet takes
+~4.6 s (saturation; in the worker, "solving…"). Check: `scripts/checks/hyperion-fields-ui.mjs`.
+
+## M549: Ghidra's Aether guide and Hyperion set-up skills (26 Nov)
+
+The owner, 26 Nov: "train ghidra to next level… it should understand everything related to my project specially in the
+aether app… answer about the places, food, city… and for the hyperion app the ai should able to create things in the
+system for the user". Two new Ghidra skills, each in the app, with its playbook and exam paper, before the training run:
+- **guide** (Aether): `POST /travel/ask { place, question }` (`src/server/ghidra-apps.ts` `askPlace`): the place's
+  Wikivoyage guide as text (`guideText` in `travel.ts`: the opening, each part's paragraphs and listed places with
+  price and hours as given, ~7,000 letters) and the question → `{ answer, answered }`. Playbook: only the guide's
+  facts, say plainly when it doesn't cover something, never invent prices or hours, under 150 words. The box: Aether →
+  a guide → Overview, "Ask Ghidra about <place>" with five starter questions (`components/travel/AskPlace.tsx`).
+- **sim-setup** (Hyperion): `POST /hyperion/setup { text }` → a Structures study (`src/lib/sim/setup.ts`: `simChoices`
+  lists the shapes with their sizes and edges, the materials, the kinds; `studyFrom` keeps only what exists: sizes
+  clamped, unknown edges and kinds dropped, the start's supports and loads when none survive). The box: Structures,
+  over the outline, "Describe it: Ghidra sets it up" (`SimSetupAsk.tsx`); the study and its analysis open at once.
+- Exam papers (`papers-apps.ts`, `AETHER_HYPERION_PAPERS`): guide (made-up towns' mini-guides; must name the guide's
+  items, no number not in it, admit what it doesn't say), sim-setup (a description with a known answer: shape, size,
+  material, support and load edges, kN → N, direction, analysis). Both within the AI allowance, the switch, and
+  recorded in AI receipts (`guide`, `sim-setup`). The itinerary the owner asked for already exists (M329: ✨ on a trip,
+  `travel-itinerary.ts`, places by area around the stay); Ghidra's trip_new opens a trip with "Plan my days" started.
+- Ghidra 2, trained longer (CHAT 3000, THINK 7200 steps) on a rented RTX 4090: 3 of 100 maths problems against the
+  committed model's 4, so the committed model stays (the run's own rule). Pod terminated.
+Next: the add-on run (`ghidra-gpu.sh`) on an 80 GB card, with these papers in it.
+
+
+## M544 (25 Nov): Hyperion physics, M543's left-outs (curved solids split tightly, the thick disc's own shadow and walls)
+
+The owner sent M543's "left out on purpose" list back. **`convexSplit` on smooth curves** (`rigid3d.ts`): a bug first —
+the sliver filter stepped each corner towards the part's middle, which for a bent part lies in its hole, so real corners
+on the inside of a curve were dropped and a 16- or 24-step half ring came out at 54% / 20% of its volume. Now a corner is
+kept when a 1e-5 step towards the middle **or any of 26 directions** (`PROBES`) lands strictly inside the cell and the
+mesh. New cut candidates: besides the two face planes at each fold inwards, the plane **through the fold halving its
+angle** (normal n₁ − n₂; on a ring, the radial cut). Each cut keeps the folds it came from (`at`); a part only tries cuts
+with a fold inside it, the 12 passing nearest its middle. A part may have at most **64 corners** (what a solid takes): one
+with more is cut even when solid (by the best cut, else across its longest side), and refused with a clear message when
+'Parts' runs out. 'Parts' up to 32, default 16. Speed: `meshTest(V, T)` precomputes each triangle's ray-fixed numbers and
+a bounding box (was 60% of the time); `hull` skips triples already on a found face and stops a plane's scan once points
+lie on both sides. A 24-step half ring: 13 parts, 100.2% of its volume, 1.6 s (was 18 s and hollow); a 12 × 6 doughnut:
+12 parts, exact, 0.5 s. **The disc** (`kerr.ts`): a see-through thick disc (`thick` > 0, `opacity` < 1, `vol`) now glows
+and absorbs **along the path through its gas** (Beer–Lambert, κ such that a straight-down pass through the full height
+at that radius takes `opacity`, the source the gas's glow, so that pass gives opacity × glow as a crossing did); path
+length from dr, r dθ and r sinθ dφ (dφ/dλ = L/sin²θ − a + aP/Δ), in Boyer–Lindquist coordinates (`shortcut:`). A ray
+skimming through the near side is dimmed more, so it shadows the far side (the far side's share at 80° falls from 62%
+to 55% going from h/r 0.05 to 0.25). g and r are taken where the gas has taken the first 5%. A **solid** thick disc's
+walls: the inner cylinder rIn, met from the hole's side between the faces, shines with the gas one disc-height behind it
+(Novikov–Thorne's glow is zero at rIn itself; r reports rIn); the outer rim, met from outside (an edge-on ray that never
+crosses a face used to pass straight through), with the gas at rOut. Example `physics8.m` (the doughnut dropped, the two
+discs); the science examples' test now allows 20 s each (heavy examples missed 5 s when the whole suite runs side by
+side). Tests (`physics-m544.test.ts`): the half ring within 1% and ≤ 64 corners a part, the doughnut exact, face-on
+see-through about the opacity, the thicker disc's far side shadowed, inner wall seen at 60° and not on a thin disc, the
+rim edge-on, 'Parts' 32 and its limit. Not built: lengths in the disc's gas are coordinate lengths (not the gas's own
+frame), the gas absorbs the same at every colour, and convexSplit's cuts are still only planes from the mesh's folds (no
+free search for the best plane, as V-HACD does).
+
+## M545 (25 Nov): Hyperion physics, M544's left-outs (free planes for convexSplit, the disc's gas in its own frame and by colour)
+
+The owner sent M544's "left out on purpose" list back. **`convexSplit`** (`rigid3d.ts`): measuring the free search
+showed two older faults first. (1) A real corner of a **thin wedge-shaped part** was dropped: none of the 26 probe
+directions (M544) lands inside a wedge narrower than their spacing, so a cube with a pyramid pushed into its top came
+out at 89% of its volume. `PROBES` now adds 256 directions on a Fibonacci sphere (cheap: most fail the cell's planes
+before the mesh test). (2) A cut whose one side failed to judge was taken with that side dropped (and its empty space
+uncounted, so it looked good): `scoreIn` now needs both sides. With the corners right the dented cube hit a
+**plateau** (each diagonal cut leaves the same total empty space), so when the best cut saves under 1% and 4 parts
+remain in the budget, the 6 best cuts are judged **one cut ahead** (each side then cut by its best of 6 fold cuts):
+the dented cube is 4 exact parts. **`'Search', true`** (`search` in `convexSplit`) adds free planes where the fold
+cuts leave over half the empty space: across the part's three axes at ¼, ½ and ¾, then the best plane tilted (±0.3
+rad, halving) and slid, 4 rounds. A free plane must beat the best fold cut by a fifth (the 12³ grid's count of empty
+space is noisy; a fold cut is exact). Measured on 10 meshes it rarely wins (a peanut 1.0029 → 1.0004 of its volume, at
+4× the time; once it led to a part over 64 corners), so it is **off by default**. A 24-step half ring now makes 14
+parts (13 before) within 0.7%. **The disc** (`kerr.ts`): lengths through the gas are **the gas's own**,
+ds = (−p·u) dλ = Σ dλ_Mino / g (Σ = r² + a² cos²θ, E = 1), and κ is set by the proper height 2 r asin(h/r) (across
+the gas's motion, the same for it as for a still observer). With **`tK`** (kelvin of the hottest gas) each pixel gets a
+**spectrum** `S` at `LAM` (17 wavelengths, 380–780 nm): each bit of gas a black body at g·T as we see it (I_ν/ν³ is
+invariant), taking light by colour with κ_ν = κ (ν/ν_peak)^−`absorb` in its own frame (ν_peak its own temperature's,
+where `opacity` holds). Faces take 1 − (1 − opacity)^f, the slab exp(−κ f ds), walls all; a ray goes on while any colour
+gets through. `I`, `g`, `r`, `T` are still the grey ones. `kerrDisc`'s 'temperature' colour is now each pixel's spectrum
+through `sampledRGB` (`spectrumRGB` is the CIE fit for any spectrum; `blackbodyRGB` uses it), and **`'Absorption'`**
+p (−4 to 4) sets the power. Note for whoever builds on it: by Kirchhoff the gas also **glows** most at the colours it
+takes most, and in a see-through disc that glow outweighs the light from behind, so p = 2 (free–free) makes the
+picture redder and −1 (dust) bluer (the light from behind does pass bluer for p = 2). Example `physics9.m` (the dented
+cube, two discs). Tests (`physics-m545.test.ts`): the dented cube 4 exact parts, 'Search' on an L, a sampled black
+body's colour, free–free redder and dust bluer with the brightness unchanged (within 0.2%) and a solid disc unchanged,
+face-on still about the opacity, both options in the language. Not built: `'Search'` stays a local search (no
+V-HACD-style voxel or hierarchical search), the one-cut look-ahead only on a plateau, and scattering (light turned
+aside rather than taken) is not modelled; the spectrum is not one of `kerrDisc`'s outputs.
+
+## M546 (25 Nov): Hyperion physics, M545's left-outs (a fuller split search, scattering in the disc, its spectrum out)
+
+The owner sent M545's "left out on purpose" list back. **`convexSplit(…, { search: 'full' })`** (`rigid3d.ts`;
+`'Search', 'full'` in the language): one cut **ahead at every cut** (not only on a plateau): the best 4 cuts, each
+judged by what its two sides leave after their own best cut (6 fold cuts plus a halving across each axis), taken
+when that is 10% better than looking ahead from the plain best; then V-HACD's last step, **merging** neighbouring parts
+(boxes touching) while their joint hull stays solid within the tolerance and has at most 64 corners, the pair wasting
+least first (`fill`, split out of `judge`, scores any set of corners). Measured on 10 meshes (16 parts allowed): a
+24-step half ring 12 parts at 1.0073 of its volume against 14 at 1.0064 plain, ~10 s against 1.7 s; merging alone
+takes it to 13 and a peanut from 10 to 8, cheaply; the rest unchanged. **Tried and dropped:** free planes in 13
+directions (axes, face and body diagonals) at five places each, always: never a closer fit, 5–15× slower, and on two
+smooth blobs it left parts of over 64 corners (refused) — the note in the code says so. A trap: the peanut's plain
+split sums to 1.0029 of its volume but its merged parts to 0.988, so the plain parts overlapped slightly while leaving
+about 1% uncovered; the volume sum hides that. **The disc** (`kerr.ts`): `scatter` ω, the share of the opacity (at
+the gas's peak colour) that turns light aside, in the **Eddington two-stream** approximation: extinction (1 − ω)f + ω
+times κ at a colour whose absorption is f times the peak's, ε = (1 − ω)f / that, a surface (or deep slab) gives out
+ε_eff = 2√ε / (1 + √ε) of a black body, so the gas is f_col = ε_eff(peak)^−¼ hotter to carry its flux (colour
+correction: ×1.2 at ω = 0.9, ×1.53 at 0.99); a solid disc keeps its bolometric light exactly, its `T` and spectrum
+harden. Inside a see-through slab the source is εB + (1 − ε)J, J = B (1 − e^(−√(3ε) τ) / (1 + √ε)) at the optical
+depth τ to the nearer face (`shortcut:`: a plane-parallel slab at each point, not the light really arriving from the
+whole disc), so a scattering see-through disc dims (light turned away from us: 0.73 of its light at ω = 0.99). ω = 0
+gives M545 exactly. **`kerrDisc`** takes 'Scattering' (0 to 0.99) and gives `[I, g, r, T, S, lam]`: S each pixel's
+spectrum (n × n × 17, arbitrary units, by the picture's rows), lam the wavelengths (380 to 780 nm); asking for S
+computes the spectrum even with 'Colour', 'brightness'. Example `physics10.m` (a half ring plain and full, the
+spectrum without and with scattering, the scattering disc in colour). Tests (`physics-m546.test.ts`): 'full' on a half
+ring (no more parts, within 1%), a box one part, a solid disc's light kept and its temperature raised by exactly
+f_col and bluer, ω = 0 unchanged, the outputs' sizes, both options in the language. Not built: V-HACD's voxel and
+hierarchical search itself (only its merge), and scattered light reaching us from other parts of the disc (no
+Monte Carlo transfer); Compton up-scattering (hot electrons boosting light to X-rays) is not modelled.
+
+
+## M478: Hyperion's computer app smoother, 1.2.0 (25 Nov)
+
+The owner, 25 Nov: "make everything ultra smooth specially the downloaded hyperion app". The site's Hyperion pages were
+measured in M468 (no long task at CPU ×1), so this is the app's window and two costs found in the pages.
+- **`desktop/hyperion/main.js`:** `enable-gpu-rasterization` and `enable-zero-copy` (not `ignore-gpu-blocklist`: those
+  chips are blocked for crashes); the window's background follows the system's light/dark (`nativeTheme`, updated live)
+  so resizing or the first frame never flashes white in dark; `v8CacheOptions: 'bypassHeatCheck'` keeps the site's code
+  compiled from its first run; the connection to the site opens while the window is made (`preconnect`); the window
+  reopens maximized when it closed so (`getNormalBounds` + `maximized` in window.json); shown at its first paint or
+  after 4 s at the latest, and a second launch shows it (it could stay hidden on a slow line).
+- **File → Code / Simulate / Learn without a reload:** main sends `hyperion:go` (only when the page is the site's);
+  `preload.js` hands it to the page's `hyperionDesktop.onGo` listener (`components/lab/DesktopGo.tsx` in the Hyperion
+  layout: `router.push`, only `/hyperion…` paths) or, when nothing listens (an older site, sign-in), loads the address.
+  Tried in the real Electron under xvfb both ways.
+- **The scene behind the page holds one still frame in the app** (`AppBackdrop`: `'hyperionDesktop' in window`, like
+  Reduce Motion): a work tool's graphics chip goes to the editor, figures and live simulations.
+- **The command window** (`LabApp`): each printed line has a steady number (`n`) and is a memo'd `LogLine`, so a run's
+  streaming output draws only the new line, not up to 800 above it (index keys shifted every row once at the cap).
+- **[owner]:** after merging, GitHub → Actions → "Hyperion desktop" → Run workflow with "publish" ticked (version 1.2.0).
+
+## M550: Hyperion's Code window: no overlap, the editor and command window full width (26 Nov)
+
+The owner, 26 Nov, with a screenshot: in Hyperion's Code window the command window was drawn over the editor's last
+lines, and Variables and Files should move so the editor and the command window fill that space. The middle column is
+now the editor over the command window with a divider between them (`Splitter axis="y"`, kept as `uv-lab-panes`;
+the editor's height is `min(kept, 100% − 9rem)` so the command window always keeps 8 rem), both marked
+`data-no-arrange` (page-arranging could give a card a fixed height that broke the old 1.1 : 1 grid rows). Variables and
+Files left the left column: with the figure they are tabs on the right ("Side panel": Figure, Variables, Files; the
+toolstrip's Layout still hides either part). A new figure brings its tab forward without an effect: the tab chosen
+remembers the figure it was chosen at. Check: `scripts/checks/hyperion-layout-ui.mjs` (no overlap at 1280×800 and
+1920×1080, with Ask Ghidra open too).
+
+## M551: Hyperion Simulate, Sound: acoustics (26 Nov)
+
+Simulate → **Sound**, a new bench (`src/lib/sim/acoustics.ts`, `components/sim/SoundBench.tsx`): acoustics in a floor
+plan by FDTD on a staggered grid (pressure at the cells, velocity on the faces, ~200 cells across, dt = 0.5·h/c).
+Blocks are rigid (faces beside them hold no velocity) and absorb a share at the air cells touching them; the box is a
+room (hard sides) or open (a quadratic sponge at the edges). The source plays a tone (three-cycle soft start) or a
+clap (a Gaussian pulse). Views: the wave (red push, blue pull) and Loudness (RMS dB re 20 µPa once the sound has
+crossed the box twice, the loudest 40 dB). The listener's level over the last 50 ms; after a clap, the room's
+resonances from the listener's spectrum (a Hann-windowed DFT, parabolic peaks, up to 200 Hz) beside the textbook's
+for a plain rectangle. Runs on the page's thread in requestAnimationFrame (~26k cells × up to 60 steps a frame, a few
+ms; paused while the tab is hidden; Reduce Motion starts paused). Drag S and L. Tested: a pulse at c within 4%, a
+closed room's lowest three modes within 3% of (c/2)·√((m/W)²+(n/H)²), a wall >5 dB quieter behind it. In the
+browser the resonance study read 34.4, 48.9, 59.9, 84.4 Hz against 34.3, 49.0, 59.8, 84.3. Check:
+`scripts/checks/hyperion-sound-ui.mjs`.

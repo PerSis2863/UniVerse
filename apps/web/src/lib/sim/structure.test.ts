@@ -257,3 +257,56 @@ describe('Hyperion Simulate: your own shape (M411)', () => {
     expect(readCustom(null)).toEqual(CUSTOM_START);
   });
 });
+
+describe('Hyperion Simulate: heat and stress together (M544)', () => {
+  const held = (byName: (n: string) => string[], right: boolean) => [
+    { id: 'a', kind: 'slideY' as const, edges: byName('Left end') }, { id: 'b', kind: 'slideX' as const, edges: byName('Bottom') },
+    ...(right ? [{ id: 'c', kind: 'slideY' as const, edges: byName('Right end') }] : []),
+  ];
+  it('a bar free to grow gets longer by α·ΔT·L and has no stress', () => {
+    const { mesh, byName } = build('beam', { L: 100, H: 20 }, 8);
+    const r = solveStatic(mesh, { thickness: 5, material: steel, gravity: false, supports: held(byName, false), loads: [], warming: 50 });
+    expect(peak(r.ux).value).toBeCloseTo(steel.alpha * 50 * 100, 9);
+    expect(peak(r.vm).value).toBeLessThan(1e-6);
+    for (const x of r.reactions) { expect(x.fx).toBeCloseTo(0, 6); expect(x.fy).toBeCloseTo(0, 6); }
+  });
+  it('a bar held at both ends and warmed is squeezed by E·α·ΔT, and the ends push back with it', () => {
+    const { mesh, byName } = build('beam', { L: 100, H: 20 }, 8);
+    const r = solveStatic(mesh, { thickness: 5, material: steel, gravity: false, supports: held(byName, true), loads: [], warming: 50 });
+    const s = steel.E * steel.alpha * 50; // 120 MPa
+    for (let n = 0; n < mesh.x.length; n++) { expect(r.sx[n]).toBeCloseTo(-s, 6); expect(Math.abs(r.sy[n])).toBeLessThan(1e-6); }
+    expect(r.reactions[2].fx).toBeCloseTo(-s * 20 * 5, 4);
+    expect(r.reactions[0].fx).toBeCloseTo(s * 20 * 5, 4);
+  });
+  it('an uneven warming (one per node) still balances, and refuses temperatures from another mesh', () => {
+    const { mesh, byName } = build('beam', { L: 100, H: 20 }, 8);
+    const warming = Float64Array.from(mesh.x, (x) => x * 0.8);
+    const r = solveStatic(mesh, { thickness: 5, material: steel, gravity: false, supports: [{ id: 'f', kind: 'fixed', edges: byName('Left end') }], loads: [], warming });
+    expect(r.reactions[0].fx).toBeCloseTo(0, 5);
+    expect(r.reactions[0].fy).toBeCloseTo(0, 5);
+    expect(peak(r.vm).value).toBeGreaterThan(1);
+    expect(() => solveStatic(mesh, { thickness: 5, material: steel, gravity: false, supports: held(byName, false), loads: [], warming: [1, 2] })).toThrow(/same part/);
+  });
+});
+
+describe('Hyperion Simulate: fatigue life (M546)', () => {
+  const bar = (fatigue: Study['fatigue'], F = 30_000) => {
+    const { mesh, byName } = build('beam', { L: 100, H: 50 }, 12);
+    return solveStatic(mesh, { thickness: 2, material: steel, gravity: false, fatigue,
+      supports: [{ id: 'a', kind: 'slideY', edges: byName('Left end') }, { id: 'b', kind: 'slideX', edges: byName('Bottom') }],
+      loads: [{ id: 'f', kind: 'force', edges: byName('Right end'), F, angle: 0 }] });
+  };
+  it('a bar pulled back and forth lasts as Basquin says: N = ½·(σa/σf′)^(1/b)', () => {
+    const r = bar({ kind: 'reversed', cycles: 1e6 }), s = 300; // 300 MPa everywhere
+    const N = 0.5 * (s / steel.sf) ** (1 / steel.b);
+    expect(r.life[0]).toBeCloseTo(Math.log10(N), 6);
+    expect(r.fsafety[0]).toBeCloseTo((steel.sf * (2e6) ** steel.b) / s, 6);
+  });
+  it('pulsating (0 to the load) counts the mean by Goodman, and a squeeze lasts longer than a pull', () => {
+    const r = bar({ kind: 'pulsating', cycles: 1e6 }), sa = 150, sm = 150;
+    expect(r.life[0]).toBeCloseTo(Math.log10(0.5 * (sa / (1 - sm / steel.utsMPa) / steel.sf) ** (1 / steel.b)), 6);
+    const squeezed = bar({ kind: 'pulsating', cycles: 1e6 }, -30_000);
+    expect(squeezed.life[0]).toBeGreaterThan(r.life[0]);
+    expect(peak(bar({ kind: 'reversed', cycles: 1e6 }, 0).life, true).value).toBe(9);
+  });
+});

@@ -201,6 +201,19 @@ export async function placeOf(asked: string): Promise<{ guide: string; name: str
   return { guide: r.title, name: r.title.split('/').pop()!.replace(/\s*\([^)]*\)/, ''), lat: r.lat ?? null, lon: r.lon ?? null, cc: country?.code ?? null };
 }
 
+/** M549b: a place's guide as plain text for Ghidra's guide skill: the opening, then each part's paragraphs and its
+ *  listed places (name, kind, a line about it, price and hours as the guide gives them), cut at about `max` letters. */
+export async function guideText(asked: string, max = 7000): Promise<{ name: string; guide: string; text: string } | null> {
+  const r = await readArticle(titleOf(asked));
+  if (!r) return null;
+  const out: string[] = [r.summary.join(' ')];
+  for (const sec of r.sections) {
+    out.push(`\n## ${sec.title}`, sec.text.slice(0, 3).join(' '));
+    for (const l of sec.listings.slice(0, 12)) out.push(`- ${l.name}${l.group ? ` (${l.group})` : ''}${l.text ? `: ${l.text.slice(0, 160)}` : ''}${l.price ? ` Price: ${l.price.slice(0, 60)}.` : ''}${l.hours ? ` Hours: ${l.hours.slice(0, 60)}.` : ''}`);
+  }
+  return { name: r.title.split('/').pop()!.replace(/\s*\([^)]*\)/, ''), guide: r.title, text: out.join('\n').slice(0, max) };
+}
+
 export interface WeatherDay { date: string; min: number; max: number; symbol: string | null; rain: number }
 
 /** GET /travel/weather?lat=&lon=: the next days' highs, lows, rain and sky, and (M336, the map's weather) the

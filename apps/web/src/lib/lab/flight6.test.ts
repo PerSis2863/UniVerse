@@ -175,4 +175,33 @@ describe('Hyperion flight in six directions (M489c)', () => {
     lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'TurbulenceFin', 1);");
     expect(lab.vars.get('tr')).toBeTruthy();
   });
+  it('M489k: the fin above the roll axis rolls it in side gusts', { timeout: 60_000 }, () => {
+    const ac = fl.PLANE_DEFAULT;
+    const go = (finRoll: boolean, zf?: number) => fl.flight6({ ...ac, zf }, 40, { V0: 50, h0: 1000, wind: { turbulence: { sigma: 3, seed: 5, finLag: true, finRoll } }, holdHeading: () => 0, holdHeight: () => 1000, holdSpeed: 50, points: 2000 });
+    const off = go(false), on = go(true), high = go(true, 2);
+    // Off unchanged from M489j; on, the roll changes (more the higher the fin); the yaw much the same.
+    expect(on.p.some((x, k) => Math.abs(x - off.p[k]) > 1e-4)).toBe(true);
+    const diff = (a: number[]) => Math.sqrt(a.reduce((q, x, k) => q + (x - off.p[k]) ** 2, 0) / a.length);
+    expect(diff(high.p)).toBeGreaterThan(diff(on.p));
+    const rms = (x: number[]) => Math.sqrt(x.reduce((q, v) => q + v * v, 0) / x.length);
+    expect(rms(on.r) / rms(off.r)).toBeGreaterThan(0.8); expect(rms(on.r) / rms(off.r)).toBeLessThan(1.25);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'FinHeight', 0.9);");
+    expect(lab.vars.get('tr')).toBeTruthy();
+    expect(() => lab.run("aircraftSim6DOF(aircraft(), 10, 'Turbulence', 3, 'FinHeight', 9)")).toThrow(/FinHeight/);
+  });
+  it('M489l: the downwash reaching the tail late damps the pitching', { timeout: 60_000 }, () => {
+    // An elevator kick in calm air: off, as before; on, the short period dies away sooner (the classic Cmα̇).
+    const go = (downwashLag: boolean, deda?: number) => fl.flight6({ ...ac, deda }, 6, { V0: 50, h0: 1000, wind: { downwashLag }, elevator: (t) => (t < 0.3 ? -3 * D : 0), points: 3000 });
+    const off = go(false), on = go(true), weak = go(true, 0.1);
+    const tail = (r: { q: number[]; t: number[] }) => { const i = at(r, 1); return Math.max(...r.q.slice(i).map(Math.abs)); };
+    expect(tail(on)).toBeLessThan(tail(off)); expect(tail(weak)).toBeGreaterThan(tail(on)); expect(tail(weak)).toBeLessThan(tail(off));
+    // Steady flight is untouched.
+    const calm = fl.flight6(ac, 5, { V0: 50, h0: 1000, wind: { downwashLag: true }, points: 500 }), still = fl.flight6(ac, 5, { V0: 50, h0: 1000, points: 500 });
+    expect(Math.abs(calm.theta[calm.theta.length - 1] - still.theta[still.theta.length - 1])).toBeLessThan(1e-6);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[tr, info] = aircraftSim6DOF(aircraft(), 5, 'Turbulence', 3, 'TurbulenceTail', 1, 'DownwashLag', 1);");
+    expect(lab.vars.get('tr')).toBeTruthy();
+    expect(() => lab.run("aircraftSim6DOF(aircraft(), 5, 'DownwashLag', 2)")).toThrow(/DownwashLag/);
+  });
 });

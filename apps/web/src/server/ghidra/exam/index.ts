@@ -2,7 +2,7 @@ import { jsonSchema } from '../../agents/playbooks';
 import { asGhidra } from '../brain';
 import { SKILLS, type SkillId } from '../skills';
 import { fits, IDENTITY, jsonIn, questions, type Ask, type CodeRun, type Paper } from './kit';
-import { APP_PAPERS, hyperionPaper } from './papers-apps';
+import { AETHER_HYPERION_PAPERS, APP_PAPERS, hyperionPaper } from './papers-apps';
 import { LEARNING_PAPERS } from './papers-learning';
 import { SHARED_PAPERS } from './papers-shared';
 
@@ -14,7 +14,7 @@ export { questions, type Ask, type CodeRun, type Paper };
 
 /** Every skill's paper. */
 export async function papers(): Promise<Record<SkillId, Paper>> {
-  const all = { ...APP_PAPERS, ...LEARNING_PAPERS, ...SHARED_PAPERS, hyperion: await hyperionPaper() };
+  const all = { ...APP_PAPERS, ...AETHER_HYPERION_PAPERS, ...LEARNING_PAPERS, ...SHARED_PAPERS, hyperion: await hyperionPaper() };
   return all satisfies Record<SkillId, Paper>;
 }
 export const SKILL_IDS = Object.keys(SKILLS) as SkillId[];

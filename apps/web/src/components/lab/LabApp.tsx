@@ -5,12 +5,13 @@ import { TestResults } from './TestResults';
 import type { TestReport } from '@/lib/lab/verify-lab';
 import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
 import { asksOf, onAsk, onChannel } from './page-answers';
-import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { MACHINE_EXAMPLES } from '@/lib/lab/examples-machines';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
 import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, FlaskConical, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
+import { Splitter, usePaneSizes } from '@/components/ui/Splitter';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
@@ -45,7 +46,12 @@ const OTHER_FIG = 1_000_000;
 // Stop ends a run. Scripts are kept on this device, and so are files (M383: uploaded, or written by code; IndexedDB).
 // Phones get the same parts as tabs.
 
-type Line = { k: 'in' | 'out' | 'err'; t: string };
+type Line = { k: 'in' | 'out' | 'err'; t: string; n?: number };
+// Each printed line gets a steady number, so a long run's streaming output draws only the new line, not the 800 above it.
+let lineNo = 0;
+const LogLine = memo(function LogLine({ l }: { l: Line }) {
+  return <pre className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' ? (l.t.startsWith('>>') ? l.t : `>> ${l.t}`) : <LabText text={l.t} />}</pre>;
+});
 /** 'tool': a line the toolstrip runs (M472): like a command, but always in Hyperion's own engine. */
 type From = 'cmd' | 'tool' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep' | 'test';
 /** Watch it run (M393): a recorded run being played back. */
@@ -170,8 +176,8 @@ export function LabApp() {
   // Saved a moment after the last change (a slider sends many changes a second).
   const save = (next: Script[]) => { setScripts(next); clearTimeout(keepTimer.current); keepTimer.current = window.setTimeout(() => { try { localStorage.setItem(KEEP, JSON.stringify(next)); } catch { /* private mode */ } }, 250); };
   const print = (l: Line) => setLog((prev) => {
-    if (l.t.includes('\f')) return [{ ...l, t: l.t.slice(l.t.lastIndexOf('\f') + 1) }].filter((x) => x.t);
-    return [...prev.slice(-800), l];
+    if (l.t.includes('\f')) return [{ ...l, t: l.t.slice(l.t.lastIndexOf('\f') + 1), n: ++lineNo }].filter((x) => x.t);
+    return [...prev.slice(-800), { ...l, n: ++lineNo }];
   });
 
   /** A script in another language: its thread prints, then hands back its error, figures and variables. */
@@ -377,6 +383,11 @@ export function LabApp() {
   const send = () => { const c = cmd; if (!c.trim()) return; setHist((h) => [...h.filter((x) => x !== c), c].slice(-100)); setHi(-1); setCmd(''); run(c, 'cmd'); };
 
   const fig = figs.find((f) => f.id === current) ?? figs[figs.length - 1] ?? null;
+  // The owner, 26 Nov: the editor and the command window take the window's width (the command window was drawn over the
+  // editor's last lines), with a divider between them; Variables and Files moved beside the figure, as tabs. A new figure
+  // brings its tab forward (no effect needed: the tab chosen remembers the figure it was chosen at).
+  const [panes, setPanes] = usePaneSizes('uv-lab-panes', { editor: 420 });
+  const [side, setSide] = useState<{ tab: 'figure' | 'variables' | 'files'; figId: number | null }>({ tab: 'figure', figId: null });
   // The figure is drawn at its panel's real size (sharp text), again whenever the panel changes size.
   const figBox = useRef<HTMLDivElement | null>(null), asked = useRef('');
   const figId = fig?.id;
@@ -534,7 +545,7 @@ export function LabApp() {
       </div>
       <div ref={logBox} role="log" aria-label="Output" tabIndex={0} className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[13px] leading-relaxed" data-no-motion>
         {watching && watch ? <pre className="whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-100"><span className="text-violet-700 dark:text-violet-300">{`Watching: what the run printed up to step ${watch.k + 1}\n`}</span><LabText text={printedUpTo(watch.steps, watch.k)} /></pre> : <>
-        {log.map((l, i) => <pre key={i} className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' ? (l.t.startsWith('>>') ? l.t : `>> ${l.t}`) : <LabText text={l.t} />}</pre>)}
+        {log.map((l, i) => <LogLine key={l.n ?? `i${i}`} l={l} />)}
         </>}
       </div>
       <div className="flex items-start gap-2 border-t border-zinc-200/80 px-3 py-2 font-mono text-[13px] dark:border-white/10">
@@ -842,11 +853,26 @@ export function LabApp() {
         notebook={!!noteView[open]} onNotebook={() => setNoteView((nv) => ({ ...nv, [open]: !nv[open] }))}
         explain={explainOn} onExplain={() => setExplainOn((v) => !v)}
         onExample={(i) => { const e = EXAMPLES[i]; save([...list, { name: list.some((x) => x.name === e.name) ? e.name.replace(/(\.\w+)$/, `_copy$1`) : e.name, code: e.code }]); setOpen(list.length); }} />
-      <div className={cn('grid min-h-0 flex-1 gap-3', layout.side && layout.figure ? 'grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)]' : layout.side ? 'grid-cols-[16rem_minmax(0,1fr)]' : layout.figure ? 'grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]' : 'grid-cols-1')}
+      <div className={cn('grid min-h-0 flex-1 gap-3', layout.side || layout.figure ? 'grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]' : 'grid-cols-1')}
         style={{ '--lab-code': `${layout.codeSize}px` } as React.CSSProperties}>
-        {layout.side && <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>}
-        <div className="grid min-h-0 grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3">{editor}{command}</div>
-        {layout.figure && figure}
+        <div className="flex min-h-0 flex-col gap-3" data-no-arrange>
+          <div className="relative flex min-h-[10rem] shrink-0 flex-col" style={{ height: `min(${panes.editor}px, calc(100% - 9rem))` }}>
+            {editor}
+            <Splitter axis="y" label="Editor height" value={panes.editor} min={160} max={1400} initial={420} onChange={(editor) => setPanes({ editor })} />
+          </div>
+          <div className="flex min-h-[8rem] flex-1 flex-col">{command}</div>
+        </div>
+        {(layout.side || layout.figure) && (() => {
+          const tabs = [...(layout.figure ? [{ value: 'figure' as const, label: 'Figure' }] : []), ...(layout.side ? [{ value: 'variables' as const, label: 'Variables' }, { value: 'files' as const, label: 'Files' }] : [])];
+          const fresh = layout.figure && fig && fig.id !== side.figId;
+          const tab = fresh ? 'figure' : tabs.some((t) => t.value === side.tab) ? side.tab : tabs[0].value;
+          return (
+            <div className="flex min-h-0 flex-col gap-2" data-no-arrange>
+              {tabs.length > 1 && <Segmented<typeof tab> label="Side panel" value={tab} onChange={(t) => setSide({ tab: t, figId: fig?.id ?? null })} segments={tabs} />}
+              <div className="flex min-h-0 flex-1 flex-col">{tab === 'figure' ? figure : tab === 'variables' ? variables : fileList}</div>
+            </div>
+          );
+        })()}
       </div>
       {viewer}
       {bigQr && link?.url && (

@@ -330,7 +330,48 @@ for k = 1:n, F{end+1} = [k, mod(k, n)+1, n+mod(k, n)+1, n+k]; end
 parts = convexSplit(V, F)
 figure; rigidShapes3D({parts}, [5 5 3 30 20 0], [], 'Time', 3)
 % 3. A thick, half see-through disc coloured by its temperature: the far side shows through
-figure; kerrDisc(0.9, 80, 'Pixels', 120, 'Thickness', 0.05, 'Opacity', 0.6, 'Colour', 'temperature')
+figure; kerrDisc(0.9, 80, 'Pixels', 90, 'Thickness', 0.05, 'Opacity', 0.6, 'Colour', 'temperature')
+` },
+  { name: 'physics8.m', code: `% Physics: a curved solid split by itself, a thick disc's glowing wall and its own shadow
+% 1. A doughnut (curved all over) split into convex parts, then dropped: it lands on its side and rests
+N = 12; M = 6; [u, v] = ndgrid(2*pi*(0:N-1)/N, 2*pi*(0:M-1)/M);
+V = [(2 + 0.6*cos(v(:))).*cos(u(:)), (2 + 0.6*cos(v(:))).*sin(u(:)), 0.6*sin(v(:))];
+id = @(i, j) mod(i, N) + N*mod(j, M) + 1;        % ndgrid runs down u first
+F = zeros(N*M, 4);
+for i = 0:N-1, for j = 0:M-1, F(i*M + j + 1, :) = [id(i, j) id(i+1, j) id(i+1, j+1) id(i, j+1)]; end, end
+parts = convexSplit(V, F);
+fprintf('The doughnut in %d convex parts\\n', numel(parts))
+figure; rigidShapes3D({parts}, [5 5 3 40 0 0], [], 'Time', 2)
+% 2. A thick solid disc seen from above: its inner wall glows; then see-through, nearly edge-on, shadowing itself
+figure; kerrDisc(0.5, 60, 'Pixels', 80, 'Thickness', 0.2)
+figure; kerrDisc(0, 85, 'Pixels', 80, 'Thickness', 0.2, 'Opacity', 0.3)
+` },
+  { name: 'physics9.m', code: `% Physics: a pyramid pushed into a cube, cut into parts by itself; a disc's gas taking light by colour
+% 1. No single cut helps this one (each diagonal cut leaves the same empty space), so it looks one cut ahead
+V = [0 0 0; 1 0 0; 1 1 0; 0 1 0; 0 0 1; 1 0 1; 1 1 1; 0 1 1; 0.5 0.5 0.2];
+F = [4 3 2 1; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8; 5 6 9 NaN; 6 7 9 NaN; 7 8 9 NaN; 8 5 9 NaN];   % NaN pads the triangles
+parts = convexSplit(V, F);
+fprintf('The dented cube in %d convex parts\\n', numel(parts))
+% 2. A see-through thick disc nearly edge-on, coloured by the light that reaches us. Gas glows most at the colours it
+%    takes most: hot gas (free-free, p = 2) glows redder, the far side coming through it bluer; dust (p = -1) the other way
+figure; kerrDisc(0.9, 82, 'Pixels', 70, 'Thickness', 0.15, 'Opacity', 0.5, 'Colour', 'temperature', 'Absorption', 2)
+figure; kerrDisc(0.9, 82, 'Pixels', 70, 'Thickness', 0.15, 'Opacity', 0.5, 'Colour', 'temperature', 'Absorption', -1)
+` },
+  { name: 'physics10.m', code: `% Physics: a ring split with a look ahead and merging; a disc whose gas scatters light, and its spectrum
+% 1. A half ring: 'full' looks one cut ahead at every cut, then merges neighbours while their hull stays solid
+t = linspace(0, pi, 13)'; P = [2*cos(t) 2*sin(t); flipud(1.4*cos(t)) flipud(1.4*sin(t))]; n = size(P, 1);
+V = [P zeros(n, 1); P 0.5*ones(n, 1)];
+F = nan(n + 2, n); F(1, :) = n:-1:1; F(2, :) = n+1:2*n;
+for i = 1:n, j = mod(i, n) + 1; F(i + 2, 1:4) = [i j n+j n+i]; end
+p1 = convexSplit(V, F); p2 = convexSplit(V, F, 'Search', 'full');
+fprintf('Half ring: %d parts, %d with the full search\\n', numel(p1), numel(p2))
+% 2. The same disc without and with scattering: its spectrum, summed over the picture, hardens
+[I0, ~, ~, ~, S0, lam] = kerrDisc(0.5, 60, 'Pixels', 40);
+[I1, ~, ~, ~, S1] = kerrDisc(0.5, 60, 'Pixels', 40, 'Scattering', 0.99);
+s0 = squeeze(sum(sum(S0, 1), 2)); s1 = squeeze(sum(sum(S1, 1), 2));
+figure; plot(lam, s0 / max(s0), lam, s1 / max(s1)); xlabel('wavelength (nm)'); ylabel('light (peak 1)')
+legend('no scattering', '99% scattering'); title('Scattering hardens a disc''s light')
+figure; kerrDisc(0.5, 60, 'Pixels', 70, 'Colour', 'temperature', 'Scattering', 0.99)
 ` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
