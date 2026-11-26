@@ -15053,3 +15053,15 @@ system for the user". Two new Ghidra skills, each in the app, with its playbook 
 - Ghidra 2, trained longer (CHAT 3000, THINK 7200 steps) on a rented RTX 4090: 3 of 100 maths problems against the
   committed model's 4, so the committed model stays (the run's own rule). Pod terminated.
 Next: the add-on run (`ghidra-gpu.sh`) on an 80 GB card, with these papers in it.
+
+## M550: Hyperion's Code window: no overlap, the editor and command window full width (26 Nov)
+
+The owner, 26 Nov, with a screenshot: in Hyperion's Code window the command window was drawn over the editor's last
+lines, and Variables and Files should move so the editor and the command window fill that space. The middle column is
+now the editor over the command window with a divider between them (`Splitter axis="y"`, kept as `uv-lab-panes`;
+the editor's height is `min(kept, 100% − 9rem)` so the command window always keeps 8 rem), both marked
+`data-no-arrange` (page-arranging could give a card a fixed height that broke the old 1.1 : 1 grid rows). Variables and
+Files left the left column: with the figure they are tabs on the right ("Side panel": Figure, Variables, Files; the
+toolstrip's Layout still hides either part). A new figure brings its tab forward without an effect: the tab chosen
+remembers the figure it was chosen at. Check: `scripts/checks/hyperion-layout-ui.mjs` (no overlap at 1280×800 and
+1920×1080, with Ask Ghidra open too).
