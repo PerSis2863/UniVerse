@@ -69,6 +69,30 @@ export const PLAYBOOKS = {
       good: '- Stay in or near the Old City (C-Scheme is calmer) to walk to the main sights.\n- Group the forts on one day (Amber, then Jaigarh) and start early to beat the heat and queues.\n- Cover shoulders and knees at temples; remove shoes where asked.\n- Use metered autos or app cabs; agree on fares first otherwise.\n- Check opening hours before you go; book the evening light show ahead in busy months.',
     },
   },
+  guide: {
+    role: 'Ghidra, Aether’s local guide at UniVerse: a well-travelled friend who knows the place from its guide.',
+    standards: [
+      'Answer from the guide text given and nothing else: name its real sights, dishes, areas and ways around.',
+      'If the guide doesn’t cover what was asked, say so plainly ("The guide doesn’t say…") and suggest what it does cover; never guess.',
+      'Never invent prices, opening hours, phone numbers or distances: say "check opening hours" or "ask locally".',
+      'Answer the question first, then one useful extra (an area to stay, a dish to try, a custom to respect, a safety tip).',
+      'Short and warm: under 150 words, plain text, no ** or # marks.',
+    ],
+    example: {
+      ask: 'Place: Jaipur. Question: what should I eat?',
+      good: 'Try dal baati churma, Rajasthan’s classic of baked wheat balls with lentils, and laal maas, a fiery mutton curry the guide recommends for spice lovers. For sweets, ghevar is the one to look for. The old city’s bazaars are full of street stalls: choose busy ones where food is cooked fresh. Check opening hours for the well-known restaurants before you go.',
+    },
+  },
+  'sim-setup': {
+    role: 'Ghidra, Hyperion’s simulation engineer: turns a person’s description of a part into a ready Structures study.',
+    standards: [
+      'Choose the ready-made shape that fits best, and only sizes, edges and materials from the lists given.',
+      'Hold the part where the person says it is fixed or bolted; put each load on the edge they name, in newtons, in the direction they say (down when they say weight or hanging).',
+      'Convert units: kN × 1000 = N, a mass in kg hanging × 9.81 = N, cm × 10 = mm, m × 1000 = mm.',
+      'Pick the analysis asked: stress (default), vibration, buckling or the lightest shape.',
+      'In the note, one sentence on what was set up and anything assumed.',
+    ],
+  },
 } satisfies Record<string, Playbook>;
 
 /** An agent's instructions: its role, its field's standards, a worked example, the format, and the guardrail rule. */
@@ -104,6 +128,20 @@ export const AGENTS = {
   travel: {
     system: prompt(PLAYBOOKS.travel, 'Give at most 5 tips, each one line starting with "- ".'),
     schema: { type: 'OBJECT', properties: { tips: LIST }, required: ['tips'] },
+  },
+  guide: {
+    system: prompt(PLAYBOOKS.guide, 'Reply with the answer, and whether the guide fully answered it (answered: true or false).'),
+    schema: { type: 'OBJECT', properties: { answer: STR, answered: { type: 'BOOLEAN' } }, required: ['answer', 'answered'] },
+  },
+  'sim-setup': {
+    system: prompt(PLAYBOOKS['sim-setup'], 'Reply with the shape, its sizes (key and value in mm), the material, the thickness in mm, the supports (kind and edge), the loads (kind, edge, newtons or MPa, and direction), the analysis and a note.'),
+    schema: { type: 'OBJECT', properties: {
+      template: STR, sizes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { key: STR, value: { type: 'NUMBER' } }, required: ['key', 'value'] } },
+      material: STR, thickness: { type: 'NUMBER' },
+      supports: { type: 'ARRAY', items: { type: 'OBJECT', properties: { kind: STR, edge: STR }, required: ['kind', 'edge'] } },
+      loads: { type: 'ARRAY', items: { type: 'OBJECT', properties: { kind: STR, edge: STR, amount: { type: 'NUMBER' }, direction: STR }, required: ['kind', 'edge', 'amount'] } },
+      analysis: STR, note: STR,
+    }, required: ['template', 'material', 'supports', 'loads', 'analysis', 'note'] },
   },
 };
 export type AgentKind = keyof typeof AGENTS;

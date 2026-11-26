@@ -1935,6 +1935,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M546 | Hyperion Simulate, fatigue life (26 Nov) | **Done** (branch) | Structures → Fatigue: back and forth or on and off, the cycles wanted; life and fatigue safety-factor pictures by Basquin and Goodman; checked in the browser, light and dark, axe clean. |
 | M547 | Hyperion Simulate, the lightest shape (topology optimisation, 26 Nov) | **Done** (branch) | Structures → Solution → Lightest shape: SIMP with a sensitivity filter and optimality criteria, keep 20–60%; the bracket turns into a truss; checked in the browser, light and dark, axe clean. |
 | M548 | Hyperion Simulate, Fields: electromagnetics (26 Nov) | **Done** (branch) | Simulate → Fields: coils, magnets, saturating iron, electrodes and insulators; field lines, energy, forces by Maxwell's stress, capacitance; textbook-tested; checked in the browser, light and dark, axe clean. |
+| M549 | Ghidra's Aether guide and Hyperion set-up skills (26 Nov) | **Done** (branch) | guide: questions about a place answered from its guide (Aether → a guide → Ask Ghidra); sim-setup: a Structures study from a description (Describe it: Ghidra sets it up); playbooks, exam papers, AI receipts; Ghidra 2's longer run not better (kept). |
 
 ### Hyperion: the Ansys side and the GNU Octave packages (the owner, 26 Nov: "do all of them start now"; then "add all the repository functions and features" of github.com/orgs/gnu-octave)
 
@@ -1942,10 +1943,9 @@ On `claude/youthful-fermi-sbdtcp`, one item per commit, numbered from M544. **Ne
 it is GPL v3, which would bind the whole app): build each function ourselves from its documented behaviour and test it
 against textbook or published answers, as every toolbox so far. Of the organisation's 74 repositories about 35 are
 function packages; the rest (the website, Docker images, CI, Vim syntax, package installers, archived ones) add nothing.
-1. Simulate: **done** M544 heat and stress together, M545 buckling, M546 fatigue life. **Next:** M547 topology
-   optimisation (SIMP on the Structures mesh), M548 electromagnetics (2D magnetostatics and electrostatics: coils,
-   magnets, iron, field lines, force), M549 acoustics (2D Helmholtz: a room's or a pipe's modes, a source's field),
-   M550 STL files into 3D parts.
+1. Simulate: **done** M544 heat and stress together, M545 buckling, M546 fatigue life. Done too: M547 the lightest shape, M548 Fields (electromagnetics), M549 Ghidra's Aether guide and Hyperion set-up
+   skills. **Next:** acoustics (2D Helmholtz: a room's or a pipe's modes, a source's field),
+   then STL files into 3D parts.
 2. The language: `pdepe`, `integral2`, `integral3`; an app designer (`uifigure`, `uibutton`, `uislider`, `uiaxes`…:
    a window with controls built from a script); `webcam` / `snapshot` in image processing (asked first).
 3. Octave packages, in six waves: (1) statistics tests and resampling (`ttest`, `ttest2`, `ranksum`, `signrank`,

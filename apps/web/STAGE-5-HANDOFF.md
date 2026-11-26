@@ -15030,3 +15030,26 @@ two wires, magnets and a plate, plate capacitor, coaxial cable); parts by number
 Tested: a wire's field μ₀I/(2πr) within 5%, two wires' pull μ₀I²/(2πd) within 10%, iron multiplies a coil's field,
 a capacitor's E = V/d, C within 35% of ε·w/d (fringing), a dielectric ×4, a magnet's north. The electromagnet takes
 ~4.6 s (saturation; in the worker, "solving…"). Check: `scripts/checks/hyperion-fields-ui.mjs`.
+
+## M549: Ghidra's Aether guide and Hyperion set-up skills (26 Nov)
+
+The owner, 26 Nov: "train ghidra to next level… it should understand everything related to my project specially in the
+aether app… answer about the places, food, city… and for the hyperion app the ai should able to create things in the
+system for the user". Two new Ghidra skills, each in the app, with its playbook and exam paper, before the training run:
+- **guide** (Aether): `POST /travel/ask { place, question }` (`src/server/ghidra-apps.ts` `askPlace`): the place's
+  Wikivoyage guide as text (`guideText` in `travel.ts`: the opening, each part's paragraphs and listed places with
+  price and hours as given, ~7,000 letters) and the question → `{ answer, answered }`. Playbook: only the guide's
+  facts, say plainly when it doesn't cover something, never invent prices or hours, under 150 words. The box: Aether →
+  a guide → Overview, "Ask Ghidra about <place>" with five starter questions (`components/travel/AskPlace.tsx`).
+- **sim-setup** (Hyperion): `POST /hyperion/setup { text }` → a Structures study (`src/lib/sim/setup.ts`: `simChoices`
+  lists the shapes with their sizes and edges, the materials, the kinds; `studyFrom` keeps only what exists: sizes
+  clamped, unknown edges and kinds dropped, the start's supports and loads when none survive). The box: Structures,
+  over the outline, "Describe it: Ghidra sets it up" (`SimSetupAsk.tsx`); the study and its analysis open at once.
+- Exam papers (`papers-apps.ts`, `AETHER_HYPERION_PAPERS`): guide (made-up towns' mini-guides; must name the guide's
+  items, no number not in it, admit what it doesn't say), sim-setup (a description with a known answer: shape, size,
+  material, support and load edges, kN → N, direction, analysis). Both within the AI allowance, the switch, and
+  recorded in AI receipts (`guide`, `sim-setup`). The itinerary the owner asked for already exists (M329: ✨ on a trip,
+  `travel-itinerary.ts`, places by area around the stay); Ghidra's trip_new opens a trip with "Plan my days" started.
+- Ghidra 2, trained longer (CHAT 3000, THINK 7200 steps) on a rented RTX 4090: 3 of 100 maths problems against the
+  committed model's 4, so the committed model stays (the run's own rule). Pod terminated.
+Next: the add-on run (`ghidra-gpu.sh`) on an 80 GB card, with these papers in it.
