@@ -288,3 +288,25 @@ describe('Hyperion Simulate: heat and stress together (M544)', () => {
     expect(() => solveStatic(mesh, { thickness: 5, material: steel, gravity: false, supports: held(byName, false), loads: [], warming: [1, 2] })).toThrow(/same part/);
   });
 });
+
+describe('Hyperion Simulate: fatigue life (M546)', () => {
+  const bar = (fatigue: Study['fatigue'], F = 30_000) => {
+    const { mesh, byName } = build('beam', { L: 100, H: 50 }, 12);
+    return solveStatic(mesh, { thickness: 2, material: steel, gravity: false, fatigue,
+      supports: [{ id: 'a', kind: 'slideY', edges: byName('Left end') }, { id: 'b', kind: 'slideX', edges: byName('Bottom') }],
+      loads: [{ id: 'f', kind: 'force', edges: byName('Right end'), F, angle: 0 }] });
+  };
+  it('a bar pulled back and forth lasts as Basquin says: N = ½·(σa/σf′)^(1/b)', () => {
+    const r = bar({ kind: 'reversed', cycles: 1e6 }), s = 300; // 300 MPa everywhere
+    const N = 0.5 * (s / steel.sf) ** (1 / steel.b);
+    expect(r.life[0]).toBeCloseTo(Math.log10(N), 6);
+    expect(r.fsafety[0]).toBeCloseTo((steel.sf * (2e6) ** steel.b) / s, 6);
+  });
+  it('pulsating (0 to the load) counts the mean by Goodman, and a squeeze lasts longer than a pull', () => {
+    const r = bar({ kind: 'pulsating', cycles: 1e6 }), sa = 150, sm = 150;
+    expect(r.life[0]).toBeCloseTo(Math.log10(0.5 * (sa / (1 - sm / steel.utsMPa) / steel.sf) ** (1 / steel.b)), 6);
+    const squeezed = bar({ kind: 'pulsating', cycles: 1e6 }, -30_000);
+    expect(squeezed.life[0]).toBeGreaterThan(r.life[0]);
+    expect(peak(bar({ kind: 'reversed', cycles: 1e6 }, 0).life, true).value).toBe(9);
+  });
+});

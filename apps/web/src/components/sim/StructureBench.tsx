@@ -2,14 +2,14 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Thermometer, Columns3, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
+import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Thermometer, Columns3, Repeat, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import { shapeOf, TEMPLATES } from '@/lib/sim/part';
 import { ShapeSketch } from './ShapeSketch';
-import { MATERIALS, peak, type Load, type SupportKind } from '@/lib/sim/structure';
+import { FATIGUE_START, MATERIALS, peak, type Fatigue, type Load, type SupportKind } from '@/lib/sim/structure';
 import { WARMING_START, edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, templateInfo, verdict, type Field, type Model, type Warming } from '@/lib/sim/model';
 import { readHeat } from '@/lib/sim/heat-model';
 import type { Fineness } from '@/lib/sim/mesh';
@@ -26,7 +26,7 @@ import type { Analysis, FromSim, ToSim } from './sim.worker';
 // colours follow the sizes and the loads as they are typed.
 
 const KEEP = 'uv-sim-structure';
-type Sel = { k: 'geometry' | 'material' | 'mesh' | 'warming' | 'solution' } | { k: 'support' | 'load'; id: string };
+type Sel = { k: 'geometry' | 'material' | 'mesh' | 'warming' | 'fatigue' | 'solution' } | { k: 'support' | 'load'; id: string };
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const DIRECTIONS = [{ a: -90, label: 'Down' }, { a: 90, label: 'Up' }, { a: 0, label: 'Right' }, { a: 180, label: 'Left' }];
 
@@ -90,7 +90,8 @@ export function StructureBench() {
   const res = is3d ? solidRes : result;
   const mode = modal?.modes[Math.min(modeAt, modal.modes.length - 1)] ?? null;
   const material = MATERIALS.find((m) => m.id === model.material) ?? MATERIALS[0];
-  const warm = model.warming ?? WARMING_START;
+  const warm = model.warming ?? WARMING_START, fat = model.fatigue ?? FATIGUE_START;
+  const cyclesText = (c: number) => (c >= 1e9 ? `${+(c / 1e9).toPrecision(3)} billion` : c >= 1e6 ? `${+(c / 1e6).toPrecision(3)} million` : c >= 1e3 ? `${+(c / 1e3).toPrecision(3)} thousand` : `${Math.round(c)}`);
   const tpl = templateInfo(model.template);
   const maxVm = res ? peak(res.vm).value : 0, maxU = res ? peak(res.u).value : 0;
   const says = res ? verdict(maxVm, material.yieldMPa, material.name) : null;
@@ -181,6 +182,10 @@ export function StructureBench() {
         <Thermometer className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
         <span className="min-w-0 flex-1 truncate">Warming<span className="font-normal text-zinc-500 dark:text-zinc-400">: {warm.kind === 'none' ? 'none' : warm.kind === 'even' ? `${warm.dT > 0 ? '+' : ''}${warm.dT} °C` : 'from Heat'}</span></span>
       </button>
+      <button type="button" className={cn(item, 'ps-4', isSel('fatigue') && on)} aria-current={isSel('fatigue') || undefined} onClick={() => { setSel({ k: 'fatigue' }); setAnalysis('static'); }}>
+        <Repeat className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">Fatigue<span className="font-normal text-zinc-500 dark:text-zinc-400">: {fat.kind === 'reversed' ? 'back and forth' : 'on and off'}, {cyclesText(fat.cycles)} times</span></span>
+      </button>
       <div className="px-2 pt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solution</div>
       {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity], ['harmonic', 'Shaking', Waves], ['buckling', 'Buckling', Columns3]] as const).map(([a, name, Icon]) => {
         const here = analysis === a, solved = here && (a === 'static' ? !!res : a === 'modal' ? !!modal : a === 'buckling' ? !!buckle : !!shaken);
@@ -236,6 +241,28 @@ export function StructureBench() {
             <div key={k}><dt className="text-zinc-500 dark:text-zinc-400">{k}</dt><dd className="font-mono tabular-nums text-zinc-900 dark:text-white">{v}</dd></div>
           ))}
         </dl>
+      </div>
+    );
+  } else if (sel.k === 'fatigue') {
+    const setFat = (f: (x: Fatigue) => Fatigue) => setModel((m) => ({ ...m, fatigue: f(m.fatigue ?? FATIGUE_START) }));
+    const shortest = result ? peak(result.life, true) : null, weakest = result ? peak(result.fsafety, true).value : null;
+    details = (
+      <div className="space-y-3">
+        <div><span className={label}>The loads repeat</span>
+          <div className="mt-1"><Segmented<Fatigue['kind']> label="The loads repeat" value={fat.kind} onChange={(v) => setFat((x) => ({ ...x, kind: v }))} segments={[{ value: 'reversed', label: 'Back and forth' }, { value: 'pulsating', label: 'On and off' }]} /></div>
+        </div>
+        <NumField label="Times it must last" unit="cycles" min={1} value={fat.cycles} onChange={(v) => setFat((x) => ({ ...x, cycles: Math.max(1, Math.min(1e9, v)) }))} />
+        {!is3d && shortest && weakest !== null && (
+          <p className={cn('rounded-lg p-2.5 text-xs leading-relaxed', weakest >= 1.5 ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200' : 'bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200')}>
+            {shortest.value >= 9 ? 'It lasts more than a billion cycles everywhere: the stress is below what fatigue needs.' : `Where it is weakest it cracks after about ${cyclesText(10 ** shortest.value)} cycles.`}{' '}
+            {weakest < 1 ? `It won’t last ${cyclesText(fat.cycles)}: lower the stress there (a rounder corner, more material) or the load.` : `Fatigue safety factor at ${cyclesText(fat.cycles)} cycles: ${+weakest.toPrecision(3)}${weakest < 1.5 ? ' (designs usually want 1.5 or more).' : '.'}`}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-1">
+          <button type="button" className={small} onClick={() => setField('life')}>Show the life</button>
+          <button type="button" className={small} onClick={() => setField('fsafety')}>Show the safety factor</button>
+        </div>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Parts that are loaded again and again crack long before their strength, where stress is highest (holes, inside corners). <em>Back and forth</em>: the loads swing from + to − (a shaft turning, a wing in gusts). <em>On and off</em>: from nothing to the loads (a bolt tightened, a pedal pushed); Goodman’s rule counts the pull it starts from. The life follows {material.name}’s S–N line (teaching values, not design data); a squeeze is kinder than a pull.{is3d ? ' Fatigue is worked out on the flat part only for now: switch to 2D to see it.' : ''}</p>
       </div>
     );
   } else if (sel.k === 'warming') {
@@ -429,7 +456,7 @@ export function StructureBench() {
   const shown3 = is3d && solidRes && !problem ? { ux: solidRes.ux, uy: solidRes.uy, uz: solidRes.uz, values: solidRes[fieldNow as 'u' | 'ux' | 'uy' | 'vm' | 'sx' | 'sy' | 'safety'], name: fieldInfo.name, unit: fieldInfo.unit, reverse: fieldNow === 'safety' } : null;
   const modeShape = useMemo(() => (mode ? Float64Array.from(mode.ux, (x, i) => Math.hypot(x, mode.uy[i])) : null), [mode]);
   const shown: Shown | null = problem ? null : analysis === 'static'
-    ? (result ? { ux: result.ux, uy: result.uy, values: result[field], name: fieldInfo.name, unit: fieldInfo.unit, reverse: field === 'safety' } : null)
+    ? (result ? { ux: result.ux, uy: result.uy, values: result[field], name: fieldInfo.name, unit: fieldInfo.unit, reverse: field === 'safety' || field === 'fsafety' || field === 'life' } : null)
     : analysis === 'buckling' ? (bmode ? { ux: bmode.ux, uy: bmode.uy, values: bmode.u, name: `Buckling shape ${Math.min(modeAt, buckle!.modes.length - 1) + 1}, at ${+bmode.factor.toPrecision(4)} × the loads (largest movement = 1)`, unit: '', swing: true } : null)
     : analysis === 'harmonic' ? (shaken ? { ux: shaken.ux, uy: shaken.uy, values: shaken[hShow], name: `Shaken at ${fmtHz(shaken.hz)}: ${hShow === 'vm' ? 'the highest stress over a cycle' : 'how far each point swings'}`, unit: hShow === 'vm' ? 'MPa' : 'mm', swing: true } : null)
     : (mode && modeShape ? { ux: mode.ux, uy: mode.uy, values: modeShape, name: `Mode ${Math.min(modeAt, modal!.modes.length - 1) + 1}, ${fmtHz(mode.freq)}: how far each point swings (largest = 1)`, unit: '', swing: true } : null);

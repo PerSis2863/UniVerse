@@ -1,6 +1,6 @@
 import type { Fineness } from './mesh';
 import { CUSTOM_START, customPart, edgesOf, groupedEdges, MAX_CORNERS, MAX_HOLES, partProblem, TEMPLATES, type CustomShape, type Edge, type Part, type Pt, type TemplateParam } from './part';
-import { MATERIALS, type Load, type Study, type Support, type SupportKind } from './structure';
+import { FATIGUE_START, MATERIALS, type Fatigue, type Load, type Study, type Support, type SupportKind } from './structure';
 import { HARMONIC_START, type Harmonic } from './modal';
 
 // Hyperion Simulate (M404): what the Structures workbench keeps (on this device): the part (a ready-made shape and its
@@ -24,6 +24,8 @@ export interface Model {
   /** M544: the part warmed from the temperature it was made at: not at all, one even change (°C), or Heat's temperatures
    * on the same part (less `made`, °C). */
   warming?: Warming;
+  /** M546: how the loads repeat and the life wanted. */
+  fatigue?: Fatigue;
 }
 
 /** A ready-made shape's name and sizes, or the hand-drawn one's (no sizes: its corners are drawn). */
@@ -94,6 +96,7 @@ export function readModel(raw: unknown): Model {
     dim: m.dim === '3d' ? '3d' : '2d',
     harmonic: readHarmonic(m.harmonic),
     warming: readWarming(m.warming),
+    fatigue: { kind: m.fatigue?.kind === 'pulsating' ? 'pulsating' : 'reversed', cycles: typeof m.fatigue?.cycles === 'number' && m.fatigue.cycles >= 1 ? Math.min(1e9, m.fatigue.cycles) : FATIGUE_START.cycles },
     ...(m.template === 'custom' ? { custom: readCustom(m.custom) } : {}),
     supports: Array.isArray(m.supports) ? m.supports.filter((s) => s && ['fixed', 'slideX', 'slideY'].includes(s.kind)).map((s) => ({ id: String(s.id), kind: s.kind, edges: strs(s.edges) })) : base.supports,
     loads: Array.isArray(m.loads) ? m.loads.filter((l) => l && ['force', 'pressure', 'bearing'].includes(l.kind)).map((l): Load => (l.kind === 'pressure' ? { id: String(l.id), kind: 'pressure', edges: strs(l.edges), p: num(l.p, 1) } : { id: String(l.id), kind: l.kind, edges: strs(l.edges), F: num(l.F, 1000), angle: num(l.angle, -90) })) : base.loads,
@@ -121,7 +124,7 @@ export const WARMING_START: Warming = { kind: 'none', dT: 50, made: 20 };
 
 export function studyOf(m: Model): Study {
   return { thickness: m.thickness, material: MATERIALS.find((x) => x.id === m.material) ?? MATERIALS[0], supports: m.supports, loads: m.loads, gravity: m.gravity,
-    ...(m.warming?.kind === 'even' && m.warming.dT ? { warming: m.warming.dT } : {}) };
+    ...(m.warming?.kind === 'even' && m.warming.dT ? { warming: m.warming.dT } : {}), fatigue: m.fatigue ?? FATIGUE_START };
 }
 
 /** What stops a solve, in plain words (null when it can run). */
@@ -138,7 +141,7 @@ export function modelProblem(m: Model, free = false): string | null {
 export const SUPPORT_NAMES: Record<SupportKind, string> = { fixed: 'Fixed support', slideX: 'Slides along x', slideY: 'Slides along y' };
 export const LOAD_NAMES: Record<Load['kind'], string> = { force: 'Force', pressure: 'Pressure', bearing: 'Bolt load' };
 
-export type Field = 'u' | 'ux' | 'uy' | 'vm' | 's1' | 's2' | 'sx' | 'sy' | 'sxy' | 'safety';
+export type Field = 'u' | 'ux' | 'uy' | 'vm' | 's1' | 's2' | 'sx' | 'sy' | 'sxy' | 'safety' | 'life' | 'fsafety';
 export const FIELDS: { id: Field; name: string; unit: string }[] = [
   { id: 'u', name: 'Total deformation', unit: 'mm' },
   { id: 'ux', name: 'Deformation in x', unit: 'mm' },
@@ -150,6 +153,8 @@ export const FIELDS: { id: Field; name: string; unit: string }[] = [
   { id: 'sy', name: 'Normal stress in y', unit: 'MPa' },
   { id: 'sxy', name: 'Shear stress', unit: 'MPa' },
   { id: 'safety', name: 'Safety factor', unit: '' },
+  { id: 'life', name: 'Fatigue life (cycles, as a power of ten)', unit: 'log₁₀' },
+  { id: 'fsafety', name: 'Fatigue safety factor', unit: '' },
 ];
 
 /** The edges as people see them (the lug's rounded top is one). */

@@ -8,18 +8,19 @@ import { rcm, Skyline } from './skyline';
 // its material's yield strength, and the forces the supports carry (which must balance the loads).
 
 /** k: thermal conductivity W/(m·K), c: specific heat J/(kg·K) (for Heat, M407); alpha: how much it grows per degree
- * (1/K, M544: heat and stress together). */
-export interface Material { id: string; name: string; E: number; nu: number; rho: number; yieldMPa: number; k: number; c: number; alpha: number }
+ * (1/K, M544: heat and stress together); utsMPa: tensile strength; sf, b: Basquin's fatigue line σa = sf·(2N)^b (M546:
+ * fatigue life; rounded textbook figures for teaching, not design data). */
+export interface Material { id: string; name: string; E: number; nu: number; rho: number; yieldMPa: number; k: number; c: number; alpha: number; utsMPa: number; sf: number; b: number }
 /** E and yield in MPa, density in kg/m³ (common handbook values). */
 export const MATERIALS: Material[] = [
-  { id: 'steel', name: 'Structural steel', E: 200_000, nu: 0.3, rho: 7850, yieldMPa: 250, k: 60.5, c: 434, alpha: 12e-6 },
-  { id: 'stainless', name: 'Stainless steel 304', E: 193_000, nu: 0.29, rho: 8000, yieldMPa: 215, k: 16.2, c: 500, alpha: 17.3e-6 },
-  { id: 'aluminium', name: 'Aluminium 6061-T6', E: 68_900, nu: 0.33, rho: 2700, yieldMPa: 276, k: 167, c: 896, alpha: 23.6e-6 },
-  { id: 'titanium', name: 'Titanium Ti-6Al-4V', E: 113_800, nu: 0.342, rho: 4430, yieldMPa: 880, k: 6.7, c: 526, alpha: 8.6e-6 },
-  { id: 'copper', name: 'Copper', E: 110_000, nu: 0.34, rho: 8960, yieldMPa: 70, k: 401, c: 385, alpha: 16.5e-6 },
-  { id: 'brass', name: 'Brass', E: 100_000, nu: 0.34, rho: 8500, yieldMPa: 200, k: 109, c: 380, alpha: 19e-6 },
-  { id: 'abs', name: 'ABS plastic', E: 2_300, nu: 0.35, rho: 1050, yieldMPa: 40, k: 0.17, c: 1400, alpha: 90e-6 },
-  { id: 'nylon', name: 'Nylon 6', E: 2_700, nu: 0.39, rho: 1140, yieldMPa: 70, k: 0.25, c: 1700, alpha: 80e-6 },
+  { id: 'steel', name: 'Structural steel', E: 200_000, nu: 0.3, rho: 7850, yieldMPa: 250, k: 60.5, c: 434, alpha: 12e-6, utsMPa: 400, sf: 700, b: -0.09 },
+  { id: 'stainless', name: 'Stainless steel 304', E: 193_000, nu: 0.29, rho: 8000, yieldMPa: 215, k: 16.2, c: 500, alpha: 17.3e-6, utsMPa: 505, sf: 1000, b: -0.09 },
+  { id: 'aluminium', name: 'Aluminium 6061-T6', E: 68_900, nu: 0.33, rho: 2700, yieldMPa: 276, k: 167, c: 896, alpha: 23.6e-6, utsMPa: 310, sf: 520, b: -0.085 },
+  { id: 'titanium', name: 'Titanium Ti-6Al-4V', E: 113_800, nu: 0.342, rho: 4430, yieldMPa: 880, k: 6.7, c: 526, alpha: 8.6e-6, utsMPa: 950, sf: 1600, b: -0.08 },
+  { id: 'copper', name: 'Copper', E: 110_000, nu: 0.34, rho: 8960, yieldMPa: 70, k: 401, c: 385, alpha: 16.5e-6, utsMPa: 220, sf: 420, b: -0.1 },
+  { id: 'brass', name: 'Brass', E: 100_000, nu: 0.34, rho: 8500, yieldMPa: 200, k: 109, c: 380, alpha: 19e-6, utsMPa: 340, sf: 600, b: -0.1 },
+  { id: 'abs', name: 'ABS plastic', E: 2_300, nu: 0.35, rho: 1050, yieldMPa: 40, k: 0.17, c: 1400, alpha: 90e-6, utsMPa: 44, sf: 60, b: -0.1 },
+  { id: 'nylon', name: 'Nylon 6', E: 2_700, nu: 0.39, rho: 1140, yieldMPa: 70, k: 0.25, c: 1700, alpha: 80e-6, utsMPa: 80, sf: 110, b: -0.1 },
 ];
 
 /** fixed: held still; slideX: may slide along x only (y held); slideY: may slide along y only (x held). */
@@ -35,11 +36,16 @@ export type Load =
 /** M544: the part warmed (or cooled) from the temperature it was made at, °C: one change everywhere or one per node (from
  * Heat on the same mesh). Held edges then push back on the growth, which is where thermal stress comes from. */
 export type Warming = number | ArrayLike<number>;
-export interface Study { thickness: number; material: Material; supports: Support[]; loads: Load[]; gravity: boolean; warming?: Warming }
+/** M546: how the loads repeat (fully reversed: +load, −load; or pulsating: 0 to the load and back) and the life wanted. */
+export interface Fatigue { kind: 'reversed' | 'pulsating'; cycles: number }
+export const FATIGUE_START: Fatigue = { kind: 'reversed', cycles: 1e6 };
+export interface Study { thickness: number; material: Material; supports: Support[]; loads: Load[]; gravity: boolean; warming?: Warming; fatigue?: Fatigue }
 
 export interface Reaction { id: string; fx: number; fy: number }
 export interface StaticResult {
   ux: Float64Array; uy: Float64Array; u: Float64Array;
+  /** M546: log₁₀ of the cycles each point lasts (capped at 9: a billion), and its fatigue safety factor at the life wanted. */
+  life: Float64Array; fsafety: Float64Array;
   sx: Float64Array; sy: Float64Array; sxy: Float64Array; vm: Float64Array; s1: Float64Array; s2: Float64Array; safety: Float64Array;
   reactions: Reaction[]; applied: { fx: number; fy: number };
   massKg: number; dofs: number; profile: number;
@@ -231,7 +237,8 @@ export function solveStatic(mesh: Mesh, study: Study): StaticResult {
   let ax = 0, ay = 0;
   for (let n = 0; n < nn; n++) { ax += fx[n]; ay += fy[n]; }
   const { sx, sy, sxy, vm, s1, s2, safety } = stressOf(mesh, m, ux, uy, dT);
-  return { ux, uy, u, sx, sy, sxy, vm, s1, s2, safety, reactions, applied: { fx: ax, fy: ay }, massKg: area * t * 1e-9 * m.rho, dofs: 2 * nn, profile: K.size };
+  const { life, fsafety } = fatigueOf(m, s1, s2, vm, study.fatigue ?? FATIGUE_START);
+  return { ux, uy, u, life, fsafety, sx, sy, sxy, vm, s1, s2, safety, reactions, applied: { fx: ax, fy: ay }, massKg: area * t * 1e-9 * m.rho, dofs: 2 * nn, profile: K.size };
 }
 
 /** The stresses at nodes for a movement (each element's own at its nodes, averaged where elements meet). */
@@ -259,6 +266,24 @@ export function stressOf(mesh: Mesh, m: Material, ux: Float64Array, uy: Float64A
     safety[n] = Math.min(15, vm[n] > 0 ? m.yieldMPa / vm[n] : 15);
   }
   return { sx, sy, sxy, vm, s1, s2, safety };
+}
+
+/** M546: fatigue at every node, stress-life: the equivalent stress is von Mises carrying the sign of the larger principal
+ * stress (a squeeze is kinder than a pull). Fully reversed: amplitude |S|, no mean. Pulsating 0 → S: amplitude and mean
+ * |S|/2, the mean counted by Goodman only when it pulls. Life from Basquin; the safety factor against the amplitude
+ * allowed at the life wanted (with Goodman). Warming counts as a steady stress only when it is part of the loads. */
+export function fatigueOf(m: Material, s1: Float64Array, s2: Float64Array, vm: Float64Array, f: Fatigue) {
+  const nn = vm.length, life = new Float64Array(nn), fsafety = new Float64Array(nn);
+  const allowed = m.sf * (2 * Math.max(1, f.cycles)) ** m.b;
+  for (let n = 0; n < nn; n++) {
+    const S = Math.abs(s1[n]) >= Math.abs(s2[n]) ? Math.sign(s1[n] || 1) * vm[n] : Math.sign(s2[n] || 1) * vm[n];
+    const sa = f.kind === 'reversed' ? Math.abs(S) : Math.abs(S) / 2, sm = f.kind === 'reversed' ? 0 : Math.max(0, S / 2);
+    const eq = sm >= m.utsMPa ? Infinity : sa / (1 - sm / m.utsMPa);
+    life[n] = eq <= 0 ? 9 : !Number.isFinite(eq) ? 0 : Math.max(0, Math.min(9, Math.log10(0.5 * (eq / m.sf) ** (1 / m.b))));
+    const use = sa / allowed + sm / m.utsMPa;
+    fsafety[n] = Math.min(15, use > 0 ? 1 / use : 15);
+  }
+  return { life, fsafety };
 }
 
 /** Where a field is largest: the node and its value. */

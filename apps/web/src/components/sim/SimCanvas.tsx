@@ -103,7 +103,13 @@ export function SimCanvas({ part, edges, mesh, shown, deform, showMesh, playing,
     if (mesh) {
       const n = mesh.x.length, sx = new Float32Array(n), sy = new Float32Array(n);
       for (let i = 0; i < n; i++) { sx[i] = X(mesh.x[i] + (result ? k * result.ux[i] : 0)); sy[i] = Y(mesh.y[i] + (result ? k * result.uy[i] : 0)); }
-      if (values) {
+      // The same value everywhere (no stress, a life past a billion cycles): one calm colour, not the danger end (M546).
+      const flat = values && Math.max(...values) === Math.min(...values);
+      if (values && flat) {
+        const p = new Path2D(), cols = bandColors(shown?.reverse);
+        for (let e = 0; e < mesh.tri.length; e += 6) { const t = mesh.tri; p.moveTo(sx[t[e]], sy[t[e]]); p.lineTo(sx[t[e + 1]], sy[t[e + 1]]); p.lineTo(sx[t[e + 2]], sy[t[e + 2]]); p.closePath(); }
+        g.fillStyle = shown?.reverse ? cols[cols.length - 1] : cols[0]; g.fill(p);
+      } else if (values) {
         const lv = levels(Math.min(...values), Math.max(...values)), cols = bandColors(shown?.reverse);
         bandPaths(mesh.tri, sx, sy, values, lv).forEach((p, b) => { g.fillStyle = cols[b]; g.fill(p); g.strokeStyle = cols[b]; g.lineWidth = 0.6; g.stroke(p); });
       } else {

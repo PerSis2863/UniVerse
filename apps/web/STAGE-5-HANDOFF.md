@@ -14991,3 +14991,15 @@ only pull give `none`. In the part's own plane only (a column, a strip on edge, 
 plane needs plate elements (not built). Tested: a cantilever column within 3% of Euler's π²EI/(4L²), its second
 mode about 9× the first, a pulled column none, a held bar buckling from heat. The panel says "×N the loads", red
 under 3. Check: `scripts/checks/hyperion-buckling-ui.mjs` (the start beam pushed end-on: ×163, Euler ×164.5).
+
+## M546: Hyperion Simulate, fatigue life (26 Nov)
+
+Structures → **Fatigue** (in the outline under Warming): how the loads repeat (back and forth: fully reversed; on and
+off: 0 to the loads) and the cycles it must last. Every material got `utsMPa`, `sf`, `b` (Basquin's σa = sf·(2N)^b;
+teaching values, the panel says so). `fatigueOf` in `structure.ts`: von Mises carrying the sign of the larger principal
+stress; reversed: amplitude |S|; on and off: amplitude and mean |S|/2, the mean by Goodman only when it pulls; the life
+`life` as log₁₀ cycles capped at 9, and `fsafety` against the amplitude allowed at the life wanted. Two new pictures in
+Show (Fatigue life, Fatigue safety factor), both coloured with low as danger. Tested against Basquin and Goodman by
+hand. Also: `SimCanvas` draws a field that is the same everywhere in the calm colour (it was the danger end, red).
+Left out: fatigue on 3D parts (the panel says so), variable loads over time (rainflow + Miner live in the scripts'
+materials toolbox, M504). Check: `scripts/checks/hyperion-fatigue-ui.mjs`.
