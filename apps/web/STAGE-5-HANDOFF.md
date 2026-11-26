@@ -15065,3 +15065,18 @@ Files left the left column: with the figure they are tabs on the right ("Side pa
 toolstrip's Layout still hides either part). A new figure brings its tab forward without an effect: the tab chosen
 remembers the figure it was chosen at. Check: `scripts/checks/hyperion-layout-ui.mjs` (no overlap at 1280×800 and
 1920×1080, with Ask Ghidra open too).
+
+## M551: Hyperion Simulate, Sound: acoustics (26 Nov)
+
+Simulate → **Sound**, a new bench (`src/lib/sim/acoustics.ts`, `components/sim/SoundBench.tsx`): acoustics in a floor
+plan by FDTD on a staggered grid (pressure at the cells, velocity on the faces, ~200 cells across, dt = 0.5·h/c).
+Blocks are rigid (faces beside them hold no velocity) and absorb a share at the air cells touching them; the box is a
+room (hard sides) or open (a quadratic sponge at the edges). The source plays a tone (three-cycle soft start) or a
+clap (a Gaussian pulse). Views: the wave (red push, blue pull) and Loudness (RMS dB re 20 µPa once the sound has
+crossed the box twice, the loudest 40 dB). The listener's level over the last 50 ms; after a clap, the room's
+resonances from the listener's spectrum (a Hann-windowed DFT, parabolic peaks, up to 200 Hz) beside the textbook's
+for a plain rectangle. Runs on the page's thread in requestAnimationFrame (~26k cells × up to 60 steps a frame, a few
+ms; paused while the tab is hidden; Reduce Motion starts paused). Drag S and L. Tested: a pulse at c within 4%, a
+closed room's lowest three modes within 3% of (c/2)·√((m/W)²+(n/H)²), a wall >5 dB quieter behind it. In the
+browser the resonance study read 34.4, 48.9, 59.9, 84.4 Hz against 34.3, 49.0, 59.8, 84.3. Check:
+`scripts/checks/hyperion-sound-ui.mjs`.
