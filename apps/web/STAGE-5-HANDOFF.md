@@ -15302,3 +15302,95 @@ system for the user". Two new Ghidra skills, each in the app, with its playbook 
 - Ghidra 2, trained longer (CHAT 3000, THINK 7200 steps) on a rented RTX 4090: 3 of 100 maths problems against the
   committed model's 4, so the committed model stays (the run's own rule). Pod terminated.
 Next: the add-on run (`ghidra-gpu.sh`) on an 80 GB card, with these papers in it.
+
+
+## M544 (25 Nov): Hyperion physics, M543's left-outs (curved solids split tightly, the thick disc's own shadow and walls)
+
+The owner sent M543's "left out on purpose" list back. **`convexSplit` on smooth curves** (`rigid3d.ts`): a bug first —
+the sliver filter stepped each corner towards the part's middle, which for a bent part lies in its hole, so real corners
+on the inside of a curve were dropped and a 16- or 24-step half ring came out at 54% / 20% of its volume. Now a corner is
+kept when a 1e-5 step towards the middle **or any of 26 directions** (`PROBES`) lands strictly inside the cell and the
+mesh. New cut candidates: besides the two face planes at each fold inwards, the plane **through the fold halving its
+angle** (normal n₁ − n₂; on a ring, the radial cut). Each cut keeps the folds it came from (`at`); a part only tries cuts
+with a fold inside it, the 12 passing nearest its middle. A part may have at most **64 corners** (what a solid takes): one
+with more is cut even when solid (by the best cut, else across its longest side), and refused with a clear message when
+'Parts' runs out. 'Parts' up to 32, default 16. Speed: `meshTest(V, T)` precomputes each triangle's ray-fixed numbers and
+a bounding box (was 60% of the time); `hull` skips triples already on a found face and stops a plane's scan once points
+lie on both sides. A 24-step half ring: 13 parts, 100.2% of its volume, 1.6 s (was 18 s and hollow); a 12 × 6 doughnut:
+12 parts, exact, 0.5 s. **The disc** (`kerr.ts`): a see-through thick disc (`thick` > 0, `opacity` < 1, `vol`) now glows
+and absorbs **along the path through its gas** (Beer–Lambert, κ such that a straight-down pass through the full height
+at that radius takes `opacity`, the source the gas's glow, so that pass gives opacity × glow as a crossing did); path
+length from dr, r dθ and r sinθ dφ (dφ/dλ = L/sin²θ − a + aP/Δ), in Boyer–Lindquist coordinates (`shortcut:`). A ray
+skimming through the near side is dimmed more, so it shadows the far side (the far side's share at 80° falls from 62%
+to 55% going from h/r 0.05 to 0.25). g and r are taken where the gas has taken the first 5%. A **solid** thick disc's
+walls: the inner cylinder rIn, met from the hole's side between the faces, shines with the gas one disc-height behind it
+(Novikov–Thorne's glow is zero at rIn itself; r reports rIn); the outer rim, met from outside (an edge-on ray that never
+crosses a face used to pass straight through), with the gas at rOut. Example `physics8.m` (the doughnut dropped, the two
+discs); the science examples' test now allows 20 s each (heavy examples missed 5 s when the whole suite runs side by
+side). Tests (`physics-m544.test.ts`): the half ring within 1% and ≤ 64 corners a part, the doughnut exact, face-on
+see-through about the opacity, the thicker disc's far side shadowed, inner wall seen at 60° and not on a thin disc, the
+rim edge-on, 'Parts' 32 and its limit. Not built: lengths in the disc's gas are coordinate lengths (not the gas's own
+frame), the gas absorbs the same at every colour, and convexSplit's cuts are still only planes from the mesh's folds (no
+free search for the best plane, as V-HACD does).
+
+## M545 (25 Nov): Hyperion physics, M544's left-outs (free planes for convexSplit, the disc's gas in its own frame and by colour)
+
+The owner sent M544's "left out on purpose" list back. **`convexSplit`** (`rigid3d.ts`): measuring the free search
+showed two older faults first. (1) A real corner of a **thin wedge-shaped part** was dropped: none of the 26 probe
+directions (M544) lands inside a wedge narrower than their spacing, so a cube with a pyramid pushed into its top came
+out at 89% of its volume. `PROBES` now adds 256 directions on a Fibonacci sphere (cheap: most fail the cell's planes
+before the mesh test). (2) A cut whose one side failed to judge was taken with that side dropped (and its empty space
+uncounted, so it looked good): `scoreIn` now needs both sides. With the corners right the dented cube hit a
+**plateau** (each diagonal cut leaves the same total empty space), so when the best cut saves under 1% and 4 parts
+remain in the budget, the 6 best cuts are judged **one cut ahead** (each side then cut by its best of 6 fold cuts):
+the dented cube is 4 exact parts. **`'Search', true`** (`search` in `convexSplit`) adds free planes where the fold
+cuts leave over half the empty space: across the part's three axes at ¼, ½ and ¾, then the best plane tilted (±0.3
+rad, halving) and slid, 4 rounds. A free plane must beat the best fold cut by a fifth (the 12³ grid's count of empty
+space is noisy; a fold cut is exact). Measured on 10 meshes it rarely wins (a peanut 1.0029 → 1.0004 of its volume, at
+4× the time; once it led to a part over 64 corners), so it is **off by default**. A 24-step half ring now makes 14
+parts (13 before) within 0.7%. **The disc** (`kerr.ts`): lengths through the gas are **the gas's own**,
+ds = (−p·u) dλ = Σ dλ_Mino / g (Σ = r² + a² cos²θ, E = 1), and κ is set by the proper height 2 r asin(h/r) (across
+the gas's motion, the same for it as for a still observer). With **`tK`** (kelvin of the hottest gas) each pixel gets a
+**spectrum** `S` at `LAM` (17 wavelengths, 380–780 nm): each bit of gas a black body at g·T as we see it (I_ν/ν³ is
+invariant), taking light by colour with κ_ν = κ (ν/ν_peak)^−`absorb` in its own frame (ν_peak its own temperature's,
+where `opacity` holds). Faces take 1 − (1 − opacity)^f, the slab exp(−κ f ds), walls all; a ray goes on while any colour
+gets through. `I`, `g`, `r`, `T` are still the grey ones. `kerrDisc`'s 'temperature' colour is now each pixel's spectrum
+through `sampledRGB` (`spectrumRGB` is the CIE fit for any spectrum; `blackbodyRGB` uses it), and **`'Absorption'`**
+p (−4 to 4) sets the power. Note for whoever builds on it: by Kirchhoff the gas also **glows** most at the colours it
+takes most, and in a see-through disc that glow outweighs the light from behind, so p = 2 (free–free) makes the
+picture redder and −1 (dust) bluer (the light from behind does pass bluer for p = 2). Example `physics9.m` (the dented
+cube, two discs). Tests (`physics-m545.test.ts`): the dented cube 4 exact parts, 'Search' on an L, a sampled black
+body's colour, free–free redder and dust bluer with the brightness unchanged (within 0.2%) and a solid disc unchanged,
+face-on still about the opacity, both options in the language. Not built: `'Search'` stays a local search (no
+V-HACD-style voxel or hierarchical search), the one-cut look-ahead only on a plateau, and scattering (light turned
+aside rather than taken) is not modelled; the spectrum is not one of `kerrDisc`'s outputs.
+
+## M546 (25 Nov): Hyperion physics, M545's left-outs (a fuller split search, scattering in the disc, its spectrum out)
+
+The owner sent M545's "left out on purpose" list back. **`convexSplit(…, { search: 'full' })`** (`rigid3d.ts`;
+`'Search', 'full'` in the language): one cut **ahead at every cut** (not only on a plateau): the best 4 cuts, each
+judged by what its two sides leave after their own best cut (6 fold cuts plus a halving across each axis), taken
+when that is 10% better than looking ahead from the plain best; then V-HACD's last step, **merging** neighbouring parts
+(boxes touching) while their joint hull stays solid within the tolerance and has at most 64 corners, the pair wasting
+least first (`fill`, split out of `judge`, scores any set of corners). Measured on 10 meshes (16 parts allowed): a
+24-step half ring 12 parts at 1.0073 of its volume against 14 at 1.0064 plain, ~10 s against 1.7 s; merging alone
+takes it to 13 and a peanut from 10 to 8, cheaply; the rest unchanged. **Tried and dropped:** free planes in 13
+directions (axes, face and body diagonals) at five places each, always: never a closer fit, 5–15× slower, and on two
+smooth blobs it left parts of over 64 corners (refused) — the note in the code says so. A trap: the peanut's plain
+split sums to 1.0029 of its volume but its merged parts to 0.988, so the plain parts overlapped slightly while leaving
+about 1% uncovered; the volume sum hides that. **The disc** (`kerr.ts`): `scatter` ω, the share of the opacity (at
+the gas's peak colour) that turns light aside, in the **Eddington two-stream** approximation: extinction (1 − ω)f + ω
+times κ at a colour whose absorption is f times the peak's, ε = (1 − ω)f / that, a surface (or deep slab) gives out
+ε_eff = 2√ε / (1 + √ε) of a black body, so the gas is f_col = ε_eff(peak)^−¼ hotter to carry its flux (colour
+correction: ×1.2 at ω = 0.9, ×1.53 at 0.99); a solid disc keeps its bolometric light exactly, its `T` and spectrum
+harden. Inside a see-through slab the source is εB + (1 − ε)J, J = B (1 − e^(−√(3ε) τ) / (1 + √ε)) at the optical
+depth τ to the nearer face (`shortcut:`: a plane-parallel slab at each point, not the light really arriving from the
+whole disc), so a scattering see-through disc dims (light turned away from us: 0.73 of its light at ω = 0.99). ω = 0
+gives M545 exactly. **`kerrDisc`** takes 'Scattering' (0 to 0.99) and gives `[I, g, r, T, S, lam]`: S each pixel's
+spectrum (n × n × 17, arbitrary units, by the picture's rows), lam the wavelengths (380 to 780 nm); asking for S
+computes the spectrum even with 'Colour', 'brightness'. Example `physics10.m` (a half ring plain and full, the
+spectrum without and with scattering, the scattering disc in colour). Tests (`physics-m546.test.ts`): 'full' on a half
+ring (no more parts, within 1%), a box one part, a solid disc's light kept and its temperature raised by exactly
+f_col and bluer, ω = 0 unchanged, the outputs' sizes, both options in the language. Not built: V-HACD's voxel and
+hierarchical search itself (only its merge), and scattered light reaching us from other parts of the disc (no
+Monte Carlo transfer); Compton up-scattering (hot electrons boosting light to X-rays) is not modelled.

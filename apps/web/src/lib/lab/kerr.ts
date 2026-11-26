@@ -8,7 +8,10 @@ import { rk45 } from './sci-num';
 // magnetic charge g too (Δ gains g²; a charged particle then feels it in θ: P_θ = aE sin²θ − Lz − εg cos θ, so its
 // orbits leave the equator and ride Poincaré's cones). R doesn't feel εg, so `circular` and `constants` still give
 // the radial motion asked for; only the tilt then wobbles.
-// M543: the disc with a thickness, see-through, and its colour by temperature (`blackbodyRGB`).
+// M543: the disc with a thickness, see-through, and its colour by temperature (`blackbodyRGB`). M544: a see-through thick
+// disc glows and absorbs all through its gas (it shadows its own far side); a solid one's inner and outer walls shine.
+// M545: lengths in the gas measured by the gas itself, and absorption by colour with each pixel's spectrum (`spectrumRGB`).
+// M546: scattering (`scatter`), in the Eddington approximation: the spectrum hardens by the colour correction f_col.
 
 /** The hole's charge q and the particle's charge per mass ε (Gaussian units, G = c = M = 1). */
 export interface Charge { q?: number; eps?: number; g?: number }
@@ -240,7 +243,7 @@ export function imageRay(a: number, thO: number, alpha: number, beta: number) {
  * taken at the cylinder radius), and `opacity` below 1 lets light through: each crossing adds its glow times what is
  * left, (1 − opacity) per crossing, so the hole's far side and the thin ring of light shine through. `T` is each pixel's
  * colour temperature, g · (F/F_peak)^¼ relative to the hottest gas, weighted by brightness. */
-export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number; thick?: number; opacity?: number } = {}) {
+export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number; thick?: number; opacity?: number; tK?: number; absorb?: number; scatter?: number } = {}) {
   const H = o.thick ?? 0, op = o.opacity ?? 1, q = o.q ?? 0, n = o.n ?? 80, rOut = o.rOut ?? 20, rIn = o.rIn ?? isco(a, q ? { q } : {}), half = o.half ?? rOut * 1.1, rh = horizon(a, q), r0 = 1000;
   if (!(rOut > rIn)) throw new Error('The disc\'s outer edge must lie outside its inner edge.');
   if (!(H >= 0 && H <= 0.3 && op > 0 && op <= 1)) throw new Error('The disc\'s thickness h/r is 0 to 0.3 and its opacity more than 0, up to 1.');
@@ -256,8 +259,35 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
   const Fof = (r: number) => (1 - Math.sqrt(rIn / r)) / r ** 3, Tpk = Fof(Math.min(rOut, (49 / 36) * rIn)) ** 0.25;
   const I = new Float64Array(n * n), G = new Float64Array(n * n).fill(NaN), Rh = new Float64Array(n * n).fill(NaN), Tm = new Float64Array(n * n).fill(NaN);
   const zc = H; // the disc's faces: |cos θ| = h/r (a disc that flares, its height growing with r)
+  const vol = H > 0 && op < 1; // a see-through thick disc: glow and absorption through its gas (M544)
   const so = Math.sin(thO), co = Math.cos(thO);
+  // M545: with `tK` (the hottest gas in kelvin) each pixel's spectrum S at the wavelengths LAM too, and the gas absorbs
+  // by colour: κ_ν ∝ (ν/ν_peak)^−absorb in the gas's own frame (ν_peak its own temperature's, where `opacity` holds),
+  // so 2 (free–free) takes red more than blue and −1 (dust) blue more. The light that leaves gas at T reaches us as a
+  // black body at gT (I_ν/ν³ is the same for every observer).
+  const S = o.tK ? new Float64Array(n * n * LAM.length) : null, beta = o.absorb ?? 0, trS = new Float64Array(LAM.length);
+  if (o.tK !== undefined && !(o.tK >= 100 && o.tK <= 1e6 && Math.abs(beta) <= 4)) throw new Error('The hottest gas is 100 K to 10⁶ K and the absorption\'s power −4 to 4.');
+  // M546: `scatter` ω, the share of the opacity (at the gas's peak colour) that turns light aside instead of taking it,
+  // in the Eddington (two-stream) approximation: at a colour whose absorption is f times the peak's, the extinction is
+  // (1 − ω)f + ω times κ and the share destroyed ε = (1 − ω)f / that. A surface (or a deep slab) gives out ε_eff =
+  // 2√ε / (1 + √ε) of a black body's light, so to carry the flux its gas must be f_col = ε_eff^−¼ hotter: the spectrum
+  // hardens (the known colour correction of discs, about 1.5–1.8 when scattering rules). Inside a see-through slab the
+  // source is ε B + (1 − ε) J, J = B (1 − e^(−√(3ε) τ) / (1 + √ε)) at the optical depth τ to its nearer face.
+  // shortcut: J from a plane-parallel slab at each point, not the light really arriving there from all of the disc.
+  const om = o.scatter ?? 0;
+  if (!(om >= 0 && om <= 0.99)) throw new Error('The scattering share is 0 to 0.99.');
+  const ext = (f: number) => (1 - om) * f + om, epsOf = (f: number) => ((1 - om) * f) / ext(f), effOf = (f: number) => { const e = Math.sqrt(epsOf(f)); return (2 * e) / (1 + e); };
+  const fcol = effOf(1) ** -0.25, srcOf = (f: number, tau: number) => { const e = epsOf(f), se = Math.sqrt(e); return e + (1 - e) * (1 - Math.exp(-Math.sqrt(3 * e) * tau * ext(f)) / (1 + se)); };
+  const spec = (k: number, g: number, rc: number, takeOf: (kr: number) => number, src: (f: number) => number) => {
+    const T = o.tK! * (Fof(rc) ** 0.25 / Tpk);
+    LAM.forEach((l, b) => {
+      const x = 14387.77 / (l * 1e-3 * g * T) / 2.821, f = beta ? x ** -beta : 1, take = takeOf(ext(f));
+      S![k * LAM.length + b] += trS[b] * take * src(f) * planck(l, g * fcol * T); trS[b] *= 1 - take;
+    });
+  };
+  const opaque = (t: number) => t < 1e-3 && (!S || trS.every((x) => x < 1e-3));
   for (let py = 0; py < n; py++) for (let px = 0; px < n; px++) {
+    trS.fill(1);
     const al = -half + (2 * half * (px + 0.5)) / n, be = half - (2 * half * (py + 0.5)) / n;
     const L = -al * so, Q = be * be + (al * al - a * a) * co * co;
     // State [r, r', u, u'] with E = 1, μ = 0.
@@ -270,6 +300,42 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
       const k1 = F(y), k2 = F(y.map((v, j) => v + (h / 2) * k1[j])), k3 = F(y.map((v, j) => v + (h / 2) * k2[j])), k4 = F(y.map((v, j) => v + h * k3[j]));
       const ny = y.map((v, j) => v + (h / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
       if (ny[0] < rh * 1.01) break;
+      if (vol) {
+        // M544: inside the slab the gas glows and absorbs along the way (Beer–Lambert), so a ray grazing through a
+        // long stretch of it is dimmed more: the near side shadows the far side's glow. κ makes a straight-down pass
+        // through the full height at that radius take away `opacity`; the source is the gas's glow, so that pass
+        // gives opacity × glow, as a crossing did before. M545: lengths as the gas itself measures them,
+        // ds = (−p·u) dλ = Σ dλ_Mino / g (Σ = r² + a² cos²θ; the affine step is Σ times the Mino one, and the gas sees
+        // the light's energy as 1/g); its height, across its motion, is the same for it as for a still observer.
+        const um = (u + ny[2]) / 2, rm = (r + ny[0]) / 2, s2 = Math.max(1e-12, 1 - um * um), rc = rm * Math.sqrt(s2);
+        if (Math.abs(um) < zc && rc >= rIn && rc <= rOut) {
+          const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), ds = ((rm * rm + a * a * um * um) * h) / g;
+          const kap = -Math.log(1 - op) / (2 * rm * Math.asin(zc)), take = 1 - Math.exp(-kap * ds);
+          const tau = kap * rm * (Math.asin(zc) - Math.asin(Math.min(zc, Math.abs(um)))), w = (tr2 * take * g ** 4 * Fof(rc) * srcOf(1, tau)) / effOf(1);
+          Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+          if (S) spec(py * n + px, g, rc, (kr) => 1 - Math.exp(-kap * kr * ds), (f) => srcOf(f, tau));
+          // Its shift and radius: where the gas has taken the first 5% (one step takes little).
+          if (Number.isNaN(G[py * n + px]) && tr2 * (1 - take) < 0.95) { G[py * n + px] = g; Rh[py * n + px] = rc; }
+          tr2 *= 1 - take;
+          if (opaque(tr2)) break;
+        }
+        [r, rv, u, uv] = ny;
+        rv = Math.sign(rv) * Math.sqrt(Math.max(0, Rf(r, a, 1, L, Q, 0, q))); uv = Math.sign(uv) * Math.sqrt(Math.max(0, Uf(u, a, 1, L, Q, 0)));
+        if (r > r0 * 1.01 && rv > 0) break;
+        continue;
+      }
+      // M544: a solid thick disc's walls (the cylinders at rIn and rOut between its faces). The inner one, met from the
+      // hole's side, shines with the gas one disc-height behind it (Novikov–Thorne's glow is zero at rIn itself); the
+      // outer rim, met from outside (a ray seen edge-on that never crosses a face), with the gas at rOut.
+      const c0 = r * Math.sqrt(1 - u * u), c1 = ny[0] * Math.sqrt(1 - ny[2] * ny[2]);
+      const wall = !zc || Math.abs(u) >= zc || Math.abs(ny[2]) >= zc ? 0 : c0 < rIn && c1 >= rIn ? Math.min(rOut, rIn * (1 + zc)) : c0 > rOut && c1 <= rOut ? rOut : 0;
+      if (wall) {
+        const rc = wall, g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * g ** 4 * Fof(rc);
+        Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+        if (S) spec(py * n + px, g, rc, () => 1, effOf);
+        if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = wall === rOut ? rOut : rIn; }
+        break;
+      }
       // Entering the disc through its top face (cos θ = h/r from above) or its bottom (−h/r from below).
       let hit = -1;
       for (const sf of zc ? [zc, -zc] : [0]) {
@@ -281,10 +347,11 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
         const rc = (r + hit * (ny[0] - r)) * Math.sqrt(1 - zc * zc);
         if (rc >= rIn && rc <= rOut) {
           const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * op * g ** 4 * Fof(rc);
-          Isum += w; Tsum += w * g * (Fof(rc) ** 0.25 / Tpk);
+          Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+          if (S) spec(py * n + px, g, rc, (kr) => (op >= 1 ? 1 : 1 - (1 - op) ** kr), effOf);
           if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = rc; }
           tr2 *= 1 - op;
-          if (tr2 < 1e-3) break;
+          if (opaque(tr2)) break;
         }
       }
       [r, rv, u, uv] = ny;
@@ -294,17 +361,21 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
     }
     if (Isum > 0) { I[py * n + px] = Isum; Tm[py * n + px] = Tsum / Isum; }
   }
-  return { I, g: G, r: Rh, T: Tm, n, half };
+  return { I, g: G, r: Rh, T: Tm, n, half, S, lam: LAM };
 }
 
-/** The colour of a black body at T kelvin (sRGB 0–1, brightest channel 1): Planck's law through the CIE 1931 matching
- * functions (Wyman, Sloan and Shirley's fit), XYZ to linear sRGB, then the sRGB curve. 1000 K is deep orange, 6500 K
- * white, 20 000 K blue. */
-export function blackbodyRGB(T: number) {
+/** The wavelengths (nm) of discImage's spectra (M545). */
+export const LAM = Array.from({ length: 17 }, (_, i) => 380 + 25 * i);
+/** Planck's law per wavelength (nm), at T kelvin, in arbitrary units (λ in µm). */
+const planck = (l: number, T: number) => { const lm = l * 1e-3; return 1 / (lm ** 5 * Math.expm1(14387.77 / (lm * Math.max(T, 1)))); };
+
+/** The colour of a spectrum f(λ nm) (sRGB 0–1, brightest channel 1): through the CIE 1931 matching functions (Wyman,
+ * Sloan and Shirley's fit), XYZ to linear sRGB, then the sRGB curve. M545: any spectrum, not only a black body's. */
+export function spectrumRGB(f: (l: number) => number) {
   const g = (x: number, m: number, s1: number, s2: number) => { const t = (x - m) / (x < m ? s1 : s2); return Math.exp(-0.5 * t * t); };
   let X = 0, Y = 0, Z = 0;
   for (let l = 380; l <= 780; l += 5) {
-    const lm = l * 1e-9, B = 1 / (lm ** 5 * (Math.exp(1.438777e-2 / (lm * Math.max(T, 100))) - 1));
+    const B = f(l);
     X += B * (1.056 * g(l, 599.8, 37.9, 31) + 0.362 * g(l, 442, 16, 26.7) - 0.065 * g(l, 501.1, 20.4, 26.2));
     Y += B * (0.821 * g(l, 568.8, 46.9, 40.5) + 0.286 * g(l, 530.9, 16.3, 31.1));
     Z += B * (1.217 * g(l, 437, 11.8, 36) + 0.681 * g(l, 459, 26, 13.8));
@@ -313,3 +384,7 @@ export function blackbodyRGB(T: number) {
   const top = Math.max(...lin) || 1;
   return lin.map((v) => { const x = v / top; return x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055; });
 }
+/** The colour of a black body at T kelvin: 1000 K is deep orange, 6500 K white, 20 000 K blue. */
+export const blackbodyRGB = (T: number) => spectrumRGB((l) => planck(l, Math.max(T, 100)));
+/** The colour of a spectrum sampled at LAM (linear between). */
+export const sampledRGB = (v: ArrayLike<number>) => spectrumRGB((l) => { const x = (l - 380) / 25, i = Math.min(LAM.length - 2, Math.floor(x)), t = x - i; return v[i] * (1 - t) + v[i + 1] * t; });
