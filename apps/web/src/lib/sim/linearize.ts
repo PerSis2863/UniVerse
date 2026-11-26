@@ -53,7 +53,7 @@ export function ssToTf(A: number[][], B: number[], C: number[], D: number): { nu
   if (!n) return { num: [D], den: [1] };
   const den = new Array<number>(n + 1).fill(0), num = new Array<number>(n + 1).fill(0);
   den[0] = 1;
-  let M = A.map((_, i) => A.map((__, j) => (i === j ? 1 : 0)));
+  let M: number[][] = A.map((_, i) => A.map((__, j) => (i === j ? 1 : 0)));
   for (let k = 1; k <= n; k++) {
     // Coefficient of s^(n−k) in adj(sI − A) is M; C M B goes into the numerator.
     num[k] = C.reduce((s, c, i) => s + c * M[i].reduce((q, v, j) => q + v * B[j], 0), 0);

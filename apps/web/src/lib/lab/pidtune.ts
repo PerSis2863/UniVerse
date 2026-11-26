@@ -152,7 +152,7 @@ const optsOf = (v: Value | undefined) => {
 def('pidtuneOptions', (a) => {
   const s: Struct = { k: 'struct', f: new Map([['PhaseMargin', num(60)], ['N', num(10)]]) };
   for (let i = 0; i + 1 < a.length; i += 2) {
-    const k = a[i].k === 'str' ? a[i].v as string : '', key = ['PhaseMargin', 'N'].find((x) => x.toLowerCase() === k.toLowerCase());
+    const ai = a[i], k = ai.k === 'str' ? String(ai.v) : '', key = ['PhaseMargin', 'N'].find((x) => x.toLowerCase() === k.toLowerCase());
     if (!key) throw new LabError(`pidtuneOptions takes 'PhaseMargin' (degrees) and 'N' (the derivative filter), not '${k}'.`);
     s.f.set(key, num(toMat(a[i + 1]).d[0]));
   }
@@ -160,7 +160,7 @@ def('pidtuneOptions', (a) => {
 });
 def('pidtune', (a, nout) => {
   if (!isLti(a[0])) throw new LabError("pidtune needs a plant's transfer function first, like pidtune(tf(1, [1 3 3 1]), 'PI').");
-  const G = tfOf(a[0], 'The plant'), raw = a[1]?.k === 'str' ? String(a[1].v).toUpperCase() : 'PI';
+  const t = a[1], G = tfOf(a[0], 'The plant'), raw = t?.k === 'str' ? String(t.v).toUpperCase() : 'PI';
   const type = PID_TYPES.find((t) => t === raw);
   if (!type) throw new LabError(`pidtune's types are ${PID_TYPES.join(', ')}.`);
   const rest = a.slice(2), wcV = rest.find((v) => v.k !== 'struct'), o = optsOf(rest.find((v) => v.k === 'struct'));

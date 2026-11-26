@@ -45,8 +45,8 @@ describe('PID tuning', () => {
   it('pidtune and pidtuneOptions in a script', () => {
     const out: string[] = [], lab = new Lab({ out: (s: string) => { out.push(s); }, graphics: new Graphics() });
     lab.run("G = tf(1, [1 3 3 1]); [C, info] = pidtune(G, 'PI'); kp = info.Kp; ki = info.Ki; o = pidtuneOptions('PhaseMargin', 45); [C2, i2] = pidtune(G, 'pidf', o); pm = i2.PhaseMargin;");
-    expect((lab.vars.get('kp') as { d: number[] }).d[0]).toBeCloseTo(1.14, 1);
-    expect((lab.vars.get('pm') as { d: number[] }).d[0]).toBeCloseTo(45, 1);
+    expect((lab.vars.get('kp') as unknown as { d: number[] }).d[0]).toBeCloseTo(1.14, 1);
+    expect((lab.vars.get('pm') as unknown as { d: number[] }).d[0]).toBeCloseTo(45, 1);
   });
 });
 
