@@ -15695,3 +15695,30 @@ from … Simulink"). Blocks → **Code**.
 - **The window** (`BlocksCode.tsx`): language, name, the files as tabs, Copy, Download all (a ZIP by fflate).
 - Left out: Ladder Diagram, CUDA, fixed-point C (M524 does that for scripts), choosing word lengths for the HDL,
   multirate diagrams, the PLC vendor's project file (paste the .st into TIA Portal / CODESYS / Studio 5000).
+
+## M566 (26 Nov): Hyperion, verification and validation of block diagrams
+
+The owner's fourth picture ("author, import, and manage requirements … traceability across designs, tests, and generated
+code … automatically generate test cases for model coverage … check model and code compliance … prove the absence of
+critical run-time errors … reports … to certify to … IEC 61508, ISO 26262, and DO-178"). Blocks → **Verify**.
+
+- **Requirements** (`Diagram.reqs`, `Req`, kept by `readDiagram`, 50 at most): a signal (`blockId#out`) that stays
+  between a and b from a time, settles within ±b of a by a time, reaches a by a time, or overshoots at most a % after a
+  time (`checkReq`, with where it first fails).
+- **Coverage** (`outcomes`, `run` in `src/lib/sim/verify.ts`): each Saturation and Board output below / inside / above,
+  each chart state entered, transition fired, and its condition found false and true (`ChartRun.cond`, counted in
+  `chartStep` whenever a condition is tried).
+- **Tests made automatically** (`generateTests`): the model as it is, then seeded random changes to the sources' numbers
+  (`KNOBS`), one to three at a time, kept when they reach an outcome no test had, until everything is reached or the
+  budget of runs is spent; the same tests every time (`rng` seed 7). Every requirement is also checked under each test.
+- **Model checks** (`modelChecks`): unwired inputs, outputs going nowhere, a saturation upside down, an algebraic loop,
+  a PID filter or transfer function too fast for the step (unstable Euler in the generated code), unreachable chart
+  states, transitions shadowed by an earlier always-true one, chart lines that divide by a signal or take a root of one
+  (run-time errors in the code), values past ±32,767 in any test (fixed-point overflow in the HDL). The ranges are what
+  the tests saw, not a proof: the report says so.
+- **The window** (`BlocksVerify.tsx`, `verify.worker.ts`): add requirements, Run verification (in a worker), pass / fail
+  per requirement with the generated tests' count, coverage with what wasn't reached, the tests, the checks; **Download
+  the report** (one HTML page: requirements, traceability to blocks and the generated code's names (`safeNames`, M565),
+  coverage, tests, checks, ranges, and what the evidence is for under IEC 61508 / ISO 26262 / DO-178C: not a certificate).
+- Left out: formal proof (model checking every input), MC/DC, importing requirements from ReqIF or Word, static
+  analysis of hand-written C (scripts have M399's checker).

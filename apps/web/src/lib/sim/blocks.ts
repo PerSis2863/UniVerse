@@ -9,7 +9,10 @@ import { chartStart, chartStep, parseChart, type Chart, type ChartRun } from './
 export type BlockKind = 'step' | 'sine' | 'constant' | 'pulse' | 'ramp' | 'gain' | 'sum' | 'product' | 'saturation' | 'integrator' | 'tf' | 'pid' | 'chart' | 'boardIn' | 'boardOut' | 'scope';
 export interface Block { id: string; kind: BlockKind; x: number; y: number; p: Record<string, number | string> }
 export interface Wire { id: string; from: string; out: number; to: string; in: number }
-export interface Diagram { blocks: Block[]; wires: Wire[]; stop: number; dt: number }
+/** A requirement on a signal (M566): `signal` is a block id and output (`id#0`). */
+export type ReqKind = 'range' | 'settle' | 'reach' | 'overshoot';
+export interface Req { id: string; text: string; signal: string; kind: ReqKind; a: number; b: number; from: number }
+export interface Diagram { blocks: Block[]; wires: Wire[]; stop: number; dt: number; reqs?: Req[] }
 
 /** A new chart's text (M563). */
 export const CHART = `inputs: u
@@ -273,5 +276,7 @@ export function readDiagram(raw: unknown): Diagram {
   }));
   const ids = new Set(blocks.map((b) => b.id));
   const wires = d.wires.filter((w) => w && ids.has(String(w.from)) && ids.has(String(w.to))).slice(0, 400).map((w) => ({ id: String(w.id), from: String(w.from), out: n(w.out), to: String(w.to), in: n(w.in) }));
-  return { blocks, wires, stop: Math.max(1e-3, Math.min(1e5, n(d.stop, 10))), dt: Math.max(1e-5, Math.min(10, n(d.dt, 0.01))) };
+  const reqs = (Array.isArray(d.reqs) ? d.reqs : []).filter((r) => r && ['range', 'settle', 'reach', 'overshoot'].includes(r.kind) && ids.has(String(r.signal).split('#')[0])).slice(0, 50)
+    .map((r) => ({ id: String(r.id).slice(0, 40), text: String(r.text ?? '').slice(0, 300), signal: String(r.signal).slice(0, 80), kind: r.kind, a: n(r.a), b: n(r.b), from: n(r.from) }));
+  return { blocks, wires, stop: Math.max(1e-3, Math.min(1e5, n(d.stop, 10))), dt: Math.max(1e-5, Math.min(10, n(d.dt, 0.01))), ...(reqs.length ? { reqs } : {}) };
 }

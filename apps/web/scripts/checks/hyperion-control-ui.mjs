@@ -45,6 +45,15 @@ try {
       if (tool === 'Code') {
         for (const lang of ['cpp', 'st', 'verilog', 'vhdl']) { await page.getByLabel('Language').selectOption(lang); await page.waitForTimeout(300); r[`code-${lang}`] = (await page.locator('[data-code-file]').innerText()).slice(0, 80); }
       }
+      if (tool === 'Verify') {
+        await page.getByLabel('Must').selectOption('settle');
+        await page.getByLabel('Value').fill('25'); await page.getByLabel('Within ±').fill('0.5'); await page.getByLabel('By time (s)').fill('60');
+        await page.getByRole('button', { name: 'Add requirement' }).click();
+        await page.getByRole('button', { name: 'Run verification' }).click();
+        await page.locator('[data-coverage]').waitFor({ timeout: 60_000 });
+        r.coverage = await page.locator('[data-coverage]').innerText();
+        r.reqs = (await page.getByRole('region', { name: 'Requirements' }).innerText()).slice(0, 300);
+      }
       if (tool === 'Tune') {
         await page.getByRole('button', { name: 'Update block' }).isEnabled({ timeout: 20_000 }).catch(() => {});
         r.tuned = await page.getByRole('table').first().innerText();

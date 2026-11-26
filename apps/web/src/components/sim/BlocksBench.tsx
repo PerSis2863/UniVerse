@@ -12,6 +12,7 @@ import { BlocksTune } from './BlocksTune';
 import { BlocksLogic } from './BlocksLogic';
 import { BlocksLive } from './BlocksLive';
 import { BlocksCode } from './BlocksCode';
+import { BlocksVerify } from './BlocksVerify';
 import { Segmented } from '@/components/ui/Segmented';
 import type { FromBlocks, ToBlocks } from './blocks.worker';
 
@@ -20,7 +21,7 @@ import type { FromBlocks, ToBlocks } from './blocks.worker';
 // diagram runs as you build it (src/lib/sim/blocks.ts, in a worker) and every Scope block draws its inputs below.
 
 const KEEP = 'uv-sim-blocks';
-type Tool = 'scopes' | 'tune' | 'logic' | 'live' | 'code';
+type Tool = 'scopes' | 'tune' | 'logic' | 'live' | 'code' | 'verify';
 const VW = 760, VH = 340, BW = 88, SNAP = 10;
 const height = (b: Block) => Math.max(54, 18 * (Math.max(KINDS[b.kind].ins(b.p), KINDS[b.kind].outs(b.p)) + 1));
 const inPort = (b: Block, i: number) => ({ x: b.x, y: b.y + (height(b) * (i + 1)) / (KINDS[b.kind].ins(b.p) + 1) });
@@ -376,13 +377,13 @@ export function BlocksBench() {
             {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!, drag.out).x},${outPort(byId.get(drag.from)!, drag.out).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
           </svg>
         </div>
-        <div role="region" aria-label={{ scopes: 'Scopes', tune: 'PID tuner', logic: 'State chart logic', live: 'Real time run', code: 'Generated code' }[tool]} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
+        <div role="region" aria-label={{ scopes: 'Scopes', tune: 'PID tuner', logic: 'State chart logic', live: 'Real time run', code: 'Generated code', verify: 'Verification' }[tool]} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-600 dark:text-zinc-300">
-            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }, { value: 'logic', label: 'Logic' }, { value: 'live', label: 'Real time' }, { value: 'code', label: 'Code' }]} />
+            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }, { value: 'logic', label: 'Logic' }, { value: 'live', label: 'Real time' }, { value: 'code', label: 'Code' }, { value: 'verify', label: 'Verify' }]} />
             {tool === 'scopes' && result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
             {tool === 'scopes' && stale && pending > 0 && <span>running…</span>}
           </div>
-          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : tool === 'code' ? <BlocksCode dg={dg} /> : tool === 'live' ? <BlocksLive dg={dg} names={names} colours={colours} /> : tool === 'logic' ? <BlocksLogic dg={dg} names={names} result={result?.id === pending ? result : null} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
+          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : tool === 'verify' ? <BlocksVerify dg={dg} names={names} setReqs={(reqs) => setDg((d) => ({ ...d, reqs }))} /> : tool === 'code' ? <BlocksCode dg={dg} /> : tool === 'live' ? <BlocksLive dg={dg} names={names} colours={colours} /> : tool === 'logic' ? <BlocksLogic dg={dg} names={names} result={result?.id === pending ? result : null} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               {scopes.map((s) => {
                 const traces = Array.from({ length: KINDS.scope.ins(s.p) }, (_, i) => {

@@ -163,14 +163,15 @@ export function parseChart(text: string): Chart {
 }
 
 /** A chart's running state: the active state, when it was entered, every variable's value. */
-export interface ChartRun { active: number; since: number; vars: Record<string, number>; fired: number[]; visits: number[] }
+/** `cond`: per transition, how often its condition was tried and found false, and true (decision coverage, M566). */
+export interface ChartRun { active: number; since: number; vars: Record<string, number>; fired: number[]; visits: number[]; cond: [number, number][] }
 
 const run = (list: Assign[], env: Record<string, number>) => { for (const a of list) env[a.name] = evalExpr(a.e, env); };
 
 export function chartStart(ch: Chart, t = 0): ChartRun {
   const vars: Record<string, number> = {};
   for (const n of [...ch.outputs, ...ch.locals]) vars[n] = 0;
-  const r: ChartRun = { active: 0, since: t, vars, fired: ch.trans.map(() => 0), visits: ch.states.map((_, i) => (i === 0 ? 1 : 0)) };
+  const r: ChartRun = { active: 0, since: t, vars, fired: ch.trans.map(() => 0), visits: ch.states.map((_, i) => (i === 0 ? 1 : 0)), cond: ch.trans.map(() => [0, 0]) };
   r.vars = withT(ch, r, {}, t, (env) => run(ch.states[0].entry, env));
   return r;
 }
@@ -189,7 +190,10 @@ export function chartStep(ch: Chart, r: ChartRun, ins: Record<string, number>, t
   r.vars = withT(ch, r, ins, t, (env) => {
     for (let k = 0; k < ch.trans.length; k++) {
       const tr = ch.trans[k];
-      if (tr.from !== r.active || t - r.since < tr.after - 1e-12 || !evalExpr(tr.cond, env)) continue;
+      if (tr.from !== r.active || t - r.since < tr.after - 1e-12) continue;
+      const ok = !!evalExpr(tr.cond, env);
+      r.cond[k][ok ? 1 : 0]++;
+      if (!ok) continue;
       run(ch.states[r.active].exit, env);
       run(tr.action, env);
       env.t = 0;
