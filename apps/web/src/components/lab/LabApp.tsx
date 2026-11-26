@@ -12,6 +12,8 @@ import NextImage from 'next/image';
 import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, FlaskConical, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { Splitter, usePaneSizes } from '@/components/ui/Splitter';
+import { AppWindows } from './AppWindows';
+import type { AppOut } from '@/lib/lab/app-lab';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
@@ -116,6 +118,8 @@ export function LabApp() {
   // Whose variables are listed (M466): Hyperion's engine (they open in the viewer) or another language's (shown only).
   const [varsFrom, setVarsFrom] = useState('MATLAB');
   const [figs, setFigs] = useState<FigOut[]>([]);
+  // M554: the app windows the scripts made (uifigure), as the worker last described them.
+  const [apps, setApps] = useState<AppOut[]>([]);
   const [current, setCurrent] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [cmd, setCmd] = useState('');
@@ -186,6 +190,14 @@ export function LabApp() {
     if (e.figs.length) { const out = e.figs.map((svgText, i) => ({ id: OTHER_FIG + i + 1, light: svgText, dark: svgText, tex: '' })); setFigs(out); setCurrent(out[out.length - 1].id); }
     else if (p) { setFigs([]); setCurrent(null); }
     pending.current = null; busyNow.current = false; setBusy(false);
+  };
+  /** M554: a press, slide or choice in an app window; its callback runs like a command (its output in the command window). */
+  const appEvent = (part: number, value: number | string | boolean | null) => {
+    if (busyNow.current || !worker.current) return;
+    const id = ++seq.current;
+    pending.current = { id, code: '', from: 'tool' };
+    busyNow.current = true; setBusy(true);
+    worker.current.postMessage({ appEvent: { part, value }, id } satisfies ToLab);
   };
   const run = (code: string, from: From) => {
     if (busyNow.current || !code.trim() || !worker.current) return;
@@ -280,6 +292,7 @@ export function LabApp() {
       if (m.files.length) listFiles();
       // Figures only come back when a run changed them (null: keep what's shown).
       if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; }
+      if (m.apps) setApps(m.apps);
       pending.current = null;
       busyNow.current = false;
       setBusy(false);
@@ -377,7 +390,12 @@ export function LabApp() {
   };
   const send = () => { const c = cmd; if (!c.trim()) return; setHist((h) => [...h.filter((x) => x !== c), c].slice(-100)); setHi(-1); setCmd(''); run(c, 'cmd'); };
 
-  const fig = figs.find((f) => f.id === current) ?? figs[figs.length - 1] ?? null;
+  // Figures drawn inside an app's axes show there, not in the Figure tab (M554).
+  const own = useMemo(() => {
+    const inApps = new Set(apps.flatMap((x) => x.parts.flatMap((p) => (p.figure !== null ? [p.figure] : []))));
+    return figs.filter((f) => !inApps.has(f.id));
+  }, [apps, figs]);
+  const fig = own.find((f) => f.id === current) ?? own[own.length - 1] ?? null;
   // The owner, 26 Nov: the editor and the command window take the window's width (the command window was drawn over the
   // editor's last lines), with a divider between them; Variables and Files moved beside the figure, as tabs. A new figure
   // brings its tab forward (no effect needed: the tab chosen remembers the figure it was chosen at).
@@ -793,7 +811,7 @@ export function LabApp() {
     <section className={cn(panel, 'h-full')} aria-label="Figure">
       <div className={cn(head, 'flex-wrap')}>
         <span>Figure</span>
-        {!(sweep && !watching) && figs.length > 1 && figs.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
+        {!(sweep && !watching) && own.length > 1 && own.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
         {sweep && !watching ? <span className="ms-auto text-xs font-normal text-zinc-500 dark:text-zinc-400" translate="no">Sweep of {sweep.name} in {sweep.scriptName}</span> : <span className="ms-auto flex flex-wrap gap-1">
           <button type="button" className={btn} disabled={!fig} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />PNG</button>
           <button type="button" className={btn} disabled={!fig} onClick={() => fig && download(`figure${fig.id}.svg`, fig.light, 'image/svg+xml')}><Download className="h-3.5 w-3.5" aria-hidden />SVG</button>
@@ -870,6 +888,7 @@ export function LabApp() {
         })()}
       </div>
       {viewer}
+      <AppWindows apps={apps} figs={figs} dark={dark} busy={busy} send={appEvent} />
       {bigQr && link?.url && (
         // Big enough to scan from the back of a room (a projector, a shared screen).
         <div role="dialog" aria-modal="true" aria-label={`QR code for ${script.name}`} className="fixed inset-0 z-50 grid place-items-center bg-white p-6" onClick={() => setBigQr(false)} onKeyDown={(e) => { if (e.key === 'Escape') setBigQr(false); }}>

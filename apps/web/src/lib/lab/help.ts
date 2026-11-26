@@ -625,6 +625,16 @@ gcf | gcf | The current figure's number.
 gca | gca, set(gca, 'XLim', [0 10]) | The current axes (for set).
 set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on'), set(h, 'XData', x, 'YData', y) | Changes the current axes' limits and grid, or a line's points, colour and width by its handle (h = plot(…)).
 drawnow | drawnow | Shows the figure as it is now, while the script goes on: call it in a loop to animate.
+uifigure | fig = uifigure('Name', 'My app', 'Position', [100 100 640 480]) | A window for your own app: put buttons, sliders, fields and plots in it; it floats over the Code window. Its parts' callbacks run when you press, slide or choose.
+uibutton | b = uibutton(fig, 'Text', 'Go', 'Position', [20 20 100 22], 'ButtonPushedFcn', @(src, event) …) | A button in an app window; its function runs when pressed.
+uislider | s = uislider(fig, 'Limits', [0 10], 'Value', 5, 'ValueChangedFcn', @(src, event) disp(event.Value)) | A slider in an app window; event.Value is where it was let go.
+uilabel | l = uilabel(fig, 'Text', 'Hello', 'Position', [20 60 200 22]) | Text in an app window; change it with set(l, 'Text', …).
+uieditfield | e = uieditfield(fig, 'numeric', 'Value', 3, 'ValueChangedFcn', @(src, event) …) | A box to type a number ('numeric') or text in, in an app window.
+uicheckbox | c = uicheckbox(fig, 'Text', 'Show grid', 'ValueChangedFcn', @(src, event) …) | A tick box in an app window; event.Value is true or false.
+uidropdown | d = uidropdown(fig, 'Items', {'Sine', 'Square'}, 'ValueChangedFcn', @(src, event) …) | A drop-down list in an app window; event.Value is the item chosen.
+uiaxes | ax = uiaxes(fig, 'Position', [20 120 400 250]) | A plot inside an app window: plot(ax, x, y), title(ax, …), cla(ax) draw there.
+uialert | uialert(fig, 'Done!', 'Title') | Shows a message (in the command window).
+get | v = get(h, 'Value') | Reads an app part's Value, Text, Limits, Items or Position.
 animatedline | h = animatedline('Color', 'r') | An empty line to grow point by point (addpoints) while a loop draws it.
 addpoints | addpoints(h, x, y) | Adds points to an animated line; drawnow shows them.
 clearpoints | clearpoints(h) | Empties an animated line.

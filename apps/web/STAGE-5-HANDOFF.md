@@ -15110,3 +15110,22 @@ in its stride; sol(i, j, k) time × point × component, a times × points matrix
 c = 0 (elliptic ones in the system) are refused with a plain message: not supported yet. Tested: ∫∫ x·y² over a box,
 a triangle's area with a function limit, the Gaussian's π, ∫∫∫ x+y+z, the unit sphere's volume, a rod with held
 ends cooling as sin(πx)·e^(−π²t), an insulated rod keeping its average. Help lines added in help.ts.
+
+## M554: Hyperion: your own app windows (uifigure, 26 Nov)
+
+The owner, 26 Nov: "building your own app windows with buttons and sliders (uifigure)". `src/lib/lab/app-lab.ts` (loaded
+by `lab.worker.ts`; it imports `files.ts` first because it wraps that module's `delete`): uifigure, uibutton, uislider,
+uilabel, uieditfield (text or 'numeric'), uicheckbox, uidropdown, uiaxes, uialert (prints). Each part is a numeric
+handle from 50001 up, kept per Lab in a WeakMap; Position is MATLAB's [left bottom width height] in pixels (parts
+stack down the window when none is given). `set` / `get` are wrapped: app handles take Text, Value, Limits, Items,
+Enable, Position and the callbacks (ButtonPushedFcn, ValueChangedFcn); other handles go to plot.ts's set. A uiaxes owns
+a figure; plot, title, xlabel… with an axes handle first draw on it and give the current figure back. The worker sends
+`appsOut(lab)` with every `done`, and takes `{ appEvent: { part, value } }`: the value is set (a slider clamped to its
+Limits), then the callback runs as fn(source, event) with event.Value, event.Source, event.EventName (fewer arguments
+if the function asks for fewer). `AppWindows.tsx` floats the windows at the Code window's bottom end (scaled to fit,
+Close hides one until the next run); sliders and typed fields send on let-go / Enter / blur; the Figure tab skips
+figures that live in an app (`own` in LabApp, memoised for the React compiler). Help lines for each. Tests:
+`app.test.ts` (a slide changes a label through its callback, a button resets the slider, clamping, get, plot into
+uiaxes, a callback's error, delete). Check: `scripts/checks/hyperion-apps-ui.mjs`. Left out: drag-and-drop app designing
+(it is code-built, like MATLAB's programmatic apps), layouts (uigridlayout), tables, tabs and menus inside apps, dot
+syntax (`lbl.Text = …`: use set/get or event.Value).
