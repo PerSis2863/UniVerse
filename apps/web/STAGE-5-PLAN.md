@@ -1946,8 +1946,7 @@ it is GPL v3, which would bind the whole app): build each function ourselves fro
 against textbook or published answers, as every toolbox so far. Of the organisation's 74 repositories about 35 are
 function packages; the rest (the website, Docker images, CI, Vim syntax, package installers, archived ones) add nothing.
 1. Simulate: **done** M544 heat and stress together, M545 buckling, M546 fatigue life. Done too: M547 the lightest shape, M548 Fields (electromagnetics), M549 Ghidra's Aether guide and Hyperion set-up
-   skills. **Next:** acoustics (2D Helmholtz: a room's or a pipe's modes, a source's field),
-   then STL files into 3D parts.
+   skills, M550 the Code window's layout fix, M551 Sound (acoustics). **Next:** STL files into 3D parts.
 2. The language: `pdepe`, `integral2`, `integral3`; an app designer (`uifigure`, `uibutton`, `uislider`, `uiaxes`…:
    a window with controls built from a script); `webcam` / `snapshot` in image processing (asked first).
 3. Octave packages, in six waves: (1) statistics tests and resampling (`ttest`, `ttest2`, `ranksum`, `signrank`,
