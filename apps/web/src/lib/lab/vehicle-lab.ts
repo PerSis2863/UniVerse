@@ -1,3 +1,4 @@
+import { isScenario, scenarioActor } from './scenario-lab';
 import { LabError } from './parse';
 import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
@@ -40,6 +41,8 @@ export function vehicleOf(x: Value | undefined): vd.Vehicle {
   return out;
 }
 def('vehicle', (a) => {
+  // M573: vehicle(scenario, …) adds a car to a drivingScenario
+  if (isScenario(a[0])) return scenarioActor(a, 'car', 'vehicle');
   const v = { ...vd.CAR_DEFAULT };
   for (let i = 0; i < a.length; i += 2) {
     const key = a[i]?.k === 'str' ? (a[i] as { v: string }).v.toLowerCase() : '';

@@ -15838,3 +15838,38 @@ app), and reads their answers back.
 - Not done: Verilog-A models (no compiler for them here to check one: OpenVAF isn't packaged), and Cadence's or
   Synopsys's own simulators (not on this machine: their runs in simulators.js follow their documented command lines,
   untested here). ngspice, Xyce and Verilator are the free ones tried.
+
+
+## M573 (27 Nov): automated driving 1: driving scenarios, sensors, OpenDRIVE
+
+The owner, 27 Nov, with screenshots of MathWorks' automated-driving page (data and labelling, driving scenarios,
+planning and control, perception, deployment, integration and testing). Hyperion had planning and control (M487:
+lane keepers, ACC, AEB) and tracking (M460); this is the first of the rest, in the order: scenarios (M573), perception,
+data, deployment, testing.
+- **`src/lib/lab/scenario.ts`** (pure): roads through centre points (uniform Catmull-Rom, resampled every 0.5 m; lanes
+  side by side, `laneBoundaries`), actors as cuboids (car, truck, pedestrian, bicycle sizes) following smoothed
+  waypoints at their speeds (a speed per waypoint, 0 holds there; `wait`), `runScenario`: poses each step, collisions
+  (separating axis, once per contact), and the ego vehicle's sensors in their own frames: **vision** (the footprint's
+  closest point, Pd 0.9, noise growing with range, relative velocity, class; the ego lane's two boundaries as cubics up
+  to 60 m), **radar** (Pd from an SNR of RCS and range⁴, range / azimuth / range-rate noise), **lidar** (channels ×
+  azimuth rays against the cuboids by the slab method and the ground), false alarms (Poisson), and occlusion (three
+  rays to the footprint: hidden if two are blocked by another actor). **OpenDRIVE**: `writeOpenDRIVE` (each segment as
+  the paramPoly3 of the same Catmull-Rom curve, so it is exact; lanes half each side, an odd count by laneOffset) and
+  `readOpenDRIVE` (line, arc, spiral, paramPoly3, poly3 as a line; laneOffset and the sides' lanes back to our
+  centreline). Seeded, so a run repeats.
+- **`scenario-lab.ts`**: the functions above as values (s = road(s, …)); `vehicle(scenario, …)` adds a car (vehicle-lab
+  checks `isScenario` first, otherwise it is still the car's physical model); runScenario's Detections are a matrix,
+  a row each (time, sensor, x, y, vx, vy, class, truth, range, azimuth, range rate). Help under "Driving scenarios".
+- **Simulate → Machines → Scenario designer** (`ScenarioBench.tsx`): three ready scenarios (highway cut-in; a curve with
+  a person crossing; stop and go, which crashes), clicking the bird's-eye view adds road points, cars, trucks or people
+  (cars follow the road from where they're put, people cross it), lanes and widths, the three sensors, play and a time
+  slider; the bird's-eye view (coverage cones, camera ▲ and radar ○ detections, lidar points) and a chase camera
+  behind the ego car (painted in depth order on a canvas); OpenDRIVE download, Open in Code.
+- Checked: `scenario.test.ts` (speeds and the crash time, the camera's mean position and relative speed, lanes at
+  ±1.8 m, a car hidden behind a truck not seen, the radar missing a far pedestrian more than a car, lidar on the car's
+  back face, OpenDRIVE out and in for 2 and 3 lanes, a 100 m quarter-circle arc read, the language), and
+  `scripts/checks/hyperion-scenario-ui.mjs` (each scenario draws both views side by side, the crash found, a click adds
+  a car, axe clean light and dark).
+- Not yet (the next items): perception on these sensors (point clouds, fusion, tracking metrics), recorded data (CAN,
+  ROS, labelling, OpenStreetMap), deployment (ROS / AUTOSAR around generated C), test benches with requirements; and a
+  game-engine 3D world (the chase camera is a cuboid view, as the Designer's own).
