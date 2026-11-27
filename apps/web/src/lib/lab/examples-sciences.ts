@@ -716,4 +716,38 @@ figure; foulingTrend(wk, UA, 0.8)
 f = foulingTrend(wk, UA, 0.8);
 fprintf('Clean the exchanger on day %.0f\\n', f.CleanAt)
 ` },
+  { name: 'datacenter_onsite.m', code: `% Data centres: power on site when the grid can't give enough
+% 1. Gas turbines in a hot summer: part load costs efficiency
+figure; gasTurbine(0.5, 'Rated', 50, 'Ambient', 35)
+g = gasTurbine([0.4 0.7 1], 'Rated', 50, 'Ambient', 35, 'Price', 3.5);
+fprintf('At 40/70/100%%: %.1f/%.1f/%.1f%% efficient, $%.0f/MWh of fuel at full load\\n', 100*g.Efficiency, g.Cost(3)/g.Power(3))
+% 2. A generator set taking the cooling plant's start-up in two blocks
+t = 0:0.01:12;
+figure; gensetStep(t, [0 0.15; 1 0.45; 6 0.8])
+[~, s] = gensetStep(t, [0 0.15; 1 0.45]);
+fprintf('A 30%% block: dip %.1f%%, ISO 8528-5 class %s\\n', s.Dip, s.Classes)
+% 3. A fuel cell stack for clean back-up (a dozen of these make a megawatt)
+figure; fuelCell(300, 'Type', 'pem', 'Cells', 400, 'Area', 600)
+[V, P, f] = fuelCell(500, 'Cells', 400, 'Area', 600);
+fprintf('At 500 mA/cm2: %.2f V a cell, %.0f kW, %.0f%% efficient, %.1f kg of hydrogen an hour\\n', V, P, 100*f.Efficiency, f.H2)
+% 4. A day minute by minute: a 300 MW AI campus, 150 MW from the grid, turbines, a battery and solar
+m = 0:1439;
+load = 260 + 40*sign(sin(2*pi*m/15)) .* (mod(m, 240) < 200);      % training bursts, pauses every 4 h
+pv = max(0, 80*sin(pi*(m/60 - 6)/12));
+mwh = 120;     % slider 0 400
+figure; hybridPower(load, 1/60, 'Grid', 150, 'Turbines', [4 50 0.3 6], 'Battery', [mwh mwh/2 0.88], 'Solar', pv)
+h = hybridPower(load, 1/60, 'Grid', 150, 'Turbines', [4 50 0.3 6], 'Battery', [mwh mwh/2 0.88], 'Solar', pv);
+fprintf('Served all but %.2f MWh; %.0f t CO2; the battery cycled %.1f times\\n', h.UnservedMWh, h.CO2, h.Cycles)
+% 5. A digital twin for condition monitoring: measured heat rate against the model, CUSUM finds the drift
+rng(4); days = 1:120;
+model = gasTurbine(0.8*ones(size(days)), 'Rated', 50).HeatRate;
+meas = model .* (1 + 0.004*randn(size(days)) + 0.02*(days > 70).*(days - 70)/50);   % fouled compressor from day 70
+r = (meas./model - 1)/0.004;          % the residual in standard deviations
+S = 0; alarm = NaN;
+for k = days                           % a one-sided CUSUM, slack 0.5, limit 5 (cusum() does the same)
+  S = max(0, S + r(k) - 0.5);
+  if S > 5 && isnan(alarm), alarm = k; end
+end
+fprintf('Heat rate drifting up, flagged on day %d: wash the compressor\\n', alarm)
+` },
 ];

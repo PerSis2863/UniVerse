@@ -13434,3 +13434,26 @@ air failing at 130 kW while both liquids work with a lower pPUE, warm water need
 holding 42 °C with the heat removed, a pump failure overheating only without a spare, fouling warming a fixed-speed
 loop, UA by hand and the trend's clean date exactly. Not built: refrigerant property tables (two-phase pressure drop and
 dry-out), rack-by-rack air recirculation (CFD), immersion tanks, adiabatic dry coolers, a chiller plant's sequencing.
+
+## M575 (27 Nov): Hyperion data centres: power on site
+
+The fifth data-centre page ("Power generation equipment and energy storage developers"), `dc-gen.ts`. **Gas
+turbine**: η(x) = ηfull·x/(x + k(1 − x)), k 0.35 (40% → 29.6% at half, ~20% at a quarter), capacity × (1 − 0.007(T −
+15)), at most 1.05; heat rate 3412.14/η Btu/kWh, fuel P·HR/1000 MMBtu/h, CO₂ 53.06 kg/MMBtu. **Fuel cell**: Larminie
+and Dicks' V = Eoc − r·i − A·ln i − m·e^(n·i) (i in mA/cm², r in kΩ·cm²; their PEM constants, an SOFC set with a lower
+activation loss), clamped to [0, Eoc]; LHV efficiency V/1.253; hydrogen I·cells/(2F)·2.016 g/mol. **Genset**:
+2H dΔf/dt = Pm − PL − DΔf, the engine's torque lagging an isochronous PI governor by tau (turbo lag), output clamped to
+[0, 1.1]; RK4 at 1 ms; ISO 8528-5 classes by the largest dip and the time after the last step to stay inside the band
+(G1 15%/10 s/2.5%, G2 10%/5 s/1.5%, G3 7%/3 s/0.5%; our simplification of the standard's separate dip and band
+figures). **Hybrid dispatch** (`dispatch`): rule-based, one pass: grid to its limit, turbines aim at the rest plus
+(0.5 − SoC)·E/2 h, committed as the fewest units that carry it (fewer if each would sit under its minimum), ramped at
+`ramp` MW/min a unit, starting at the first sample's need; the battery takes the difference within its power and
+charge (√RTE each way, SoC 10–95%); the remainder unserved or curtailed. Fuel cost from the turbines' part-load
+efficiency at the gas price; grid energy at its price and CO₂ factor. A first version started the turbines at zero and
+left a cold start unserved. Language: `gasTurbine`, `fuelCell`, `gensetStep`, `hybridPower`. The example's digital-twin
+part runs a CUSUM by hand on measured ÷ modelled heat rate (the examples' test loads only the sciences, not M423's
+`cusum`). Tests: the turbine's efficiencies, derating, heat rate, fuel and CO₂; the PEM's voltages and Faraday's
+hydrogen; a bigger block dipping deeper, the classes and isochronous recovery; the battery carrying a 120 MW swing the
+turbines can't ramp to, the energy balance to 1e-9, the grid limit and SoC floor. Not built: an optimal (LP or MILP)
+dispatch with prices through the day, turbine start-up times and costs, battery ageing in dispatch (M433's
+`batteryAge` exists), fuel cell transients and stack heat, synchronous machine voltage control.
