@@ -373,6 +373,22 @@ figure; plot(lam, s0 / max(s0), lam, s1 / max(s1)); xlabel('wavelength (nm)'); y
 legend('no scattering', '99% scattering'); title('Scattering hardens a disc''s light')
 figure; kerrDisc(0.5, 60, 'Pixels', 70, 'Colour', 'temperature', 'Scattering', 0.99)
 ` },
+  { name: 'physics11.m', code: `% Physics: V-HACD's search on cubes; light scattered across a disc; a hot corona boosting it to X-rays
+% 1. A cube with a pyramid pushed into its top, split by the plain search and by 'voxel' (planes chosen on cubes)
+V = [0 0 0; 1 0 0; 1 1 0; 0 1 0; 0 0 1; 1 0 1; 1 1 1; 0 1 1; 0.5 0.5 0.2];
+F = [4 3 2 1; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8; 5 6 9 NaN; 6 7 9 NaN; 7 8 9 NaN; 8 5 9 NaN];
+p1 = convexSplit(V, F); p2 = convexSplit(V, F, 'Search', 'voxel');
+fprintf('Dented cube: %d parts plain, %d with the voxel search\\n', numel(p1), numel(p2))
+% 2. A thick see-through disc whose gas mostly scatters: each point's light as in a flat slab, then from all of the disc
+I1 = kerrDisc(0.5, 70, 'Pixels', 40, 'Thickness', 0.2, 'Opacity', 0.999, 'Scattering', 0.5);
+I2 = kerrDisc(0.5, 70, 'Pixels', 40, 'Thickness', 0.2, 'Opacity', 0.999, 'Scattering', 0.5, 'Transfer', 'disc');
+fprintf('Light from all of the disc: %.3f of the slab''s\\n', sum(I2(:)) / sum(I1(:)))
+% 3. A stellar black hole's disc (10 million K) under a corona of 100 keV electrons: the X-ray tail
+[~, ~, ~, ~, ~, ~, E, X0] = kerrDisc(0.5, 60, 'Pixels', 30, 'Temperature', 1e7);
+[~, ~, ~, ~, ~, ~, ~, X1] = kerrDisc(0.5, 60, 'Pixels', 30, 'Temperature', 1e7, 'Corona', [100 1]);
+figure; loglog(E, X0, E, X1); xlabel('energy (keV)'); ylabel('E F_E'); ylim([1e-4 1] * max(X1))
+legend('the disc', 'with the corona'); title('Compton up-scattering: a power law to about kT_e')
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north

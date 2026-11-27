@@ -23,7 +23,8 @@ import { call, col, def, isText, lines, need, nums, one, options, optNum, optTex
 // convexSplit (a dented mesh cut into convex parts), kerrDisc's 'Thickness', 'Opacity', 'Colour' 'temperature'. M544: convexSplit
 // up to 32 parts with cuts across bends (smooth curved meshes), the thick disc shadowing itself and its walls glowing. M545:
 // convexSplit's 'Search' (free planes), kerrDisc's 'Absorption' (by colour) and the gas's own lengths. M546: 'Search',
-// 'full' (13 directions, looking ahead, merging), kerrDisc's 'Scattering' and its spectrum S, lam. M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
+// 'full' (13 directions, looking ahead, merging), kerrDisc's 'Scattering' and its spectrum S, lam. M570: 'Search', 'voxel',
+// kerrDisc's 'Transfer', 'disc' and 'Corona' with E, X. M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
 // relativistic, minkowskiDiagram, chargedParticle's 'Relativistic', schrodinger1D, finiteWell, tunneling,
 // transmission, rigidBody, collide1d, diskCollisions.
 
@@ -726,23 +727,28 @@ def('convexSplit', (a) => {
   if (V.c !== 3) throw new LabError('convexSplit(V, F): V is n × 3 corners, F the faces (each row the corner numbers of one face, from 1), as patch takes them.');
   const faces = F ? Array.from({ length: F.r }, (_, i) => Array.from({ length: F.c }, (_, j) => F.d[i + j * F.r]).filter((x) => Number.isFinite(x) && x > 0).map((x) => x - 1))
     : (a[1] as { d: Value[] }).d.map((x) => nums(x).map((v) => v - 1));
-  const o = options(a, 2, ['Parts', 'Tolerance', 'Search'], 'convexSplit'), maxParts = Math.round(optNum(o, 'Parts', 16)), tol = optNum(o, 'Tolerance', 0.02), sv = o.get('Search'), search = isText(sv) ? (sv.v.toLowerCase() === 'full' ? 'full' as const : (() => { throw new LabError("convexSplit: 'Search' is true, false or 'full'."); })()) : optNum(o, 'Search', 0) !== 0;
+  const o = options(a, 2, ['Parts', 'Tolerance', 'Search'], 'convexSplit'), maxParts = Math.round(optNum(o, 'Parts', 16)), tol = optNum(o, 'Tolerance', 0.02), sv = o.get('Search'), search = isText(sv) ? (['full', 'voxel'].includes(sv.v.toLowerCase()) ? sv.v.toLowerCase() as 'full' | 'voxel' : (() => { throw new LabError("convexSplit: 'Search' is true, false, 'full' or 'voxel'."); })()) : optNum(o, 'Search', 0) !== 0;
   if (!(maxParts >= 1 && maxParts <= 32 && tol > 0 && tol < 0.5)) throw new LabError("convexSplit: 'Parts' 1 to 32 (the most it makes), 'Tolerance' the share of a part's hull that may be empty (0 to 0.5).");
   const pts = Array.from({ length: V.r }, (_, i) => [V.d[i], V.d[i + V.r], V.d[i + 2 * V.r]]);
   const parts = wrap(() => r3.convexSplit(pts, faces, { maxParts, tol, search }));
   return [{ k: 'cell', r: 1, c: parts.length, d: parts.map((P) => rows(P)) }];
 });
 def('kerrDisc', (a, nout, lab) => {
-  const s = spin(a[0]), inc = one(a[1], 80), o = options(a, 2, ['Charge', 'Magnetic', 'Pixels', 'Inner', 'Outer', 'Thickness', 'Opacity', 'Colour', 'Temperature', 'Absorption', 'Scattering'], 'kerrDisc'), ch = charge(o, s);
+  const s = spin(a[0]), inc = one(a[1], 80), o = options(a, 2, ['Charge', 'Magnetic', 'Pixels', 'Inner', 'Outer', 'Thickness', 'Opacity', 'Colour', 'Temperature', 'Absorption', 'Scattering', 'Transfer', 'Corona'], 'kerrDisc'), ch = charge(o, s);
   const n = Math.round(optNum(o, 'Pixels', 100)), rOut = optNum(o, 'Outer', 20), thick = optNum(o, 'Thickness', 0), opacity = optNum(o, 'Opacity', 1), Tk = optNum(o, 'Temperature', 10000), absorb = optNum(o, 'Absorption', 0), scatter = optNum(o, 'Scattering', 0);
   const colour = optText(o, 'Colour', 'brightness').toLowerCase();
   if (!(inc > 0 && inc < 90 && n >= 16 && n <= 240 && rOut > 2 && rOut <= 200)) throw new LabError("kerrDisc(a, inclination): seen 0 < inclination < 90° off the spin axis; 'Pixels' 16 to 240 across, 'Outer' the disc's edge (GM/c², up to 200).");
-  if (!(thick >= 0 && thick <= 0.3 && opacity > 0 && opacity <= 1 && Tk >= 1000 && Tk <= 1e5 && ['brightness', 'temperature'].includes(colour) && Math.abs(absorb) <= 4 && scatter >= 0 && scatter <= 0.99)) throw new LabError("kerrDisc: 'Thickness' (height over radius) 0 to 0.3, 'Opacity' above 0 up to 1 (1 solid), 'Colour' 'brightness' or 'temperature', 'Temperature' the hottest gas in kelvin (1000 to 100 000), 'Absorption' how the gas's opacity goes with frequency, ν^−p (−4 to 4; 0 the same at every colour), 'Scattering' the share of it that turns light aside (0 to 0.99).");
-  const r = wrap(() => kr.discImage(s, (inc * Math.PI) / 180, { q: ch.m, n, rOut, thick, opacity, scatter, ...(colour === 'temperature' || nout > 4 ? { tK: Tk, absorb } : {}), ...(o.has('Inner') ? { rIn: optNum(o, 'Inner', 0) } : {}) }));
+  if (!(thick >= 0 && thick <= 0.3 && opacity > 0 && opacity <= 1 && Tk >= 1000 && Tk <= 1e8 && ['brightness', 'temperature'].includes(colour) && Math.abs(absorb) <= 4 && scatter >= 0 && scatter <= 0.99)) throw new LabError("kerrDisc: 'Thickness' (height over radius) 0 to 0.3, 'Opacity' above 0 up to 1 (1 solid), 'Colour' 'brightness' or 'temperature', 'Temperature' the hottest gas in kelvin (1000 to 10⁸), 'Absorption' how the gas's opacity goes with frequency, ν^−p (−4 to 4; 0 the same at every colour), 'Scattering' the share of it that turns light aside (0 to 0.99).");
+  // M570: 'Transfer', 'disc' (the scattered light from all of the gas) and 'Corona', [kTe tau] (Compton up-scattering),
+  // with E (keV) and X (E·F_E of the whole picture, 10⁻³ to 10³ keV) as the 7th and 8th outputs.
+  const transfer = optText(o, 'Transfer', 'slab').toLowerCase(), cv = o.has('Corona') ? nums(o.get('Corona')!) : null;
+  if (!['slab', 'disc'].includes(transfer)) throw new LabError("kerrDisc: 'Transfer' is 'slab' (each point's light as in a flat slab) or 'disc' (from all of the disc's gas).");
+  if (cv && !(cv.length === 2 && cv[0] >= 1 && cv[0] <= 1000 && cv[1] > 0 && cv[1] <= 10)) throw new LabError("kerrDisc: 'Corona' is [kTe tau]: the electrons' temperature in keV (1 to 1000) and the corona's optical depth (above 0, up to 10).");
+  const r = wrap(() => kr.discImage(s, (inc * Math.PI) / 180, { q: ch.m, n, rOut, thick, opacity, scatter, transfer: transfer as 'slab' | 'disc', ...(colour === 'temperature' || nout > 4 ? { tK: Tk, absorb } : {}), ...(nout > 6 ? { tK: Tk, absorb, wide: true } : {}), ...(cv && nout > 6 ? { corona: { kTe: cv[0], tau: cv[1] } } : {}), ...(o.has('Inner') ? { rIn: optNum(o, 'Inner', 0) } : {}) }));
   const grid = (v: Float64Array, k = 1) => { const m = mat(n, n); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) m.d[i + j * n] = v[i * n + j] * k; return m; };
   // M546: S, each pixel's spectrum (n × n × 17, per wavelength, arbitrary units), at the wavelengths lam (nm).
   const spectrum = () => { const NL = r.lam.length, d = new Float64Array(n * n * NL); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) for (let b = 0; b < NL; b++) d[i + j * n + b * n * n] = r.S![(i * n + j) * NL + b]; return mat(n, n, d); };
-  if (nout > 0) return [grid(r.I), grid(r.g), grid(r.r), grid(r.T, Tk), ...(nout > 4 ? [spectrum(), row(r.lam)] : [])];
+  if (nout > 0) return [grid(r.I), grid(r.g), grid(r.r), grid(r.T, Tk), ...(nout > 4 ? [spectrum(), row(r.lam)] : []), ...(nout > 6 ? [row(r.E!), row(r.X!)] : [])];
   const top = Math.max(...r.I) || 1, ax = Array.from({ length: n }, (_, i) => -r.half + (2 * r.half * (i + 0.5)) / n);
   // Brightness to the quarter power so the faint far side still shows; row 1 is the picture's bottom (axis xy).
   if (colour === 'temperature') {

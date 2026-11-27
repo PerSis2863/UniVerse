@@ -13296,3 +13296,42 @@ ring (no more parts, within 1%), a box one part, a solid disc's light kept and i
 f_col and bluer, ω = 0 unchanged, the outputs' sizes, both options in the language. Not built: V-HACD's voxel and
 hierarchical search itself (only its merge), and scattered light reaching us from other parts of the disc (no
 Monte Carlo transfer); Compton up-scattering (hot electrons boosting light to X-rays) is not modelled.
+
+## M570 (25 Nov; built as M547, renumbered: another branch had used M547–M569): Hyperion physics, M546's left-outs (V-HACD's cube search, the disc's light from all of its gas, a Compton corona)
+
+The owner sent M546's "left out on purpose" list back. **`convexSplit(…, { search: 'voxel' })`** (`rigid3d.ts`;
+`'Search', 'voxel'`): V-HACD's own way of choosing cuts. The solid is chopped into cubes (32 along its longest side, a
+cube filled when its middle is inside the mesh); for a part (its cubes those inside its cell) every plane across an
+axis between two layers of cubes is scored by the empty cubes inside its two sides' hulls (a hull is the filled cubes'
+extent in 90 directions, an empty cube counted when its middle is strictly inside) plus a twentieth for lopsided halves
+(V-HACD's balance term), tried at every eighth layer first and then layer by layer round the best (its coarse-then-fine
+search). The cubes only **propose** planes: the best 4 are judged exactly beside the fold cuts, so the plateau's
+look-ahead, the 64-corner limit and the tolerance are shared, and the parts are merged at the end as 'full' does.
+A first version with its own loop cut only by the cubes: on the dented cube it made 16 slivers (axis planes staircase a
+slanted dent; V-HACD keeps to the axes) and lost volume, so a plane from the cubes whose sides hold less solid than the
+part (a corner cut off) is also left out. Measured (12-step half ring / L / U / dented cube): 11 parts within 0.7% (12
+plain), 2, 3, 4 exact, 1–15× slower than plain. **Two older bugs found and fixed:** (1) **`hull`'s faces** were its
+coplanar points sorted by angle round their middle, so a point **inside** a face (not on its edge) went into the
+outline, which folded: a part's volume came out 1.215 for 1.25. Faces are now the flat convex hull (Andrew's monotone
+chain, turning round the normal). (2) **`fill`** passed two merged parts' shared corners twice; it now takes corners
+closer than a hair once. And merging now also needs the joint hull to add at most the tolerance of the two parts'
+volumes (merged hulls overlapped their neighbours: a sum of volumes 5% over). **The disc** (`kerr.ts`):
+**`discTransfer`**, the scattered light in a see-through thick disc from all of its gas (`transfer: 'disc'`,
+'Transfer', 'disc'; only with thickness, opacity under 1 and scattering): 20 rings (log) × 8 layers (by cos θ / h),
+48 straight rays from each cell's middle followed through the gas (the Λ operator), and at 25 frequencies (10⁻³ to
+10³ of the hottest gas's peak, in the gas's own frame) S = εB + (1 − ε)ΛS solved exactly (dense, pivoted; Λ iteration
+stalls when ε is small), stored as ln(S/B) and interpolated (ln R, ζ, log u). `shortcut:` flat space, straight rays, the
+gas still while it scatters; rays into the hole end. Trap: M546's slab formula assumed a **deep** slab (J → B inside):
+for a thin slab that mostly scatters (opacity 0.6, ω = 0.99) the real light is ~0.17 of it (scattered light escapes),
+for a thick one (0.999, ω = 0.5) ~4% more (the hot inner gas lights the gas further out); ω = 0.01 within 0.1%.
+**`comptonize`** and the **corona** (`corona: { kTe, tau }`, 'Corona', [kTe tau]): the whole picture's light over
+10⁻³–10³ keV (`EK`, 151 energies; each bit of gas a black body at g f_col T with its grey weight; `wide: true` without a
+corona), e^−τ of the photons pass and the rest spread as (E/E₀)^(1−Γ) e^(−E/kTe) per ln E above E₀ (Steiner's SIMPL,
+upward only, with a thermal cutoff), Γ = −½ + √(9/4 + 4/y), y = (4θ + 16θ²) max(τ, τ²); photons kept in number.
+`kerrDisc` gives E and X (E·F_E) as its 7th and 8th outputs; 'Temperature' now goes to 10⁸ K (stellar black holes'
+discs, ~10⁷ K). Example `physics11.m`. Tests (`physics-m547.test.ts`): the hull with points in a face and on an edge,
+'voxel' exact on an L, a U and the dented cube, a half ring within the tolerance, the disc transfer's three cases,
+Comptonization's photon count and slope, the corona's X-rays and the options in the language. Not built: V-HACD's
+hull per cube cluster (our parts stay exact cells met with the mesh), its symmetry term and non-axis planes in the cube
+search; the transfer in curved space with the gas's motion between its parts; Compton scattering down, and the corona's
+own geometry (a slab over the disc, not a sphere) and its light falling back on the disc.
