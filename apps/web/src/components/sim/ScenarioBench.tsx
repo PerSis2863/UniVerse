@@ -6,6 +6,7 @@ import { Code2, Download, Pause, Play, Trash2 } from 'lucide-react';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import * as S from '@/lib/lab/scenario';
+import * as PC from '@/lib/lab/pointcloud';
 import { shareFragment } from '@/lib/lab/share';
 import { NumField, ui } from './bench-ui';
 
@@ -58,6 +59,8 @@ export function ScenarioBench() {
   const [playing, setPlaying] = useState(false);
   const top = useRef<HTMLCanvasElement>(null), chase = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
   const view = useRef({ x0: 0, y0: 0, s: 1 });
+  // M574: the objects the lidar finds in a scan (ground removed, clustered, boxed), worked out once a scan
+  const boxes = useRef(new WeakMap<object, number[][]>());
 
   const result = useMemo(() => {
     try { return { run: S.runScenario(specOf(design), { cloudEvery: 2 }), error: '' }; }
@@ -112,6 +115,21 @@ export function ScenarioBench() {
       // lidar points of the nearest cloud
       const cloud = [...run.clouds].reverse().find((c) => c.t <= run.t[kk] + 1e-9);
       if (cloud) { g.fillStyle = dark ? '#a78bfa' : '#7c3aed'; for (const p of cloud.pts) { if (p[2] < 0.1) continue; const ex = p[0], ey = p[1]; const [px, py] = P(ego.x + ex * Math.cos(ego.yaw) - ey * Math.sin(ego.yaw), ego.y + ex * Math.sin(ego.yaw) + ey * Math.cos(ego.yaw)); g.fillRect(px - 0.75, py - 0.75, 1.5, 1.5); } }
+      if (cloud) {
+        let found = boxes.current.get(cloud);
+        if (!found) {
+          const down = PC.voxelDown(cloud.pts as PC.P3[], 0.25).filter((p) => p[2] > 0.25), c = PC.cluster(down, 0.8, 8);
+          found = Array.from({ length: c.count }, (_, i) => PC.fitCuboid(down.filter((_, j) => c.labels[j] === i + 1)));
+          boxes.current.set(cloud, found);
+        }
+        g.strokeStyle = dark ? '#fbbf24' : '#d97706'; g.lineWidth = 1.5;
+        for (const [bx, by, , L, Wd, , yw] of found) {
+          const a2 = (yw * Math.PI) / 180, cs = Math.cos(a2), sn = Math.sin(a2);
+          g.beginPath();
+          [[L / 2, Wd / 2], [-L / 2, Wd / 2], [-L / 2, -Wd / 2], [L / 2, -Wd / 2]].forEach(([u, v], j) => { const ex = bx + u * cs - v * sn, ey = by + u * sn + v * cs; const [px, py] = P(ego.x + ex * Math.cos(ego.yaw) - ey * Math.sin(ego.yaw), ego.y + ex * Math.sin(ego.yaw) + ey * Math.cos(ego.yaw)); if (j) g.lineTo(px, py); else g.moveTo(px, py); });
+          g.closePath(); g.stroke();
+        }
+      }
       run.poses.forEach((p, i) => {
         const C = S.corners(run.actors[i], p[kk]);
         g.fillStyle = i === egoI ? '#2563eb' : COLOURS[run.actors[i].cls]; g.strokeStyle = dark ? '#09090b' : '#ffffff'; g.lineWidth = 1;
@@ -213,7 +231,7 @@ export function ScenarioBench() {
         </div>
         <fieldset className="space-y-1 border-t border-zinc-200/80 pt-3 dark:border-white/10">
           <legend className={label}>Sensors on the ego car (blue)</legend>
-          {([['vision', 'Camera (objects and lanes)'], ['radar', 'Radar'], ['lidar', 'Lidar (point cloud)']] as const).map(([key, t]) => <label key={key} className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" className="accent-violet-600" checked={design[key]} onChange={(e) => setDesign((d) => ({ ...d, [key]: e.target.checked }))} />{t}</label>)}
+          {([['vision', 'Camera (objects and lanes)'], ['radar', 'Radar'], ['lidar', 'Lidar (points, and the boxes it finds)']] as const).map(([key, t]) => <label key={key} className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" className="accent-violet-600" checked={design[key]} onChange={(e) => setDesign((d) => ({ ...d, [key]: e.target.checked }))} />{t}</label>)}
         </fieldset>
         <div className="flex flex-wrap gap-1.5 border-t border-zinc-200/80 pt-3 dark:border-white/10">
           <button type="button" className={small} onClick={download} disabled={!design.roads.some((r) => r.centers.length >= 2)}><Download className="h-3.5 w-3.5" aria-hidden />OpenDRIVE (.xodr)</button>

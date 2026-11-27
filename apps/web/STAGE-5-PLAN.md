@@ -2115,6 +2115,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M571 | Mixed-signal left-outs 3: S-parameter (Touchstone) channels | **Done** | `touchstone.ts`; `sparameters`, `rfwrite`, `s2sdd`, `rfparam`, serdes `'Channel'`; Simulate → Mixed-signal → SerDes links takes a .s2p / .s4p, read in the browser. |
 | M572 | Mixed-signal left-outs 4: the link to Cadence and Synopsys tools | **Done** | `spicegen` (the PLL loop filter, the output buffer; Spectre's lang line), the Verification tab's "Your simulators"; checked end to end: spicegen → the computer app's simulators.js → ngspice → rawread equals Hyperion's answers. |
 | M573 | Automated driving 1: driving scenarios, sensors, OpenDRIVE | **Done** | The owner, 27 Nov (MathWorks' automated-driving page). `scenario.ts`, `scenario-lab.ts` (drivingScenario, road, vehicle(s, …), actor, trajectory, addSensor, runScenario, plotScenario, writeOpenDRIVE, readOpenDRIVE), Simulate → Machines → Scenario designer (`ScenarioBench.tsx`). |
+| M574 | Automated driving 2: lidar point clouds, objects, odometry and maps | **Done** | `pointcloud.ts`, `pointcloud-lab.ts` (pointCloud, pcdownsample, pcfitplane, pcsegdist, pcfitcuboid, pcregistericp, pctransform, pcshow, pcmapbuild); the Scenario designer draws the boxes the lidar finds. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

@@ -15873,3 +15873,22 @@ data, deployment, testing.
 - Not yet (the next items): perception on these sensors (point clouds, fusion, tracking metrics), recorded data (CAN,
   ROS, labelling, OpenStreetMap), deployment (ROS / AUTOSAR around generated C), test benches with requirements; and a
   game-engine 3D world (the chase camera is a cuboid view, as the Designer's own).
+
+
+## M574 (27 Nov): automated driving 2: lidar point clouds, objects, odometry and maps
+
+The perception half for the lidar. **`src/lib/lab/pointcloud.ts`** (pure): `voxelDown` (a voxel's mean), `ransacPlane`
+(RANSAC, a normal within `maxAngle` of `ref`, then refitted to the inliers by their smallest principal direction:
+`symEigen` from ml.ts), `cluster` (Euclidean, a hash grid of the distance, labels biggest first, a size range),
+`fitCuboid` (the L-shape search by **closeness**, Zhang et al. 2017: the smallest-area rectangle turned a parked truck's
+two-sided view 15°; closeness gets 0°), `horn` (Horn's quaternion method), `icp` (point to point, a hash-grid nearest
+neighbour, pairs beyond `inlierDist` left out), `lidarMap` (ground cut by height, thinned, each scan registered to the
+one before from the last step's motion, poses chained, the map thinned).
+- In the language (`pointcloud-lab.ts`, loaded by machines-lab): pointCloud (Location, Count, limits), pcdownsample
+  ('gridAverage', 'random'), pcfitplane ([model, inliers, outliers], 1-based indices), pcsegdist ('NumClusterPoints'),
+  pcfitcuboid ([cx cy cz L W H yaw°]), pcregistericp (A, R, Translation; 'InitialTransform'), pctransform, pcshow
+  (scatter3, at most 60,000 points), pcmapbuild (a cell of clouds or runScenario's PointClouds; [map, poses]).
+- The Scenario designer draws the boxes the lidar finds in the scan on screen (worked out once a scan, in a WeakMap).
+- Checked (`pointcloud.test.ts`, on a scenario of parked cars and trucks): the ground's normal and height, the truck's
+  box (centre, 8.2 m, 0°) and a car's (1.8 m wide, its 5.7° heading), ICP recovering a 0.05 rad turn and a shift to
+  1 cm, lidar odometry within 2% over 30 m, and the whole flow in a script.

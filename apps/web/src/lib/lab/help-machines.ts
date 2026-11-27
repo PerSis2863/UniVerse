@@ -137,4 +137,15 @@ runScenario | r = runScenario(s, 'CloudEvery', 10) | Runs it: Time, Poses (each 
 plotScenario | plotScenario(s, t) | The bird's-eye view at time t: roads, lanes, actors, and what the camera and radar see.
 writeOpenDRIVE | writeOpenDRIVE(s, 'roads.xodr') | The scenario's roads as an OpenDRIVE 1.6 file (for RoadRunner, CARLA, VTD and other simulators).
 readOpenDRIVE | s = readOpenDRIVE('roads.xodr', s) | The roads of an OpenDRIVE file (lines, arcs, spirals, cubic curves; driving lanes and their width) into a drivingScenario.
+
+# Point clouds and lidar
+pointCloud | pc = pointCloud(xyz) | A point cloud from N × 3 points [x y z]: Location, Count and its limits.
+pcdownsample | pc2 = pcdownsample(pc, 'gridAverage', size), pcdownsample(pc, 'random', share) | Fewer points: one (the mean) for each box of side size, or a random share.
+pcfitplane | [model, inliers, outliers] = pcfitplane(pc, maxDistance, [0 0 1], maxAngle) | The plane through the most points (RANSAC, then refitted), e.g. the ground: its Normal and Parameters [a b c d], the points on it and off it (indices).
+pcsegdist | [labels, n] = pcsegdist(pc, minDistance, 'NumClusterPoints', [min max]) | Objects: points closer than minDistance (through each other) get the same label 1 … n, biggest first; 0 for clusters too small or big.
+pcfitcuboid | box = pcfitcuboid(pc) | A box around an object's points: [cx cy cz length width height yaw], its heading by the L-shape search (right even when a lidar sees only two sides).
+pcregistericp | [tform, moved, rmse] = pcregistericp(moving, fixed, 'MaxIterations', 30, 'InlierDistance', 1, 'InitialTransform', T) | Lines two clouds up (iterative closest point): the rigid transform (A, R, Translation) taking moving onto fixed.
+pctransform | pc2 = pctransform(pc, tform) | A point cloud moved by a rigid transform (or a 4 × 4 matrix).
+pcshow | pcshow(pc, colours) | Shows a point cloud in 3D, coloured by height unless given colours.
+pcmapbuild | [map, poses] = pcmapbuild(clouds, 'GridSize', 0.3, 'GroundHeight', 0.2) | Lidar odometry and a map: each scan (ground removed) lined up with the one before; the poses [x y z yaw] and every scan's points in the first one's frame.
 `;
