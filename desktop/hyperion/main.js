@@ -122,9 +122,16 @@ async function native(request) {
   const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers });
   const url = new URL(request.url);
   if (request.method !== 'POST' || !tokenOk(url.searchParams.get('t'))) return reply({ ok: false, error: 'Not allowed.' }, 403);
-  if (url.pathname !== '/ami') return reply({ ok: false, error: 'Unknown request.' }, 404);
+  if (url.pathname !== '/ami' && url.pathname !== '/link') return reply({ ok: false, error: 'Unknown request.' }, 404);
   let body;
   try { body = JSON.parse(await request.text()); } catch { return reply({ ok: false, error: 'The request was not readable.' }, 400); }
+  if (url.pathname === '/link') {
+    // A back-channel link (M579): both models, each asked about.
+    const tx = ami.prepare(body && body.tx && body.tx.executable), rx = ami.prepare(body && body.rx && body.rx.executable);
+    if (tx.error || rx.error) return reply({ ok: false, error: tx.error || rx.error });
+    if (!(await mayLoad(body.tx.executable.name, tx.sha)) || !(await mayLoad(body.rx.executable.name, rx.sha))) return reply({ ok: false, cancelled: true, error: 'Not run: you chose Cancel.' });
+    return reply(await ami.link(body, tx, rx));
+  }
   const prepared = ami.prepare(body && body.executable);
   if (prepared.error) return reply({ ok: false, error: prepared.error });
   if (!(await mayLoad(body.executable.name, prepared.sha))) return reply({ ok: false, cancelled: true, error: 'Not run: you chose Cancel.' });

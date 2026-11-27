@@ -46,3 +46,20 @@ test('a library that is not an AMI model, and one that does not load, are refuse
   const junk = path.join(os.tmpdir(), `hyperion-junk${ext}`); fs.writeFileSync(junk, 'not a library');
   assert.match((await ami.run({ rows: 2, impulse: b64([1, 0]), dt: 1, ui: 1, params: '' }, { file: junk })).error, /could not be loaded|another kind of computer/);
 });
+
+test('a back-channel link: the receiver tells the transmitter its tap through their shared folder (M579)', { skip: !built && 'no C compiler' }, async () => {
+  const bci = path.join(os.tmpdir(), `hyperion-bci-test${ext}`);
+  execFileSync('gcc', ['-shared', '-fPIC', '-O2', path.join(__dirname, 'ami-test-bci.c'), '-o', bci]);
+  const p = ami.prepare({ name: path.basename(bci), path: bci });
+  const imp = new Array(64).fill(0); imp[0] = 1e12;               // a lossless channel: 1 V/s × dt = 1
+  const n = 8 * 400, wave = Array.from({ length: n }, (_, i) => (Math.floor(i / 8) % 2 ? 0.4 : -0.4));
+  const r = await ami.link({ tx: { params: '(test_bci (role tx) (tap -0.1) (BCI_ID "link1"))' }, rx: { params: '(test_bci (role rx) (BCI_ID "link1"))' }, impulse: b64(imp), rows: 64, dt: 1e-12, ui: 8e-12, wave: b64(wave), interval: 32, training: 200 }, p, p);
+  assert.equal(r.ok, true, r.error);
+  // training in blocks of 32 UI, then 128: the transmitter reads the receiver's request after the second block
+  assert.deepEqual(r.history.slice(0, 4).map((x) => x.ui), [0, 32, 64, 96]);
+  assert.match(r.history[0].tx, /tap -0.1\)/);
+  assert.match(r.history[2].tx, /tap -0.35\)/);
+  assert.deepEqual(r.files, ['link1.rx2tx']);
+  assert.equal(f64(r.clocks).length, 400);
+  assert.equal(f64(r.wave).length, n);
+});

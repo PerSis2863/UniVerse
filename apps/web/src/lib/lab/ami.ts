@@ -36,7 +36,7 @@ export function parseAmi(text: string): Node {
 }
 
 export interface Param { path: string[]; name: string; usage: string; type: string; value?: string; list?: string[]; range?: [number, number, number]; description: string }
-export interface AmiInfo { root: string; params: Param[]; reserved: Record<string, string>; initReturnsImpulse: boolean; getWaveExists: boolean; ignoreBits: number; modulation: string; maxAggressors: number }
+export interface AmiInfo { root: string; params: Param[]; reservedParams?: Param[]; bci?: { protocol: string; interval: number; training: number }; reserved: Record<string, string>; initReturnsImpulse: boolean; getWaveExists: boolean; ignoreBits: number; modulation: string; maxAggressors: number }
 
 const kids = (n: Node) => n.items.filter((x): x is Node => typeof x !== 'string');
 const words = (n: Node) => n.items.filter((x): x is string => typeof x === 'string');
@@ -57,16 +57,18 @@ function leaf(n: Node, path: string[]): Param {
 }
 /** Every parameter of a model (leaves under Reserved_Parameters and Model_Specific) and the reserved flags. */
 export function readAmi(text: string): AmiInfo {
-  const root = parseAmi(text), params: Param[] = [], reserved: Record<string, string> = {};
+  const root = parseAmi(text), params: Param[] = [], reservedParams: Param[] = [], reserved: Record<string, string> = {};
   const walk = (n: Node, path: string[], section: string) => {
     const isLeaf = kids(n).some((c) => /^(usage|type|format)$/i.test(c.name));
-    if (isLeaf) { const p = leaf(n, path); if (section === 'Reserved_Parameters') reserved[p.name] = p.value ?? ''; else params.push(p); return; }
+    if (isLeaf) { const p = leaf(n, path); if (section === 'Reserved_Parameters') { reserved[p.name] = p.value ?? ''; reservedParams.push(p); } else params.push(p); return; }
     for (const c of kids(n)) if (!/^description$/i.test(c.name)) walk(c, [...path, c.name], section);
   };
   for (const sec of kids(root)) if (/^(reserved_parameters|model_specific)$/i.test(sec.name)) for (const c of kids(sec)) walk(c, [c.name], /model_specific/i.test(sec.name) ? 'Model_Specific' : 'Reserved_Parameters');
   const flag = (k: string) => /^true$/i.test(unq(reserved[k] ?? ''));
   const ignore = Number(reserved.Ignore_Bits), maxAgg = Number(reserved.Max_Init_Aggressors);
-  return { root: root.name, params, reserved, initReturnsImpulse: flag('Init_Returns_Impulse') || (!('Init_Returns_Impulse' in reserved) && flag('Use_Init_Output')), getWaveExists: flag('GetWave_Exists'), ignoreBits: Number.isFinite(ignore) && ignore > 0 ? Math.round(ignore) : 0, modulation: unq(reserved.Modulation ?? 'NRZ').toUpperCase(), maxAggressors: Number.isFinite(maxAgg) && maxAgg >= 0 ? Math.round(maxAgg) : 16 };
+  const bciInterval = Number(reserved.BCI_Message_Interval_UI), bciTraining = Number(reserved.BCI_Training_UI);
+  const bci = reserved.BCI_Protocol ? { protocol: unq(reserved.BCI_Protocol), interval: bciInterval > 0 ? Math.round(bciInterval) : 1024, training: bciTraining >= 0 ? Math.round(bciTraining) : 0 } : undefined;
+  return { root: root.name, params, reservedParams, ...(bci ? { bci } : {}), reserved, initReturnsImpulse: flag('Init_Returns_Impulse') || (!('Init_Returns_Impulse' in reserved) && flag('Use_Init_Output')), getWaveExists: flag('GetWave_Exists'), ignoreBits: Number.isFinite(ignore) && ignore > 0 ? Math.round(ignore) : 0, modulation: unq(reserved.Modulation ?? 'NRZ').toUpperCase(), maxAggressors: Number.isFinite(maxAgg) && maxAgg >= 0 ? Math.round(maxAgg) : 16 };
 }
 
 /** The settings string AMI_Init takes, (root (name value) (branch (name value))), for the In and InOut parameters:
@@ -85,9 +87,10 @@ export function paramString(m: AmiInfo, choices: Map<string, string>): string {
   };
   type T = Map<string, T | string>;
   const tree: T = new Map();
-  for (const p of m.params) {
+  for (const p of [...(m.reservedParams ?? []), ...m.params]) {
     if (!/^(in|inout)$/i.test(p.usage)) continue;
-    const v = pick(p);
+    // The tool names the back-channel link (M579): both ends get the same BCI_ID, files in a folder of their own.
+    const v = p.name === 'BCI_ID' && ![...choices.keys()].includes('BCI_ID') ? 'hyperion_link' : pick(p);
     if (v === undefined) continue;
     let at = tree;
     for (const seg of p.path.slice(0, -1)) { if (!at.has(seg)) at.set(seg, new Map()); at = at.get(seg) as T; }
@@ -114,7 +117,7 @@ export function session(m: Model, cols: number[][], dt: number, ui: number, wave
 
 /** A neighbouring line's coupling into the victim: its impulse response (V/s) and, in the time-domain flow, its signal. */
 export interface Aggressor { h: number[]; x?: number[] }
-export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: number[][]; z?: number[]; clocks: number[]; messages: string[]; paramsOut: string[]; usedGetWave: [boolean, boolean] }
+export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: number[][]; z?: number[]; clocks: number[]; messages: string[]; paramsOut: string[]; usedGetWave: [boolean, boolean]; bci?: { protocol: string; history: { ui: number; tx: string; rx: string }[]; files: string[] } }
 /**
  * The IBIS flows. Statistical: the impulse matrix (h and the aggressors') → the transmitter's AMI_Init (its output used
  * when Init_Returns_Impulse) → the receiver's AMI_Init: the equalised responses. Time-domain: the transmitter's
@@ -126,6 +129,16 @@ export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: 
   const messages: string[] = [], paramsOut: string[] = [];
   const note = (who: string, s: Session) => { if (s.message) messages.push(`${who}: ${s.message}`); if (s.paramsOut) paramsOut.push(`${who}: ${s.paramsOut}`); };
   const cols = [h, ...aggs.map((g) => g.h)], conv = (a: number[], b: number[]) => fftConvolve(a, b).map((v) => v * dt);
+  // A back-channel link (M579): both ends speak the same BCI_Protocol and have GetWave: the app runs them in turns.
+  if (x && tx && rx && tx.info.bci && rx.info.bci && tx.info.bci.protocol.toLowerCase() === rx.info.bci.protocol.toLowerCase() && tx.info.getWaveExists && rx.info.getWaveExists) {
+    let extra: number[] | undefined;
+    aggs.forEach((g) => { if (g.x) { const c = conv(g.x, g.h); extra ??= new Array(x.length).fill(0); for (let k = 0; k < x.length; k++) extra[k] += c[k] ?? 0; } });
+    const r = native('link', { tx: { executable: tx.file, params: tx.params }, rx: { executable: rx.file, params: rx.params }, impulse: f64ToB64(h), rows: h.length, dt, ui, wave: f64ToB64(x), ...(extra ? { extra: f64ToB64(extra) } : {}), interval: Math.max(tx.info.bci.interval, rx.info.bci.interval), training: Math.max(tx.info.bci.training, rx.info.bci.training) });
+    const hist = (r.history as { ui: number; tx: string; rx: string }[]) ?? [], said = (r.messages as string[]) ?? [];
+    said.forEach((t, i) => { if (t) messages.push(`${[tx.name, rx.name][i]}: ${t}`); });
+    ((r.paramsOut as string[]) ?? []).forEach((t, i) => { if (t) paramsOut.push(`${[tx.name, rx.name][i]}: ${t}`); });
+    return { h, hTx: h, hRx: h, aggRx: aggs.map((g) => g.h), z: b64ToF64(String(r.wave)), clocks: b64ToF64(String(r.clocks)), messages, paramsOut, usedGetWave: [true, true], bci: { protocol: tx.info.bci.protocol, history: hist, files: (r.files as string[]) ?? [] } };
+  }
   const useTxWave = !!(x && tx?.info.getWaveExists);
   const txs = tx ? session(tx, cols, dt, ui, useTxWave ? x! : undefined) : null;
   if (txs) note(tx!.name, txs);

@@ -13566,3 +13566,29 @@ lists them. Tests: three columns sent and two for a model limited to one aggress
 eyes, `AggressorsRx` rows; an .ibs with a changed comment character, 32/64-bit Windows and Linux lines and a repeater,
 the pick per system, mac refused with the list, amiModel from the .ibs with a folder, the missing-library message.
 Not built: reading the .ibs's buffer models ([Model] I-V tables) for the analog front end.
+
+## M579 (27 Nov): Hyperion IBIS-AMI: back-channel link training
+
+The third of M577's left-outs: IBIS 6.1's back-channel interface (BCI), where a receiver model trains the transmitter
+model (sets its FFE taps) while the link runs, by messages in files named with a BCI_ID the tool gives both ends.
+**Reading it**: reserved parameters are now kept as `Param`s too (`reservedParams`) and those with Usage In/InOut go
+into the string AMI_Init gets (before the model-specific ones); `info.bci` = { protocol (BCI_Protocol), interval
+(BCI_Message_Interval_UI, 1024 if missing), training (BCI_Training_UI, 0) }; BCI_ID is written as "hyperion_link"
+unless the person chose one (one shared folder per run keeps names apart). **When**: the time-domain flow with a Tx and
+an Rx whose protocols match (case-insensitive) and both have GetWave goes to the app's `/link` instead of two
+sessions (checked before the Tx's own session; otherwise the ordinary flow). **The app**: `main.js` prepares both
+libraries and asks about each (`mayLoad`); `ami.link` makes a private `hyperion-bci-*` folder (removed afterwards) and
+sends `{ op: 'link' }` to `ami-host.js`, which loads both with `open` (the loader shared with `session` now),
+`process.chdir`s into the folder (the utility process is a process of its own), calls both Inits on the channel's
+impulse, then in turns: Tx GetWave on a block, the channel by overlap-add (its own radix-2 FFT, the tail carried
+between blocks), crosstalk already summed at the pins (`extra`, convolved in the engine), Rx GetWave; blocks of
+the larger interval while training (the larger training length), then of 128 UI; it returns the received wave, the Rx
+clocks, the history (each block's UI and both models' output parameter strings), the files they wrote, both Inits'
+messages and parameters. The flow's result has `bci`; eyeDiagram's e.AMI.BCI holds Protocol, UI, TxParams, RxParams,
+Files. Test models: `desktop/hyperion/test/ami-test-bci.c`, one library for both ends ((role tx) a 2-tap FFE reading
+its tap from `<BCI_ID>.rx2tx`; (role rx) passing the wave, a clock per UI, and on its second call writing "tap -0.35").
+Tests: the runner (blocks of 32 UI then 128, the tap -0.1 then -0.35 after the second block, the one file, 400
+clocks), the website (BCI settings read, the tool's BCI_ID, `link` chosen only for matching protocols), and on Linux
+the real pair from a Hyperion script through `eyeDiagram` (first block tap -0.1, last -0.35, the file, the clocks).
+Not built: a BCI link with 32-bit models (M580's helper runs one model), aggressors' own transmitters training, more
+than one Tx–Rx pair (repeaters' redriver chains).

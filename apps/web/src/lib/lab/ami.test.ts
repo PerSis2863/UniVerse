@@ -104,9 +104,15 @@ fprintf('%d %d %d %d\\n', b.Height < a.Height, c.Height < a.Height, b.AMI.Aggres
     // A synchronous bridge like the app's: the request handed to ami-host.js's session in a Node process.
     setNative((_op, body) => {
       const script = `const h = require(${JSON.stringify(path.join(desk, 'ami-host.js'))}), a = require(${JSON.stringify(path.join(desk, 'ami.js'))});
-const req = JSON.parse(require('fs').readFileSync(0, 'utf8')), p = a.prepare(req.executable);
-process.stdout.write(JSON.stringify(p.error ? { ok: false, error: p.error } : h.session({ ...req, file: p.file })));`;
-      const r = spawnSync(process.execPath, ['-e', script], { input: JSON.stringify(body), maxBuffer: 1e9 });
+const fs = require('fs'), os = require('os'), path = require('path');
+const req = JSON.parse(fs.readFileSync(0, 'utf8'));
+let out;
+if (process.argv[1] === 'link') {
+  const t = a.prepare(req.tx.executable), r = a.prepare(req.rx.executable), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bci-'));
+  out = h.link({ ...req, op: 'link', tx: { file: t.file, params: req.tx.params }, rx: { file: r.file, params: req.rx.params }, dir });
+} else { const p = a.prepare(req.executable); out = p.error ? { ok: false, error: p.error } : h.session({ ...req, file: p.file }); }
+process.stdout.write(JSON.stringify(out));`;
+      const r = spawnSync(process.execPath, ['-e', script, _op], { input: JSON.stringify(body), maxBuffer: 1e9 });
       return JSON.parse(String(r.stdout));
     });
     let out = '';
@@ -169,4 +175,47 @@ ibisModels('chip.ibs')`);
     expect(out).toMatch(/repeater:\n {2}Linux_gcc_64 {2}rep_rx\.so {2}rep_rx\.ami {2}\(rx\)/);
     expect(() => lab.run("amiModel('chip.ibs', 'serdes_tx')")).toThrow(/Put libtx64\.so in your files/);
   });
+});
+
+describe('back-channel links (M579)', () => {
+  const BCI = fs.readFileSync(path.join(__dirname, 'fixtures', 'test-bci.ami'), 'utf8');
+  it("reads the BCI settings and gives both ends the tool's BCI_ID", () => {
+    const m = ami.readAmi(BCI);
+    expect(m.bci).toEqual({ protocol: 'hyperion_test', interval: 64, training: 512 });
+    expect(ami.paramString(m, new Map([['role', 'rx']]))).toBe('(test_bci (BCI_ID "hyperion_link") (role "rx") (tap -0.1))');
+  });
+  it('runs a link when both ends speak the same protocol, the ordinary flow otherwise', () => {
+    const ops: string[] = [];
+    setNative((op, body) => { ops.push(op); const b = body as { wave: string; impulse: string }; return op === 'link' ? { ok: true, wave: b.wave, clocks: f64ToB64([]), history: [{ ui: 0, tx: '(a)', rx: '' }], files: ['hyperion_link.rx2tx'], paramsOut: ['', ''], messages: ['', ''] } : { ok: true, impulse: b.impulse, wave: b.wave }; });
+    const info = ami.readAmi(BCI), tx: ami.Model = { name: 'tx', file: { name: 'b.so', path: '/b.so' }, params: ami.paramString(info, new Map()), info };
+    const f = ami.flow([1e12, 0, 0, 0], 1e-12, 8e-12, tx, { ...tx, name: 'rx' }, new Array(64).fill(0.4));
+    expect(ops).toEqual(['link']); expect(f.bci?.files).toEqual(['hyperion_link.rx2tx']);
+    ami.flow([1e12, 0, 0, 0], 1e-12, 8e-12, tx, { ...tx, info: { ...info, bci: { ...info.bci!, protocol: 'other' } } }, new Array(64).fill(0.4));
+    expect(ops.slice(1)).toEqual(['ami', 'ami']);
+  });
+  const desk = path.resolve(__dirname, '../../../../../desktop/hyperion');
+  const lib = path.join(os.tmpdir(), 'hyperion-bci-vitest.so');
+  let real = process.platform === 'linux' && fs.existsSync(path.join(desk, 'node_modules', 'koffi'));
+  if (real) try { execFileSync('gcc', ['-shared', '-fPIC', '-O2', path.join(desk, 'test', 'ami-test-bci.c'), '-o', lib]); } catch { real = false; }
+  it.skipIf(!real)('trains a real model pair through the runner: the transmitter takes the tap the receiver asked for', () => {
+    setNative((op, body) => {
+      const script = `const h = require(${JSON.stringify(path.join(desk, 'ami-host.js'))}), a = require(${JSON.stringify(path.join(desk, 'ami.js'))});
+const fs = require('fs'), os = require('os'), path = require('path'), req = JSON.parse(fs.readFileSync(0, 'utf8'));
+const t = a.prepare(req.tx.executable), r = a.prepare(req.rx.executable), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bci-'));
+process.stdout.write(JSON.stringify(h.link({ ...req, op: 'link', tx: { file: t.file, params: req.tx.params }, rx: { file: r.file, params: req.rx.params }, dir })));`;
+      expect(op).toBe('link');
+      return JSON.parse(String(spawnSync(process.execPath, ['-e', script], { input: JSON.stringify(body), maxBuffer: 1e9 }).stdout));
+    });
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    const files = (lab.host as { files: FileStore }).files;
+    files.load('bci.ami', { bytes: new TextEncoder().encode(BCI) });
+    files.load('bci.so', { bytes: fs.readFileSync(lib) });
+    lab.run(`S = sparamLine(1e8:1e8:4e10, 'Length', 0.25);
+tx = amiModel('bci.so', 'bci.ami', 'role', 'tx'); rx = amiModel('bci.so', 'bci.ami', 'role', 'rx');
+e = eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 2000);
+t = strsplit(e.AMI.BCI.TxParams, char(10));
+fprintf('%s|%s|%s|%d\\n', t{1}, t{end}, e.AMI.BCI.Files, numel(e.AMI.Clocks) > 1500)`);
+    expect(out.trim()).toBe('(test_bci (tap -0.1))|(test_bci (tap -0.35))|hyperion_link.rx2tx|1');
+  }, 60000);
 });

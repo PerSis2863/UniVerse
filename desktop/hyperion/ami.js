@@ -58,10 +58,8 @@ function host() {
   return { send: (m) => p.send(m), on: (f) => p.once('message', f), exit: (f) => p.once('exit', f), kill: () => p.kill() };
 }
 
-/** Runs one model session; resolves with ami-host.js's answer, or { ok: false, error }. */
-function run(req, prepared) {
-  const bad = check(req);
-  if (bad) return Promise.resolve({ ok: false, error: bad });
+/** Sends one request to a fresh ami-host.js and waits (at most two minutes) for its answer. */
+function ask(msg) {
   return new Promise((resolve) => {
     const h = host();
     let done = false;
@@ -69,8 +67,26 @@ function run(req, prepared) {
     const t = setTimeout(() => { h.kill(); end({ ok: false, error: 'The model ran for over 2 minutes and was stopped.' }); }, TIME_MS);
     h.on((r) => end(r));
     h.exit((code) => end({ ok: false, error: `The model crashed (exit code ${code}). It may be built for another system or need files beside it.` }));
-    h.send({ file: prepared.file, params: req.params, impulse: req.impulse, rows: req.rows, aggressors: req.aggressors || 0, dt: req.dt, ui: req.ui, wave: req.wave, block: req.block });
+    h.send(msg);
   });
 }
+/** Runs one model session; resolves with ami-host.js's answer, or { ok: false, error }. */
+function run(req, prepared) {
+  const bad = check(req);
+  if (bad) return Promise.resolve({ ok: false, error: bad });
+  return ask({ file: prepared.file, params: req.params, impulse: req.impulse, rows: req.rows, aggressors: req.aggressors || 0, dt: req.dt, ui: req.ui, wave: req.wave, block: req.block });
+}
+/** A back-channel link (M579): both models in one process, in a private shared folder removed afterwards. */
+async function link(req, tx, rx) {
+  const bad = check({ ...req, aggressors: 0, params: req.tx && req.tx.params });
+  if (bad) return { ok: false, error: bad };
+  if (typeof req.rx?.params !== 'string' || typeof req.wave !== 'string' || (req.extra !== undefined && bytesOf(req.extra) !== bytesOf(req.wave))) return { ok: false, error: 'The link request is incomplete.' };
+  const interval = Math.round(req.interval), training = Math.round(req.training);
+  if (!(interval >= 1 && interval <= 1e6 && training >= 0 && training <= 1e7)) return { ok: false, error: 'BCI_Message_Interval_UI and BCI_Training_UI must be whole numbers of UI.' };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hyperion-bci-'));
+  try {
+    return await ask({ op: 'link', tx: { file: tx.file, params: req.tx.params }, rx: { file: rx.file, params: req.rx.params }, impulse: req.impulse, rows: req.rows, dt: req.dt, ui: req.ui, wave: req.wave, extra: req.extra, interval, training, dir });
+  } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the system cleans its temporary folder */ } }
+}
 
-module.exports = { prepare, check, run };
+module.exports = { prepare, check, run, link };

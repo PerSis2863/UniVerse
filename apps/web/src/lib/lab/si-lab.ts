@@ -32,7 +32,7 @@ function modelOf(lab: Lab, v: Value | undefined, who: string): ami.Model | null 
   if (v.k !== 'struct' || !v.f.has('Executable') || !v.f.has('Parameters')) throw new LabError(`'${who}' takes a model from amiModel.`);
   const exe = textOf(v.f.get('Executable')!), name = exe.split(/[\\/]/).pop() || exe;
   const file = hasFile(lab, exe) ? { name, bytes: bytesToB64(fileBytes(lab, exe)) } : { name, path: exe };
-  return { name: textOf(v.f.get('Name')!), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ', maxAggressors: v.f.has('MaxInitAggressors') ? field(v, 'MaxInitAggressors', who) : 16 } };
+  return { name: textOf(v.f.get('Name')!), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ', maxAggressors: v.f.has('MaxInitAggressors') ? field(v, 'MaxInitAggressors', who) : 16, ...(v.f.has('BCIProtocol') && textOf(v.f.get('BCIProtocol')!) ? { bci: { protocol: textOf(v.f.get('BCIProtocol')!), interval: field(v, 'BCIInterval', who), training: field(v, 'BCITraining', who) } } : {}) } };
 }
 const ctleOf = (v: Value | undefined): [number, number, number, number] | null => {
   if (!v) return null;
@@ -153,8 +153,10 @@ function amiEye(S: ReturnType<typeof sOf>, H: si.C[], rate: number, spu: number,
   if (a.length < ignore + 500) throw new LabError(`The models adapt over their first ${ignore} symbols (Ignore_Bits): give 'Symbols' at least ${ignore + 500}.`);
   const y = z.slice(al.delay), measured = si.measure(y, a, al.main, { ...e, dfe: 0, ffe: [] }, Math.max(16, ignore + 8));
   const clocks = f.clocks.length > 1 ? f.clocks : [];
-  return { pulse: null, agg: undefined, measured, main: al.main, record: record([['Flow', 'timedomain'], ['Wave', row(z)], ['Delay', al.delay * dt], ['Clocks', row(clocks)], ['Aggressors', f.aggRx.length], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
+  return { pulse: null, agg: undefined, measured, main: al.main, record: record([['Flow', 'timedomain'], ['Wave', row(z)], ['Delay', al.delay * dt], ['Clocks', row(clocks)], ['Aggressors', f.aggRx.length], ['UsedGetWave', row(f.usedGetWave.map(Number))], ...bciFields(f), ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
 }
+/** A back-channel link's record (M579): the protocol, when each block ran (UI) and what the transmitter reported. */
+const bciFields = (f: ami.FlowOut): [string, Value][] => (f.bci ? [['BCI', record([['Protocol', f.bci.protocol], ['UI', row(f.bci.history.map((x) => x.ui))], ['TxParams', str(f.bci.history.map((x) => x.tx).join('\n'))], ['RxParams', str(f.bci.history.map((x) => x.rx).join('\n'))], ['Files', str(f.bci.files.join(', '))]])]] : []);
 def('amiModel', (a, nout, lab) => {
   let exe = a[0] ? textOf(a[0]) : '', src = a[1] ? textOf(a[1]) : '', picked = '';
   const pairs = new Map<string, Value>();
@@ -179,7 +181,7 @@ def('amiModel', (a, nout, lab) => {
   const info = ami.readAmi(src.includes('(') ? src : fileText(lab as Lab, src)), choices = new Map<string, string>();
   for (const [k, v] of pairs) choices.set(k, isText(v) ? v.v : String(toMat(v).d[0]));
   const params = ami.paramString(info, choices), inputs = info.params.filter((p) => /^(in|inout)$/i.test(p.usage));
-  const m = record([['Type', 'amiModel'], ['Name', info.root], ['Executable', exe], ['Parameters', params], ['InitReturnsImpulse', +info.initReturnsImpulse], ['GetWaveExists', +info.getWaveExists], ['IgnoreBits', info.ignoreBits], ['MaxInitAggressors', info.maxAggressors], ['Modulation', info.modulation], ['Platform', picked]]);
+  const m = record([['Type', 'amiModel'], ['Name', info.root], ['Executable', exe], ['Parameters', params], ['InitReturnsImpulse', +info.initReturnsImpulse], ['GetWaveExists', +info.getWaveExists], ['IgnoreBits', info.ignoreBits], ['MaxInitAggressors', info.maxAggressors], ['Modulation', info.modulation], ['Platform', picked], ['BCIProtocol', info.bci?.protocol ?? ''], ['BCIInterval', info.bci?.interval ?? 0], ['BCITraining', info.bci?.training ?? 0]]);
   if (nout > 0) return [m];
   const lines = [`IBIS-AMI model ${info.root} (${exe}): Init ${info.initReturnsImpulse ? 'returns the equalised impulse' : 'does not return an impulse'}, GetWave ${info.getWaveExists ? 'yes' : 'no'}${info.ignoreBits ? `, adapts over ${info.ignoreBits} bits` : ''}.`, 'Settings you can choose:'];
   for (const p of inputs) lines.push(`  ${p.path.join('.')} = ${p.value ?? '(none)'}${p.list ? `  one of ${p.list.join(' ')}` : p.range ? `  ${p.range[1]} to ${p.range[2]}` : ''}${p.description ? `  ${p.description}` : ''}`);
@@ -212,7 +214,7 @@ def('amiSimulate', (a, _n, lab) => {
   const eLike: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: [xt[0] ?? 0, xt[1] ?? 0], seed: Math.round(optNum(o, 'Seed', 1)) };
   const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, eLike, fl === 'timedomain')), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
   const aggM = f.aggRx.length ? rows(f.aggRx) : mat(0, 0);
-  return [record([['Flow', fl], ['dt', dt], ['Impulse', row(f.h)], ['ImpulseTx', row(f.hTx)], ['ImpulseRx', row(f.hRx)], ['AggressorsRx', aggM], ['t', row(t(f.z ? f.z.length : f.h.length))], ...(f.z ? [['Wave', row(f.z)], ['Stimulus', row(x!)], ['Symbols', row(a2)]] as [string, Value][] : []), ['Clocks', row(f.clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]])];
+  return [record([['Flow', fl], ['dt', dt], ['Impulse', row(f.h)], ['ImpulseTx', row(f.hTx)], ['ImpulseRx', row(f.hRx)], ['AggressorsRx', aggM], ['t', row(t(f.z ? f.z.length : f.h.length))], ...(f.z ? [['Wave', row(f.z)], ['Stimulus', row(x!)], ['Symbols', row(a2)]] as [string, Value][] : []), ['Clocks', row(f.clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ...bciFields(f), ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]])];
 });
 def('pdnImpedance', (a, nout, lab) => {
   const f = nums(a[0], 'The frequencies (Hz)'), o = options(a, 1, ['VRM', 'Caps', 'Plane', 'Die', 'Target', 'Step'], 'pdnImpedance'), parts: si.PdnPart[] = [];
