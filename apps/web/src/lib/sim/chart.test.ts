@@ -121,3 +121,62 @@ A -> B: 1 after 2`);
     expect(new Set(o[ir.outputs[0].name])).toEqual(new Set([2, 3, -1]));
   });
 });
+
+describe('states side by side (M570)', () => {
+  const text = `inputs: u
+outputs: pump, light
+state On parallel
+state Pump in On
+state Idle in Pump
+  entry: pump = 0
+state Run in Pump
+  entry: pump = 1
+state Light in On
+state Green in Light
+  entry: light = 1
+state Red in Light
+  entry: light = 2
+state Off
+  entry: pump = 0; light = 0
+Idle -> Run: u > 1
+Run -> Idle: u < 1
+Green -> Red: pump == 1
+Red -> Green: pump == 0 after 0.5
+On -> Off: u > 5
+Off -> On: u < 0`;
+  it('both regions take their turn in one step, the second seeing what the first did', () => {
+    const ch = parseChart(text), r = chartStart(ch), name = () => ch.states[r.active].name;
+    expect([name(), r.vars.pump, r.vars.light]).toEqual(['On.Pump.Idle | On.Light.Green', 0, 1]);
+    chartStep(ch, r, { u: 2 }, 0.1);
+    expect([name(), r.vars.pump, r.vars.light]).toEqual(['On.Pump.Run | On.Light.Red', 1, 2]);
+    chartStep(ch, r, { u: 0.5 }, 0.2); // the pump stops; the light's `after 0.5` (from 0.1) hasn't passed
+    expect(name()).toBe('On.Pump.Idle | On.Light.Red');
+    chartStep(ch, r, { u: 0.5 }, 0.7);
+    expect([name(), r.vars.light]).toEqual(['On.Pump.Idle | On.Light.Green', 1]);
+    chartStep(ch, r, { u: 9 }, 0.8); // the outer transition leaves both regions
+    expect([name(), r.vars.pump, r.vars.light]).toEqual(['Off', 0, 0]);
+    chartStep(ch, r, { u: -1 }, 0.9);
+    expect(name()).toBe('On.Pump.Idle | On.Light.Green');
+    expect(ch.written?.leaves).toEqual(['On.Pump.Idle', 'On.Pump.Run', 'On.Light.Green', 'On.Light.Red', 'Off']);
+    expect(ch.written?.parallel).toEqual(['On']);
+  });
+  it('refuses a transition between two regions', () => {
+    expect(() => parseChart(text + '\nIdle -> Red: u > 3')).toThrow(/side by side/);
+    expect(() => parseChart('state A parallel\nstate B')).toThrow(/nothing is inside/);
+  });
+  it('a parallel chart runs in a diagram and its generated code matches the simulation', async () => {
+    const { buildIr, emulate } = await import('./blockir');
+    const s = newBlock('pulse', 0, 0), c = newBlock('chart', 0, 0), sc = newBlock('scope', 0, 0);
+    s.p = { ...s.p, amplitude: 2, period: 4 };
+    c.p.chart = text;
+    const d: Diagram = { stop: 20, dt: 0.01, blocks: [s, c, sc], wires: [{ id: 'a', from: s.id, out: 0, to: c.id, in: 0 }, { id: 'b', from: c.id, out: 1, to: sc.id, in: 0 }] };
+    const r = simulate(d);
+    expect(r.error).toBeUndefined();
+    const sim = [...r.scopes.values()][0][0];
+    expect(new Set(sim)).toEqual(new Set([1, 2]));
+    const ir = buildIr(d), o = emulate(ir, 2000);
+    // Step for step, apart from a sample or two of a switch (the run's times and the code's counted steps round apart).
+    const out = o[ir.outputs[0].name], miss = sim.slice(1, 1990).filter((v, i) => ![out[i], out[i + 1], out[i + 2], out[i + 3]].includes(v)).length;
+    expect(miss).toBe(0);
+  });
+});

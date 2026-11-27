@@ -270,7 +270,7 @@ export function BlocksBench() {
               let problem = '';
               try { chartOf(sel); } catch (err) { problem = (err as Error).message; }
               return (
-                <label className={label}>The chart <span className="font-normal text-zinc-500 dark:text-zinc-400">(inputs:, outputs:, state Name, entry: / during: / exit: actions, A -&gt; B: condition after seconds / actions)</span>
+                <label className={label}>The chart <span className="font-normal text-zinc-500 dark:text-zinc-400">(inputs:, outputs:, state Name [in Outer] [parallel], entry: / during: / exit: actions, A -&gt; B: condition after seconds / actions)</span>
                   <textarea value={String(sel.p.chart)} rows={14} spellCheck={false} translate="no" className="input mt-1 w-full font-mono text-xs leading-relaxed"
                     onChange={(e) => setParam(sel.id, 'chart', e.target.value.slice(0, 4000))} aria-invalid={!!problem} aria-describedby={problem ? 'uv-chart-problem' : undefined} />
                   {problem && <span id="uv-chart-problem" className="mt-1 block text-xs font-normal text-red-700 dark:text-red-400">{problem}</span>}

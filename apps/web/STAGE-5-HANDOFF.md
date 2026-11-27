@@ -15775,3 +15775,30 @@ M563's left-out. A chart state can sit inside another: `state Slow in Running` (
 - Example "A machine with modes (states inside states)"; tests: the first inner state on entry, the outer transition
   winning from inside, an outer `after` counted from the outer state's entry, generated C matching the emulation.
 - Left out: parallel (AND) states, history junctions, inner transitions that don't leave the outer state.
+
+## M570 (27 Nov): Hyperion, states side by side in charts
+
+M569's left-out (the owner, 27 Nov, sent the list of left-outs back). `state On parallel` (or `(parallel)`): On's direct
+inner states are regions that are all active at once.
+
+- **Meaning** (Stateflow's): from the outermost active state down, its transitions are tried (the first that holds
+  fires); if none fires, its during actions run and then its inside takes its turn: the active inner state, or each
+  region in the order written, each able to fire one transition per step and seeing the values the regions before it
+  left. An outer transition leaves every region (innermost first, regions last to first). Entering a parallel state
+  enters every region's first state. A transition between two regions of the same parallel state is refused.
+- **Change from M569:** an outer state's during actions now run whenever its own transitions don't fire, even when an
+  inner state's transition then fires (Stateflow's order); M569 skipped them in that case.
+- **How:** `flatten` in `chart.ts` is one engine for both: per configuration (the set of active leaves) it lists every
+  way a step can go (`options`, an `Outcome` each: guard, actions, moves), regions combined in order; a later region's
+  guard is rewritten onto the values at the step's start (`subst` folds the earlier actions in), so the flat chart's
+  "first transition that holds" picks the same thing. Without parallel states every leaf is still a flat state (the
+  starting one first); with them only reachable configurations (at most 64 states, 600 transitions). Leaves inside a
+  parallel state keep `_since_X` like outer states.
+- **Drawing:** `Chart.written` keeps the chart as written (leaves, which are active in each flat state, outer states,
+  the parallel ones, transitions and which of them each flat transition fired); `viewOf` in `BlocksLogic.tsx` draws the
+  leaves with every region's active one lit, a solid box marked "(side by side)" round a parallel state. Flat states are
+  named `On.Pump.Idle | On.Light.Green`, shortened on the timeline to `Idle + Green`.
+- Example "A pump and its light (states side by side)"; tests: both regions in one step, the light's `after` counted
+  from its own entry, the outer transition leaving both, refusals, the emulated code following the simulation.
+- Left out: history junctions, events broadcast between regions (regions talk through variables), inner transitions
+  that don't leave the outer state.

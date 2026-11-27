@@ -15,33 +15,62 @@ import type { FromBlocks } from './blocks.worker';
 
 const SW = 150, SH = 54, GX = 230, GY = 130;
 
-function layout(ch: Chart) {
-  const cols = Math.max(1, Math.ceil(Math.sqrt(ch.states.length * 1.6)));
-  return ch.states.map((_, i) => ({ x: 40 + (i % cols) * GX, y: 50 + Math.floor(i / cols) * GY }));
+interface Edge { from: number; to: number; text: string; on: boolean }
+/** What the drawing shows: boxes (a flat chart's states, or the leaves of a chart with side-by-side states, M570),
+ * their outer states, the lines between them, which boxes are lit and which box the chart starts in. */
+function viewOf(ch: Chart, active: number, via: number) {
+  const w = ch.written;
+  if (w) {
+    const box = (name: string) => { const exact = w.leaves.findIndex((l) => l.split('.').pop() === name); return exact >= 0 ? exact : w.leaves.findIndex((l) => l.split('.').includes(name)); };
+    const fired = new Set(via >= 0 ? w.parts[via] : []);
+    return {
+      names: w.leaves, parents: w.leafParents, acts: w.leaves.map(() => ''), lit: new Set(w.active[active] ?? []), start: new Set(w.active[0]), parallel: new Set(w.parallel),
+      edges: w.src.map((e, k): Edge => ({ from: box(e.from), to: box(e.to), text: w.leaves[box(e.from)]?.split('.').pop() === e.from ? e.text : `${e.text} (from ${e.from})`, on: fired.has(k) })),
+    };
+  }
+  const edges: Edge[] = [];
+  ch.trans.forEach((tr, k) => {
+    // An outer state's transition is one per inner state once flattened: drawn once, lit when any of them fires.
+    const same = (o: typeof tr) => o.line === tr.line && o.to === tr.to && / \(from \w+\)$/.test(o.text);
+    if (same(tr) && ch.trans.findIndex(same) !== k) return;
+    edges.push({ from: tr.from, to: tr.to, text: tr.text, on: k === via || (same(tr) && via >= 0 && same(ch.trans[via])) });
+  });
+  return {
+    names: ch.states.map((s) => s.name), parents: ch.parents ?? ch.states.map(() => []), lit: new Set([active]), start: new Set([0]), parallel: new Set<string>(), edges,
+    acts: ch.states.map((st) => [st.entry.length ? `entry: ${st.entry.map((a) => a.name).join(', ')}` : '', st.during.length ? `during: ${st.during.map((a) => a.name).join(', ')}` : ''].filter(Boolean).join(' · ')),
+  };
+}
+
+/** A flat state's name for a narrow label: each active leaf's own name (`Pump.Idle | Light.Red` → `Idle + Red`). */
+const short = (name: string) => (name.includes(' | ') ? name.split(' | ').map((x) => x.split('.').pop()).join(' + ') : name);
+
+function layout(n: number) {
+  const cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.6)));
+  return Array.from({ length: n }, (_, i) => ({ x: 40 + (i % cols) * GX, y: 50 + Math.floor(i / cols) * GY }));
 }
 
 function ChartDrawing({ ch, active, via }: { ch: Chart; active: number; via: number }) {
-  const pos = layout(ch), W = Math.max(...pos.map((p) => p.x)) + SW + 40, H = Math.max(...pos.map((p) => p.y)) + SH + 50;
+  const v = viewOf(ch, active, via);
+  const pos = layout(v.names.length), W = Math.max(...pos.map((p) => p.x)) + SW + 40, H = Math.max(...pos.map((p) => p.y)) + SH + 50;
   const centre = (i: number) => ({ x: pos[i].x + SW / 2, y: pos[i].y + SH / 2 });
   /** Where the line from a box's centre towards (dx, dy) leaves the box. */
   const edge = (i: number, dx: number, dy: number) => { const c = centre(i), k = Math.min(SW / 2 / Math.abs(dx || 1e-9), SH / 2 / Math.abs(dy || 1e-9)); return { x: c.x + dx * k, y: c.y + dy * k }; };
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto max-h-[22rem] w-full" role="img" aria-label={`The chart: ${ch.states.map((s) => s.name).join(', ')}; now in ${ch.states[active]?.name}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto max-h-[22rem] w-full" role="img" aria-label={`The chart: ${v.names.join(', ')}; now in ${ch.states[active]?.name}`}>
       <defs>
         <marker id="uv-chart-arrow" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" className="fill-zinc-500 dark:fill-zinc-400" /></marker>
         <marker id="uv-chart-arrow-on" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" className="fill-violet-600 dark:fill-violet-400" /></marker>
       </defs>
-      {/* States inside states (M569): a dashed box round each outer state's inner states, its name on top. */}
-      {[...new Set((ch.parents ?? []).flat())].map((outer) => {
-        const inside = (ch.parents ?? []).map((ps, i) => (ps.includes(outer) ? i : -1)).filter((i) => i >= 0), depth = Math.max(...inside.map((i) => ch.parents![i].length - ch.parents![i].indexOf(outer)));
+      {/* States inside states (M569): a dashed box round each outer state's inner states, its name on top; a box whose
+          inside runs side by side (M570) is marked so. */}
+      {[...new Set(v.parents.flat())].map((outer) => {
+        const inside = v.parents.map((ps, i) => (ps.includes(outer) ? i : -1)).filter((i) => i >= 0), depth = Math.max(...inside.map((i) => v.parents[i].length - v.parents[i].indexOf(outer)));
         const pad = 10 * depth, x0 = Math.min(...inside.map((i) => pos[i].x)) - pad, y0 = Math.min(...inside.map((i) => pos[i].y)) - pad - 14, x1 = Math.max(...inside.map((i) => pos[i].x)) + SW + pad, y1 = Math.max(...inside.map((i) => pos[i].y)) + SH + pad;
-        return <g key={outer}><rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} rx={14} fill="none" strokeDasharray="5 4" className="stroke-zinc-400 dark:stroke-zinc-500" /><text x={x0 + 10} y={y0 + 13} fontSize={11} fontWeight={600} className="fill-zinc-700 dark:fill-zinc-200">{outer}</text></g>;
+        return <g key={outer}><rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} rx={14} fill="none" strokeDasharray={v.parallel.has(outer) ? undefined : '5 4'} className="stroke-zinc-400 dark:stroke-zinc-500" /><text x={x0 + 10} y={y0 + 13} fontSize={11} fontWeight={600} className="fill-zinc-700 dark:fill-zinc-200">{outer}{v.parallel.has(outer) ? ' (side by side)' : ''}</text></g>;
       })}
-      {ch.trans.map((tr, k) => {
-        // An outer state's transition is one per inner state once flattened: drawn once, lit when any of them fires.
-        const same = (o: typeof tr) => o.line === tr.line && o.to === tr.to && / \(from \w+\)$/.test(o.text);
-        if (same(tr) && ch.trans.findIndex(same) !== k) return null;
-        const on = k === via || (same(tr) && via >= 0 && same(ch.trans[via]));
+      {v.edges.map((tr, k) => {
+        if (tr.from < 0 || tr.to < 0) return null;
+        const on = tr.on;
         let d: string, lx: number, ly: number;
         if (tr.from === tr.to) {
           const p = pos[tr.from];
@@ -63,14 +92,14 @@ function ChartDrawing({ ch, active, via }: { ch: Chart; active: number; via: num
           </g>
         );
       })}
-      {ch.states.map((st, i) => {
-        const p = pos[i], on = i === active, acts = [st.entry.length ? `entry: ${st.entry.map((a) => a.name).join(', ')}` : '', st.during.length ? `during: ${st.during.map((a) => a.name).join(', ')}` : ''].filter(Boolean).join(' · ');
+      {v.names.map((name, i) => {
+        const p = pos[i], on = v.lit.has(i), acts = v.acts[i];
         return (
-          <g key={st.name}>
+          <g key={name}>
             <rect x={p.x} y={p.y} width={SW} height={SH} rx={12} strokeWidth={on ? 2.4 : 1.3} className={on ? 'fill-violet-100 stroke-violet-600 dark:fill-violet-500/25 dark:stroke-violet-400' : 'fill-white stroke-zinc-300 dark:fill-zinc-900 dark:stroke-white/20'} />
-            {i === 0 && <><circle cx={p.x - 16} cy={p.y + SH / 2} r={4} className="fill-zinc-600 dark:fill-zinc-300" /><line x1={p.x - 12} y1={p.y + SH / 2} x2={p.x - 2} y2={p.y + SH / 2} className="stroke-zinc-600 dark:stroke-zinc-300" strokeWidth={1.5} markerEnd="url(#uv-chart-arrow)" /></>}
-            <text x={p.x + SW / 2} y={p.y + 23} fontSize={13} fontWeight={600} textAnchor="middle" className="fill-zinc-900 dark:fill-white">{st.name.split('.').pop()}</text>
-            <text x={p.x + SW / 2} y={p.y + 41} fontSize={10} textAnchor="middle" className="fill-zinc-600 font-mono dark:fill-zinc-300">{acts.length > 26 ? `${acts.slice(0, 25)}…` : acts}</text>
+            {v.start.has(i) && <><circle cx={p.x - 16} cy={p.y + SH / 2} r={4} className="fill-zinc-600 dark:fill-zinc-300" /><line x1={p.x - 12} y1={p.y + SH / 2} x2={p.x - 2} y2={p.y + SH / 2} className="stroke-zinc-600 dark:stroke-zinc-300" strokeWidth={1.5} markerEnd="url(#uv-chart-arrow)" /></>}
+            <text x={p.x + SW / 2} y={p.y + (acts ? 23 : 32)} fontSize={13} fontWeight={600} textAnchor="middle" className="fill-zinc-900 dark:fill-white">{name.split('.').pop()}</text>
+            {acts && <text x={p.x + SW / 2} y={p.y + 41} fontSize={10} textAnchor="middle" className="fill-zinc-600 font-mono dark:fill-zinc-300">{acts.length > 26 ? `${acts.slice(0, 25)}…` : acts}</text>}
           </g>
         );
       })}
@@ -141,7 +170,7 @@ export function BlocksLogic({ dg, names, result }: { dg: Diagram; names: Map<str
               trace.active.forEach((a, j) => { if (a === i && start < 0) start = j; if (a !== i && start >= 0) { bars.push([start, j]); start = -1; } });
               if (start >= 0) bars.push([start, trace.active.length - 1]);
               return <g key={st.name}>
-                <text x={L - 8} y={i * rowH + 13} fontSize={11} textAnchor="end" className="fill-zinc-700 dark:fill-zinc-200">{st.name}</text>
+                <text x={L - 8} y={i * rowH + 13} fontSize={11} textAnchor="end" className="fill-zinc-700 dark:fill-zinc-200"><title>{st.name}</title>{short(st.name)}</text>
                 {bars.map(([a, b]) => <rect key={a} x={X(a)} y={i * rowH + 3} width={Math.max(1, X(b) - X(a))} height={rowH - 6} rx={3} className="fill-violet-500/80 dark:fill-violet-400/80" />)}
               </g>;
             })}

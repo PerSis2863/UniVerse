@@ -317,6 +317,36 @@ Fault -> Running: fault < 0.5 after 1` });
     },
   },
   {
+    // M570: states side by side. A pump and a warning light run at once inside On; the light watches the pump in the
+    // same step; a high level leaves both for Off.
+    id: 'parallel', name: 'A pump and its light (states side by side)', make: () => {
+      const level = B('sine', 20, 110, { amplitude: 3, frequency: 0.05, phase: 0 });
+      const chart = B('chart', 260, 110, { chart: `inputs: level
+outputs: pump, light
+state On parallel
+state Pump in On
+state Idle in Pump
+  entry: pump = 0
+state Run in Pump
+  entry: pump = 1
+state Light in On
+state Green in Light
+  entry: light = 1
+state Red in Light
+  entry: light = 2
+state Off
+  entry: pump = 0; light = 0
+Idle -> Run: level > 1
+Run -> Idle: level < 0.5
+Green -> Red: pump == 1
+Red -> Green: pump == 0 after 2
+On -> Off: level > 2.8
+Off -> On: level < 0` });
+      const sc = B('scope', 520, 110, { inputs: 3 });
+      return { stop: 60, dt: 0.01, blocks: [level, chart, sc], wires: [W(level, chart), W(chart, sc), W(chart, sc, 1, 1), W(level, sc, 2)] };
+    },
+  },
+  {
     id: 'loop', name: 'A first-order loop', make: () => {
       const s = B('step', 20, 80, { time: 0 }), sum = B('sum', 160, 80, { signs: '+-' }), k = B('gain', 300, 80, { k: 2 }), it = B('integrator', 440, 80), sc = B('scope', 610, 80);
       return { stop: 5, dt: 0.001, blocks: [s, sum, k, it, sc], wires: [W(s, sum), W(sum, k), W(k, it), W(it, sc), W(it, sum, 1)] };
