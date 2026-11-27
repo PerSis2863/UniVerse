@@ -2,7 +2,7 @@
 // where it can be loaded (a path on this computer, or the bytes from Hyperion's files written to a private temporary
 // folder), and runs one session in ami-host.js in a process of its own, stopped after two minutes. Plain Node apart from
 // Electron's utility process, so the tests run it with a Node child instead. Who may call it is decided in main.js.
-const { fork } = require('node:child_process');
+const { fork, spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -70,16 +70,73 @@ function ask(msg) {
     h.send(msg);
   });
 }
-/** Runs one model session; resolves with ami-host.js's answer, or { ok: false, error }. */
+/** A library's word size from its header (M580): ELF class, the PE machine field, Mach-O's magic; null if unknown. */
+function bitsOf(file) {
+  let b;
+  try { const fd = fs.openSync(file, 'r'); b = Buffer.alloc(4096); fs.readSync(fd, b, 0, 4096, 0); fs.closeSync(fd); } catch { return null; }
+  if (b[0] === 0x7f && b.toString('latin1', 1, 4) === 'ELF') return b[4] === 1 ? 32 : b[4] === 2 ? 64 : null;
+  if (b.toString('latin1', 0, 2) === 'MZ') {
+    const pe = b.readUInt32LE(0x3c);
+    if (pe + 6 > b.length || b.toString('latin1', pe, pe + 4) !== 'PE\0\0') return null;
+    const m = b.readUInt16LE(pe + 4);
+    return m === 0x14c ? 32 : m === 0x8664 || m === 0xaa64 ? 64 : null;
+  }
+  const magic = b.readUInt32LE(0);
+  return magic === 0xfeedface || magic === 0xcefaedfe ? 32 : magic === 0xfeedfacf || magic === 0xcffaedfe ? 64 : null;
+}
+/** The 32-bit helper for this system (built by host32/build.sh; inside the installed app, unpacked beside app.asar). */
+function helper32() {
+  const name = process.platform === 'win32' ? 'ami-host32-win32.exe' : process.platform === 'linux' ? 'ami-host32-linux' : null;
+  if (!name) return null;
+  const file = path.join(__dirname.replace(/app\.asar(?=[\\/]|$)/, 'app.asar.unpacked'), 'bin', name);
+  return fs.existsSync(file) ? file : null;
+}
+const text = (s) => { const b = Buffer.from(String(s), 'utf8'); const n = Buffer.alloc(4); n.writeUInt32LE(b.length); return [n, b]; };
+/** One session in the 32-bit helper: the request as bytes on its input, the answer read back from its output. */
+function run32(req, prepared) {
+  const exe = helper32();
+  if (!exe) return Promise.resolve({ ok: false, error: process.platform === 'darwin' ? 'This model is 32-bit: Macs have not run 32-bit programs since macOS 10.15. Ask its maker for a 64-bit version.' : "This model is 32-bit and this copy of Hyperion has no 32-bit helper. Install the newest Hyperion, or ask the model's maker for a 64-bit version." });
+  if (process.platform === 'linux' && !fs.existsSync('/lib/ld-linux.so.2') && !fs.existsSync('/usr/lib32') && !fs.existsSync('/lib32')) return Promise.resolve({ ok: false, error: 'This model is 32-bit: running it on Linux needs the 32-bit system libraries ("sudo apt install libc6-i386" on Debian and Ubuntu).' });
+  const head = Buffer.alloc(4 + 4 + 8 + 8);
+  head.write('AMI1', 0, 'latin1'); head.writeInt32LE(req.rows, 4); head.writeInt32LE(req.aggressors || 0, 8);
+  const nums = Buffer.alloc(16); nums.writeDoubleLE(req.dt, 0); nums.writeDoubleLE(req.ui, 8);
+  const wave = req.wave ? Buffer.from(req.wave, 'base64') : Buffer.alloc(0), wl = Buffer.alloc(4), bl = Buffer.alloc(4);
+  wl.writeUInt32LE(wave.length / 8); bl.writeUInt32LE(req.block || 0);
+  const input = Buffer.concat([head.subarray(0, 4), ...text(prepared.file), ...text(req.params), head.subarray(4, 12), nums, Buffer.from(req.impulse, 'base64'), wl, wave, bl]);
+  return new Promise((resolve) => {
+    const p = spawn(exe, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }), parts = [];
+    let done = false;
+    const end = (r) => { if (!done) { done = true; clearTimeout(t); resolve(r); } };
+    const t = setTimeout(() => { p.kill(); end({ ok: false, error: 'The model ran for over 2 minutes and was stopped.' }); }, TIME_MS);
+    p.stdout.on('data', (d) => parts.push(d));
+    p.on('error', (e) => end({ ok: false, error: `The 32-bit helper could not start: ${e.message}` }));
+    p.on('close', (code) => {
+      const b = Buffer.concat(parts);
+      if (b.length < 8 || b.toString('latin1', 0, 4) !== 'AMR1') return end({ ok: false, error: `The 32-bit model crashed (exit code ${code}). It may need files beside it.` });
+      let at = 4;
+      const i32 = () => { const v = b.readInt32LE(at); at += 4; return v; }, u32 = () => { const v = b.readUInt32LE(at); at += 4; return v; };
+      const str = () => { const n = u32(); const s = b.toString('utf8', at, at + n); at += n; return s; };
+      const f64s = () => { const n = u32(); const s = b.subarray(at, at + n * 8).toString('base64'); at += n * 8; return s; };
+      const status = i32(), error = str(), initReturn = i32(), paramsOut = str(), message = str(), hasGetWave = !!i32(), impulse = f64s(), wv = f64s(), clocks = f64s(), waveParams = str();
+      end({ ok: status === 0, ...(error ? { error } : {}), initReturn, paramsOut, message, hasGetWave, impulse, ...(req.wave && hasGetWave ? { wave: wv, clocks, waveParams } : {}), bits: 32 });
+    });
+    p.stdin.on('error', () => { /* the helper ended early: its answer says why */ });
+    p.stdin.end(input);
+  });
+}
+
+/** Runs one model session; resolves with ami-host.js's answer (or the 32-bit helper's), or { ok: false, error }. */
 function run(req, prepared) {
   const bad = check(req);
   if (bad) return Promise.resolve({ ok: false, error: bad });
+  if (bitsOf(prepared.file) === 32) return run32(req, prepared);
   return ask({ file: prepared.file, params: req.params, impulse: req.impulse, rows: req.rows, aggressors: req.aggressors || 0, dt: req.dt, ui: req.ui, wave: req.wave, block: req.block });
 }
 /** A back-channel link (M579): both models in one process, in a private shared folder removed afterwards. */
 async function link(req, tx, rx) {
   const bad = check({ ...req, aggressors: 0, params: req.tx && req.tx.params });
   if (bad) return { ok: false, error: bad };
+  if (bitsOf(tx.file) === 32 || bitsOf(rx.file) === 32) return { ok: false, error: 'A back-channel link with a 32-bit model is not supported: ask the maker for 64-bit versions.' };
   if (typeof req.rx?.params !== 'string' || typeof req.wave !== 'string' || (req.extra !== undefined && bytesOf(req.extra) !== bytesOf(req.wave))) return { ok: false, error: 'The link request is incomplete.' };
   const interval = Math.round(req.interval), training = Math.round(req.training);
   if (!(interval >= 1 && interval <= 1e6 && training >= 0 && training <= 1e7)) return { ok: false, error: 'BCI_Message_Interval_UI and BCI_Training_UI must be whole numbers of UI.' };
@@ -89,4 +146,4 @@ async function link(req, tx, rx) {
   } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the system cleans its temporary folder */ } }
 }
 
-module.exports = { prepare, check, run, link };
+module.exports = { prepare, check, run, link, bitsOf };

@@ -26,7 +26,10 @@ synchronously at its private address `hyperion-native://` with this launch's sec
 own site in the main frame); `ami.js` checks the request and asks the person before a model loads (once per model,
 by its fingerprint); `ami-host.js` loads it with koffi (a foreign-function library, no compiler needed) in Electron's
 utility process, so a crashing or hanging model (stopped after 2 minutes) never takes the app down. The model must be
-built for the computer's processor (64-bit; on Apple chips an ARM build). Tests: `npm test` (builds the tiny model in
+built for the computer's processor (on Apple chips an ARM build). Older 32-bit models (M580) run through a small
+32-bit helper, `bin/ami-host32-*` (source `host32/ami-host32.c`, built by `host32/build.sh` and the workflow; Linux
+needs the 32-bit system libraries; Macs can't run 32-bit programs). Back-channel links (M579) run both models in one
+process in turns, in a private shared folder. Tests: `npm test` (builds the tiny model in
 `test/` with gcc). When the Mac app is signed, its entitlements need `com.apple.security.cs.disable-library-validation`
 so it may load makers' libraries signed by someone else.
 

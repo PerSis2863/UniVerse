@@ -13592,3 +13592,25 @@ clocks), the website (BCI settings read, the tool's BCI_ID, `link` chosen only f
 the real pair from a Hyperion script through `eyeDiagram` (first block tap -0.1, last -0.35, the file, the clocks).
 Not built: a BCI link with 32-bit models (M580's helper runs one model), aggressors' own transmitters training, more
 than one Tx–Rx pair (repeaters' redriver chains).
+
+## M580 (27 Nov): Hyperion IBIS-AMI: 32-bit models
+
+The last of M577's left-outs: older 32-bit models. A 64-bit process (the app, koffi) can't load a 32-bit library, so
+the app ships a small 32-bit helper program, `desktop/hyperion/host32/ami-host32.c` (plain C: `dlopen` on Linux,
+`LoadLibraryW` with a UTF-8 path on Windows), run per session: the request as bytes on its standard input ("AMI1",
+path, parameters, rows, aggressors, dt, ui, the impulse matrix, the wave, the block), the answer on its output ("AMR1",
+status, error, Init's return, its parameters and message, GetWave there or not, the impulse, the wave, the clock
+times, GetWave's last parameters; texts u32-prefixed, numbers little-endian); it copies the model's strings before
+AMI_Close (they belong to the model's memory). `ami.js`: `bitsOf` reads the library's header (ELF class; the PE
+header's machine 0x14c = 32-bit, 0x8664 / 0xaa64 = 64; Mach-O magics) and `run` hands 32-bit ones to `run32` (the same
+2-minute limit; the answer shaped like ami-host.js's, plus `bits: 32`). `helper32()` finds `bin/ami-host32-linux` or
+`bin/ami-host32-win32.exe` beside the code, `app.asar` swapped for `app.asar.unpacked` in the installed app
+(package.json `asarUnpack: bin/**`, `files` bin/**); missing → "no 32-bit helper" (Mac: "Macs have not run 32-bit
+programs since macOS 10.15"); Linux without 32-bit libraries (no /lib/ld-linux.so.2, /usr/lib32 or /lib32) → how to
+install them. A back-channel link with a 32-bit model is refused (both models must share one process). Built by
+`host32/build.sh` (gcc -m32 with gcc-multilib; i686-w64-mingw32-gcc -static) and by the workflow: on the Linux runner
+the Linux helper, on the Windows runner with MSYS2's mingw32 gcc (`pacman -S mingw-w64-i686-gcc`); `bin/` is
+gitignored. App 1.3.0. Tests (`npm test`): a 32-bit build of the test model through the helper (Init and GetWave
+across blocks exactly as the 64-bit path, 10 clocks, `bits` 32) and a 32-bit library without AMI_Init refused; the
+helper's Windows build cross-compiled here but not run (no Windows machine or Wine). Not built: a 32-bit Mac path
+(impossible), 32-bit back-channel links, ARM Windows (a 64-bit x86 model there would need Windows' own emulation).

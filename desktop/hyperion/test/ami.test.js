@@ -63,3 +63,23 @@ test('a back-channel link: the receiver tells the transmitter its tap through th
   assert.equal(f64(r.clocks).length, 400);
   assert.equal(f64(r.wave).length, n);
 });
+
+test('a 32-bit model runs through the 32-bit helper (M580)', { skip: (!fs.existsSync(path.join(__dirname, '..', 'bin', 'ami-host32-linux')) || process.platform !== 'linux') && 'no 32-bit helper here' }, async () => {
+  const lib32 = path.join(os.tmpdir(), 'hyperion-ami-test32.so');
+  try { execFileSync('gcc', ['-m32', '-shared', '-fPIC', '-O2', path.join(__dirname, 'ami-test-model.c'), '-o', lib32]); } catch { return; }
+  assert.equal(ami.bitsOf(lib32), 32);
+  const imp = new Array(64).fill(0); imp[3] = 1;
+  const r = await ami.run({ rows: 64, aggressors: 0, impulse: b64(imp), dt: 1e-12, ui: 8e-12, params: '(test_tx (tap -0.25))', wave: b64(new Array(80).fill(1)), block: 24 }, { file: lib32 });
+  assert.equal(r.ok, true, r.error);
+  assert.equal(r.bits, 32);
+  assert.equal(r.message, 'Hyperion test model ready');
+  const h = f64(r.impulse), w = f64(r.wave);
+  assert.ok(Math.abs(h[3] - 0.5) < 1e-12 && Math.abs(h[11] + 1 / 6) < 1e-12);
+  assert.ok(w.slice(8).every((v) => Math.abs(v - 1 / 3) < 1e-12));
+  assert.equal(f64(r.clocks).length, 10);
+  // a 32-bit library that is not an AMI model
+  const junk32 = path.join(os.tmpdir(), 'hyperion-junk32.so');
+  fs.writeFileSync(path.join(os.tmpdir(), 'j.c'), 'int x(void){return 1;}');
+  execFileSync('gcc', ['-m32', '-shared', '-fPIC', path.join(os.tmpdir(), 'j.c'), '-o', junk32]);
+  assert.match((await ami.run({ rows: 2, impulse: b64([1, 0]), dt: 1, ui: 1, params: '' }, { file: junk32 })).error, /no AMI_Init/);
+});

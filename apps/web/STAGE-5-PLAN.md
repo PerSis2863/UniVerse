@@ -1912,6 +1912,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M577 | Hyperion: IBIS-AMI models in the computer app | **Done** (on `claude/hyperion-sciences-industries`) | Chip makers' compiled equaliser models (.dll/.so/.dylib + .ami) run by the computer app in an isolated process after a yes, reached from the engine's worker through a private token-gated address; statistical and time-domain flows in eyeDiagram and amiSimulate (`ami.ts`, `native.ts`, `desktop/hyperion/ami*.js`, app 1.2.0) |
 | M578 | Hyperion IBIS-AMI: crosstalk into the models, IBIS files | **Done** (on `claude/hyperion-sciences-industries`) | Aggressor columns into AMI_Init (Max_Init_Aggressors) in both flows; .ibs files' [Algorithmic Model] picking the library for the computer (`readIbis`, `pickExecutable`, `ibisModels`) |
 | M579 | Hyperion IBIS-AMI: back-channel link training | **Done** (on `claude/hyperion-sciences-industries`) | Tx and Rx models that speak the same BCI_Protocol run in turns in a shared folder, so the receiver trains the transmitter (`ami-host.js` link, `ami.flow`, e.AMI.BCI) |
+| M580 | Hyperion IBIS-AMI: 32-bit models | **Done** (on `claude/hyperion-sciences-industries`) | Older 32-bit model libraries run through a small 32-bit helper program shipped with the computer app (Windows and Linux; `host32/ami-host32.c`, `ami.js` `bitsOf`/`run32`, app 1.3.0) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
