@@ -148,4 +148,14 @@ pcregistericp | [tform, moved, rmse] = pcregistericp(moving, fixed, 'MaxIteratio
 pctransform | pc2 = pctransform(pc, tform) | A point cloud moved by a rigid transform (or a 4 × 4 matrix).
 pcshow | pcshow(pc, colours) | Shows a point cloud in 3D, coloured by height unless given colours.
 pcmapbuild | [map, poses] = pcmapbuild(clouds, 'GridSize', 0.3, 'GroundHeight', 0.2) | Lidar odometry and a map: each scan (ground removed) lined up with the one before; the poses [x y z yaw] and every scan's points in the first one's frame.
+
+# Sensor fusion and tracking
+trackScenario | r = trackScenario(s, 'ProcessNoise', 2, 'Confirm', [2 3], 'Drop', 5, 'Cutoff', 5) | A drivingScenario's camera and radar fused into tracks (an extended Kalman filter at constant velocity; the radar's range, azimuth and range rate used as they are; detections assigned by the Hungarian method in a 99% gate; confirmed after M of N hits, dropped after misses, twins merged): Tracks (time, id, x, y, vx, vy, confirmed), GOSPA each step and MeanGOSPA against what the sensors could see. Drawn without outputs.
+gospa | [d, loc, missed, false] = gospa(estimates, truth, c, p) | The GOSPA distance between estimated and true positions [x y] (cutoff c, order p; α = 2): how far off, how many missed, how many false.
+ospa | d = ospa(estimates, truth, c, p) | The OSPA distance between two sets of positions.
+imufilter | [q, euler] = imufilter(accel, gyro, fs, 'Beta', 0.1, 'InitialOrientation', [yaw pitch roll]) | Orientation from an accelerometer (m/s², +g up at rest) and gyroscope (rad/s), Madgwick's filter: quaternions [w x y z] and Euler angles [yaw pitch roll] in degrees, a row a sample.
+ahrsfilter | [q, euler] = ahrsfilter(accel, gyro, mag, fs, 'Beta', 0.1) | Orientation with a magnetometer too (µT), so the heading doesn't drift.
+imuReadings | [accel, gyro, mag] = imuReadings(euler, fs, 'Bias', [0 0 0], 'Seed', 1) | What an IMU reads along an orientation history [yaw pitch roll] (degrees, a row a sample): gravity, body rates (with a gyro bias) and Earth's field, with noise.
+bboxOverlapRatio | r = bboxOverlapRatio(A, B) | The overlap (intersection over union) of every box [x y width height] in A with every box in B.
+evaluateDetectionPrecision | [ap, recall, precision] = evaluateDetectionPrecision(detections, truth, 0.5) | An object detector's average precision: detections [image x y w h score] against the truth [image x y w h] at an overlap threshold.
 `;

@@ -7,6 +7,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import * as S from '@/lib/lab/scenario';
 import * as PC from '@/lib/lab/pointcloud';
+import { scenarioTracks } from '@/lib/lab/scenario-track';
 import { shareFragment } from '@/lib/lab/share';
 import { NumField, ui } from './bench-ui';
 
@@ -67,6 +68,8 @@ export function ScenarioBench() {
     catch (e) { return { run: null, error: (e as Error).message }; }
   }, [design]);
   const run = result.run, n = run?.t.length ?? 0;
+  // M575: the camera and radar fused into tracks, scored with GOSPA
+  const tracks = useMemo(() => { if (!run || (!design.vision && !design.radar)) return null; try { return scenarioTracks(specOf(design), run); } catch { return null; } }, [run, design]);
   const kk = Math.min(k, Math.max(0, n - 1));
 
   const kNow = useRef(0);
@@ -142,6 +145,13 @@ export function ScenarioBench() {
         if (se.kind === 'radar') g.arc(px, py, 3.5, 0, 2 * Math.PI); else { g.moveTo(px, py - 4); g.lineTo(px + 3.5, py + 3); g.lineTo(px - 3.5, py + 3); g.closePath(); }
         g.stroke();
       });
+      // the confirmed tracks: a square at each, its number, and where it is heading in the next second
+      for (const tk of tracks?.steps[kk]?.tracks.filter((x) => x.confirmed) ?? []) {
+        const [px, py] = P(tk.x, tk.y), [qx, qy] = P(tk.x + tk.vx, tk.y + tk.vy);
+        g.strokeStyle = dark ? '#38bdf8' : '#0284c7'; g.lineWidth = 1.5; g.strokeRect(px - 5, py - 5, 10, 10);
+        g.beginPath(); g.moveTo(px, py); g.lineTo(qx, qy); g.stroke();
+        g.fillStyle = g.strokeStyle; g.font = '11px Inter, sans-serif'; g.fillText(String(tk.id), px + 7, py - 6);
+      }
       g.fillStyle = ink; g.font = '12px Inter, sans-serif'; g.fillText(`${run.t[kk].toFixed(1)} s`, 8, 16);
     }
     // ——— chase camera ———
@@ -248,8 +258,8 @@ export function ScenarioBench() {
           <canvas ref={top} onClick={onCanvas} className={cn('rounded-xl', mode !== 'look' && 'cursor-crosshair')} role="img" aria-label={`Bird's-eye view at ${run?.t[kk]?.toFixed(1) ?? 0} s: ${run?.actors.length ?? 0} actors, the sensors' coverage and detections`} />
           <canvas ref={chase} className="rounded-xl" role="img" aria-label="Chase camera behind the ego car" />
         </div>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {[['Actors', String(run?.actors.length ?? 0)], ['Detections', String(D.length)], ['Actors ever seen', String(seen)], ['Collisions', run ? (run.collisions.length ? run.collisions.map((x) => `${x.t.toFixed(1)} s`).join(', ') : 'none') : '–']].map(([a, b]) => <div key={a} className="rounded-xl bg-zinc-50 px-3 py-2 dark:bg-white/[0.04]"><p className="text-xs text-zinc-500 dark:text-zinc-400">{a}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{b}</p></div>)}
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+          {[['Actors', String(run?.actors.length ?? 0)], ['Detections', String(D.length)], ['Actors ever seen', String(seen)], ['Tracks now (mean GOSPA)', tracks ? `${tracks.steps[kk]?.tracks.filter((x) => x.confirmed).length ?? 0} (${tracks.mean.toFixed(2)} m)` : '–'], ['Collisions', run ? (run.collisions.length ? run.collisions.map((x) => `${x.t.toFixed(1)} s`).join(', ') : 'none') : '–']].map(([a, b]) => <div key={a} className="rounded-xl bg-zinc-50 px-3 py-2 dark:bg-white/[0.04]"><p className="text-xs text-zinc-500 dark:text-zinc-400">{a}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{b}</p></div>)}
         </div>
       </section>
     </div>

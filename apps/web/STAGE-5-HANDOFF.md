@@ -15892,3 +15892,28 @@ one before from the last step's motion, poses chained, the map thinned).
 - Checked (`pointcloud.test.ts`, on a scenario of parked cars and trucks): the ground's normal and height, the truck's
   box (centre, 8.2 m, 0°) and a car's (1.8 m wide, its 5.7° heading), ICP recovering a 0.05 rad turn and a shift to
   1 cm, lidar odometry within 2% over 30 m, and the whole flow in a script.
+
+
+## M575 (27 Nov): automated driving 3: sensor fusion and tracking, GOSPA, IMU orientation, detection scores
+
+**`src/lib/lab/fusion.ts`** (pure): `hungarian` (Kuhn–Munkres with potentials, rectangular, Infinity never chosen);
+`track` (an EKF at constant velocity [x vx y vy], white acceleration q: the camera's world position as is, the radar's
+range / azimuth / range rate through their Jacobian from the sensor's world position and the ego's velocity; each
+sensor's batch in turn; a χ² 99% gate (9.21, 11.34); new tracks only from detections no track's gate holds; confirmed
+after M of N, a confirmed one dropped after `drop` misses, a tentative one once it can't reach M; two tracks of one
+object (inside the 99% gate of their summed covariance, speeds within 3 m/s) merged into the older); `gospa` (α = 2)
+and `ospa`; `iou` and `averagePrecision` (VOC's monotone area); `madgwick` (6-axis, and 9-axis with the field's
+Jacobian numerically) with `quatToEuler` / `eulerToQuat` (Z-Y-X; world x east, y north, z up; +g up at rest) and
+`imuReadings` (gravity, body rates from 2 q⁻¹ q̇, a 50 µT field 60° down; noise, a gyro bias).
+- **Traps found by running it:** the process noise was built 4 × 2 (NaN covariance: nothing ever associated); a radar
+  reading started a twin of a track and GNN kept both alive by turns (fixed by the spawn rule plus merging). With
+  camera and radar together the localisation is the best of the three (0.20 m against 0.32 camera, 0.38 radar).
+- **`scenario-track.ts`**: a scenario's detections to world measurements (the vision covariance rotated to the sensor's
+  look), tracked, scored each step against the actors some sensor saw in the last second, at the point a sensor
+  reports (the footprint's nearest point: tracks follow that point, not the centre). Used by `trackScenario`
+  (`fusion-lab.ts`: Tracks, GOSPA, MeanGOSPA; drawn without outputs) and the Scenario designer (tracks drawn with
+  their number and next-second heading; "Tracks now (mean GOSPA)").
+- Checked (`fusion.test.ts`): the assignment, every car tracked at its speed at 8 s (by 10 s the close car ahead hides
+  the others: occlusion working), fusion's localisation the best, GOSPA's parts, the IMU filters (pitch and roll within
+  1°, the magnetometer holding the heading within 1° and better than 6-axis), AP 5/6 on a hand-checked case, the language.
+- Not done: deep object detectors (SSD, YOLO: no trained weights here; the scores are ready for one).

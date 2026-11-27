@@ -2116,6 +2116,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M572 | Mixed-signal left-outs 4: the link to Cadence and Synopsys tools | **Done** | `spicegen` (the PLL loop filter, the output buffer; Spectre's lang line), the Verification tab's "Your simulators"; checked end to end: spicegen → the computer app's simulators.js → ngspice → rawread equals Hyperion's answers. |
 | M573 | Automated driving 1: driving scenarios, sensors, OpenDRIVE | **Done** | The owner, 27 Nov (MathWorks' automated-driving page). `scenario.ts`, `scenario-lab.ts` (drivingScenario, road, vehicle(s, …), actor, trajectory, addSensor, runScenario, plotScenario, writeOpenDRIVE, readOpenDRIVE), Simulate → Machines → Scenario designer (`ScenarioBench.tsx`). |
 | M574 | Automated driving 2: lidar point clouds, objects, odometry and maps | **Done** | `pointcloud.ts`, `pointcloud-lab.ts` (pointCloud, pcdownsample, pcfitplane, pcsegdist, pcfitcuboid, pcregistericp, pctransform, pcshow, pcmapbuild); the Scenario designer draws the boxes the lidar finds. |
+| M575 | Automated driving 3: sensor fusion and tracking, GOSPA, IMU orientation, detection scores | **Done** | `fusion.ts`, `scenario-track.ts`, `fusion-lab.ts` (trackScenario, gospa, ospa, imufilter, ahrsfilter, imuReadings, bboxOverlapRatio, evaluateDetectionPrecision); the Scenario designer draws the fused tracks and their GOSPA. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

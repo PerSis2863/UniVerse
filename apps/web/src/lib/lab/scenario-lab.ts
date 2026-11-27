@@ -40,7 +40,7 @@ function opts(a: Value[], from: number, names: string[], what: string) {
 export const isScenario = (v: Value | undefined): v is Struct => v?.k === 'struct' && v.f.has('DrivingScenario');
 const listOf = (s: Struct, k: string) => { const c = s.f.get(k); return c?.k === 'cell' ? c.d : []; };
 const withList = (s: Struct, k: string, items: Value[]): Struct => ({ ...s, f: new Map([...s.f, [k, cell(items)]]) });
-function specOf(s: Struct): S.ScenarioSpec {
+export function specOf(s: Struct): S.ScenarioSpec {
   const g = (x: Struct, k: string) => x.f.get(k), n = (x: Struct, k: string, d?: number) => { const v = g(x, k); return v ? toMat(v).d[0] : d; };
   const pts = (x: Struct, k: string) => { const v = g(x, k); return v && toMat(v).d.length ? rowsOf(v, k) : undefined; };
   return {
