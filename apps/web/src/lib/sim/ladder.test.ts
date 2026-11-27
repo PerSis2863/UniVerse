@@ -30,7 +30,7 @@ describe('Ladder Diagram (M571)', () => {
     const ids = [...x.matchAll(/localId="(\d+)"/g)].map((m) => m[1]), refs = [...x.matchAll(/refLocalId="(\d+)"/g)].map((m) => m[1]);
     expect(new Set(ids).size).toBe(ids.length);
     for (const r of refs) expect(ids).toContain(r);
-    const open = (x.match(/<[A-Za-z][^>]*[^/]>/g) ?? []).filter((t) => !t.startsWith('<?')).length, close = (x.match(/<\/[A-Za-z]/g) ?? []).length;
+    const open = [...x.matchAll(/<[A-Za-z][^>]*[^/]>/g)].filter((m) => !m[0].startsWith('<?')).length, close = [...x.matchAll(/<\/[A-Za-z]/g)].length;
     expect(open).toBe(close);
   });
 });
