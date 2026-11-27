@@ -230,7 +230,7 @@ export function ffeZeroForcing(p: number[], cursor: number, spu: number, pre: nu
 
 export interface Eye {
   rate: number; spu: number; pam4: boolean; order: number; nsym: number; swing: number; ffe: number[]; ffePre: number;
-  dfe: number; rj: number; dj: number; noise: number; ber: number; xtalk: [number, number, (0 | 1 | -1)?][]; mask?: [number, number]; seed: number;
+  dfe: number; rj: number; dj: number; noise: number; ber: number; xtalk: [number, number, (0 | 1 | -1)?, number?][]; xtalkPath?: (number[] | undefined)[]; mask?: [number, number]; seed: number;
 }
 const Qinv = (p: number) => { let lo = 0, hi = 40; for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (0.5 * erfc(m / Math.SQRT2) > p) lo = m; else hi = m; } return (lo + hi) / 2; };
 function erfc(x: number) { const z = Math.abs(x), t = 1 / (1 + 0.5 * z), r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277))))))))); return x >= 0 ? r : 2 - r; }
@@ -250,9 +250,11 @@ export function eye(pulse: { p: number[]; cursor: number }, e: Eye, agg?: number
   const P = cut(main.p, main.c), deriv = (p: number[]) => p.map((v, n) => (n ? v - p[n - 1] : 0) * spu / 4);
   const step = Array.from({ length: (pre + post) * spu }, (_, k) => (k >= pre * spu && k < (pre + 1) * spu ? scale : 0)), dP = deriv(P), dS = deriv(step);
   const bits = prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed), a = symbols(bits, e.pam4), n = a.length;
+  // a neighbour partway along: its NEXT back over that part of the line (M588, `xtalkPath`)
+  const way = (r: number[], g?: number[]) => (g ? fftConvolve(r, g, r.length) : r);
   // one NEXT and one FEXT per neighbouring line, each its own PRBS (the first line's seeds as before)
   const sym = (s: number) => symbols(prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, s), e.pam4);
-  const xt = e.xtalk.flatMap(([kn, kf], i) => [...(kn ? [{ s: sym(e.seed + 77 + 1000 * i), r: dS.map((v) => v * kn) }] : []), ...(kf ? [{ s: sym(e.seed + 151 + 1000 * i), r: dP.map((v) => v * kf) }] : [])]);
+  const xt = e.xtalk.flatMap(([kn, kf], i) => [...(kn ? [{ s: sym(e.seed + 77 + 1000 * i), r: way(dS.map((v) => v * kn), e.xtalkPath?.[i]) }] : []), ...(kf ? [{ s: sym(e.seed + 151 + 1000 * i), r: dP.map((v) => v * kf) }] : [])]);
   const L = n * spu, y = new Float64Array(L);
   const sup = (sym: number[], resp: number[]) => { for (let k = 0; k < sym.length; k++) { const base = (k - pre) * spu; for (let j = 0; j < resp.length; j++) { const idx = base + j; if (idx >= 0 && idx < L) y[idx] += sym[k] * resp[j]; } } };
   sup(a, P);

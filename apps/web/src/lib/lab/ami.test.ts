@@ -449,9 +449,10 @@ describe('M587: the fixture and package taken out, the legs solved together, eac
     fixtureCurrent({ r: 50, v: 1, rows: [] }, V, h).forEach((i, n) => expect(i).toBeCloseTo((1 - V[n]) / 50, 9));
     const c = fixtureCurrent({ r: 50, v: 1, rows: [], c: 1e-12 }, V, h);
     for (let n = 2; n < 50; n++) expect(c[n]).toBeCloseTo((1 - V[n]) / 50 - 1e-12 * 0.01 / h, 6);
-    // with L_fixture: V_fixture − R·i − L·di/dt is the die's voltage (backward Euler's own difference)
-    const l = fixtureCurrent({ r: 50, v: 1, rows: [], l: 1e-9 }, V, h);
-    for (let n = 1; n < 50; n++) expect(1 - 50 * l[n] - (1e-9 * (l[n] - l[n - 1])) / h).toBeCloseTo(V[n], 6);
+    // with L_fixture (τ = L/R = 20 ps, ten table steps of 2 ps): L·di/dt + R·i = 1 − s·t from i(0) = 1/R, solved exactly
+    // i = (1 − s·t)/R + s·L/R²·(1 − e^(−t/τ)); the steps inside each table step keep it close (M588)
+    const H = 2e-12, s0 = 0.01 / 1e-12, l = fixtureCurrent({ r: 50, v: 1, rows: [], l: 1e-9 }, V.map((_, n) => s0 * n * H), H);
+    for (let n = 1; n < 50; n++) { const t = n * H; expect(l[n]).toBeCloseTo((1 - s0 * t) / 50 + ((s0 * 1e-9) / 2500) * (1 - Math.exp(-t / 20e-12)), 5); }
   });
   it('a driver measured through a fixture\'s coil and capacitor and a package: its switching recovered', () => {
     // the "measurement": a 40-ohm driver whose pull-up turns on over 30 ps, its die through R_dut, L_dut, C_dut,
@@ -472,10 +473,10 @@ describe('M587: the fixture and package taken out, the legs solved together, eac
     };
     const a = end({ pu: line(-r), pd: line(r) }), w = [{ r: 50, v: 0, rows: measure(0), ...P }, { r: 50, v: 1, rows: measure(1), ...P }];
     const err = (k: number[][]) => Math.max(...k.filter((x) => x[0] > 2e-12).map((x) => Math.abs(x[1] - ku(x[0]))));
-    expect(err(switching(a, w)!)).toBeLessThan(0.03);
+    expect(err(switching(a, w)!)).toBeLessThan(0.01);
     expect(err(switching(a, w.map((x) => ({ r: x.r, v: x.v, rows: x.rows })))!)).toBeGreaterThan(0.15);   // what M586 did
     const ibs = `[Model] d\nModel_type Output\n[Voltage Range] 1 1 1\n[Pull-down]\n-1 -25m -25m -25m\n1 25m 25m 25m\n[Pull-up]\n-1 25m 25m 25m\n1 -25m -25m -25m\n${w.map((x) => `[Rising Waveform]\nR_fixture 50\nV_fixture ${x.v}\nL_fixture 1nH\nC_fixture 0.5pF\nR_dut 0.5\nL_dut 0.4nH\nC_dut 0.3pF\n${x.rows.map(([t, v]) => `${(t * 1e12).toFixed(1)}p ${v.toFixed(7)} NA NA`).join('\n')}`).join('\n')}\n[End]\n`;
-    expect(err(readAnalog(ibs, 'd')!.kr!)).toBeLessThan(0.03);
+    expect(err(readAnalog(ibs, 'd')!.kr!)).toBeLessThan(0.01);
   });
   it('the two legs coupled at the same end are solved together: the answer does not depend on which leg comes first', () => {
     const n = 120, z = new Array(n).fill(0), d5 = delayed(n, 5), d6 = delayed(n, 6), k = [0.2, ...new Array(n - 1).fill(0)];
@@ -505,5 +506,26 @@ describe('M587: the fixture and package taken out, the legs solved together, eac
     expect(() => lab.run("S = sparamLine((1:100)*1e8, 'Length', 0.05); e = eyeDiagram(S, 10e9, 'Crosstalk', [0.05 0 2]);")).toThrow(/side is 1/);
     lab.run("S = sparamLine((1:100)*1e8, 'Length', 0.05); a = eyeDiagram(S, 10e9, 'Crosstalk', [0.05 0.1]); b = eyeDiagram(S, 10e9, 'Crosstalk', [0.05 0.1; 0.05 0.1]); fprintf('%d\\n', b.Height < a.Height)");
     expect(out.trim()).toBe('1');
+  });
+});
+
+describe('M588: a neighbour partway along, neighbours side by side, the fixture in fine steps', () => {
+  it('a neighbour partway along comes back over that part of the line: later and rounder, a different eye', () => {
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    // halfway down a lossy line the near-end wave comes back over 0.1 m of it: rounder, and landing at another part of
+    // the symbol than one made at the receiver's end
+    lab.run("S = sparamLine((1:400)*1e8, 'Length', 0.2); a = eyeDiagram(S, 10e9); b = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0]); c = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0.5]); fprintf('%d %d\\n', abs(c.Height - b.Height) > 1e-3, c.Height < a.Height - 1e-3 && b.Height < a.Height - 1e-3)");
+    expect(out.trim()).toBe('1 1');
+    expect(() => lab.run("e = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 2]);")).toThrow(/0 \(the receiver's end\) to 1/);
+  });
+  it('a link is told which neighbour sits just inside which, side by side', () => {
+    let sent: { aggs?: { inner?: number }[] } = {};
+    setNative((_op, body) => { sent = body as typeof sent; const b = body as { wave: string }; return { ok: true, wave: b.wave, clocks: f64ToB64([]), history: [], files: [], paramsOut: ['', ''], messages: ['', ''], lanes: [] }; });
+    const info = ami.readAmi(fs.readFileSync(path.join(__dirname, 'fixtures', 'test-bci.ami'), 'utf8')), tx: ami.Model = { name: 'tx', file: { name: 'b.so', path: '/b.so' }, params: ami.paramString(info, new Map()), info };
+    const x = new Array(64).fill(0.4), g = (inner?: number) => ({ h: [1e11, 0, 0, 0], x, inner });
+    // four lines: two on each side, the outer ones (2 and 3) just outside 0 and 1
+    ami.flow([1e12, 0, 0, 0], 1e-12, 8e-12, tx, { ...tx, name: 'rx' }, x, [g(), g(), g(0), g(1)]);
+    expect(sent.aggs!.map((a) => a.inner)).toEqual([undefined, undefined, 1, 2]);
   });
 });

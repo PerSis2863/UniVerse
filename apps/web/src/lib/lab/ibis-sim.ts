@@ -259,25 +259,34 @@ export interface Wave { r: number; v: number; rows: number[][]; l?: number; c?: 
 /**
  * The current the fixture and package push into the die over an edge, its die voltage V(t) given (M587: IBIS measures
  * the tables at the die pad, so the network between is de-embedded exactly by solving it driven by V): die, R_dut and
- * L_dut to node b (C_dut there), L_fixture to node c (C_fixture there), R_fixture to V_fixture. Backward Euler on the
- * table's grid; a missing L a short, a missing C open. Starts in its DC state at V(0).
+ * L_dut to node b (C_dut there), L_fixture to node c (C_fixture there), R_fixture to V_fixture. Backward Euler in
+ * steps fine enough for the network's own ringing (M588); a missing L a short, a missing C open. Starts in its DC
+ * state at V(0).
  */
-export function fixtureCurrent(x: Wave, V: number[], h: number): number[] {
+export function fixtureCurrent(x: Wave, V: number[], h0: number): number[] {
   if (!(x.l || x.c || x.rd || x.ld || x.cd)) return V.map((v) => (x.v - v) / x.r);
+  // (M588) steps fine enough for the network's own times (each L with each C, L/R, R·C): 200 to the shortest, at most
+  // 1000 per step of the table's grid, V straight between its samples
+  const rs = [x.r, x.rd ?? 0].filter((r) => r > 0), Ls = [x.ld ?? 0, x.l ?? 0].filter((v) => v > 0), Cs = [x.cd ?? 0, x.c ?? 0].filter((v) => v > 0);
+  const taus = [...Ls.flatMap((l) => [...Cs.map((c) => Math.sqrt(l * c)), ...rs.map((r) => l / r)]), ...Cs.flatMap((c) => rs.map((r) => r * c))].filter((t) => t > 0);
+  const sub = Math.min(1000, Math.max(1, Math.ceil(h0 / (Math.min(...taus, Infinity) / 200)))), h = h0 / sub;
   const BIG = 1e6, grd = 1 / Math.max(x.rd ?? 0, 1 / BIG), grf = 1 / x.r, ld = x.ld ?? 0, lf = x.l ?? 0, cd = (x.cd ?? 0) / h, cf = (x.c ?? 0) / h;
   const gd = ld > 0 ? h / ld : BIG, gf = lf > 0 ? h / lf : BIG;
   const i0 = (x.v - V[0]) / (x.r + (x.rd ?? 0));
-  let id = i0, iF = i0, vb = V[0] + i0 * (x.rd ?? 0), vc = vb;
-  return V.map((v, n) => {
+  let id = i0, iF = i0, vb = V[0] + i0 * (x.rd ?? 0), vc = vb, last = i0;
+  return V.map((vn, n) => {
     if (!n) return i0;
-    // currents toward the die: id = hd + gd·(vb − va) through L_dut, iF = hf + gf·(vc − vb) through L_fixture
-    const hd = ld > 0 ? id : 0, hf = lf > 0 ? iF : 0;
-    // tridiagonal in va, vb, vc (Thomas)
-    const a = [0, -gd, -gf], b = [grd + gd, gd + gf + cd, grf + gf + cf], c = [-gd, -gf, 0], d = [grd * v + hd, hf - hd + cd * vb, grf * x.v - hf + cf * vc];
-    for (let i = 1; i < 3; i++) { const m = a[i] / b[i - 1]; b[i] -= m * c[i - 1]; d[i] -= m * d[i - 1]; }
-    const nc = d[2] / b[2], nb = (d[1] - c[1] * nc) / b[1], na = (d[0] - c[0] * nb) / b[0];
-    id = hd + gd * (nb - na); iF = hf + gf * (nc - nb); vb = nb; vc = nc;
-    return grd * (na - v);
+    for (let q = 1; q <= sub; q++) {
+      const v = V[n - 1] + ((vn - V[n - 1]) * q) / sub;
+      // currents toward the die: id = hd + gd·(vb − va) through L_dut, iF = hf + gf·(vc − vb) through L_fixture
+      const hd = ld > 0 ? id : 0, hf = lf > 0 ? iF : 0;
+      // tridiagonal in va, vb, vc (Thomas)
+      const a = [0, -gd, -gf], b = [grd + gd, gd + gf + cd, grf + gf + cf], c = [-gd, -gf, 0], d = [grd * v + hd, hf - hd + cd * vb, grf * x.v - hf + cf * vc];
+      for (let k = 1; k < 3; k++) { const m = a[k] / b[k - 1]; b[k] -= m * c[k - 1]; d[k] -= m * d[k - 1]; }
+      const nc = d[2] / b[2], nb = (d[1] - c[1] * nc) / b[1], na = (d[0] - c[0] * nb) / b[0];
+      id = hd + gd * (nb - na); iF = hf + gf * (nc - nb); vb = nb; vc = nc; last = grd * (na - v);
+    }
+    return last;
   });
 }
 /**

@@ -139,7 +139,7 @@ function run(req, prepared) {
   return ask({ file: prepared.file, params: req.params, impulse: req.impulse, rows: req.rows, aggressors: req.aggressors || 0, dt: req.dt, ui: req.ui, wave: req.wave, block: req.block });
 }
 /** A back-channel link (M579): the models run in turns in a private shared folder removed afterwards; a 32-bit one
- * through the 32-bit helper (M581); each neighbouring line in `aggs` a trained link of its own (M582). */
+ * through the 32-bit helper (M581); each neighbouring line in `aggs` a trained link of its own (M582), `inner` the lane just inside it on the same side (M588). */
 async function link(req, tx, rx) {
   const bad = check({ ...req, aggressors: 0, params: req.tx && req.tx.params });
   if (bad) return { ok: false, error: bad };
@@ -157,7 +157,7 @@ async function link(req, tx, rx) {
   if (t.error || r.error) return { ok: false, error: t.error || r.error };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hyperion-bci-'));
   try {
-    return await ask({ op: 'link', tx: t, rx: r, impulse: req.impulse, rows: req.rows, dt: req.dt, ui: req.ui, wave: req.wave, aggs: aggs.map((g) => ({ wave: g.wave, h: g.h })), interval, training, dir });
+    return await ask({ op: 'link', tx: t, rx: r, impulse: req.impulse, rows: req.rows, dt: req.dt, ui: req.ui, wave: req.wave, aggs: aggs.map((g) => ({ wave: g.wave, h: g.h, ...(g.inner === undefined ? {} : { inner: Number(g.inner) }) })), interval, training, dir });
   } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the system cleans its temporary folder */ } }
 }
 

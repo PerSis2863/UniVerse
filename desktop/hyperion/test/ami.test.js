@@ -85,6 +85,12 @@ test('neighbouring lines train their own transmitters, each by its own receiver 
   const quiet = await ami.link(req, p, p), d = f64(r.wave).map((v, i) => v - f64(quiet.wave)[i]);
   assert.ok(Math.max(...d.map(Math.abs)) > 0.01 && Math.max(...d.map(Math.abs)) < 0.05);   // the neighbour's 0.4 V, a tenth, through its FFE
   assert.match((await ami.link({ ...req, aggs: [{ wave: b64([1]), h: b64(couple) }] }, p, p)).error, /bad sizes/);
+  // M588: a second neighbour further out on the same side hears the first (held at +0.4 V) through the first's coupling
+  const n1 = { wave: b64(new Array(n).fill(0.4)), h: b64(couple) }, n2 = { wave: b64(agg), h: b64(new Array(64).fill(0)) };
+  const outer = await ami.link({ ...req, aggs: [n1, { ...n2, inner: 1 }] }, p, p), apart = await ami.link({ ...req, aggs: [n1, n2] }, p, p);
+  const pk2 = (x) => Number(/peak ([\d.]+)/.exec(x.lanes[1].rx)[1]);
+  assert.ok(Math.abs(pk2(outer) - pk2(apart) - 0.4 * (2 / 3) * 0.1) < 0.01, `${pk2(outer)} ${pk2(apart)}`);
+  assert.match((await ami.link({ ...req, aggs: [n1, { ...n2, inner: 2 }] }, p, p)).error, /not itself/);
 });
 
 test('a 32-bit model runs through the 32-bit helper (M580)', { skip: (!fs.existsSync(path.join(__dirname, '..', 'bin', 'ami-host32-linux')) || process.platform !== 'linux') && 'no 32-bit helper here' }, async () => {

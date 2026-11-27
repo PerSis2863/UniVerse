@@ -13761,3 +13761,24 @@ rows close the eye more, a bad side refused. Not built: a neighbour coupling par
 pin), neighbours coupled to each other, the fixture network's own time step finer than the table's grid (backward
 Euler there damps a fixture's LC ringing slightly).
 
+## M588 (27 Nov): Hyperion IBIS-AMI: a neighbour partway along, neighbours side by side, the fixture in fine steps
+
+M587's three left-outs (the owner pasted the list, 27 Nov). **Partway along:** 'Crosstalk' rows take a fourth column
+`at` (0 the receiver's end, as before; 1 the transmitter's). `nextPath` (`si-lab.ts`): the channel's own transfer raised
+to 2·at (|H|^2a, the unwrapped phase × 2a: a uniform line's loss and delay over that part, there and back), its impulse
+per sample; whole symbols of delay dropped (the neighbour's pattern is independent, only the part of a symbol and the
+loss matter), so it stays inside the eye's window. `pathsOf` gives `Eye.xtalkPath` (one per row, undefined at 0);
+`si.eye` convolves that row's NEXT with it (`way`), `aggressorsOf` the NEXT edge before `near`. FEXT is unchanged
+(it builds along the whole line). **Side by side:** `aggressorsOf` sets `Aggressor.inner`, the index of the line just
+inside on the same side (rows on one side stack outwards in order; NEXT and FEXT of a row both point at the inner
+row's first aggressor); `ami.flow` maps it to the link's lane numbers (`inner`, 1-based, only for lanes with
+signals), `ami.js` passes it, `ami-host.js` `link` builds `pairs`: the two lanes hear each other through the inner
+lane's own coupling (equal spacing), two overlap-add channels each; lines on opposite sides are not coupled (the
+victim between them). A bad `inner` is refused. **Fine steps:** `fixtureCurrent` sub-steps each table step so the
+shortest of the network's times (√(LC), L/R, R·C) gets 200 steps (at most 1000 per table step), V straight between
+samples. Tests: the series-L fixture against the exact ramp answer to 1e-5; the measured driver now recovered within
+1% (was 3%); halfway down a 0.2 m line the NEXT changes the eye's height by more than 1 mV against the receiver's end;
+a link told [-, -, 1, 2] for two lines per side; in the computer app a second neighbour just outside the first hears
+it (held at 0.4 V: peak up 0.4 × 2/3 × 0.1), an `inner` of itself refused. Not built: the victim hearing a neighbour
+through another (k², second order); neighbours across the victim; distributed coupling (each row couples at one place).
+

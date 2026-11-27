@@ -146,8 +146,8 @@ def('eyeDiagram', (a, nout, lab) => {
   const tx = modelOf(lab, o.get('TxModel'), 'TxModel'), rx = modelOf(lab, o.get('RxModel'), 'RxModel'), models = !!(tx || rx), most = models ? 100000 : 20000;
   const mod = optText(o, 'Modulation', 'NRZ').toUpperCase(), spu = Math.round(optNum(o, 'SamplesPerUI', 16)), nsym = Math.round(optNum(o, 'Symbols', models ? 5000 : 2000));
   if ((mod !== 'NRZ' && mod !== 'PAM4') || !(rate > 0 && spu >= 4 && spu <= 64 && nsym >= 100 && nsym <= most)) throw new LabError(`${w}: 'Modulation' 'NRZ' or 'PAM4', 'SamplesPerUI' 4 to 64, 'Symbols' 100 to ${most.toLocaleString('en')}.`);
-  const H = through(S), rise = optNum(o, 'Rise', 0), xt = crosstalkOf(o.get('Crosstalk')), mk = o.has('Mask') ? nums(o.get('Mask')) : null;
-  const base: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: Math.round(optNum(o, 'DFE', 0)), rj: optNum(o, 'RJ', 0), dj: optNum(o, 'DJ', 0), noise: optNum(o, 'Noise', 0), ber: optNum(o, 'BER', 1e-12), xtalk: xt, ...(mk ? { mask: [mk[0], mk[1]] as [number, number] } : {}), seed: Math.round(optNum(o, 'Seed', 1)) };
+  const H = through(S), rise = optNum(o, 'Rise', 0), xt = crosstalkOf(o.get('Crosstalk')), paths = pathsOf(S, xt, rate, Math.round(optNum(o, 'SamplesPerUI', 16))), mk = o.has('Mask') ? nums(o.get('Mask')) : null;
+  const base: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: Math.round(optNum(o, 'DFE', 0)), rj: optNum(o, 'RJ', 0), dj: optNum(o, 'DJ', 0), noise: optNum(o, 'Noise', 0), ber: optNum(o, 'BER', 1e-12), xtalk: xt, xtalkPath: paths, ...(mk ? { mask: [mk[0], mk[1]] as [number, number] } : {}), seed: Math.round(optNum(o, 'Seed', 1)) };
   if (![7, 9, 11, 15, 23, 31].includes(base.order) || base.dfe < 0 || base.dfe > 20) throw new LabError(`${w}: 'PRBS' 7, 9, 11, 15, 23 or 31; 'DFE' 0 to 20 taps.`);
   const cv = o.get('CTLE'), auto = cv && isText(cv) && cv.v.toLowerCase() === 'auto';
   let ctle = auto ? null : ctleOf(cv);
@@ -188,27 +188,60 @@ function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSigna
     for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
     return x;
   };
-  for (const [kn, kf, side] of e.xtalk) {
-    if (kn) { const hn = new Array(h.length).fill(0); hn[0] = (kn * spu) / 4 / dt; hn[1] = -hn[0]; out.push({ h: near(hn, side ?? 0), x: sig(out.length) }); }
-    if (kf) out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * kf * (spu / 4)), x: sig(out.length) });
-  }
+  const last = new Map<number, number>();
+  e.xtalk.forEach(([kn, kf, side], r) => {
+    // (M588) the line just inside this one on the same side, if any: the two leak into each other in a link
+    const inner = last.get(side ?? 0), first = out.length, path = e.xtalkPath?.[r];
+    if (kn) {
+      let hn = new Array(h.length).fill(0); hn[0] = (kn * spu) / 4 / dt; hn[1] = -hn[0];
+      if (path) hn = convolve(hn, path, hn.length);
+      out.push({ h: near(hn, side ?? 0), x: sig(out.length), inner });
+    }
+    if (kf) out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * kf * (spu / 4)), x: sig(out.length), inner });
+    if (out.length > first) last.set(side ?? 0, first);
+  });
   return out;
 }
-/** 'Crosstalk': [kNext kFext], or one row per neighbouring line [kNext kFext] / [kNext kFext side] (side 1 beside the
- * pair's first leg, −1 its second, 0 a neighbouring pair; with several rows and no side given, they sit on alternate
- * sides, M584's one on each side). */
+/** 'Crosstalk': [kNext kFext], or one row per neighbouring line [kNext kFext], [kNext kFext side] or [kNext kFext side
+ * at] (side 1 beside the pair's first leg, −1 its second, 0 a neighbouring pair; with several rows and no side given,
+ * they sit on alternate sides, M584's one on each side, the later rows further out; at, M588, where along the line the
+ * neighbour runs beside it: 0 at the receiver's end, 1 at the transmitter's). */
 function crosstalkOf(v: Value | undefined): si.Eye['xtalk'] {
   if (!v) return [];
   const M = toMat(v);
   if (M.r * M.c === 0) return [];
-  if (!(M.c === 2 || M.c === 3) && !(M.r === 1 && M.c <= 3)) throw new LabError("'Crosstalk' is [kNext kFext], or a row per neighbour [kNext kFext] or [kNext kFext side].");
+  if (!(M.c >= 2 && M.c <= 4) && !(M.r === 1 && M.c <= 4)) throw new LabError("'Crosstalk' is [kNext kFext], or a row per neighbour [kNext kFext], [kNext kFext side] or [kNext kFext side at].");
   return Array.from({ length: M.r }, (_, r) => {
-    const at = (c: number) => (c < M.c ? M.d[c * M.r + r] : undefined), sd = at(2);
+    const at = (c: number) => (c < M.c ? M.d[c * M.r + r] : undefined), sd = at(2), where = at(3) ?? 0;
     if (sd !== undefined && ![0, 1, -1].includes(sd)) throw new LabError("'Crosstalk': a neighbour's side is 1 (beside the first leg), -1 (the second) or 0 (a neighbouring pair).");
+    if (!(where >= 0 && where <= 1)) throw new LabError("'Crosstalk': where a neighbour runs beside the line is 0 (the receiver's end) to 1 (the transmitter's).");
     const side = (sd ?? (M.r > 1 ? (r % 2 ? -1 : 1) : 0)) as 0 | 1 | -1;
-    return [at(0) ?? 0, at(1) ?? 0, side];
+    return [at(0) ?? 0, at(1) ?? 0, side, where];
   });
 }
+/**
+ * The way back from a neighbour that runs beside the line partway along (M588): its near-end wave starts `at` of the way
+ * down and comes back to the receiver over that part twice, the channel's own transfer raised to 2·at (its loss and
+ * delay, a uniform line's), per sample every dt. Whole symbols of delay are dropped: the neighbour's pattern is
+ * independent of the victim's, so only the part of a symbol (and the loss) changes what the eye sees.
+ */
+function nextPath(f: number[], H: si.C[], at: number, rate: number, spu: number): number[] {
+  let u = 0, prev = 0;
+  const Hs = H.map(([re, im], k): si.C => {
+    const ph = Math.atan2(im, re);
+    u = k ? u + ph - prev - 2 * Math.PI * Math.round((ph - prev) / (2 * Math.PI)) : ph; prev = ph;
+    const m = Math.hypot(re, im) ** (2 * at);
+    return [m * Math.cos(2 * at * u), m * Math.sin(2 * at * u)];
+  });
+  const r = si.impulseResponse(f, Hs, rate, spu, 256), g = r.h.map((v) => v * r.dt);
+  let pk = 0; for (let k = 1; k < g.length; k++) if (Math.abs(g[k]) > Math.abs(g[pk])) pk = k;
+  return g.slice(spu * Math.floor(pk / spu));
+}
+/** The rows' ways back (only for those partway along). */
+const pathsOf = (S: ReturnType<typeof sOf>, xt: si.Eye['xtalk'], rate: number, spu: number) => {
+  const H = through(S);
+  return xt.map((x) => (x[3] ? nextPath(S.f, H, x[3], rate, spu) : undefined));
+};
 /** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) and the aggressors' through the
  * statistical or the time-domain flow; statistical gives pulses for the usual eye, time-domain a received waveform
  * measured as it is (the receiver's own equaliser replaces FFE and DFE), its first symbols left out while the models
@@ -293,8 +326,8 @@ def('amiSimulate', (a, _n, lab) => {
     const sw = optNum(o, 'Swing', 0.8); x = new Array(a2.length * spu);
     for (let k = 0; k < a2.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a2[k] * sw) / 2;
   }
-  const xt = crosstalkOf(o.get('Crosstalk'));
-  const eLike: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: xt, seed: Math.round(optNum(o, 'Seed', 1)) };
+  const xt = crosstalkOf(o.get('Crosstalk')), paths = pathsOf(S, xt, rate, spu);
+  const eLike: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: xt, xtalkPath: paths, seed: Math.round(optNum(o, 'Seed', 1)) };
   const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, eLike, fl === 'timedomain', an.near)), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
   const aggM = f.aggRx.length ? rows(f.aggRx) : mat(0, 0);
   f.messages.unshift(...an.messages);

@@ -168,9 +168,11 @@ function remote(file, exe, dir) {
  * Each neighbouring line (M582) is a link of its own, its transmitter trained by its own receiver over the same
  * channel, in a folder of its own (a1, a2 …: their files never meet, whatever the model calls them). Every block, all
  * the transmitters run first; then the victim's receiver hears its line plus each neighbour through its coupling, and
- * each neighbour's receiver its own line plus the victim through the same coupling (taken as reciprocal; the
- * neighbours, one on each side, are not coupled to each other).
- * req: { tx, rx: { file, params, helper? }, impulse, rows, dt, ui, wave, aggs: [{ wave, h }], interval, training, dir }.
+ * each neighbour's receiver its own line plus the victim through the same coupling (taken as reciprocal). A neighbour
+ * further out on the same side (M588: `inner`, the lane just inside it, 1-based) and that lane hear each other too,
+ * through the inner lane's own coupling (the lines equally spaced); lines on opposite sides, the victim between them,
+ * are not coupled.
+ * req: { tx, rx: { file, params, helper? }, impulse, rows, dt, ui, wave, aggs: [{ wave, h, inner? }], interval, training, dir }.
  */
 async function link(req) {
   const fs = require('node:fs'), path = require('node:path');
@@ -197,6 +199,15 @@ async function link(req) {
       const hj = j ? f64(aggs[j - 1].h) : null;
       lanes.push({ T, R, ti, ri, x: j ? f64(aggs[j - 1].wave) : x0, chan: channel(h, req.dt, most), into: hj && channel(hj, req.dt, most), from: hj && channel(hj, req.dt, most), tx: ti.params, rx: ri.params });
     }
+    // neighbours side by side (M588): each pair its own two overlap-add channels, one each way
+    const pairs = [];
+    aggs.forEach((g, i) => {
+      if (g.inner === undefined) return;
+      const k = g.inner, j = i + 1;
+      if (!Number.isInteger(k) || k < 1 || k > aggs.length || k === j) throw new Error(`Neighbouring line ${j}: the line inside it is 1 to ${aggs.length}, not itself.`);
+      const hk = f64(aggs[k - 1].h);
+      pairs.push({ j, k, toJ: channel(hk, req.dt, most), toK: channel(hk, req.dt, most) });
+    });
     const out = new Float64Array(n), clocks = [], history = [];
     for (let at = 0; at < n && !error;) {
       const len = Math.min(at < trainEnd ? small : big, n - at), sent = [];
@@ -212,6 +223,10 @@ async function link(req) {
         const c = L.into(sent[j].wave), back = L.from(sent[0].wave);
         for (let k = 0; k < len; k++) { pins[0][k] += c[k]; pins[j][k] += back[k]; }
       });
+      for (const P of pairs) {
+        const a = P.toJ(sent[P.k].wave), b = P.toK(sent[P.j].wave);
+        for (let k = 0; k < len; k++) { pins[P.j][k] += a[k]; pins[P.k][k] += b[k]; }
+      }
       for (const [j, L] of lanes.entries()) {
         const r = await L.R.wave(pins[j]);
         if (!r.ok) { error = `${j ? `Neighbouring line ${j}'s` : 'The'} receiver's AMI_GetWave refused at sample ${at}.`; break; }
