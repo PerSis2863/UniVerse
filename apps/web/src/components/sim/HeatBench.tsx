@@ -17,6 +17,7 @@ import type { Fineness } from '@/lib/sim/mesh';
 import { SimCanvas, type Shown, type SimView } from './SimCanvas';
 import { EdgeTicks, NumField, ui } from './bench-ui';
 import type { FromSim, ToSim } from './sim.worker';
+import { watchWorker } from '@/lib/error-monitor';
 
 // Hyperion Simulate → Heat (M407): the thermal workbench, laid out like Structures: the study's outline and details on
 // the left, the part in colour on the right. Every change solves again; over time, a slider and Play step through it.
@@ -61,6 +62,7 @@ export function HeatBench() {
       waiting.current = null;
       if (next) send(next); else setBusy(false);
     };
+    watchWorker(w, 'heat', (msg) => { running.current = false; waiting.current = null; setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

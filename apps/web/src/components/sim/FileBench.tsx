@@ -11,6 +11,8 @@ import { Sim3DView } from './Sim3DView';
 import type { SimView } from './SimCanvas';
 import { NumField, ui } from './bench-ui';
 import type { FromStl, ToStl } from './stl.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → 3D file (M552): stress in a part from an STL file (3D printing and CAD's export format, in mm).
 // The part is filled with small cubes (shown, with their size), its six sides named after the box around it (the
@@ -65,6 +67,7 @@ export function FileBench() {
   useEffect(() => {
     const w = new Worker(new URL('./stl.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromStl>) => { if (e.data.id === seq.current) { setOut(e.data); setBusy(false); } };
+    watchWorker(w, '3D file', (msg) => { setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

@@ -15972,3 +15972,13 @@ forever (Signal, Spectrum, Envelope spectrum never drawn).
   then the Reload screen).
 - Other Hyperion pages still create workers without it (20 more `new Worker(new URL(…))`, listed by
   `grep -rn "new Worker(new URL" src`): add `watchWorker` where a page shows a busy state while it waits.
+
+## M577 (27 Nov): fix, every Hyperion window stops waiting when its worker can't start
+
+M576's left-out. `watchWorker` (`src/lib/error-monitor.ts`) now also guards the Code window (`LabApp.tsx`: the message
+goes to the command window, the run and anything queued end) and the Simulate benches: Structures, Heat, Fields,
+3D file, Fluids, Planner, Sensing, Blocks and its Tune, Prove and Verify tools (busy / running… ends and a toast says
+why). As in M576, a worker that didn't load reloads the page once to the new version.
+- Not guarded on purpose: the decorative workers (`AppBackdrop`, `EarthGlobe`, `Planet`, Trace's map engine), Ghidra's
+  on-device model (it already falls back) and `lab.worker.ts`'s own `par.worker.ts` helpers (inside a worker).
+- A new page that waits on a worker: call `watchWorker(w, name, failed)` right after `new Worker(...)`.

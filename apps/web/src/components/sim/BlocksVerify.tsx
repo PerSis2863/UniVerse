@@ -9,6 +9,8 @@ import type { Verified } from '@/lib/sim/verify';
 import { ui } from './bench-ui';
 import { BlocksProve } from './BlocksProve';
 import type { FromVerify, ToVerify } from './verify.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Blocks → Verify (M566): requirements written against the diagram's signals, then one press runs
 // them on the model and on tests made to reach every decision, measures coverage, checks the model, and offers a
@@ -54,6 +56,7 @@ export function BlocksVerify({ dg, names, setReqs, setProve }: { dg: Diagram; na
   useEffect(() => {
     const w = new Worker(new URL('./verify.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromVerify>) => { if (e.data.id !== asked.current) return; setBusy(false); setRes('ok' in e.data ? { v: e.data.ok, ms: e.data.ms } : { error: e.data.error, ms: e.data.ms }); };
+    watchWorker(w, 'verifier', (msg) => { setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

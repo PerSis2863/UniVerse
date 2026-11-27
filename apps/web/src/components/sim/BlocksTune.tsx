@@ -10,6 +10,8 @@ import { coeffs, type Diagram } from '@/lib/sim/blocks';
 import { ui } from './bench-ui';
 import { fmt, ScopePlot, ticks } from './scope-plot';
 import type { FromTune, Report, ToSystune, ToTune, ToTuneAll } from './tune.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Blocks → Tune (M562, the owner's picture of MATLAB's PID Tuner): the plant is the diagram as one
 // of its PID blocks sees it (linearised where the model is at a chosen moment) or a transfer function typed in. Two
@@ -85,6 +87,7 @@ export function BlocksTune({ dg, names, colours, setParams }: { dg: Diagram; nam
       if (e.data.sys) { if (e.data.id === askedSys.current) { setSys(e.data); setSysBusy(false); } return; }
       if (e.data.id === asked.current) setRes(e.data);
     };
+    watchWorker(w, 'tuner', (msg) => { setAllBusy(false); setSysBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

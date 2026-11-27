@@ -7,6 +7,8 @@ import { chartOf, type Diagram, type ProveRules } from '@/lib/sim/blocks';
 import type { Iv, Proof } from '@/lib/sim/prove';
 import { ui } from './bench-ui';
 import type { FromProve, ToProve } from './prove.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Blocks → Verify → Prove (M573): a Chart block's logic proved for every input value, forever
 // (abstract interpretation), with a counterexample to replay when a property fails. M574: what's typed is kept with the
@@ -50,6 +52,7 @@ export function BlocksProve({ dg, names, setRules }: { dg: Diagram; names: Map<s
   useEffect(() => {
     const w = new Worker(new URL('./prove.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromProve>) => { if (e.data.id !== asked.current) return; setBusy(false); setRes(e.data); };
+    watchWorker(w, 'prover', (msg) => { setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

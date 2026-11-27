@@ -42,6 +42,7 @@ import { builtinNames } from './matlab-lang';
 import { LANGS, langOf } from '@/lib/lab/langs';
 import { LangRunner, type LangEvent } from './lang-runner';
 import { SCIENCE_EXAMPLES } from '@/lib/lab/examples-sciences';
+import { watchWorker } from '@/lib/error-monitor';
 
 /** Figures from the other languages (M466–) are numbered from here and shown as pictures, never put into the page. */
 const OTHER_FIG = 1_000_000;
@@ -317,6 +318,7 @@ export function LabApp() {
       if (next !== null) { queued.current = null; if (next.startsWith(NOTE_ALL)) { const [k, ...rest] = next.slice(NOTE_ALL.length).split('\u0000'); runNotes(rest.join('\u0000'), Number(k)); } else run(next, 'live'); }
       else nextNote();
     };
+    watchWorker(w, 'hyperion', (msg) => { print({ k: 'err', t: `${msg}\n` }); pending.current = null; busyNow.current = false; queued.current = null; setBusy(false); });
     worker.current = w;
     // A restarted engine (after Stop) gets the files again.
     if (fileData.current.size) w.postMessage({ upload: [...fileData.current.values()] } satisfies ToLab);

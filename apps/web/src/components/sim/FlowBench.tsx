@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { swingRate, U, type FlowShape, type ShapeKind } from '@/lib/sim/flow';
 import { ui } from './bench-ui';
 import type { FlowFrame, FlowView, FromFlow, ToFlow } from './flow.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Fluids (M408): the wind tunnel's window. The flow in colour (speed, pressure or swirl) with
 // tracer particles riding it, the shape in grey, and its drag and lift as they settle (or swing, when the wake sways:
@@ -106,6 +108,7 @@ export function FlowBench() {
         if (now - lastStats.current > 250) { lastStats.current = now; setStats({ steps: m.frame.steps, history: m.frame.history }); }
       });
     };
+    watchWorker(w, 'wind tunnel', (msg) => { toast.error(msg); });
     worker.current = w;
     const hidden = () => w.postMessage({ paused: document.hidden } satisfies ToFlow);
     document.addEventListener('visibilitychange', hidden);

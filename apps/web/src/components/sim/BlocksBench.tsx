@@ -15,6 +15,8 @@ import { BlocksCode } from './BlocksCode';
 import { BlocksVerify } from './BlocksVerify';
 import { Segmented } from '@/components/ui/Segmented';
 import type { FromBlocks, ToBlocks } from './blocks.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Blocks (M415): model-based design. Add blocks from the library, drag them about, drag from a
 // block's output (the dot on its right) to another's input to wire them (or choose each input in the panel); the
@@ -124,6 +126,7 @@ export function BlocksBench() {
   useEffect(() => {
     const w = new Worker(new URL('./blocks.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromBlocks>) => { if (e.data.id === asked.current) setResult(e.data); };
+    watchWorker(w, 'blocks', (msg) => { setPending(0); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);
