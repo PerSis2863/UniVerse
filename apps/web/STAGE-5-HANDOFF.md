@@ -15876,3 +15876,38 @@ M566's left-out ("formal proof, model checking every input"). Blocks → Verify 
 - Left out: proofs over the continuous blocks (the chart's inputs stand for whatever the diagram feeds it), relational
   domains (octagons, polyhedra: two variables' relation is lost in boxes), temporal properties beyond "always" and
   "can reach" (for example "within 2 s after").
+
+## M574 (27 Nov): Hyperion, proofs inside the diagram, rules kept, history in charts
+
+M573's three left-outs, plus the red Checks run on 8746f99.
+
+- **Checks fix:** `ladder.test.ts` line 33 used `(x.match(re) ?? [])`, which GitHub's fresh TypeScript read as `never[]`
+  ("Property 'startsWith' does not exist on type 'never'"); local passed. Now `[...x.matchAll(re)]`. Watch for the
+  `?? []` pattern on a `match` result in new code.
+- **History** (`state Machine history`, `chart.ts`): Stateflow's history junction, shallow. `_h_<Machine>` (a hidden
+  local) holds the index of the inner state last entered (set in that inner state's entry chain; 0 at the start, so the
+  first visit is as before). `enterTo` now returns the ways in (`Entry`: guard, actions, leaves): a history state gives
+  one per inner state, guarded by `_h_X == j`, the guard `subst`-ed by whatever runs before it (exits, the
+  transition's actions, earlier regions); `options` pushes one outcome per way; the start takes the way whose guard
+  holds with every `_h_` at 0. An explicit target inside still wins; the remembered state's own inside starts afresh
+  unless it has `history` too. Refused on a parallel state and on a state with nothing inside. `Chart.history` lists
+  them; the drawing labels the box "(H: remembers)". Simulation, generated code, Ladder and Prove need nothing new
+  (it's all in the flat chart). Tests in `chart.test.ts` (with/without history, explicit target, code matches).
+- **The rest of the diagram** (`prove-diagram.ts`, `diagramRanges`, `chartInputRanges`): a range for every signal over
+  the run (0 … stop s), a monotone fixpoint over the blocks (⊥ = nothing yet; 12 growths → widened to ±∞; ≤ 300
+  rounds). Transfer functions: `impulseParts`, ∫h⁺ and ∫h⁻ of the strictly proper part by RK4 (step ≤ stop/2000 and
+  ≤ 0.2/(1+max|a|), stops when died away, a 1e-4 relative margin), output ⊂ D·u + ∫h⁺·u + ∫h⁻·u (from rest). Integrator:
+  start + stop·hull(0, u); PID: Kp·e + Ki·stop·hull(0,e) + Kd·N·(e − hull(0,e)); ramp to where it gets by `stop`;
+  board inputs any value; charts by M573's `boxes` (cached per input ranges). The worker (`prove.worker.ts`) now gets
+  the whole diagram and the chart's id (`ToProve.dg`, `chart`, `fromDiagram`) and returns the ranges used.
+  **Trap:** an integrator inside a loop is bounded only by the run's length, so the tank example gives level ∈
+  [−94.5, 89.5]: sound, not sharp. A loop with no saturation or chart in it widens to ±∞ (the chart then sees "any
+  number", same as before).
+- **Kept with the diagram:** `Diagram.prove` (`ProveRules`: props, ranges as typed strings, `fromDiagram`), per Chart
+  block id, cleaned by `readDiagram` (≤ 30 charts, 20 properties of ≤ 200 characters, 6 ranges). `BlocksProve` reads
+  and writes it through `setProve` from `BlocksBench` (so it's saved and undone like the rest of the diagram).
+- Browser check `hyperion-control-ui.mjs` (ONLY=Prove): the diagram's ranges shown, the rules in `uv-sim-blocks`; axe
+  clean, light and dark.
+- Left out: deep history (Stateflow's is shallow too), relating signals to each other in the diagram (an integrator in
+  a loop is bounded by the run's length, not by the loop holding it), proofs past the run's end for the diagram part.
+

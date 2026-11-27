@@ -1,5 +1,6 @@
 // M562– Simulate → Blocks → tools: the PID tuner on the cruise model (tables filled, Update block writes the gains);
-// M570–M573: side-by-side states drawn, Ladder Diagram, tuning all loops at once, proofs.
+// M570–M573: side-by-side states drawn, Ladder Diagram, tuning all loops at once, proofs; M574: proofs with the
+// diagram's ranges, kept with the diagram.
 // Axe at 1280, dark and light; no page errors.
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/hyperion-control-ui.mjs
 import { createRequire } from 'node:module';
@@ -81,6 +82,13 @@ try {
         await page.getByRole('button', { name: 'Prove', exact: true }).click();
         await page.locator('[data-proofs]').waitFor({ timeout: 60_000 });
         r.proofs = (await page.locator('[data-proofs]').innerText()).slice(0, 700);
+        // M574: the inputs from the rest of the diagram, and what was typed kept with the diagram.
+        await page.getByLabel('Inputs from the rest of the diagram').check();
+        await page.getByRole('button', { name: 'Prove', exact: true }).click();
+        await page.locator('[data-proofs]').getByText('The diagram feeds it').waitFor({ timeout: 60_000 });
+        r.proofsDiagram = (await page.locator('[data-proofs]').innerText()).slice(0, 700);
+        await page.waitForTimeout(1200);
+        r.kept = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('uv-sim-blocks') ?? '{}').prove ?? null));
       }
       if (tool === 'Tune') {
         await page.getByRole('button', { name: 'Update block' }).isEnabled({ timeout: 20_000 }).catch(() => {});

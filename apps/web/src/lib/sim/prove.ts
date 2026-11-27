@@ -25,11 +25,11 @@ export interface Proof { text: string; verdict: Verdict; kind: 'always' | 'reach
 export interface ProveResult { proofs: Proof[]; states: number; widened: boolean; tries: number }
 
 const TOP: Iv = [-Infinity, Infinity];
-const join = (a: Iv, b: Iv): Iv => [Math.min(a[0], b[0]), Math.max(a[1], b[1])];
+export const join = (a: Iv, b: Iv): Iv => [Math.min(a[0], b[0]), Math.max(a[1], b[1])];
 const pt = (v: number): Iv => [v, v];
 const B01: Iv = [0, 1], T: Iv = [1, 1], F: Iv = [0, 0];
 const truth = (a: Iv): Iv => (a[0] > 0 || a[1] < 0 ? T : a[0] === 0 && a[1] === 0 ? F : B01);
-const mulIv = (a: Iv, b: Iv): Iv => { const p = [a[0] * b[0], a[0] * b[1], a[1] * b[0], a[1] * b[1]].map((x) => (Number.isNaN(x) ? 0 : x)); return [Math.min(...p), Math.max(...p)]; };
+export const mulIv = (a: Iv, b: Iv): Iv => { const p = [a[0] * b[0], a[0] * b[1], a[1] * b[0], a[1] * b[1]].map((x) => (Number.isNaN(x) ? 0 : x)); return [Math.min(...p), Math.max(...p)]; };
 const mono = (f: (x: number) => number, a: Iv): Iv => [f(a[0]), f(a[1])];
 
 /** An expression's range for any values in these ranges. */

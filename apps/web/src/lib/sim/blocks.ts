@@ -13,7 +13,10 @@ export interface Wire { id: string; from: string; out: number; to: string; in: n
 /** A requirement on a signal (M566): `signal` is a block id and output (`id#0`). */
 export type ReqKind = 'range' | 'settle' | 'reach' | 'overshoot';
 export interface Req { id: string; text: string; signal: string; kind: ReqKind; a: number; b: number; from: number }
-export interface Diagram { blocks: Block[]; wires: Wire[]; stop: number; dt: number; reqs?: Req[] }
+/** What a person typed into Verify → Prove for one Chart block (M574): its properties, its inputs' ranges (blank: any
+ * number) and whether the ranges come from the diagram instead. */
+export interface ProveRules { props: string[]; ranges: Record<string, [string, string]>; fromDiagram?: boolean }
+export interface Diagram { blocks: Block[]; wires: Wire[]; stop: number; dt: number; reqs?: Req[]; prove?: Record<string, ProveRules> }
 
 /** A new chart's text (M563). */
 export const CHART = `inputs: u
@@ -366,5 +369,14 @@ export function readDiagram(raw: unknown): Diagram {
   const wires = d.wires.filter((w) => w && ids.has(String(w.from)) && ids.has(String(w.to))).slice(0, 400).map((w) => ({ id: String(w.id), from: String(w.from), out: n(w.out), to: String(w.to), in: n(w.in) }));
   const reqs = (Array.isArray(d.reqs) ? d.reqs : []).filter((r) => r && ['range', 'settle', 'reach', 'overshoot'].includes(r.kind) && ids.has(String(r.signal).split('#')[0])).slice(0, 50)
     .map((r) => ({ id: String(r.id).slice(0, 40), text: String(r.text ?? '').slice(0, 300), signal: String(r.signal).slice(0, 80), kind: r.kind, a: n(r.a), b: n(r.b), from: n(r.from) }));
-  return { blocks, wires, stop: Math.max(1e-3, Math.min(1e5, n(d.stop, 10))), dt: Math.max(1e-5, Math.min(10, n(d.dt, 0.01))), ...(reqs.length ? { reqs } : {}) };
+  const prove: Record<string, ProveRules> = {};
+  const rawProve = d.prove && typeof d.prove === 'object' ? d.prove : {};
+  for (const [id, r] of Object.entries(rawProve).slice(0, 30)) {
+    if (!ids.has(id) || !r || typeof r !== 'object') continue;
+    const props = (Array.isArray(r.props) ? r.props : []).filter((x) => typeof x === 'string').slice(0, 20).map((x) => x.slice(0, 200));
+    const ranges = Object.fromEntries(Object.entries(r.ranges && typeof r.ranges === 'object' ? r.ranges : {}).filter(([k, v]) => /^[A-Za-z_]\w{0,39}$/.test(k) && Array.isArray(v)).slice(0, 6)
+      .map(([k, v]) => [k, [String(v[0] ?? '').slice(0, 24), String(v[1] ?? '').slice(0, 24)] as [string, string]]));
+    prove[id] = { props, ranges, ...(r.fromDiagram === true ? { fromDiagram: true } : {}) };
+  }
+  return { blocks, wires, stop: Math.max(1e-3, Math.min(1e5, n(d.stop, 10))), dt: Math.max(1e-5, Math.min(10, n(d.dt, 0.01))), ...(reqs.length ? { reqs } : {}), ...(Object.keys(prove).length ? { prove } : {}) };
 }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Download, Play, Plus, Trash2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { blockId, KINDS, type Diagram, type Req, type ReqKind } from '@/lib/sim/blocks';
+import { blockId, KINDS, type Diagram, type ProveRules, type Req, type ReqKind } from '@/lib/sim/blocks';
 import { safeNames } from '@/lib/sim/blockir';
 import type { Verified } from '@/lib/sim/verify';
 import { ui } from './bench-ui';
@@ -43,7 +43,7 @@ ${v.all.filter((o) => !v.hit.includes(o.id)).length ? `<p>Not reached:</p><ul>${
 </body></html>`;
 }
 
-export function BlocksVerify({ dg, names, setReqs }: { dg: Diagram; names: Map<string, string>; setReqs: (r: Req[]) => void }) {
+export function BlocksVerify({ dg, names, setReqs, setProve }: { dg: Diagram; names: Map<string, string>; setReqs: (r: Req[]) => void; setProve: (chart: string, r: ProveRules) => void }) {
   const reqs = dg.reqs ?? [];
   const signals = dg.blocks.flatMap((b) => Array.from({ length: KINDS[b.kind].outs(b.p) }, (_, k) => ({ id: `${b.id}#${k}`, label: `${names.get(b.id)}${KINDS[b.kind].outs(b.p) > 1 ? ` output ${k + 1}` : ''}` })));
   const sigName = (s: string) => signals.find((x) => x.id === s)?.label ?? s;
@@ -127,7 +127,7 @@ export function BlocksVerify({ dg, names, setReqs }: { dg: Diagram; names: Map<s
           </section>
         </div>
       )}
-      <BlocksProve dg={dg} names={names} />
+      <BlocksProve dg={dg} names={names} setRules={setProve} />
     </div>
   );
 }

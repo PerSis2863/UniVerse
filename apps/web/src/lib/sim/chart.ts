@@ -16,7 +16,9 @@
 // the old state's exit actions, the transition's actions (after `/`), the new state's entry actions. Otherwise the
 // state's `during` actions run. Names that are assigned but neither inputs nor outputs are the chart's own variables
 // (starting at 0). Expressions: numbers, names, + − * / ^, comparisons, && || !, abs min max sqrt sin cos exp floor,
-// and `t`, the seconds the state has been active. The same tree is what the code generators print (M565).
+// and `t`, the seconds the state has been active. `state Machine history` (M574) remembers which of its inner states was
+// active when it was left, and going back into Machine resumes that one (its own inside starts afresh unless it has
+// `history` too, as Stateflow's history junction does). The same tree is what the code generators print (M565).
 
 export type Expr =
   | { k: 'num'; v: number }
@@ -31,6 +33,8 @@ export interface Transition { from: number; to: number; cond: Expr; after: numbe
  * state's entry). `parents`: for a chart with states inside states, each leaf's outer states, outermost first. */
 export interface Chart {
   inputs: string[]; outputs: string[]; locals: string[]; states: ChartState[]; trans: Transition[]; init?: Assign[]; parents?: string[][];
+  /** States with `history` (M574): they resume their last inner state. */
+  history?: string[];
   /** Side-by-side (parallel, AND) states (M570): the chart as written, for drawing. `leaves`: its innermost states
    * (full names); `active[i]`: which of them flat state i has active; `leafParents`: each leaf's outer states;
    * `parallel`: the states whose inside runs side by side; `src`: its transitions between leaves (or outer states);
@@ -43,7 +47,7 @@ export const FUNCS: Record<string, { n: number; f: (...a: number[]) => number }>
   sin: { n: 1, f: Math.sin }, cos: { n: 1, f: Math.cos }, exp: { n: 1, f: Math.exp }, floor: { n: 1, f: Math.floor },
 };
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const RESERVED = new Set(['t', 'time', 'in', 'parallel', 'state', 'inputs', 'outputs', 'after', 'entry', 'during', 'exit', ...Object.keys(FUNCS)]);
+const RESERVED = new Set(['t', 'time', 'in', 'parallel', 'history', 'state', 'inputs', 'outputs', 'after', 'entry', 'during', 'exit', ...Object.keys(FUNCS)]);
 
 /** An expression read into a tree (precedence: || then && then comparisons then + − then * / then ^ then unary). */
 export function parseExpr(src: string): Expr {
@@ -127,7 +131,7 @@ const assigns = (src: string, line: number): Assign[] => src.split(';').map((s) 
 export function parseChart(text: string): Chart {
   const inputs: string[] = [], outputs: string[] = [], states: ChartState[] = [], raw: { from: string; to: string; cond: Expr; after: number; action: Assign[]; line: number; text: string }[] = [];
   let cur: ChartState | null = null;
-  const parentOf = new Map<string, string>(), parallel = new Set<string>();
+  const parentOf = new Map<string, string>(), parallel = new Set<string>(), history = new Set<string>();
   text.split('\n').forEach((full, idx) => {
     const line = idx + 1, s = full.replace(/%.*$|\/\/.*$/, '').trim();
     if (!s) return;
@@ -137,14 +141,16 @@ export function parseChart(text: string): Chart {
       for (const n of list) if (!NAME.test(n) || RESERVED.has(n)) throw new Error(`Line ${line}: “${n}” can’t be a name here.`);
       (m[1].toLowerCase() === 'inputs' ? inputs : outputs).push(...list);
       cur = null;
-    } else if ((m = /^state\s+([A-Za-z_]\w*)(?:\s+in\s+([A-Za-z_]\w*))?(\s+\(?parallel\)?)?\s*$/i.exec(s))) {
+    } else if ((m = /^state\s+([A-Za-z_]\w*)(?:\s+in\s+([A-Za-z_]\w*))?((?:\s+\(?(?:parallel|history)\)?)*)\s*$/i.exec(s))) {
       if (states.some((st) => st.name === m![1])) throw new Error(`Line ${line}: there are two states called ${m[1]}.`);
       if (RESERVED.has(m[1])) throw new Error(`Line ${line}: “${m[1]}” can’t be a state's name.`);
       if (m[2] && !states.some((st) => st.name === m![2])) throw new Error(`Line ${line}: ${m[2]} has to come before the states inside it.`);
       cur = { name: m[1], entry: [], during: [], exit: [], line };
       states.push(cur);
       parentOf.set(m[1], m[2] ?? '');
-      if (m[3]) parallel.add(m[1]);
+      if (/parallel/i.test(m[3] ?? '')) parallel.add(m[1]);
+      if (/history/i.test(m[3] ?? '')) history.add(m[1]);
+      if (parallel.has(m[1]) && history.has(m[1])) throw new Error(`Line ${line}: ${m[1]} runs its inside side by side, so all of it is always active: it has nothing to remember.`);
     } else if ((m = /^(entry|during|exit)\s*:\s*(.*)$/i.exec(s))) {
       if (!cur) throw new Error(`Line ${line}: ${m[1]} actions go under a “state” line.`);
       (cur as ChartState)[m[1].toLowerCase() as 'entry' | 'during' | 'exit'].push(...assigns(m[2], line));
@@ -158,7 +164,7 @@ export function parseChart(text: string): Chart {
       try { cond = rest ? parseExpr(rest) : { k: 'num', v: 1 }; } catch (err) { throw new Error(`Line ${line}: ${(err as Error).message}.`); }
       raw.push({ from: m[1], to: m[2], cond, after, action, line, text: (m[3] ?? '').trim() });
       cur = null;
-    } else throw new Error(`Line ${line}: “${s.slice(0, 40)}” isn’t a chart line (inputs:, outputs:, state Name [in Outer] [parallel], entry:, during:, exit:, or A -> B: condition).`);
+    } else throw new Error(`Line ${line}: “${s.slice(0, 40)}” isn’t a chart line (inputs:, outputs:, state Name [in Outer] [parallel | history], entry:, during:, exit:, or A -> B: condition).`);
   });
   if (!states.length) throw new Error('A chart needs at least one “state Name” line.');
   if (states.length > 30) throw new Error('A chart can have at most 30 states.');
@@ -175,7 +181,8 @@ export function parseChart(text: string): Chart {
   for (const n of used) if (n !== 't' && n !== 'time' && !inputs.includes(n) && !outputs.includes(n) && !locals.includes(n)) throw new Error(`The chart uses ${n}, but it’s not an input, an output or something it sets.`);
   const ch: Chart = { inputs, outputs, locals, states, trans };
   for (const st of parallel) if (![...parentOf.values()].includes(st)) throw new Error(`Line ${states.find((x) => x.name === st)!.line}: ${st} runs its inside side by side, but nothing is inside it.`);
-  return [...parentOf.values()].some(Boolean) ? flatten(ch, parentOf, parallel) : ch;
+  for (const st of history) if (![...parentOf.values()].includes(st)) throw new Error(`Line ${states.find((x) => x.name === st)!.line}: ${st} remembers its inner state, but nothing is inside it.`);
+  return [...parentOf.values()].some(Boolean) ? flatten(ch, parentOf, parallel, history) : ch;
 }
 
 /** A chart's running state: the active state, when it was entered, every variable's value. */
@@ -276,7 +283,7 @@ const MAX_FLAT = 64, MAX_TRANS = 600;
  * region of a parallel state in the order written, each region able to fire one transition per step and seeing what
  * the regions before it did. A transition can't go between two regions of the same parallel state. States inside a
  * parallel state, and outer states, keep when they were entered in hidden variables, for their `after` and `t`. */
-function flatten(ch: Chart, parentOf: Map<string, string>, parallel: Set<string>): Chart {
+function flatten(ch: Chart, parentOf: Map<string, string>, parallel: Set<string>, history: Set<string>): Chart {
   const byName = new Map(ch.states.map((st) => [st.name, st]));
   const path = (name: string): string[] => { const out: string[] = []; for (let x = name; x; x = parentOf.get(x) ?? '') out.unshift(x); return out; };
   const kidsOf = new Map<string, string[]>([['', []]]);
@@ -289,16 +296,35 @@ function flatten(ch: Chart, parentOf: Map<string, string>, parallel: Set<string>
   const timed = (n: string) => kids(n).length > 0 || andAbove(n);
   const own = (n: string): Expr => (timed(n) ? sinceOf(n) : { k: 'var', name: 't' });
   const at = (list: Assign[], t: Expr): Assign[] => list.map((a) => ({ name: a.name, e: retime(a.e, t) }));
-  const entryOf = (n: string): Assign[] => [...(timed(n) ? [{ name: `_since_${n}`, e: { k: 'var', name: 'time' } as Expr }] : []), ...at(byName.get(n)!.entry, { k: 'num', v: 0 })];
+  // A state with `history` (M574) keeps which of its inner states was active last in `_h_<name>` (0: the first, so a
+  // first visit starts at the first inner state as usual); entering it without a path down resumes that one.
+  const hist = (n: string) => `_h_${n}`;
+  const entryOf = (n: string): Assign[] => {
+    const up = parentOf.get(n) ?? '';
+    return [
+      ...(timed(n) ? [{ name: `_since_${n}`, e: { k: 'var', name: 'time' } as Expr }] : []),
+      ...(history.has(up) ? [{ name: hist(up), e: { k: 'num', v: kids(up).indexOf(n) } as Expr }] : []),
+      ...at(byName.get(n)!.entry, { k: 'num', v: 0 }),
+    ];
+  };
 
-  /** Entering `n` and, below it, `rest` (a path down) or its first inner states (every region of a parallel one). */
-  const enterTo = (n: string, rest: string[], acts: Assign[], got: string[]) => {
-    acts.push(...entryOf(n));
-    const k = kids(n);
-    if (!k.length) { got.push(n); return; }
-    if (parallel.has(n)) for (const r of k) enterTo(r, r === rest[0] ? rest.slice(1) : [], acts, got);
-    else if (rest.length) enterTo(rest[0], rest.slice(1), acts, got);
-    else enterTo(k[0], [], acts, got);
+  /** The ways of entering `n` and, below it, `rest` (a path down) or its first inner states (every region of a parallel
+   * one; the remembered one of a history state, one way per inner state, each with its condition on `_h_`). */
+  type Entry = { guard: Expr; acts: Assign[]; got: string[] };
+  const enterTo = (n: string, rest: string[]): Entry[] => {
+    const mine = entryOf(n), k = kids(n);
+    if (!k.length) return [{ guard: TRUE, acts: mine, got: [n] }];
+    let subs: Entry[];
+    if (parallel.has(n)) {
+      subs = [{ guard: TRUE, acts: [], got: [] }];
+      for (const r of k) {
+        const e = enterTo(r, r === rest[0] ? rest.slice(1) : []);
+        subs = subs.flatMap((a) => e.map((b) => ({ guard: and(a.guard, subst(b.guard, a.acts)), acts: [...a.acts, ...b.acts], got: [...a.got, ...b.got] })));
+      }
+    } else if (rest.length) subs = enterTo(rest[0], rest.slice(1));
+    else if (history.has(n)) subs = k.flatMap((c, j) => enterTo(c, []).map((b) => ({ ...b, guard: and({ k: 'bin', op: '==', a: { k: 'var', name: hist(n) }, b: { k: 'num', v: j } }, b.guard) })));
+    else subs = enterTo(k[0], []);
+    return subs.map((b) => ({ ...b, guard: subst(b.guard, mine), acts: [...mine, ...b.acts] }));
   };
   /** Leaving `n` with these leaves active: innermost first (a parallel state's regions last to first), then n. */
   const exitOrder = (n: string, cfg: string[]): string[] => {
@@ -324,14 +350,15 @@ function flatten(ch: Chart, parentOf: Map<string, string>, parallel: Set<string>
     ch.trans.forEach((tr, k) => {
       if (plan[k].src !== n) return;
       const exits = exitOrder(plan[k].top, cfg).flatMap((x) => at(byName.get(x)!.exit, own(x)));
-      const entered: string[] = [], ent: Assign[] = [];
-      enterTo(plan[k].down[0], plan[k].down.slice(1), ent, entered);
       const flatAfter = !timed(n);
-      const cond = retime(tr.cond, own(n));
-      out.push({
-        guard: flatAfter || !tr.after ? cond : and({ k: 'bin', op: '>=', a: sinceOf(n), b: { k: 'num', v: tr.after - 1e-9 } }, cond),
-        acts: [...exits, ...at(tr.action, own(n)), ...ent], fired: true, moves: [{ top: plan[k].top, entered }], after: flatAfter ? tr.after : 0, parts: [k],
-      });
+      const cond = retime(tr.cond, own(n)), before = [...exits, ...at(tr.action, own(n))];
+      const guard = flatAfter || !tr.after ? cond : and({ k: 'bin', op: '>=', a: sinceOf(n), b: { k: 'num', v: tr.after - 1e-9 } }, cond);
+      for (const ent of enterTo(plan[k].down[0], plan[k].down.slice(1))) {
+        out.push({
+          guard: and(guard, subst(ent.guard, before)),
+          acts: [...before, ...ent.acts], fired: true, moves: [{ top: plan[k].top, entered: ent.got }], after: flatAfter ? tr.after : 0, parts: [k],
+        });
+      }
     });
     const during = at(byName.get(n)!.during, own(n)), k = kids(n);
     let inner: Outcome[];
@@ -361,8 +388,9 @@ function flatten(ch: Chart, parentOf: Map<string, string>, parallel: Set<string>
     for (const mv of moves) c = [...c.filter((l) => !under(l, mv.top)), ...mv.entered];
     return c.sort((a, b) => leaves.indexOf(a) - leaves.indexOf(b));
   };
-  const initActs: Assign[] = [], start: string[] = [];
-  enterTo(kids('')[0], [], initActs, start);
+  // At the start every `_h_` is 0: the way in whose condition holds then.
+  const begin = enterTo(kids('')[0], []).find((e) => !!evalExpr(e.guard, { time: 0 }))!;
+  const initActs = begin.acts, start = begin.got;
   // Without parallel states every leaf is a flat state (in the order written, the starting one first), so Verify
   // still sees a state nothing leads to; with them, only the combinations that can be reached.
   const cfgs: string[][] = parallel.size ? [apply(start, [])] : [start, ...leaves.filter((l) => l !== start[0]).map((l) => [l])];
@@ -385,8 +413,8 @@ function flatten(ch: Chart, parentOf: Map<string, string>, parallel: Set<string>
       if (trans.length > MAX_TRANS) throw new Error(`The chart has too many ways to move (over ${MAX_TRANS}); split it into fewer side-by-side states.`);
     }
   }
-  const hidden = ch.states.filter((st) => timed(st.name)).map((st) => `_since_${st.name}`);
-  const flat: Chart = { ...ch, states, trans, locals: [...ch.locals, ...hidden], init: initActs };
+  const hidden = [...ch.states.filter((st) => timed(st.name)).map((st) => `_since_${st.name}`), ...[...history].map(hist)];
+  const flat: Chart = { ...ch, states, trans, locals: [...ch.locals, ...hidden], init: initActs, ...(history.size ? { history: [...history] } : {}) };
   if (!parallel.size) return { ...flat, parents: cfgs.map((c) => path(c[0]).slice(0, -1)) };
   return {
     ...flat,
