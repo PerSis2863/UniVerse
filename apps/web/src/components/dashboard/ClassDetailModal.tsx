@@ -2,6 +2,7 @@
 
 import { createPortal } from 'react-dom';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { fadeIn, edgeIn } from '@/lib/motion';
 import { Clock, MapPin, Calendar as CalendarIcon, BookOpen, ExternalLink, Bell, FileText, Video, Users, X, ChevronRight as ChevronR } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSyncExternalStore } from 'react';
@@ -68,10 +69,9 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
     <AnimatePresence>
       {selectedClass && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[140]" onClick={onClose} />
+          <motion.div {...fadeIn} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[140]" onClick={onClose} />
           <motion.div
-            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 280 }}
+            {...edgeIn()}
             className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[400px] glass-sidebar border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-[150] overflow-y-auto flex flex-col"
           >
             {/* Header (padded below the phone status bar so the close button is always tappable) */}

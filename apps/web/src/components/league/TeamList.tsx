@@ -7,7 +7,7 @@ import Link from '@/components/ui/Link';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Field } from '@/components/ui/Field';
 import { confirmDialog } from '@/components/ui/Dialogs';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { spring, foldIn, fadeUp, list } from '@/lib/motion';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { Progress, day } from './LeagueBits';
@@ -54,7 +54,7 @@ function StartTeam({ onClose, act }: { onClose: () => void; act: LeagueAct }) {
     if (ok) onClose();
   };
   return (
-    <motion.form initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} onSubmit={save} className="overflow-hidden" aria-label="Start a team">
+    <motion.form {...foldIn} onSubmit={save} className="overflow-hidden" aria-label="Start a team">
       <div className="panel p-4 space-y-3">
         <Field label="Team name">{(p) => <input {...p} className="input" maxLength={40} required value={name} onChange={(e) => setName(e.target.value)} placeholder="Drop by Drop" />}</Field>
         <Field label="Looking for (optional)" hint="Who you’d like to join you: skills, or a university.">{(p) => <input {...p} className="input" maxLength={200} value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} placeholder="Someone who likes building things with sensors" />}</Field>
@@ -155,7 +155,7 @@ function ScoreForm({ t, d, act, onDone }: { t: LeagueTeamView; d: LeagueDetail; 
     if (ok) onDone();
   };
   return (
-    <motion.form initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} onSubmit={save} className="overflow-hidden" aria-label={`Score ${t.name}`}>
+    <motion.form {...foldIn} onSubmit={save} className="overflow-hidden" aria-label={`Score ${t.name}`}>
       <div className="rounded-xl bg-zinc-100 dark:bg-white/[0.05] p-3 space-y-2">
         {rubric.map((r) => (
           <div key={r.id} className="flex items-center gap-3">

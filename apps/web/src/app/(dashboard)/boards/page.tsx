@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Clock, Copy, Globe2, Loader2, LogOut, MoreHorizontal, PenLine, PenTool, Plus, Search, Trash2, Users } from 'lucide-react';
 import { m as motion } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { Topbar } from '@/components/layout/Topbar';
 import { CollabTabs } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
@@ -217,7 +218,7 @@ export default function BoardsPage() {
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {menu === b.id && (
-                    <motion.div onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                    <motion.div onClick={(e) => e.stopPropagation()} {...popIn}
                       className="absolute end-3 top-14 z-10 w-48 origin-top-right rtl:origin-top-left rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-2xl p-1.5 text-sm">
                       {b.myRole !== 'VIEWER' && <button onClick={() => void rename(b)} className="w-full px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200"><PenLine className="w-4 h-4" /> Rename</button>}
                       <button onClick={() => copy(b)} className="w-full px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Make a copy</button>

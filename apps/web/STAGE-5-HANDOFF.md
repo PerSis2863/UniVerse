@@ -15416,6 +15416,7 @@ measured in M468 (no long task at CPU ×1), so this is the app's window and two 
   streaming output draws only the new line, not up to 800 above it (index keys shifted every row once at the cap).
 - **[owner]:** after merging, GitHub → Actions → "Hyperion desktop" → Run workflow with "publish" ticked (version 1.2.0).
 
+
 ## M550: Hyperion's Code window: no overlap, the editor and command window full width (26 Nov)
 
 The owner, 26 Nov, with a screenshot: in Hyperion's Code window the command window was drawn over the editor's last
@@ -15596,3 +15597,115 @@ Ghidra's add-on retrained on the owner's RunPod (26 Nov; the owner: "train ghidr
 - **Uploaded as `ghidra-20261126-0926`** (it replaces `ghidra-20261123-1827`). The owner sets `GHIDRA_LORA` to it in Cloudflare; until then the old add-on answers the new list's skills too (only the variable changes which one).
 - **Still weak, for a later run:** sim-setup 78% (the load's kind), health 74% (a high finding with a healthy score), social 80% (green or health claims), assistant 82% (wrong details). The lessons step refused most often: meetings' Friday due dates (156), health summaries' length (99), sim-setup's load kind (56).
 - Next time: rent Community first (Secure costs about twice as much); keep `tee` and `STOP_WHEN_DONE=0` so a failure can be read before the pod goes.
+
+
+## M563 (26 Nov): every menu and window opens and closes like the search window
+
+(M563–M567 were built as M479–M483 on `claude/funny-galileo-y4mz9r` and renumbered on merging, 27 Nov: those numbers were taken on `main`. Their commits keep the old numbers.)
+
+The owner, 26 Nov (a picture of the top bar: search, light/dark, language, bell, account): "when i click on the search
+button it shows a smooth transition of opening and expanding… make it like that for the areas or where ever you can…
+i dont care if it takes time to load but i need everything ultra smooth". Opening already followed the search window
+on most menus (M351, M355, M372); the gaps were closing and four parts with older openings.
+- **Closing, everywhere (`leave` in `src/lib/scroll-motion.ts`):** a floating part the motion layer eased in after a
+  press (`floats`: absolute / fixed, no framer-motion inline styles) that is taken away within 1.5 s of a press or any
+  key (Escape) leaves as the search window does: a copy of it (inert, `aria-hidden`, no ids, `data-ghost`,
+  `data-no-motion`) is put back where it was, fades and shrinks to 97% and 4 px up in 0.14 s (the transform added, so
+  a centring one stays), then is removed. MutationObserver callbacks run before the frame is drawn, so it never
+  blinks. Skipped: a part only moved (still connected), one already faded by its own exit (`faded`: framer-motion's
+  opacity 0 on it or its first child, e.g. `Popover`), right after a page change, more than 3 at once, Reduce Motion.
+- **Openings:** `.spot-in` in `globals.css` (from 94% and 6 px up on `--spring-glide`, 0.32 s): the language menu
+  (growing from its button's corner), windows (`Sheet`) on a computer, and alerts (`confirmDialog` / `promptDialog`,
+  from 112% before); `Combobox`'s list uses `pop`. Their closings: `Sheet` on a computer and the alert's card leave as
+  `pop.out` (0.14 s, ease-in, to 97%). Phones keep the bottom sheet's slide (iOS's).
+- Tried in a browser at 1280 on the student home: the language menu and the top bar's, account and cards' menus opened
+  and closed with Escape: one closing each, no copy left after 0.3 s, no page errors.
+- **Rule:** a new hand-made menu needs nothing for its opening or closing; if it has its own exit (framer-motion's
+  `exit`), the layer leaves it alone.
+
+
+## M564 (26 Nov): more menus, pop-up windows and fold-out sections like the search window
+
+The owner, 26 Nov, after M563: "check what else you can make smooth like that". A sweep for parts that opened their
+own way:
+- **`popIn` in `src/lib/motion.ts`** (`pop` as framer-motion props: `<motion.div {...popIn}>`) on 37 hand-made menus and
+  pop-up windows that each had their own sizes and timings, most as framer's `y` / `scale` (the page's thread): the
+  side menu's account menu, Files' menus, the presence picker, Breakout's menu, document mentions, Studio's saves,
+  Boards (its menus and the new-board window), office hours, the theme menu, the website's phone menu, Trace's
+  destination form, and the pop-up windows of credentials, the directory, quizzes, NGO marketplace, start-ups,
+  internships, support, scholarships, accounting, documents, groups, grades, rooms, medical, consents, the age gate,
+  the call's rating and the premium gate. Left alone: list items, badges, step screens, and panels that rise from a
+  button at the bottom (the call bar's, the study assistant): rising is right for them. Never on a part with
+  `layout` (the script that made the change skipped them; M130).
+- **`.spot-up`** in `globals.css`: the search window's opening for a menu that opens above its button (it rises a
+  touch): the side menu's Language row and a trip day's options menu (was `fade-up`).
+- **Fold-out sections (38 `<details>`):** `::details-content` grows to its height (`interpolate-size: allow-keywords`
+  on `details` only) and fades on Apple's curve in 0.34 s, folds away in 0.22 s; browsers without it open at once;
+  none with Reduce Motion.
+- Tried in a browser at 1280: a fold-out section 23 → 222 px over ~0.3 s; Grades' Download Transcript window from 97%
+  to its place on the spring, fading out on Cancel; no page errors.
+
+
+## M565 (27 Nov): the last windows and lists like the search window
+
+The owner, 27 Nov: "check if anything else is left out". A sweep of every framer-motion part that floats (fixed or
+absolute, a dialog, menu or list) and isn't on `popIn`: 88 found. Most are right as they are: the dark backdrops
+behind windows (a fade), side panels sliding in from an edge (Groups, Internships, class details, threads, boards'
+extras), full-screen viewers (photos, files, status, QR codes), the call's panels rising from its bar, game overlays,
+the notifications sheet. Changed:
+- **`sheetIn()` in `src/lib/motion.ts`:** a window that is a bottom sheet on phones and centred on computers (it rose
+  20–50 px on computers too): on a computer the search window's opening (`popIn`), on a phone the sheet's slide from
+  the bottom edge (`spring.smooth`, out in 0.24 s on Apple's curve); read when it opens. On ten: oral practice,
+  start-ups, communities, New chat / New group, the reading window, group autopilot, group chat's window, call
+  favourites, Relief's organisations window and Relief's own.
+- **`popUp`:** `popIn` rising a touch, for a list that opens above its text box: the @-mention list (`MentionInput`).
+- Unused `spring` imports left by M564 removed (7 files).
+- Tried in a browser: New chat on a computer opens from 94% and 6 px up and settles; on a phone it slides up from the
+  bottom; no page errors.
+- **Rule:** a new window that is a sheet on phones uses `{...sheetIn()}`; a menu or window that floats uses
+  `{...popIn}` (`{...popUp}` above its button); not on a part with `layout` or `drag`.
+
+
+## M566 (27 Nov): the rest smoothed, each keeping its own movement
+
+The owner, 27 Nov, on the parts M565 left alone (backdrops, side panels, viewers, the call's panels): "smooth them, keep
+their style". Each keeps its own movement but now runs on the search window's timing, as one `transform` string (the
+compositor runs it; framer's `x` / `y` / `scale` ran on the page's thread), closing quicker than it opens. New in
+`src/lib/motion.ts`:
+- **`fadeIn`**: a window's dark backdrop, in 0.2 s on Apple's curve, out 0.15 s (49 backdrops; most had framer's default).
+- **`edgeIn()`**: a side panel all the way in from the end edge on `spring.smooth`, out 0.24 s (Groups, Internships'
+  two, class details, a Settings page on phones); mirrors in Arabic (`document.dir`), which the old `x: '100%'` didn't.
+- **`sideIn()`**: a pane a short way in from the end side (threads, a chat's side pane, boards' extras, the call's
+  board, the side panels of documents, sheets and slides); mirrors too.
+- **`riseIn`**: the call's panels rising from its bar (chat, people, agenda, Q&A, interpreters, quality, breakouts…).
+- **`barPop`**: small windows over the call's bar (More, Reactions, Background, polls, Watch together, settings).
+- **`viewIn`** is there for a full-screen viewer that should grow a touch; the viewers themselves now use `fadeIn`.
+- Left alone: games (their overlays are part of play), the landing, slides' own animations, the notifications sheet
+  (already a transform on `spring.smooth`), image swiping (`drag`), and anything with `layout`.
+- Tried in a browser at 1280 (`scripts/checks/smooth-rest-ui.mjs`): Internships' Filters panel slides 230 → 6 px over
+  ~0.3 s and settles at 0; it closes in under 0.3 s; no page errors.
+- **Rule:** a backdrop is `{...fadeIn}`, a side panel `{...edgeIn()}` (or `{...sideIn()}` for a short slide), a panel
+  from a bottom bar `{...riseIn}`; don't put a `transition` prop after the spread (it would override the preset's).
+
+
+## M567 (27 Nov): fold-outs, banners and in-place swaps on the same timing
+
+The owner, 27 Nov, after M566: "check for other types of area also". A sweep of the framer-motion parts left that
+still moved by `x` / `y` / `scale` (the page's thread) or opened by height on their own timings:
+- **Fold-out sections (44):** forms and details that open in place (`height: 0 → auto`) now use **`foldIn`**
+  (`src/lib/motion.ts`): 0.34 s on Apple's curve, folding away in 0.22 s, the same as the `<details>` fold-outs of M564.
+  Height stays (it's the one allowed use: opening and closing a section).
+- **Banners, map pop-ups, hints and swapped rows (109 in 49 files):** each keeps its distance and direction, but as one
+  `transform` string (the compositor runs it) on `pop.spring`, with exits in 0.16 s easing in. Among them: the incoming
+  call banner, the mini player, the call's hints and toasts, Trace's and Relief's map cards, office hours, boards'
+  banners, scholarships' steps, rooms, the trust page. The converter only touched tags whose `initial` / `animate` /
+  `exit` were plain numbers ending at rest, with no `layout`, `drag`, `variants` or `style` transform.
+- **`dropIn`** added for a banner dropping from the top (not used by the sweep yet; for new ones).
+- Left alone: games, the landing, slides, the live screens, photo swiping (`ImageViewer`, moves with the finger),
+  parts with `layout`, and tiny tooltips.
+- Tried in a browser (`scripts/checks/smooth-rest-ui.mjs`): the Planner's Settings section grows 16 → 95 px in about
+  0.2 s and settles; it folds away; the M566 panel check still passes.
+- **Trap:** a cleanup that looks for a name's use must count `{...name}` and skip `pop.spring` (`.spring` is not
+  `spring`); let eslint's unused list and `tsc`'s missing names decide instead of a regex.
+- **Rule:** a new section that folds open is `{...foldIn}` with `overflow-hidden`; a small arrival or swap animates
+  `transform: 'translateY(6px)'` → `'translateY(0px)'` on `pop.spring`, not `y`.

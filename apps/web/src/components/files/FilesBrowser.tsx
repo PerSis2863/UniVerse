@@ -15,7 +15,7 @@ import { ImageViewer } from '@/components/chat/ImageViewer';
 import { formatBytes, uploadChatFile } from '@/components/chat/chat-client';
 import { extractText } from '@/components/files/extract-text';
 import { previewKind } from '@/lib/pdf';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { fadeUp, list, popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { removeWithUndo } from '@/lib/undo';
@@ -162,7 +162,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
                 />
                 <AnimatePresence>
                   {folderMenu === f.id && (
-                    <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={spring.snappy}
+                    <motion.div {...popIn}
                       className="absolute end-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[var(--surface)] border border-[var(--card-border)] shadow-2xl p-1.5 text-sm">
                       <button type="button" onClick={() => { setFolderMenu(null); uploadInto.current = f.id; picker.current?.click(); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-[var(--fill)] inline-flex items-center gap-2"><Upload className="w-4 h-4" />Add files here</button>
                       <button type="button" onClick={() => void (async () => { setFolderMenu(null); const n = (await promptDialog({ title: 'Rename folder', defaultValue: f.name, confirmLabel: 'Rename', maxLength: 60 }))?.trim(); if (n) await call('r', `/api/space-folders/${f.id}`, 'PATCH', { name: n }); })()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-[var(--fill)] inline-flex items-center gap-2"><Pencil className="w-4 h-4" />Rename</button>
@@ -193,7 +193,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
                 <button type="button" aria-label={`More for ${f.name}`} aria-expanded={menu === f.id} onClick={() => setMenu(menu === f.id ? null : f.id)} className="p-1.5 text-zinc-400 hover:text-indigo-500"><MoreHorizontal className="w-4 h-4" /></button>
                 <AnimatePresence>
                   {menu === f.id && (
-                    <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={spring.snappy} className="absolute end-3 top-12 z-30 w-56 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5 text-sm">
+                    <motion.div {...popIn} className="absolute end-3 top-12 z-30 w-56 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5 text-sm">
                       <button type="button" onClick={() => { setMenu(null); setDetail(f.id); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><History className="w-4 h-4" />Versions and where it’s used</button>
                       {f.canChange && <button type="button" onClick={() => { setMenu(null); setDetail(f.id); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Link2 className="w-4 h-4" />Share a link</button>}
                       <button type="button" onClick={() => { setMenu(null); setDetail(f.id); setTimeout(() => versionPicker.current?.click(), 50); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Upload className="w-4 h-4" />Upload a new version</button>

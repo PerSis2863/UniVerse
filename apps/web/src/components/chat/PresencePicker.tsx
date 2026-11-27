@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { PRESENCE_LABEL, type Presence } from '@/lib/presence';
-import { spring } from '@/lib/motion';
+import { popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 
@@ -59,7 +59,7 @@ export function PresencePicker() {
       </button>
       <AnimatePresence>
         {open && draft && (
-          <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
+          <motion.div {...popIn}
             className="absolute end-0 top-10 z-40 w-72 p-3 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl space-y-3" role="dialog" aria-label="Set your status">
             <ul className="space-y-0.5" role="radiogroup" aria-label="Availability">{ORDER.map((p) => (
               <li key={p}>

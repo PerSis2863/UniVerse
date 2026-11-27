@@ -2,6 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { m as motion } from 'framer-motion';
+import { pop } from '@/lib/motion';
 import { Database, FlaskConical, Sparkles, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSampleMode } from '@/lib/sample-mode';
@@ -32,9 +33,9 @@ export function FeatureGuide({ icon: Icon, title, description, steps, example, a
   if (owner && !sampleOn) return <OwnerEmpty icon={Icon} title={title} action={action} className={className} />;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, transform: 'translateY(12px)' }}
+      animate={{ opacity: 1, transform: 'translateY(0px)' }}
+      transition={pop.spring}
       className={cn(
         'relative overflow-hidden rounded-3xl border border-dashed border-indigo-300/60 dark:border-indigo-400/25 bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl p-6 md:p-8',
         className,

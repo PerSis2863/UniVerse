@@ -2,7 +2,7 @@
 
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Hand } from 'lucide-react';
-import { spring } from '@/lib/motion';
+import { spring, fadeIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Reactions in a call (cloudflare/worker.ts CallRoom: the same six, with a burst limit) and the
@@ -46,9 +46,9 @@ export function ReactionBar({ open, onClose, onReact, hand, onHand }: {
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30" aria-hidden />
+          <motion.div key="scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30" aria-hidden />
           <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-            <motion.div key="bar" role="dialog" aria-label="Reactions" initial={{ opacity: 0, y: 16, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.94 }} transition={spring.snappy}
+            <motion.div key="bar" role="dialog" aria-label="Reactions" {...barPop}
               className="pointer-events-auto flex items-center gap-1 rounded-full bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-1.5">
               {REACTIONS.map((e, i) => (
                 <motion.button key={e} type="button" onClick={() => onReact(e)} aria-label={`React ${e}`}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { applyTheme, getSavedTheme, watchSystemTheme, type Theme } from '@/lib/theme';
 
 // The saved theme, re-read whenever something changes it (this menu, the command palette).
@@ -49,10 +50,7 @@ export function ThemeToggle() {
             {/* backdrop to close on outside click */}
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
             <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
+              {...popIn}
               className="absolute end-0 mt-2 w-36 rounded-xl shadow-2xl overflow-hidden z-50 border"
               style={{
                 background: 'var(--card-bg)',

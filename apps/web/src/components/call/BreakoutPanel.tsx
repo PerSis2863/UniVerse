@@ -5,7 +5,7 @@ import { useTick } from '@/lib/use-now';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowLeft, Clock, DoorOpen, LifeBuoy, Megaphone, Minus, Plus, Send, Shuffle, Users, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { spring, pop, popIn, fadeIn, riseIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Breakout rooms (Stage 4 · 2.6): the host splits the call into smaller rooms (shuffled, by hand, or
@@ -77,19 +77,19 @@ export function BreakoutPanel({ open, onClose, bo, people, room, onSend, onJoin 
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="bo-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
-          <motion.aside key="bo" role="dialog" aria-label="Breakout rooms" initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth} className={panel}>
+          <motion.div key="bo-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
+          <motion.aside key="bo" role="dialog" aria-label="Breakout rooms" {...riseIn} className={panel}>
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
               <p className="font-semibold inline-flex items-center gap-2"><DoorOpen className="w-4 h-4 text-fuchsia-300" />Breakout rooms</p>
               <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
             </div>
             <AnimatePresence mode="wait" initial={false}>
               {bo ? (
-                <motion.div key={`live-${bo.id}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="flex-1 min-h-0 flex flex-col">
+                <motion.div key={`live-${bo.id}`} initial={{ opacity: 0, transform: 'translateY(10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="flex-1 min-h-0 flex flex-col">
                   <Running bo={bo} people={people} room={room} send={send} onJoin={(n) => { haptic('tap'); onJoin(n); }} />
                 </motion.div>
               ) : (
-                <motion.div key="setup" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="flex-1 min-h-0 flex flex-col">
+                <motion.div key="setup" initial={{ opacity: 0, transform: 'translateY(10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="flex-1 min-h-0 flex flex-col">
                   <Setup people={people} onOpen={(msg) => send(msg)} />
                 </motion.div>
               )}
@@ -223,7 +223,7 @@ function Running({ bo, people, room, send, onJoin }: {
   const roomMenu = (key: string, current: number, pick: (n: number) => void) => (
     <AnimatePresence>
       {moving === key && (
-        <motion.div key="menu" initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={spring.snappy}
+        <motion.div key="menu" {...popIn}
           className="mt-1.5 flex flex-wrap gap-1" role="group" aria-label="Move to">
           {[0, ...bo.rooms.map((r) => r.n)].filter((n) => n !== current).map((n) => (
             <button key={n} type="button" onClick={() => { pick(n); setMoving(null); }} className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[11px] font-semibold">
@@ -338,7 +338,7 @@ export function BreakoutBar({ bo, room, mod, onHelp, onMain, onPick, onManage }:
   return (
     <AnimatePresence>
       {show && bo && (
-        <motion.div key="bo-bar" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}
+        <motion.div key="bo-bar" role="status" initial={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className={cn('pointer-events-auto w-full max-w-lg rounded-2xl border backdrop-blur-xl shadow-2xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2', bo.closing ? 'bg-[#2a1f12]/90 border-amber-400/30' : 'bg-[#151517]/90 border-fuchsia-400/25')}>
           <DoorOpen className={cn('w-4 h-4 shrink-0', bo.closing ? 'text-amber-300' : 'text-fuchsia-300')} />
           <p className="text-sm flex-1 min-w-[10rem]">
@@ -371,9 +371,9 @@ export function RoomPicker({ open, onClose, bo, onPick }: { open: boolean; onClo
     <AnimatePresence>
       {open && bo && (
         <>
-          <motion.div key="pick-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
+          <motion.div key="pick-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
           <div key="pick" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-            <motion.div role="dialog" aria-label="Choose a breakout room" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
+            <motion.div role="dialog" aria-label="Choose a breakout room" {...barPop}
               className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2">
               <p className="px-3 pt-2 pb-1 text-sm font-semibold">Choose a room</p>
               <ul className="max-h-[50vh] overflow-y-auto">

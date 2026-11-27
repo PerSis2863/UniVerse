@@ -7,6 +7,7 @@ import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, Exte
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn, fadeIn, edgeIn } from '@/lib/motion';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -208,8 +209,8 @@ export default function StudentInternships() {
       <AnimatePresence>
         {showFilterDrawer && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilterDrawer(false)} />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed end-0 top-0 h-[100dvh] w-full sm:w-80 glass-sidebar sheet-safe-top border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto">
+            <motion.div {...fadeIn} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilterDrawer(false)} />
+            <motion.div {...edgeIn()} className="fixed end-0 top-0 h-[100dvh] w-full sm:w-80 glass-sidebar sheet-safe-top border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5 text-indigo-500" /> Filters</h2>
                 <button aria-label="Close" onClick={() => setShowFilterDrawer(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
@@ -238,8 +239,8 @@ export default function StudentInternships() {
       {/* Application Modal (Apply Now & Edit) */}
       <AnimatePresence>
         {activeApplication && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setActiveApplication(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+          <motion.div {...fadeIn} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setActiveApplication(null)}>
+            <motion.div {...popIn} className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                 <div>
                   <h3 className="font-bold text-zinc-900 dark:text-white text-xl">{editingAppId ? 'Edit Application' : 'Apply Now'}</h3>
@@ -301,8 +302,8 @@ export default function StudentInternships() {
       <AnimatePresence>
         {showMyApplications && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowMyApplications(false)} />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[500px] glass-sidebar sheet-safe-top border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto flex flex-col">
+            <motion.div {...fadeIn} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowMyApplications(false)} />
+            <motion.div {...edgeIn()} className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[500px] glass-sidebar sheet-safe-top border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto flex flex-col">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                   <Briefcase className="w-6 h-6 text-indigo-500" /> My Applications

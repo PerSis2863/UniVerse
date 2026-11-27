@@ -7,7 +7,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { ChevronDown, Receipt, Wallet } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { fadeUp } from '@/lib/motion';
+import { foldIn, fadeUp } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { METHOD_LABEL, StatusChip, money, type BillStatus } from './shared';
 import { OnlineFeePaymentModal } from './OnlineFeePaymentModal';
@@ -47,7 +47,7 @@ export function FamilyFees({ url, who }: { url: string; who?: string }) {
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+          <motion.div {...foldIn} className="overflow-hidden">
             <ul className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
               {data.bills.map((b) => (
                 <li key={b.id} className="py-2.5">

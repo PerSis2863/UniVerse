@@ -12,7 +12,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { useNow } from '@/lib/use-now';
 import { confirmDialog } from '@/components/ui/Dialogs';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { spring, pop, fadeIn, fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useOnceParam } from '@/lib/use-once-param';
 import { MEETING_TEMPLATES, templateById, totalMinutes } from '@/lib/call-agenda';
@@ -108,7 +108,7 @@ export function ScheduledCalls({ role }: { role?: string }) {
                     </span>
                   </span>
                   {joinable ? (
-                    <motion.button initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={spring.snappy} type="button" disabled={busy === c.id} onClick={() => void join(c)} className="px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 transition-colors shrink-0 active:scale-[0.92]">
+                    <motion.button initial={{ opacity: 0, transform: 'scale(0.8)' }} animate={{ opacity: 1, transform: 'scale(1)' }} transition={pop.spring} type="button" disabled={busy === c.id} onClick={() => void join(c)} className="px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 transition-colors shrink-0 active:scale-[0.92]">
                       {busy === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Join'}
                     </motion.button>
                   ) : (
@@ -168,8 +168,8 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-[120] bg-black/45 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
-      <motion.form data-sheet onSubmit={submit} initial={{ y: 40, opacity: 0, scale: 0.98 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0, scale: 0.98 }} transition={spring.smooth} role="dialog" aria-modal="true" aria-labelledby="schedule-title" className="w-full sm:max-w-md rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-5 sheet-safe-bottom sm:pb-5 space-y-4">
+    <motion.div {...fadeIn} className="fixed inset-0 z-[120] bg-black/45 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+      <motion.form data-sheet onSubmit={submit} initial={{ opacity: 0, transform: 'translateY(40px) scale(0.98)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(40px) scale(0.98)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} role="dialog" aria-modal="true" aria-labelledby="schedule-title" className="w-full sm:max-w-md rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-5 sheet-safe-bottom sm:pb-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 id="schedule-title" className="text-lg font-bold text-zinc-900 dark:text-white">Schedule a call</h3>
           <button type="button" onClick={onClose} aria-label="Close" className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-500"><X className="w-5 h-5" /></button>

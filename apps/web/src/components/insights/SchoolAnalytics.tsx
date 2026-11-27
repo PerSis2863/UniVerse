@@ -7,7 +7,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { BarChart3, ChevronDown, Loader2, Search, Sparkles, Table2 } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { AWAY, SUGGESTIONS, WINDOWS, formatValue, metricMeta, rangeText, type MetricHelp, type MetricId, type MetricResult, type Order } from '@/lib/school-metrics';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
@@ -106,7 +106,7 @@ export function SchoolAnalytics() {
             {answer && (
               <motion.div
                 key={isHelp(answer) ? 'help' : answer.metric} ref={resultRef}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={spring.smooth}
+                initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-4px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
                 className={cn('pt-4 border-t border-zinc-200 dark:border-white/[0.06] transition-opacity', busy && 'opacity-60')}
                 aria-live="polite"
               >

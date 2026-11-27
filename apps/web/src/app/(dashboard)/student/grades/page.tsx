@@ -8,6 +8,7 @@ import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { GraduationCap, TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { pop, popIn, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -393,8 +394,8 @@ export default function GradesPage() {
 
         {/* Performance Insight Banner */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, transform: 'translateY(10px)' }}
+          animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
           className={cn(
             "rounded-2xl border p-5 flex items-start gap-4",
             trend >= 0
@@ -519,12 +520,12 @@ export default function GradesPage() {
       <AnimatePresence>
         {showModal && (
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            {...fadeIn}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={e => e.target === e.currentTarget && setShowModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              {...popIn}
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl"
             >
               <div className="flex items-center justify-between mb-4">

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ShieldAlert } from 'lucide-react';
 import { GAMES, tooYoung, type GameId } from '@/lib/play';
-import { spring } from '@/lib/motion';
+import { popIn } from '@/lib/motion';
 
 // Rated games (M36: 12+, 16+, 18+): an account whose birth date says younger can't play them (the
 // server refuses too); without a birth date the player confirms their age once on this device.
@@ -49,7 +49,7 @@ export function AgeBadge({ game, className = '' }: { game: GameId; className?: s
 function AgeDialog({ info, blocked, onYes, onNo }: { info: Rated; blocked: boolean; onYes: () => void; onNo: () => void }) {
   return (
     <motion.div className="fixed inset-0 z-[170] grid place-items-center bg-black/70 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onNo}>
-      <motion.div role="alertdialog" aria-modal="true" aria-labelledby="age-title" aria-describedby="age-text" initial={{ opacity: 0, scale: 0.94, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} transition={spring.snappy}
+      <motion.div role="alertdialog" aria-modal="true" aria-labelledby="age-title" aria-describedby="age-text" {...popIn}
         onClick={(e) => e.stopPropagation()} className="dark w-full max-w-sm rounded-3xl bg-[#151517] p-6 text-center ring-1 ring-white/10">
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-600 text-xl font-black text-white">{info.age}+</span>
         <h2 id="age-title" className="mt-4 text-xl font-bold text-white">{info.name} is rated {info.age}+</h2>

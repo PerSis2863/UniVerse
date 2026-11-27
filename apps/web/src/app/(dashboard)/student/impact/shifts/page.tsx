@@ -10,7 +10,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { ImpactMap, SdgFilter, type Place } from '@/components/impact/ImpactMap';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Verified volunteering (upgrade 5): sign up for NGO project shifts, check in on site (scan the
@@ -81,7 +81,7 @@ export default function ShiftsPage() {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
           {verifiedMinutes > 0 && (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 flex items-center gap-3">
+            <motion.div initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 flex items-center gap-3">
               <Award className="w-7 h-7 text-emerald-500" />
               <p className="text-sm text-zinc-800 dark:text-zinc-200"><b>{hrs(verifiedMinutes)}</b> verified on {mine.length} shift{mine.length === 1 ? '' : 's'}. They’re on your passport and count toward your impact points.</p>
             </motion.div>

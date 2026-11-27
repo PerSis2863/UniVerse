@@ -3,6 +3,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn } from '@/lib/motion';
 import { useState, useRef } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -208,9 +209,7 @@ export default function DocumentsPage() {
             onClick={() => setActiveModal(null)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              {...popIn}
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >

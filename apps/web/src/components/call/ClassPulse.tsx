@@ -2,7 +2,7 @@
 
 import { m as motion } from 'framer-motion';
 import { Activity } from 'lucide-react';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Classroom pulse (Stage 4 · 4.4). In a class call, students tap "I'm lost" or "Got it" (it clears
@@ -37,7 +37,7 @@ export function PulseMeter({ counts }: { counts: PulseCounts }) {
   const { lost, got, total } = counts;
   const pct = (n: number) => `${total ? (n / total) * 100 : 0}%`;
   return (
-    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.smooth}
+    <motion.div initial={{ opacity: 0, transform: 'translateY(-8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
       className="pointer-events-auto w-[min(92vw,20rem)] rounded-2xl bg-black/55 backdrop-blur-xl border border-white/10 px-3.5 py-2.5 shadow-xl" role="status"
       aria-label={`Class pulse: ${lost} lost, ${got} got it, of ${total} students`}>
       <div className="flex items-center justify-between gap-2 text-xs">

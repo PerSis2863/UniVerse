@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Check, Eye, ImagePlus, Loader2, Plus, Search, Send, Star, Trash2, Type, Users, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
-import { spring } from '@/lib/motion';
+import { spring, pop, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { uploadChatFile } from './chat-client';
@@ -137,7 +137,7 @@ function StatusViewer({ people, start, onClose, onDeleted }: { people: Person[];
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-[150] bg-black flex items-center justify-center" role="dialog" aria-modal="true" aria-label={`${person.user.name}'s status`}>
+    <motion.div {...fadeIn} className="fixed inset-0 z-[150] bg-black flex items-center justify-center" role="dialog" aria-modal="true" aria-label={`${person.user.name}'s status`}>
       <div className="relative w-full h-full sm:max-w-md sm:h-[92vh] sm:rounded-3xl overflow-hidden" onPointerDown={() => setPaused(true)} onPointerUp={() => setPaused(false)} onPointerLeave={() => setPaused(false)}>
         {item.kind === 'IMAGE' && item.mediaUrl
           ? <img src={item.mediaUrl} {...photoSrcSet(item.mediaUrl, '100vw')} alt="" className="absolute inset-0 w-full h-full object-contain bg-black" />
@@ -223,8 +223,8 @@ function StatusComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-0 sm:p-6" role="dialog" aria-modal="true" aria-label="New status">
-      <motion.div initial={{ scale: 0.96, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 20 }} transition={spring.smooth} className="relative w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-3xl overflow-hidden flex flex-col" style={{ background: photo ? '#000' : color }}>
+    <motion.div {...fadeIn} className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-0 sm:p-6" role="dialog" aria-modal="true" aria-label="New status">
+      <motion.div initial={{ transform: 'translateY(20px) scale(0.96)' }} animate={{ transform: 'translateY(0px) scale(1)' }} exit={{ transform: 'translateY(20px) scale(0.96)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="relative w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-3xl overflow-hidden flex flex-col" style={{ background: photo ? '#000' : color }}>
         <div className="flex items-center justify-between p-4 pt-[calc(env(safe-area-inset-top)+1rem)] text-white">
           <button type="button" onClick={onClose} aria-label="Close" className="p-2 rounded-full hover:bg-white/15"><X className="w-5 h-5" /></button>
           <div className="flex gap-1">

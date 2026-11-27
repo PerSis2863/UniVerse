@@ -8,7 +8,7 @@ import { BookOpen, Ear, Loader2, MessageCircleQuestion, SendHorizontal, Sparkles
 import { authedJson } from '@/lib/authed-fetch';
 import { useActivePoll } from '@/lib/realtime-client';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { pop, fadeIn, riseIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { SentLine } from '@/lib/whisper';
 
@@ -61,9 +61,9 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
+          <motion.div key="scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
           <motion.aside key="ta" role="dialog" aria-label="Ask the TA"
-            initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
+            {...riseIn}
             className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
               <div className="min-w-0">
@@ -84,7 +84,7 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
                 </div>
               )}
               {questions.map((q) => (
-                <motion.div key={q.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className="space-y-1.5">
+                <motion.div key={q.id} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="space-y-1.5">
                   <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-ee-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500 to-fuchsia-500 whitespace-pre-wrap break-words">{q.question}</p></div>
                   {q.answer && (
                     <div className="max-w-[92%] rounded-2xl rounded-es-md px-3 py-2 text-sm bg-white/10 leading-snug">
@@ -151,7 +151,7 @@ export function WhisperTopics({ callId }: { callId: string }) {
   return (
     <AnimatePresence>
       {topics.length > 0 && (
-        <motion.div key="whisper" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.smooth}
+        <motion.div key="whisper" initial={{ opacity: 0, transform: 'translateY(-8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className="pointer-events-auto w-[min(92vw,20rem)] rounded-2xl bg-black/55 backdrop-blur-xl border border-white/10 px-3.5 py-2.5 shadow-xl" role="status" aria-label="What students are asking the TA">
           <p className="text-xs font-semibold text-zinc-100 inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-fuchsia-300" aria-hidden />Asked the TA</p>
           <ul className="mt-1.5 space-y-1.5">

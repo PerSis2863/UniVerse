@@ -5,6 +5,7 @@ import { Neighbourhood } from './Neighbourhood';
 import useSWR from 'swr';
 import Image from 'next/image';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
+import { pop } from '@/lib/motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Award, Bike, Bus, Camera, Clock, Download, Flame, RotateCcw, TrendingUp, Footprints, Globe2, Leaf, Loader2, Lock, MapPin, Minus, Plus, Recycle, ShieldCheck, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
@@ -207,7 +208,7 @@ export function GreenApp() {
           <button type="submit" disabled={saving} className="mt-4 w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Leaf className="w-4 h-4" />}Log it</button>
           <AnimatePresence>
             {ask && (
-              <motion.div key={`${ask.id}-${ask.step}`} role="group" aria-labelledby="felt-h" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-500/[0.08] px-3 py-2.5">
+              <motion.div key={`${ask.id}-${ask.step}`} role="group" aria-labelledby="felt-h" initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={pop.spring} className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-500/[0.08] px-3 py-2.5">
                 {ask.step === 'feel' ? (<>
                   <span id="felt-h" className="me-auto text-sm font-semibold text-zinc-800 dark:text-zinc-100">How did it go?</span>
                   {(Object.keys(FELT) as Feeling[]).map((k) => <button key={k} type="button" onClick={() => void feel(k)} className="btn-secondary btn-sm">{FELT[k]}</button>)}

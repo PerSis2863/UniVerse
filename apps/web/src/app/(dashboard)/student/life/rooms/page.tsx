@@ -5,6 +5,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { Map, Calendar as CalendarIcon, Clock, Users, Search, X, CheckCircle2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { pop, popIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { useState } from 'react';import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
@@ -103,8 +104,8 @@ export default function RoomReservationPage() {
           
           {/* Info Banner */}
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, transform: 'translateY(-10px)' }}
+            animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
             className="p-6 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex gap-6 items-center"
           >
             <div className="w-14 h-14 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-700 dark:text-indigo-400 shrink-0">
@@ -225,8 +226,8 @@ export default function RoomReservationPage() {
           {/* Results */}
           {hasSearched && (
             <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: 'translateY(10px)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
               className="space-y-4"
             >
               <h3 className="text-lg font-bold text-white mb-4">Available Rooms</h3>
@@ -269,9 +270,7 @@ export default function RoomReservationPage() {
         {selectedRoom && (
           <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              {...popIn}
               className="bg-[#151517] border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col"
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
@@ -283,7 +282,7 @@ export default function RoomReservationPage() {
               
               <div className="p-8">
                 {bookingStatus === 'success' ? (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-4">
+                  <motion.div initial={{ opacity: 0, transform: 'scale(0.95)' }} animate={{ opacity: 1, transform: 'scale(1)' }} transition={pop.spring} className="text-center py-4">
                     <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle2 className="w-8 h-8" />
                     </div>
@@ -317,7 +316,7 @@ export default function RoomReservationPage() {
                     </button>
                   </motion.div>
                 ) : (
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                  <motion.div initial={{ opacity: 0, transform: 'translateX(-10px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} transition={pop.spring}>
                     <p className="text-zinc-600 dark:text-zinc-300 mb-6 text-center">Are you sure you want to book this room?</p>
                     
                     <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-5 mb-8">

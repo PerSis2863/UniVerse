@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Download, Minus, Plus, X } from 'lucide-react';
 import { safeHref } from '@/lib/safe-href';
-import { spring } from '@/lib/motion';
+import { spring, fadeIn } from '@/lib/motion';
 
 // Photos in a chat, full screen (Stage 4 · 1.8): every photo of the chat in order, swipe or arrow
 // keys between them, zoom with a pinch, the mouse wheel, a double tap or the buttons, and drag to
@@ -100,7 +100,7 @@ export function ImageViewer({ images, start, onClose }: { images: ViewerImage[];
 
   const btn = 'w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center disabled:opacity-30';
   return createPortal(
-    <motion.div role="dialog" aria-label="Photo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={spring.smooth} className="fixed inset-0 z-[95] bg-black/95 text-white flex flex-col select-none">
+    <motion.div role="dialog" aria-label="Photo" {...fadeIn} className="fixed inset-0 z-[95] bg-black/95 text-white flex flex-col select-none">
       <div className="h-14 shrink-0 flex items-center gap-1 px-3 pt-[env(safe-area-inset-top)]">
         <p className="flex-1 min-w-0 truncate text-sm text-white/80">{images.length > 1 ? `${i + 1} of ${images.length}` : ''}{img?.name ? `${images.length > 1 ? ' · ' : ''}${img.name}` : ''}</p>
         <button type="button" aria-label="Zoom out" disabled={scale <= 1} onClick={() => zoomTo(scale - 0.5)} className={btn}><Minus className="w-5 h-5" /></button>

@@ -11,7 +11,7 @@ import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, Eye, FlaskConical, ListChecks, Loader2, Lock, Play, Plus, Trash2, Unlock, Users, XCircle } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { spring } from '@/lib/motion';
+import { pop, foldIn } from '@/lib/motion';
 import { canRun, runCode, type CodeTest, type RunResult } from '@/lib/code-runner';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
@@ -107,7 +107,7 @@ function CodeRoomPage({ id }: { id: string }) {
           {loadingPy && <p className="text-xs text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Loading Python on this device (about 12 MB, the first time only)…</p>}
           <AnimatePresence initial={false}>
             {editTests && (
-              <motion.section key="tests" aria-label="Tests" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
+              <motion.section key="tests" aria-label="Tests" {...foldIn} className="overflow-hidden">
                 <div className="rounded-xl border border-zinc-200 dark:border-white/10 p-3 space-y-2">
                   <p className="text-xs text-zinc-500">Each test runs after the student’s code and passes unless it fails an assert or throws. {room?.language === 'python' ? <>Example: <code>assert add(2, 3) == 5, &quot;add(2, 3) should be 5&quot;</code></> : room?.language === 'sql' ? <>For SQL, each test is a query whose first value must be true. Example: <code>SELECT COUNT(*) = 3 FROM students</code></> : <>Example: <code>assertEqual(add(2, 3), 5)</code> or <code>assert(isEven(4), &apos;4 is even&apos;)</code></>}</p>
                   {editTests.map((t, i) => (
@@ -128,7 +128,7 @@ function CodeRoomPage({ id }: { id: string }) {
             )}
           </AnimatePresence>
           {output && output.tests.length > 0 && (
-            <motion.section aria-label="Test results" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="rounded-xl border border-zinc-200 dark:border-white/10 p-3">
+            <motion.section aria-label="Test results" initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="rounded-xl border border-zinc-200 dark:border-white/10 p-3">
               <p className={`text-sm font-semibold ${passed === output.tests.length ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>{passed === output.tests.length ? `All ${passed} tests pass 🎉` : `${passed} of ${output.tests.length} tests pass`}</p>
               <ul className="mt-2 space-y-1">
                 {output.tests.map((t, i) => (

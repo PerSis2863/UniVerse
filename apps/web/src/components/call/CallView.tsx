@@ -46,7 +46,7 @@ import { InterpretersSheet } from './CallInterpreters';
 import { combine, grade, readStats, type Reading, type Snapshot } from '@/lib/call-quality';
 import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
-import { spring } from '@/lib/motion';
+import { spring, pop, fadeIn, riseIn, barPop, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useSpatialAudio } from './use-spatial-audio';
 
@@ -317,7 +317,7 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
       <div className="absolute top-2 start-2 flex flex-col items-start gap-1">
         <AnimatePresence>
           {hand ? (
-            <motion.span key="hand" initial={{ opacity: 0, scale: 0.5, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.5 }} transition={spring.snappy}
+            <motion.span key="hand" initial={{ opacity: 0, transform: 'translateY(6px) scale(0.5)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(0px) scale(0.5)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
               className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-400 text-amber-950 rounded-full px-2 py-0.5 shadow-lg" aria-label={`Hand raised, number ${hand} in the queue`}>
               <motion.span initial={{ rotate: 0 }} animate={{ rotate: [0, 18, -10, 18, 0] }} transition={{ duration: 0.9, delay: 0.1 }} className="inline-block origin-bottom-right">✋</motion.span>{hand}
             </motion.span>
@@ -2405,7 +2405,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     {/* Minimised: a floating bar (like the iPhone's), the call keeps going while you use the app. */}
     <AnimatePresence>
       {minimized && !held && phase !== 'error' && (
-        <motion.div key="mini" initial={{ y: 40, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0, scale: 0.96 }} transition={spring.smooth}
+        <motion.div key="mini" initial={{ opacity: 0, transform: 'translateY(40px) scale(0.96)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(40px) scale(0.96)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className="fixed left-1/2 -translate-x-1/2 z-[290] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 flex items-center gap-2 ps-2 pe-1.5 py-1.5 rounded-full bg-[#151517]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 text-white max-w-[min(94vw,26rem)]" role="region" aria-label="Call in progress">
           <button type="button" onClick={onExpand} className="flex items-center gap-2 min-w-0 ps-1" aria-label="Back to the call">
             <span className="relative flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" /><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" /></span>
@@ -2416,7 +2416,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </motion.div>
       )}
       {held && phase === 'live' && (
-        <motion.button key="held" type="button" onClick={onResume} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} transition={spring.smooth}
+        <motion.button key="held" type="button" onClick={onResume} initial={{ opacity: 0, transform: 'translateY(20px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(20px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           style={{ marginBottom: heldIndex * 48 }}
           className="fixed start-4 z-[289] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-20 flex items-center gap-2 px-3 py-2 rounded-full bg-amber-500/95 text-amber-950 text-xs font-semibold shadow-xl" aria-label={`On hold: ${info?.title ?? 'call'}. Resume`}>
           <Pause className="w-3.5 h-3.5" /> On hold · {info?.title ?? 'Call'} · Resume
@@ -2424,25 +2424,25 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       )}
     </AnimatePresence>
     <motion.div ref={rootRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className={cn('on-dark fixed inset-0 z-[300] text-white flex flex-col bg-[radial-gradient(ellipse_at_top,#1e1b4b_0%,#0b0e1a_55%)]', (minimized || held) && 'hidden')}>
-      <motion.header initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={spring.smooth} className="px-5 pt-[calc(env(safe-area-inset-top)+0.9rem)] pb-3 flex items-center justify-between gap-3">
+      <motion.header initial={{ opacity: 0, transform: 'translateY(-16px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="px-5 pt-[calc(env(safe-area-inset-top)+0.9rem)] pb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold truncate text-lg flex items-center gap-2">
             <span className="truncate">{info?.title ?? 'Call'}</span>
             <AnimatePresence>
               {someoneRecording && (
-                <motion.span key="rec" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={spring.snappy} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-rose-600/90 rounded-full px-2 py-0.5" title="This call is being recorded">
+                <motion.span key="rec" initial={{ opacity: 0, transform: 'scale(0.8)' }} animate={{ opacity: 1, transform: 'scale(1)' }} exit={{ opacity: 0, transform: 'scale(0.8)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-rose-600/90 rounded-full px-2 py-0.5" title="This call is being recorded">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />REC{recording ? ` ${clock(recSeconds)}` : ''}
                 </motion.span>
               )}
               {someoneNotes && (
-                <motion.span key="notes" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={spring.snappy} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-amber-500/90 text-amber-950 rounded-full px-2 py-0.5" title="Notes are on: what’s said becomes notes or a study pack (text only)">
+                <motion.span key="notes" initial={{ opacity: 0, transform: 'scale(0.8)' }} animate={{ opacity: 1, transform: 'scale(1)' }} exit={{ opacity: 0, transform: 'scale(0.8)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-amber-500/90 text-amber-950 rounded-full px-2 py-0.5" title="Notes are on: what’s said becomes notes or a study pack (text only)">
                   <NotebookPen className="w-3 h-3" />Notes
                 </motion.span>
               )}
             </AnimatePresence>
           </p>
           <AnimatePresence mode="wait">
-            <motion.p key={status.replace(/\d/g, '')} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }} className={cn('text-sm', phase === 'ended' && notice ? 'text-rose-300' : 'text-zinc-400')} role="status">{status}</motion.p>
+            <motion.p key={status.replace(/\d/g, '')} initial={{ opacity: 0, transform: 'translateY(4px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-4px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className={cn('text-sm', phase === 'ended' && notice ? 'text-rose-300' : 'text-zinc-400')} role="status">{status}</motion.p>
           </AnimatePresence>
         </div>
         <div className="flex items-center gap-1">
@@ -2457,7 +2457,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <Users className="w-4 h-4" />{count}<span className="hidden sm:inline font-normal">in call</span>
               <AnimatePresence>
                 {canModerate && lobby.length > 0 && (
-                  <motion.span key="knock" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={spring.snappy} className="ms-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
+                  <motion.span key="knock" initial={{ opacity: 0, transform: 'scale(0.6)' }} animate={{ opacity: 1, transform: 'scale(1)' }} exit={{ opacity: 0, transform: 'scale(0.6)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="ms-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
                 )}
               </AnimatePresence>
             </button>
@@ -2466,12 +2466,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       </motion.header>
 
       {phase === 'error' ? (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <motion.div initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
           <p className="text-zinc-300 max-w-sm">{error}</p>
           <button type="button" onClick={() => onLeave(info?.conversationId ?? null)} className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">Back</button>
         </motion.div>
       ) : phase === 'prejoin' ? (
-        <motion.main initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
+        <motion.main initial={{ opacity: 0, transform: 'translateY(14px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
           <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-6 items-center">
             <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
             <div className="space-y-4">
@@ -2497,7 +2497,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               </div>
               <AnimatePresence initial={false}>
                 {twoG && (
-                  <motion.p key="2g" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="text-xs text-amber-200/90 overflow-hidden">
+                  <motion.p key="2g" {...foldIn} className="text-xs text-amber-200/90 overflow-hidden">
                     Voice only at 16 kbps (about 7 MB an hour). Cameras stay off both ways; shared screens still show.
                   </motion.p>
                 )}
@@ -2521,7 +2521,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </div>
         </motion.main>
       ) : phase === 'lobby' ? (
-        <motion.main key="lobby" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
+        <motion.main key="lobby" initial={{ opacity: 0, transform: 'translateY(14px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
           <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-6 items-center">
             <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
             <div className="space-y-4 text-center md:text-start">
@@ -2533,7 +2533,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <div>
                 <p className="text-2xl font-bold">You’re in the waiting room</p>
                 <AnimatePresence mode="wait">
-                  <motion.p key={hostHere ? 'here' : 'away'} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }} className="text-sm text-zinc-400 mt-1">
+                  <motion.p key={hostHere ? 'here' : 'away'} initial={{ opacity: 0, transform: 'translateY(4px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-4px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="text-sm text-zinc-400 mt-1">
                     {hostHere ? 'The host knows you’re here and will let you in soon.' : 'The host isn’t here yet. You’ll join as soon as they let you in.'}
                   </motion.p>
                 </AnimatePresence>
@@ -2628,13 +2628,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               students={Object.values(remotes).filter((x) => !x.peer.host && !x.peer.cohost).map((x) => ({ userId: x.peer.userId, name: x.peer.name }))} />
           )}
           {phase === 'live' && webinar && (
-            <motion.p key="webinar" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.smooth}
+            <motion.p key="webinar" initial={{ opacity: 0, transform: 'translateY(-8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
               className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-xl border border-white/10 px-3 py-1.5 text-xs font-semibold" role="status">
               <Presentation className="w-3.5 h-3.5 text-fuchsia-300" />Webinar · {webinar.audience} watching
             </motion.p>
           )}
           {phase === 'live' && stageInvite && (
-            <motion.div key="invite" initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={spring.smooth}
+            <motion.div key="invite" initial={{ opacity: 0, transform: 'translateY(-8px) scale(0.98)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(-8px) scale(1)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
               className="pointer-events-auto w-[min(92vw,22rem)] rounded-2xl bg-[#151517]/95 backdrop-blur-xl border border-white/10 p-4 shadow-2xl" role="alertdialog" aria-label="Invited to speak">
               <p className="font-semibold">{stageInvite.ended ? 'The webinar is over' : `${stageInvite.by} invited you on stage`}</p>
               <p className="text-sm text-zinc-400 mt-0.5">{stageInvite.ended ? 'Everyone can talk now. Turn on your microphone when you’re ready.' : 'Everyone will hear you, and see you if your camera is on.'}</p>
@@ -2647,7 +2647,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </AnimatePresence>
         <AnimatePresence>
           {audioOnly && twoG && phase === 'live' && (
-            <motion.div key="2g" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}
+            <motion.div key="2g" role="status" initial={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
               className="pointer-events-auto w-full max-w-lg rounded-2xl bg-[#1b1a2e]/90 border border-amber-400/30 backdrop-blur-xl shadow-2xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
               <SignalLow className="w-4 h-4 shrink-0 text-amber-300" />
               <p className="text-sm flex-1 min-w-[12rem]"><span className="font-semibold">2G mode.</span> <span className="text-zinc-300">Voice only at 16 kbps; shared screens still show.</span></p>
@@ -2657,7 +2657,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           {audioOnly && !twoG && phase === 'live' && (() => {
             const now = info?.sfu ? sfuQuality : list.some((r) => r.quality === 'poor') ? 'poor' : list.some((r) => r.quality === 'fair') ? 'fair' : list.some((r) => r.quality === 'good') ? 'good' : null;
             return (
-              <motion.div key="audio-only" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}
+              <motion.div key="audio-only" role="status" initial={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
                 className="pointer-events-auto w-full max-w-lg rounded-2xl bg-[#1b1a2e]/90 border border-amber-400/30 backdrop-blur-xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                 <Signal className={cn('w-4 h-4 shrink-0', now === 'good' ? 'text-emerald-300' : 'text-amber-300')} />
                 <p className="text-sm flex-1 min-w-[12rem]">
@@ -2757,7 +2757,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                     <MessageSquare />
                     <AnimatePresence>
                       {unread > 0 && (
-                        <motion.span key={unread} initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="absolute top-0.5 end-0.5 min-w-5 h-5 px-1 rounded-full bg-fuchsia-500 text-[#111113] text-[11px] font-bold flex items-center justify-center" aria-hidden>{unread > 9 ? '9+' : unread}</motion.span>
+                        <motion.span key={unread} initial={{ transform: 'scale(0.4)' }} animate={{ transform: 'scale(1)' }} exit={{ transform: 'scale(0)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="absolute top-0.5 end-0.5 min-w-5 h-5 px-1 rounded-full bg-fuchsia-500 text-[#111113] text-[11px] font-bold flex items-center justify-center" aria-hidden>{unread > 9 ? '9+' : unread}</motion.span>
                       )}
                     </AnimatePresence>
                   </motion.button>
@@ -2800,9 +2800,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       <AnimatePresence>
         {moreOpen && phase === 'live' && (
           <>
-            <motion.div key="more-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMoreOpen(false)} className="absolute inset-0 z-30" aria-hidden />
+            <motion.div key="more-scrim" {...fadeIn} onClick={() => setMoreOpen(false)} className="absolute inset-0 z-30" aria-hidden />
             <div key="more" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-              <motion.div role="dialog" aria-label="More call options" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
+              <motion.div role="dialog" aria-label="More call options" {...barPop}
                 className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2 grid grid-cols-3 gap-1">
                 {moreItems.map((it, i) => (
                   <motion.div key={it.key} className={cn(it.phoneOnly && 'sm:hidden')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.02 }}>
@@ -2872,7 +2872,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>
         {settingsOpen && (
-          <motion.div key="settings" initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.98 }} transition={spring.smooth}
+          <motion.div key="settings" {...barPop}
             role="dialog" aria-label="Call settings"
             className="absolute inset-x-3 sm:inset-x-auto sm:end-6 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:w-96 max-h-[60vh] overflow-y-auto rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4">
             <div className="flex items-center justify-between">
@@ -2934,7 +2934,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       {/* Voicemail: nobody answered, leave a voice message instead. */}
       <AnimatePresence>
         {voicemail && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={spring.smooth} className="absolute inset-x-0 bottom-0 p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] bg-[#151517]/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center gap-3 text-center">
+          <motion.div {...riseIn} className="absolute inset-x-0 bottom-0 p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] bg-[#151517]/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center gap-3 text-center">
             <p className="font-semibold">{voicemail === 'recording' ? 'Recording your voice message…' : voicemail === 'sending' ? 'Sending…' : `${info?.title ?? 'They'} didn’t answer`}</p>
             {voicemail === 'offer' && <p className="text-sm text-zinc-400">Leave a voice message? They’ll get it in the chat with a transcript.</p>}
             <div className="flex gap-3">

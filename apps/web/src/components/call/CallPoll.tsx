@@ -6,7 +6,7 @@ import { BarChart3, BookOpenCheck, Check, ChevronDown, Loader2, Plus, Trash2, X 
 import { toast } from 'sonner';
 import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { spring, pop, fadeIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Fill } from '@/components/ui/Fill';
 
@@ -78,9 +78,9 @@ export function PollComposer({ open, onClose, onStart, questionsFor }: {
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="poll-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
+          <motion.div key="poll-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
           <div key="poll-compose" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-            <motion.div role="dialog" aria-label="Ask a poll or quiz" initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.97 }} transition={spring.smooth} className={sheet}>
+            <motion.div role="dialog" aria-label="Ask a poll or quiz" {...barPop} className={sheet}>
               <div className="flex items-center justify-between">
                 <p className="font-semibold inline-flex items-center gap-2"><BarChart3 className="w-4 h-4 text-fuchsia-300" />Ask everyone</p>
                 <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -170,7 +170,7 @@ export function PollCard({ poll, mod, onVote, onSend }: { poll: PollView; mod: b
     : `Ended · ${answers}`;
 
   return (
-    <motion.div key="poll-card" initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.97 }} transition={spring.smooth}
+    <motion.div key="poll-card" {...barPop}
       className="absolute z-[25] inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] sm:inset-x-auto sm:start-4 sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[22rem] pointer-events-auto">
       <AnimatePresence mode="wait" initial={false}>
         {folded ? (
@@ -179,7 +179,7 @@ export function PollCard({ poll, mod, onVote, onSend }: { poll: PollView; mod: b
             <BarChart3 className="w-4 h-4 text-fuchsia-300" />{label} · {answers}{poll.open && poll.mine === null && !mod && <span className="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse" aria-label="Not answered yet" />}
           </motion.button>
         ) : (
-          <motion.section key="card" role="dialog" aria-label={`${label}: ${poll.q}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={spring.smooth}
+          <motion.section key="card" role="dialog" aria-label={`${label}: ${poll.q}`} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
             className="max-h-[50vh] overflow-y-auto rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-[11px] font-bold uppercase tracking-wide">{label}</span>

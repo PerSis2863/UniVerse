@@ -7,7 +7,7 @@ import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CalendarCheck, Check, CheckCircle2, Clock, ListTodo, Loader2, NotebookPen, Plus, Sparkles, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Meeting notes for a call (Stage 4 · 2.8; src/server/meeting-notes.ts): the card in the chat they
@@ -99,7 +99,7 @@ export function MeetingNotesSheet({ id, onClose }: { id: string; onClose: () => 
   };
   return createPortal(
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
-      <motion.div role="dialog" aria-modal="true" aria-label="Meeting notes" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
+      <motion.div role="dialog" aria-modal="true" aria-label="Meeting notes" initial={{ opacity: 0, transform: 'translateY(24px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
         className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#151517] p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:pb-5 space-y-3 shadow-2xl text-zinc-900 dark:text-white">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

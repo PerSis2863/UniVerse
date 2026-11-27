@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
+import { pop } from '@/lib/motion';
 import { AlarmClock, Ban, BarChart3, Eye, Flag, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard , ListChecks } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
@@ -634,7 +635,7 @@ function EditHistory({ id, onClose, emoji }: { id: string; onClose: () => void; 
   const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   return createPortal(
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <motion.div role="dialog" aria-label="Edit history" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+      <motion.div role="dialog" aria-label="Edit history" initial={{ opacity: 0, transform: 'translateY(24px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
         className="w-full sm:max-w-md max-h-[70vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#151517] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-4 space-y-3 shadow-2xl">
         <div className="flex items-center justify-between">
           <p className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Pencil className="w-4 h-4 text-indigo-500" />Edit history</p>

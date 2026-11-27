@@ -13,7 +13,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { LANGUAGES } from '@/lib/languages';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { spring, foldIn, fadeUp, list } from '@/lib/motion';
 import { ORAL_KINDS, defaultRubric, type Criterion, type OralKind } from '@/lib/oral';
 import { cn } from '@/lib/utils';
 import { CriterionScore, Transcript, type OralView } from './OralResult';
@@ -113,7 +113,7 @@ function NewCheck({ courseId, onDone }: { courseId: string; onDone: (id?: string
     finally { setBusy(false); }
   };
   return (
-    <motion.form initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} onSubmit={save} className="overflow-hidden" aria-labelledby="new-oral-title">
+    <motion.form {...foldIn} onSubmit={save} className="overflow-hidden" aria-labelledby="new-oral-title">
       <div className="panel p-5 space-y-3">
         <div className="flex items-center justify-between"><h3 id="new-oral-title" className="font-semibold text-zinc-900 dark:text-white">New oral check</h3><button type="button" onClick={() => onDone()} aria-label="Cancel" className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><X className="w-4 h-4" /></button></div>
         <Field label="Title">{(p) => <input {...p} className="input" maxLength={120} required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Week 6 viva: scheduling" />}</Field>

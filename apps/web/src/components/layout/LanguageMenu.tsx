@@ -47,7 +47,7 @@ export function LanguageMenu({ className, row }: { className?: string; row?: boo
         </button>
       )}
       {open && (
-        <div role="menu" aria-label="Language" className={cn('absolute z-[140] w-56', row ? 'start-0 bottom-11' : 'end-0 top-11', ' max-h-[60vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-2xl p-1 fade-up')}>
+        <div role="menu" aria-label="Language" className={cn('absolute z-[140] w-56', row ? 'start-0 bottom-11 origin-bottom-left rtl:origin-bottom-right spot-up' : 'end-0 top-11 origin-top-right rtl:origin-top-left spot-in', ' max-h-[60vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-2xl p-1')}>
           {LANGUAGES.map((l) => (
             <button key={l.code} type="button" role="menuitemradio" aria-checked={language === l.code} onClick={() => pick(l.code)}
               className={cn('w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-start text-sm', language === l.code ? 'bg-indigo-500/10 text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-200 hover:bg-[var(--fill)]')}>

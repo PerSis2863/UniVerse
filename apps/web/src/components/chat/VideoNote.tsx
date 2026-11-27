@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Circle, RotateCcw, Send, Square, Volume2, X } from 'lucide-react';
-import { spring } from '@/lib/motion';
+import { pop, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Video notes (Stage 4 · 1.7): round videos of up to a minute, like Telegram's. Recorded here at a
@@ -73,9 +73,9 @@ export function VideoNoteRecorder({ onSend, onClose }: { onSend: (file: File, du
   const ring = 2 * Math.PI * 118;
   const done = phase === 'recording' ? Math.min(1, secs / MAX_SEC) : 0;
   return createPortal(
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-6 p-6" role="dialog" aria-label="Record a video note">
+    <motion.div {...fadeIn} className="fixed inset-0 z-[95] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-6 p-6" role="dialog" aria-label="Record a video note">
       <button type="button" onClick={onClose} aria-label="Cancel" className="absolute top-[calc(env(safe-area-inset-top)+1rem)] end-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center"><X className="w-5 h-5" /></button>
-      <motion.div initial={{ scale: 0.85 }} animate={{ scale: 1 }} transition={spring.smooth} className="relative w-64 h-64">
+      <motion.div initial={{ transform: 'scale(0.85)' }} animate={{ transform: 'scale(1)' }} transition={pop.spring} className="relative w-64 h-64">
         <svg className="absolute -inset-3 w-[17.5rem] h-[17.5rem] -rotate-90" viewBox="0 0 248 248" aria-hidden>
           <circle cx="124" cy="124" r="118" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="6" />
           <circle cx="124" cy="124" r="118" fill="none" stroke="url(#vn)" strokeWidth="6" strokeLinecap="round" strokeDasharray={ring} strokeDashoffset={ring * (1 - done)} />
@@ -121,7 +121,7 @@ export function VideoNoteBubble({ url }: { url: string }) {
         className="w-full h-full rounded-full object-cover bg-black" />
       <AnimatePresence>
         {sound && (
-          <motion.svg key="ring" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute -inset-1 w-[12.5rem] h-[12.5rem] -rotate-90 pointer-events-none" viewBox="0 0 200 200" aria-hidden>
+          <motion.svg key="ring" {...fadeIn} className="absolute -inset-1 w-[12.5rem] h-[12.5rem] -rotate-90 pointer-events-none" viewBox="0 0 200 200" aria-hidden>
             <circle cx="100" cy="100" r="94" fill="none" stroke="white" strokeOpacity="0.9" strokeWidth="4" strokeLinecap="round" strokeDasharray={ring} strokeDashoffset={ring * (1 - progress)} />
           </motion.svg>
         )}

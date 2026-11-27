@@ -6,7 +6,7 @@ import { m as motion } from 'framer-motion';
 import { Fingerprint, Loader2, Lock } from 'lucide-react';
 import { Switch } from '@/components/ui/Switch';
 import { lockSupported, setChatLocked, useChatLock, verifyMe } from '@/lib/chat-lock';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 
 // Chat lock (Stage 4 · 1.10, src/lib/chat-lock.ts): the screen over a locked chat, and the switch
 // in the chat's info panel.
@@ -26,7 +26,7 @@ export function LockedChat({ title }: { title: string }) {
     } catch { toast.error('Couldn’t check it’s you. Try again.'); } finally { setBusy(false); }
   };
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={spring.smooth} className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
+    <motion.div initial={{ opacity: 0, transform: 'scale(0.98)' }} animate={{ opacity: 1, transform: 'scale(1)' }} transition={pop.spring} className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
       <span className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shadow-xl shadow-fuchsia-500/20"><Lock className="w-7 h-7" /></span>
       <div>
         <p className="font-semibold text-zinc-900 dark:text-white">{title} is locked</p>

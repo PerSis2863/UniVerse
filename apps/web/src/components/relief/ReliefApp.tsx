@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
+import { pop, sheetIn, fadeIn } from '@/lib/motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertTriangle, BadgeCheck, Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Siren, Sparkles, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
@@ -375,13 +376,13 @@ export function ReliefApp() {
             )}
             <AnimatePresence>
               {picking && (
-                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-1/2 -translate-x-1/2 top-16 z-20 flex items-center gap-2 rounded-full bg-orange-700 text-white px-4 py-2 text-xs font-semibold shadow-lg">
+                <motion.div initial={{ opacity: 0, transform: 'translateY(-8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} className="absolute left-1/2 -translate-x-1/2 top-16 z-20 flex items-center gap-2 rounded-full bg-orange-700 text-white px-4 py-2 text-xs font-semibold shadow-lg">
                   <Crosshair className="w-3.5 h-3.5" aria-hidden />Tap where it is (shown about 500 m away)
                   <button type="button" onClick={() => { setPicking(false); setPosting(true); }} aria-label="Cancel" className="ml-1 w-5 h-5 grid place-items-center rounded-full hover:bg-white/15"><X className="w-3 h-3" /></button>
                 </motion.div>
               )}
               {(sel || orgSel) && !picking && (
-                <motion.div key={sel?.id ?? orgSel!.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+                <motion.div key={sel?.id ?? orgSel!.id} initial={{ opacity: 0, transform: 'translateX(16px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} exit={{ opacity: 0, transform: 'translateX(12px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
                   className="absolute inset-x-3 bottom-3 z-20 max-h-[55%] overflow-y-auto rounded-2xl bg-white p-4 shadow-[0_14px_40px_-14px_rgba(0,0,0,0.4)] ring-1 ring-black/5 dark:bg-[#1b1d22] dark:ring-white/10 lg:inset-x-auto lg:bottom-auto lg:end-16 lg:top-3 lg:max-h-[calc(100%-10rem)] lg:w-[340px]">
                   {sel ? <><PostCard p={sel} now={now} here={here} onChange={() => void mutate()} /><button type="button" onClick={() => setSelected(null)} className="absolute end-2 top-2 rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" aria-hidden /></button></> : <OrgCard o={orgSel!} onClose={() => setOrgSel(null)} />}
                 </motion.div>
@@ -523,8 +524,8 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
     } finally { setSaving(false); }
   };
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] grid place-items-end sm:place-items-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <motion.form initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ type: 'spring', stiffness: 360, damping: 32 }} onClick={(e) => e.stopPropagation()} onSubmit={(e) => void save(e)}
+    <motion.div {...fadeIn} className="fixed inset-0 z-[120] grid place-items-end sm:place-items-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
+      <motion.form {...sheetIn()} onClick={(e) => e.stopPropagation()} onSubmit={(e) => void save(e)}
         className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#0f0f11] p-5 sm:p-6 shadow-2xl border border-zinc-200 dark:border-white/10" aria-label="Ask or offer help">
         <div className="flex items-center justify-between"><h2 className="text-lg font-bold text-zinc-900 dark:text-white">Ask or offer help</h2><button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 grid place-items-center rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
         <div className="mt-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Need or offer">

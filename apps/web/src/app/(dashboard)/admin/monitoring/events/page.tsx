@@ -4,6 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { LoadError } from '@/components/ui/LoadError';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { foldIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { CheckCircle2, Clock, QrCode as QrIcon, Users } from 'lucide-react';
 import { ScanField } from '@/components/library/ScanField';
@@ -12,7 +13,6 @@ import { SectionTabs, MONITORING_TABS } from '@/components/layout/SectionTabs';
 import { RotatingQr } from '@/components/ui/RotatingQr';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Campus events (upgrade 7), admin side: who's coming, and the rotating check-in QR code to show at
@@ -55,7 +55,7 @@ export default function AdminEventsPage() {
                   </div>
                   <AnimatePresence initial={false}>
                     {open === ev.id && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden border-t border-zinc-100 dark:border-white/[0.06]">
+                      <motion.div {...foldIn} className="overflow-hidden border-t border-zinc-100 dark:border-white/[0.06]">
                         <AttendeeList id={ev.id} />
                       </motion.div>
                     )}

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Clapperboard, Link2, ListVideo, Loader2, Lock, LockOpen, MessageSquareText, Pause, Play, Send, Square, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { spring, pop, fadeIn, barPop, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { FilePlayer, YouTubePlayer, youTubeEmbed, youTubeId, youTubeThumb, type Player, type WatchSrc } from '@/lib/youtube-player';
 
@@ -178,14 +178,14 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
         <div className="absolute inset-x-0 top-3 flex flex-col items-center gap-2 pointer-events-none px-3">
           <AnimatePresence>
             {ownMode && (
-              <motion.div key="own" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth}
+              <motion.div key="own" initial={{ opacity: 0, transform: 'translateY(-6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-6px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
                 className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/70 backdrop-blur-xl border border-white/10 ps-3.5 pe-1.5 py-1.5 text-xs font-semibold">
                 You’re watching on your own
                 <button type="button" onClick={backToEveryone} className="h-7 px-3 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 font-bold inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />Back to everyone</button>
               </motion.div>
             )}
             {blocked && !failed && (
-              <motion.p key="tap" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-full bg-black/70 backdrop-blur-xl border border-white/10 px-3.5 py-1.5 text-xs font-semibold">
+              <motion.p key="tap" initial={{ opacity: 0, transform: 'translateY(-6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} exit={{ opacity: 0, transform: 'translateY(0px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} className="rounded-full bg-black/70 backdrop-blur-xl border border-white/10 px-3.5 py-1.5 text-xs font-semibold">
                 Tap the video to start it
               </motion.p>
             )}
@@ -194,10 +194,10 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
 
         <AnimatePresence>
           {countdown !== null && !ownMode && (
-            <motion.div key="count" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} transition={spring.smooth}
+            <motion.div key="count" initial={{ opacity: 0, transform: 'scale(0.9)' }} animate={{ opacity: 1, transform: 'scale(1)' }} exit={{ opacity: 0, transform: 'scale(1.05)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 pointer-events-none" role="status">
               <p className="text-sm text-zinc-300">Starting for everyone in</p>
-              <motion.p key={countdown} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className="text-6xl font-bold tabular-nums">{countdown}</motion.p>
+              <motion.p key={countdown} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="text-6xl font-bold tabular-nums">{countdown}</motion.p>
             </motion.div>
           )}
           {failed && (
@@ -223,7 +223,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
 
         <AnimatePresence>
           {listOpen && (
-            <motion.aside key="list" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={spring.smooth}
+            <motion.aside key="list" initial={{ opacity: 0, transform: 'translateX(12px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} exit={{ opacity: 0, transform: 'translateX(12px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
               className="absolute top-3 end-3 bottom-3 w-64 max-w-[80%] rounded-2xl bg-[#151517]/95 backdrop-blur-xl border border-white/10 p-3 flex flex-col gap-2" aria-label="Comments on the video">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">Comments · {notes.length}</p>
@@ -339,9 +339,9 @@ export function WatchPicker({ open, callId, onClose, onStart }: { open: boolean;
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="watch-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
+          <motion.div key="watch-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
           <div key="watch-pick" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-            <motion.div role="dialog" aria-label="Watch together" initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.97 }} transition={spring.smooth} className={sheet}>
+            <motion.div role="dialog" aria-label="Watch together" {...barPop} className={sheet}>
               <div className="flex items-center justify-between">
                 <p className="font-semibold inline-flex items-center gap-2"><ListVideo className="w-4 h-4 text-fuchsia-300" />Watch together</p>
                 <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -355,7 +355,7 @@ export function WatchPicker({ open, callId, onClose, onStart }: { open: boolean;
                 </label>
                 <AnimatePresence initial={false}>
                   {id && (
-                    <motion.div key={id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
+                    <motion.div key={id} {...foldIn} className="overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={youTubeThumb(id)} alt="" className="w-full aspect-video object-cover rounded-2xl bg-white/5" />
                     </motion.div>

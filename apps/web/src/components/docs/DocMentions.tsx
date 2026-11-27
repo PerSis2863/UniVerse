@@ -6,7 +6,7 @@ import Mention from '@tiptap/extension-mention';
 import type { Editor } from '@tiptap/react';
 import { Avatar } from '@/components/ui/Avatar';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { spring, popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // @mentions inside a document's text (Stage 4 · 3.9 follow-up): typing "@" suggests the people who
@@ -84,7 +84,7 @@ export function MentionMenu({ store }: { store: MentionStore }) {
   return (
     <AnimatePresence>
       {show && s.rect && (
-        <motion.ul key="mentions" role="listbox" aria-label="Mention someone" initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
+        <motion.ul key="mentions" role="listbox" aria-label="Mention someone" {...popIn}
           style={{ position: 'fixed', left: Math.min(s.rect.left, (typeof window === 'undefined' ? 9999 : window.innerWidth) - 272), top: s.rect.bottom + 6 }}
           className="z-[200] w-64 py-1 rounded-xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl">
           {s.items.map((p, i) => (

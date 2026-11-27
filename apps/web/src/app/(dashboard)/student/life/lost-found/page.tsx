@@ -13,7 +13,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { useAuthStore } from '@/store/auth';
 import { useNow } from '@/lib/use-now';
-import { spring } from '@/lib/motion';
+import { spring, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { LostFoundItem } from '@/components/campus/lost-found';
 import { TabPill } from '@/components/ui/Glide';
@@ -141,7 +141,7 @@ function ReportForm({ onClose, onDone }: { onClose: () => void; onDone: (kind: '
   };
 
   return (
-    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
+    <motion.div {...foldIn} className="overflow-hidden">
       <div className={`panel p-4 space-y-3`}>
         <div className="flex items-center justify-between">
           <div className="inline-flex gap-1">

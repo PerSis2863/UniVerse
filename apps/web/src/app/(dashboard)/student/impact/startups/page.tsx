@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { popIn, sheetIn, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Rocket, Users,   Sparkles,  CheckCircle2, X, Send,  Lightbulb, Building2,  ArrowUpRight, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -193,10 +194,10 @@ export default function StartupIncubatorPage() {
       {/* Startup Detail Modal */}
       <AnimatePresence>
         {selected && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div {...fadeIn}
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
             onClick={e => e.target === e.currentTarget && setSelected(null)}>
-            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+            <motion.div {...sheetIn()}
               className="tone-panel border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl">
               <div className="flex items-start justify-between">
                 <div>
@@ -241,10 +242,10 @@ export default function StartupIncubatorPage() {
       {/* Pitch Modal */}
       <AnimatePresence>
         {pitching && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div {...fadeIn}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={e => e.target === e.currentTarget && setPitching(false)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+            <motion.div {...popIn}
               className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
               <div className="flex justify-between mb-4">
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Pitch Your Startup 🚀</h3>

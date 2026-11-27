@@ -7,7 +7,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { speechRate } from '@/lib/display-prefs';
 import { LEVELS, type Level, type Leveled } from '@/lib/reading-level';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { speechSupported, useSpeech } from '@/lib/use-speech';
 import { cn } from '@/lib/utils';
 import { GlossedText } from './ReadingLevel';
@@ -67,7 +67,7 @@ export default function SelectionHelper() {
   return (
     <AnimatePresence mode="wait" initial={false}>
       {shown ? (
-        <motion.section key="result" data-no-select-help aria-labelledby="sel-help-title" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={spring.smooth}
+        <motion.section key="result" data-no-select-help aria-labelledby="sel-help-title" initial={{ opacity: 0, transform: 'translateY(16px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(16px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className={cn(bar, 'sm:w-[28rem] max-h-[60vh] flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl')}>
           <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-zinc-200 dark:border-zinc-800">
             <h2 id="sel-help-title" className="flex-1 text-sm font-semibold text-zinc-900 dark:text-white">In simpler words · {LEVELS[shown.level].label}</h2>
@@ -84,7 +84,7 @@ export default function SelectionHelper() {
           <p className="px-4 pb-3 text-[11px] text-zinc-500 dark:text-zinc-400">Rewritten by AI; it can make mistakes. The text on the page is the original.</p>
         </motion.section>
       ) : text ? (
-        <motion.div key="bar" data-no-select-help role="toolbar" aria-label="Selected text" initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 12, opacity: 0 }} transition={spring.snappy}
+        <motion.div key="bar" data-no-select-help role="toolbar" aria-label="Selected text" initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(12px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           onPointerDown={(e) => e.preventDefault()}
           className={cn(bar, 'flex items-center justify-center gap-1 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl p-1.5')}>
           {speechSupported() && (

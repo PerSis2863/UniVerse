@@ -225,7 +225,7 @@ export function TripDays({ stop, items, from, today = null, onMove, onTime, onRe
       <div className={cn('pointer-events-none sticky bottom-[calc(var(--mobile-tabbar-h)+var(--safe-bottom)+4.75rem)] z-10 mt-4 flex flex-col items-end gap-3 lg:bottom-[5.5rem]', open && 'max-lg:hidden')}>
         <div className="pointer-events-auto relative">
           {menu && (
-            <div role="menu" aria-label="Day options" className="card absolute bottom-full end-0 mb-3 w-64 space-y-1 p-2! fade-up">
+            <div role="menu" aria-label="Day options" className="card absolute bottom-full end-0 mb-3 w-64 space-y-1 p-2! spot-up origin-bottom-right rtl:origin-bottom-left">
               {day !== null && <button type="button" role="menuitem" onClick={shortest} disabled={located2 < 2} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-100 dark:hover:bg-white/[0.06]"><Navigation className="h-4 w-4" aria-hidden />Shortest round for Day {day + 1}</button>}
               <button type="button" role="menuitem" onClick={spread} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.06]"><Wand2 className="h-4 w-4" aria-hidden />Spread the places over the days</button>
               {day !== null && <label className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">

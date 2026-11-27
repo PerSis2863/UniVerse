@@ -8,7 +8,7 @@ import { FileText, Loader2, MessageSquare, Paperclip, SendHorizontal, X } from '
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { pop, fadeIn, riseIn, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { chatJson, formatBytes, messageTypeFor, uploadChatFile, type ChatMessage, type ThreadResponse } from '@/components/chat/chat-client';
 
@@ -104,9 +104,9 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title, loc
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
+          <motion.div key="scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
           <motion.aside key="chat" role="dialog" aria-label="Chat in the call"
-            initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
+            {...riseIn}
             className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
               <div className="min-w-0">
@@ -126,7 +126,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title, loc
                 const first = i === 0 || lines[i - 1].name !== l.name || lines[i - 1].mine !== l.mine || l.at - lines[i - 1].at > 5 * 60_000;
                 if (l.note) return <p key={l.id} className="text-center text-[11px] text-zinc-500 py-1">{l.name ? `${l.name}: ` : ''}{l.text}</p>;
                 return (
-                  <motion.div key={l.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className={cn('flex flex-col', l.mine ? 'items-end' : 'items-start', first && i > 0 && 'pt-1.5')}>
+                  <motion.div key={l.id} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className={cn('flex flex-col', l.mine ? 'items-end' : 'items-start', first && i > 0 && 'pt-1.5')}>
                     {first && <span className="text-[11px] text-zinc-400 px-1 mb-0.5">{l.mine ? 'You' : l.name} · {new Date(l.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>}
                     <div className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug whitespace-pre-wrap break-words', l.mine ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-ee-md' : 'bg-white/10 rounded-es-md')}>
                       {l.file && (
@@ -149,7 +149,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title, loc
             </div>
             <AnimatePresence>
               {progress !== null && (
-                <motion.div key="up" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-4 overflow-hidden">
+                <motion.div key="up" {...foldIn} className="px-4 overflow-hidden">
                   <div className="flex items-center gap-2 text-xs text-zinc-300 py-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Uploading… {progress}%</div>
                 </motion.div>
               )}

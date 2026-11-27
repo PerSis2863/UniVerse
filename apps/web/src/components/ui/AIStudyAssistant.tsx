@@ -3,6 +3,7 @@
 import { MathText } from '@/components/ui/MathText';
 import { useState, useRef, useEffect } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { pop } from '@/lib/motion';
 import { Bot, X, Send, Sparkles, User, Minimize2, Zap, WifiOff, ArrowUpRight, ArrowUp, SquarePen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiStore } from '@/store/ai';
@@ -292,9 +293,9 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
       <AnimatePresence>
         {(!isOpen || launcher) && (
           <motion.div
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.85, opacity: 0 }}
+            initial={{ opacity: 0, transform: 'scale(0.85)' }}
+            animate={{ opacity: 1, transform: 'scale(1)' }} transition={pop.spring}
+            exit={{ opacity: 0, transform: 'scale(0.85)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }}
             // M339 (the owner, 19 Nov): on a phone or tablet the round button sat over the page (a figure, a form's field), as
             // iPhone apps never do; there the tab bar's "+" → Ask AI opens this assistant (universe:open-assistant). Parents'
             // tab bar has no "+", so they keep the button.
@@ -389,8 +390,8 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
               {messages.map((msg) => (
                 <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, transform: 'translateY(10px)' }}
+                  animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
                   key={msg.id} 
                   className={cn("flex items-end gap-2", msg.role === 'user' ? "flex-row-reverse" : "flex-row")}
                 >

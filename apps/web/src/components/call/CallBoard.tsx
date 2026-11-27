@@ -5,7 +5,7 @@ import { ExternalLink, Loader2, X } from 'lucide-react';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { sideIn } from '@/lib/motion';
 
 // A whiteboard inside a call (Stage 4 · 3.4): the board itself (BoardCanvas, the same live board as
 // /boards/<id>) in a panel over the call. The board is made for the call and its link shared in
@@ -35,7 +35,7 @@ const noop = () => {};
 
 export function CallBoardPanel({ boardId, onClose }: { boardId: string; onClose: () => void }) {
   return (
-    <motion.section initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }} transition={spring.smooth}
+    <motion.section {...sideIn()}
       aria-label="Whiteboard" className="fixed inset-y-0 end-0 z-[330] w-full md:w-[min(64vw,1100px)] flex flex-col bg-[#121212] border-s border-white/10 shadow-2xl">
       <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-white/10 text-white">
         <p className="flex-1 text-sm font-semibold">Whiteboard</p>

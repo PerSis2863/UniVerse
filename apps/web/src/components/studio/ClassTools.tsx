@@ -7,7 +7,7 @@ import { Check, Dices, Minus, Pencil, Play, Plus, Printer, RotateCcw, Shuffle, T
 import { divisors, fracOp, gcd, isPrime, lcm, mixed, parseFrac, primeFactors, solveQuadratic, type Frac } from '@/lib/more-tools';
 import { ELEMENTS, FAMILIES, type Element, type Family } from '@/lib/elements';
 import { celebrate } from '@/lib/celebrate';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Btn, Field } from './QuickTools';
 import { printOnly, uid, useKept } from './kept';
@@ -76,7 +76,7 @@ function Drill() {
         </div>
       )}
       {phase === 'done' && (
-        <motion.dl initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="grid grid-cols-3 gap-2 text-sm"><Stat big k="Right" v={score} /><Stat big k="Tried" v={tries} /><Stat big k="Accuracy" v={tries ? `${Math.round((score / tries) * 100)}%` : '—'} /></motion.dl>
+        <motion.dl initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="grid grid-cols-3 gap-2 text-sm"><Stat big k="Right" v={score} /><Stat big k="Tried" v={tries} /><Stat big k="Accuracy" v={tries ? `${Math.round((score / tries) * 100)}%` : '—'} /></motion.dl>
       )}
     </div>
   );
@@ -106,7 +106,7 @@ function Periodic() {
             ); })}
           </div>
         </div>
-        <motion.div key={sel.z} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="rounded-2xl p-4 text-zinc-900 ring-1 ring-black/10 self-start" style={{ background: FAM_COLOUR[sel.family] }} aria-live="polite">
+        <motion.div key={sel.z} initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="rounded-2xl p-4 text-zinc-900 ring-1 ring-black/10 self-start" style={{ background: FAM_COLOUR[sel.family] }} aria-live="polite">
           <p className="font-mono text-sm">{sel.z}</p>
           <p className="text-5xl font-bold">{sel.symbol}</p>
           <p className="text-xl font-semibold">{sel.name}</p>
@@ -178,7 +178,7 @@ function Quiz() {
           <div className="flex justify-center gap-2"><button type="button" onClick={() => begin()} className="btn-primary"><RotateCcw className="w-4 h-4" aria-hidden />Again</button><Btn on={mixUp} onClick={() => setMixUp(!mixUp)}><Shuffle className="w-3.5 h-3.5" aria-hidden />Mix the order</Btn></div>
         </motion.div>
       ) : cur ? (
-        <motion.div key={cur.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={spring.smooth} className="space-y-3">
+        <motion.div key={cur.id} initial={{ opacity: 0, transform: 'translateX(16px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} transition={pop.spring} className="space-y-3">
           <div className="flex items-center gap-3"><span className="flex-1 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={((i / order.length) * 100) / 100} className="h-full bg-pink-500" /></span><span className="text-sm font-mono tabular-nums text-zinc-600 dark:text-zinc-300">{i + 1}/{order.length}</span></div>
           <p className="text-xl font-bold text-zinc-900 dark:text-white" translate="no">{cur.q}</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

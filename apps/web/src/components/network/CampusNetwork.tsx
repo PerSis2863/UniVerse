@@ -6,7 +6,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { ArrowLeftRight, Building2, GraduationCap, Loader2, MapPin, Pencil, Plus, Share2, Trash2, Users, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -242,7 +242,7 @@ function CampusForm({ editing, onDone, onCancel }: { editing: CampusCard | null;
     try { await authedJson(`/api/network/campuses/${editing.id}`, { method: 'DELETE' }); toast.success('Campus removed'); onDone(); } catch (err) { toast.error((err as Error).message); }
   };
   return (
-    <motion.form onSubmit={save} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className={cn('panel', 'p-4 md:p-5 space-y-4')}>
+    <motion.form onSubmit={save} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-6px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className={cn('panel', 'p-4 md:p-5 space-y-4')}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="font-bold text-zinc-900 dark:text-white">{editing ? `Edit ${editing.name}` : 'Add a campus'}</h3>
         <button type="button" onClick={onCancel} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>

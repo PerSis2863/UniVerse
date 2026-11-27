@@ -4,7 +4,7 @@ import { useId, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { popUp } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -66,7 +66,7 @@ export function MentionInput({ kind, id, value, onChange, onSubmit, className, .
       />
       <AnimatePresence>
         {list.length > 0 && (
-          <motion.ul id={listId} role="listbox" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={spring.snappy}
+          <motion.ul id={listId} role="listbox" {...popUp}
             className="absolute bottom-full mb-1 start-0 z-50 w-64 max-w-full py-1 rounded-xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl">
             {list.map((p, i) => (
               <li key={p.id} role="option" aria-selected={i === active}>

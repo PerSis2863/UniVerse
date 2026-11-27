@@ -5,7 +5,7 @@ import { AddressLoading } from '@/components/layout/AddressLoading';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { BadgeCheck, Download, Loader2, ScanLine, ShieldAlert, ShieldCheck, UserX } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import Link from '@/components/ui/Link';
 import { PassportView, type PassportData } from '@/components/passport/PassportView';
 import { cleanPassportTheme } from '@/lib/passport-theme';
@@ -94,7 +94,7 @@ function VerifyPassport({ slug, name }: { slug: string; name: string }) {
       </div>
       <AnimatePresence>
         {(state === 'ok' || state === 'bad') && (
-          <motion.div key={state} role="status" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={spring.smooth}
+          <motion.div key={state} role="status" initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(0px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
             className={state === 'ok' ? 'mt-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-sm text-emerald-800 dark:text-emerald-200' : 'mt-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-700 dark:text-rose-300'}>
             <p className="font-bold flex items-center gap-1.5">{state === 'ok' ? <><ShieldCheck className="w-4 h-4" /> Verified: signed by UniVerse Impact</> : <><ShieldAlert className="w-4 h-4" /> Couldn’t verify</>}</p>
             {detail.text && <p className="mt-1 text-xs opacity-90 break-words">{detail.text}</p>}

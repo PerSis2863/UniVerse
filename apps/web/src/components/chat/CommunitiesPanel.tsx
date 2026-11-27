@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { sheetIn, fadeIn, foldIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronRight, Compass, Crown, Globe2, Hash, Headphones, ImagePlus, Link2, Loader2, Lock, LogOut, Megaphone, Plus, Search, Settings2, Shield, Smile, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
-import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { QrCode } from '@/components/ui/QrCode';
 import { Avatar } from '@/components/ui/Avatar';
@@ -76,7 +76,7 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
             </div>
             <AnimatePresence initial={false}>
               {isOpen(c) && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden ms-6 ps-3 border-s border-zinc-200 dark:border-white/10">
+                <motion.div {...foldIn} className="overflow-hidden ms-6 ps-3 border-s border-zinc-200 dark:border-white/10">
                   {/* Channels under their category headings (Stage 5 · B7.4). */}
                   {groupChannels(c.channels.map((ch) => ({ ...ch, category: ch.category ?? null }))).map((g) => (
                     <div key={g.category ?? ''}>
@@ -141,8 +141,8 @@ function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOp
 
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <motion.div data-sheet initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={spring.smooth} role="dialog" aria-modal="true" aria-label={title}
+    <motion.div {...fadeIn} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <motion.div data-sheet {...sheetIn()} role="dialog" aria-modal="true" aria-label={title}
         className="w-full sm:max-w-md max-h-[88vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="p-5 pb-3 flex items-center justify-between shrink-0">
           <h3 className="text-lg font-black text-zinc-900 dark:text-white truncate">{title}</h3>

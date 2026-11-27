@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { pop, foldIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle, Loader2, ShieldCheck, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
@@ -99,8 +100,8 @@ export function AccountSetupCard() {
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, transform: 'translateY(12px)' }}
+      animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
       className="relative overflow-hidden rounded-3xl border border-indigo-200/70 dark:border-indigo-400/20 bg-[var(--card-bg)] p-5 md:p-6"
     >
       <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" />
@@ -138,7 +139,7 @@ export function AccountSetupCard() {
             </div>
             <AnimatePresence>
               {open === s.key && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <motion.div {...foldIn} className="overflow-hidden">
                   <div className="flex gap-2 mt-3">
                     <input
                       autoFocus

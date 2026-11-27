@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { pop, fadeIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { Download, FileSpreadsheet, Loader2, Sparkles, Users, HeartHandshake, Wand2, Copy } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -240,11 +241,11 @@ function AiReport() {
       </div>
       <AnimatePresence mode="wait">
         {loading ? (
-          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+          <motion.div key="loading" {...fadeIn} className="space-y-3">
             {[90, 75, 82, 60, 70].map((w, i) => <div key={i} className="h-3 rounded-full skeleton" style={{ width: `${w}%` }} />)}
           </motion.div>
         ) : report ? (
-          <motion.div key="report" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-white/70 dark:bg-black/20 border border-zinc-200/70 dark:border-white/[0.05] p-6">
+          <motion.div key="report" initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="rounded-2xl bg-white/70 dark:bg-black/20 border border-zinc-200/70 dark:border-white/[0.05] p-6">
             <ReportBody markdown={report} />
           </motion.div>
         ) : null}

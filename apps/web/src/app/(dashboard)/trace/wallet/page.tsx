@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, animate, m as motion, useReducedMotion } from 'framer-motion';
+import { foldIn } from '@/lib/motion';
 import { ArrowDownLeft, ArrowUpRight, Banknote, Gift, Loader2, Megaphone, Recycle, RotateCcw, ScanLine, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { TraceTabs } from '@/components/trace/TraceTabs';
@@ -137,7 +138,7 @@ function Wallet() {
                       <button type="button" disabled={b.points < b.brand.minCashout} onClick={() => setCashing(cashing === b.brand.id ? null : b.brand.id)} className="relative mt-4 btn-secondary btn-sm"><Banknote className="w-3.5 h-3.5" />Cash out</button>
                       <AnimatePresence initial={false}>
                         {cashing === b.brand.id && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="relative overflow-hidden">
+                          <motion.div {...foldIn} className="relative overflow-hidden">
                             <CashoutForm brand={b.brand} max={b.points} onDone={() => { setCashing(null); void mutate(); }} />
                           </motion.div>
                         )}

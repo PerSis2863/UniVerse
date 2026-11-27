@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { m as motion } from 'framer-motion';
+import { pop } from '@/lib/motion';
 import { toast } from 'sonner';
 import { CreditCard, Crown, Loader2, ShieldCheck, CalendarClock, AlertTriangle, FileText } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -94,8 +95,8 @@ function BillingContent() {
 
       {/* Current plan */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, transform: 'translateY(12px)' }}
+        animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
         className="relative overflow-hidden rounded-[2rem] border border-zinc-200 dark:border-white/[0.06] bg-gradient-to-br from-white to-indigo-50/60 dark:from-zinc-900/70 dark:to-indigo-950/30 p-6 md:p-8"
       >
         <div aria-hidden className="pointer-events-none absolute -end-20 -top-20 w-72 h-72 rounded-full bg-indigo-500/10 blur-3xl" />

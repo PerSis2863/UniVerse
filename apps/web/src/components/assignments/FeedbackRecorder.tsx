@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { FileText, Loader2, Mic, Square, Trash2, Video } from 'lucide-react';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 
 // Feedback studio (upgrade 8): the teacher records voice or video feedback for one answer. It's
 // uploaded like a chat voice note and the student plays it with their grade. Up to 5 minutes, at a
@@ -100,7 +100,7 @@ export function FeedbackRecorder({ submissionId, media, onChange }: {
       </div>
       <AnimatePresence>
         {rec && (
-          <motion.div key="rec" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={spring.snappy} className="flex items-center gap-3">
+          <motion.div key="rec" initial={{ opacity: 0, transform: 'translateY(-4px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(0px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="flex items-center gap-3">
             {rec.kind === 'VIDEO' && <video ref={preview} autoPlay muted playsInline className="w-32 aspect-video rounded-lg bg-black object-cover" />}
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-rose-600 dark:text-rose-400"><span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Recording {clock(secs)} / 5:00</span>
             <button type="button" onClick={() => void stop()} className="btn-primary btn-sm rounded-full inline-flex ms-auto"><Square className="w-3.5 h-3.5 fill-current" /> Stop and attach</button>

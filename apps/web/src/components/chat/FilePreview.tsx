@@ -7,7 +7,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { Download, Eye, FileCode2, FileText, Loader2, Minus, Plus, X } from 'lucide-react';
 import { closePdf, drawPage, firstPage, openPdf, previewKind } from '@/lib/pdf';
 import { useLowData } from '@/store/low-data';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { safeHref } from '@/lib/safe-href';
 import { formatBytes } from './chat-client';
@@ -37,7 +37,7 @@ function Overlay({ title, url, onClose, children, tools }: { title: string; url:
         <a href={safeHref(url)} download={title} target="_blank" rel="noopener noreferrer" aria-label="Download" className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center"><Download className="w-5 h-5" /></a>
         <button type="button" onClick={onClose} aria-label="Close" className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center"><X className="w-5 h-5" /></button>
       </div>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 min-h-0">{children}</motion.div>
+      <motion.div initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="flex-1 min-h-0">{children}</motion.div>
     </motion.div>,
     document.body,
   );

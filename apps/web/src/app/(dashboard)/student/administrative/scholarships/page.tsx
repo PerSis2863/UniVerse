@@ -8,6 +8,7 @@ import { Sparkles, FileText } from 'lucide-react';
 import { Award, CheckCircle2, ChevronRight, GraduationCap, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { pop, popIn, fadeIn } from '@/lib/motion';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -246,11 +247,11 @@ export default function Scholarships() {
       <AnimatePresence>
         {selectedScholarship && (
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            {...fadeIn}
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              {...popIn}
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-zinc-800 flex justify-between items-start bg-zinc-900/50 flex-shrink-0">
@@ -277,7 +278,7 @@ export default function Scholarships() {
                   {applicationStep === 1 && (
                     <motion.div
                       key="step1"
-                      initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                      initial={{ opacity: 0, transform: 'translateX(-20px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} transition={pop.spring} exit={{ opacity: 0, transform: 'translateX(20px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }}
                       className="space-y-6"
                     >
                       <div className="grid grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-800/30 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
@@ -327,7 +328,7 @@ export default function Scholarships() {
                   {applicationStep === 2 && (
                     <motion.div
                       key="step2"
-                      initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                      initial={{ opacity: 0, transform: 'translateX(-20px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} transition={pop.spring} exit={{ opacity: 0, transform: 'translateX(20px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }}
                       className="space-y-6"
                     >
                       <div>
@@ -381,7 +382,7 @@ export default function Scholarships() {
                   {applicationStep === 3 && (
                     <motion.div
                       key="step3"
-                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, transform: 'scale(0.95)' }} animate={{ opacity: 1, transform: 'scale(1)' }} transition={pop.spring}
                       className="flex flex-col items-center text-center space-y-6 py-8"
                     >
                       <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center">

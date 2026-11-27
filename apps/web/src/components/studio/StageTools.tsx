@@ -5,7 +5,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { Hand, Minus, Pencil, Play, Plus, Printer, RotateCcw, Shuffle, SkipForward, Trash2 } from 'lucide-react';
 import { bingoCard } from '@/lib/tools-5';
 import { celebrate } from '@/lib/celebrate';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Btn, Field } from './QuickTools';
 import { printOnly, useKept } from './kept';
@@ -79,7 +79,7 @@ function GameBoard() {
             {[0, 1, 2, 3].map((r) => b.cats.map((_, c) => { const x = b.clues[c][r]; return <button key={`${c}-${r}`} type="button" disabled={x.used || !x.q} onClick={() => { setOpen([c, r]); setShow(false); }} className={cn('rounded-xl py-4 font-mono text-2xl font-bold transition-[transform,opacity] active:scale-95', x.used ? 'bg-zinc-200 text-zinc-400 dark:bg-white/5 dark:text-zinc-600' : x.q ? 'bg-indigo-600 text-amber-300 hover:scale-[1.03]' : 'bg-zinc-100 text-zinc-400 dark:bg-white/5')}>{x.used ? '' : pts(r)}</button>; }))}
           </div>
           <AnimatePresence>{cur && open && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.12 } }} transition={spring.smooth} className="rounded-3xl bg-indigo-700 p-6 text-center text-white space-y-3" role="dialog" aria-label="Question">
+            <motion.div initial={{ opacity: 0, transform: 'scale(0.95)' }} animate={{ opacity: 1, transform: 'scale(1)' }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.12 } }} transition={pop.spring} className="rounded-3xl bg-indigo-700 p-6 text-center text-white space-y-3" role="dialog" aria-label="Question">
               <p className="text-sm opacity-90">{b.cats[open[0]]} · {pts(open[1])}</p>
               <p className="text-2xl sm:text-3xl font-bold" translate="no">{cur.q}</p>
               {show ? <p className="text-xl text-amber-300 font-semibold" translate="no">{cur.a || '(no answer written)'}</p> : <button type="button" onClick={() => setShow(true)} className="btn-primary">Show the answer</button>}

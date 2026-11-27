@@ -8,7 +8,7 @@ import { BookmarkPlus, CheckCircle2, ChevronDown, Clock, Languages, Layers, List
 import Link from '@/components/ui/Link';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { spring, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { languageName } from '@/lib/languages';
 import { useLanguageStore } from '@/store/language';
@@ -157,7 +157,7 @@ function SessionCard({ s, canManage, open, linked, onToggle, recordingUrl, refre
 
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div key="body" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+          <motion.div key="body" {...foldIn} className="overflow-hidden">
             <div className="px-4 sm:px-5 pb-5 space-y-5 border-t border-zinc-100 dark:border-white/[0.05] pt-4">
               {s.status === 'PENDING' ? (
                 <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 text-sm text-zinc-700 dark:text-zinc-300">

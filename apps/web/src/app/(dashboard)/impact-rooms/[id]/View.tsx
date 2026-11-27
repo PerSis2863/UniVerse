@@ -18,7 +18,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { ImpactReportView, type ImpactCallReport } from '@/components/impact/ImpactReport';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { spring, fadeIn, foldIn, fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { Fill } from '@/components/ui/Fill';
@@ -277,7 +277,7 @@ function ImpactCallCard({ data, busy, run, call, onJoin, onReport }: { data: Roo
           {!next && <button type="button" onClick={onJoin} className="btn-secondary w-full"><Video className="w-4 h-4" />Start a call now</button>}
           <AnimatePresence initial={false}>
             {planning ? (
-              <motion.div key="plan" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden space-y-2">
+              <motion.div key="plan" {...foldIn} className="overflow-hidden space-y-2">
                 <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="When" className="input" />
                 <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Title (optional)" aria-label="Title" className="input" />
                 <div className="flex gap-2">
@@ -286,7 +286,7 @@ function ImpactCallCard({ data, busy, run, call, onJoin, onReport }: { data: Roo
                 </div>
               </motion.div>
             ) : (
-              <motion.button key="open" type="button" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPlanning(true)} className="w-full text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center justify-center gap-1.5 py-1"><CalendarPlus className="w-3.5 h-3.5" />Plan {next ? 'another' : 'the next'} call</motion.button>
+              <motion.button key="open" type="button" {...fadeIn} onClick={() => setPlanning(true)} className="w-full text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center justify-center gap-1.5 py-1"><CalendarPlus className="w-3.5 h-3.5" />Plan {next ? 'another' : 'the next'} call</motion.button>
             )}
           </AnimatePresence>
           <p className="text-[11px] text-zinc-500">In the call, turn on Meeting notes (More). Afterwards, make the report: this month’s verified figures and what the call decided, signed for sponsors.</p>

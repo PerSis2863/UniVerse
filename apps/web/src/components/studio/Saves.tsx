@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import { useAuthStore } from '@/store/auth';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
-import { spring } from '@/lib/motion';
+import { spring, popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { keptNow, type KeptSync } from './kept';
 
@@ -78,7 +78,7 @@ function ShareMenu({ onPick, disabled, onCourse }: { onPick: (mode: 'view' | 'ed
     <div ref={box} className="relative">
       <button type="button" disabled={disabled} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" className="btn-secondary btn-sm"><Link2 className="w-3.5 h-3.5" aria-hidden />Share</button>
       <AnimatePresence>{open && (
-        <motion.div role="menu" initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.1 } }} transition={spring.snappy} style={{ transformOrigin: 'top right' }}
+        <motion.div role="menu" {...popIn} style={{ transformOrigin: 'top right' }}
           className="absolute end-0 top-full z-30 mt-1.5 w-72 rounded-2xl bg-white dark:bg-indigo-900 p-1.5 shadow-xl ring-1 ring-black/10 dark:ring-white/10">
           <button type="button" role="menuitem" onClick={() => { setOpen(false); onPick('view'); }} className="flex w-full items-start gap-2 rounded-xl p-2.5 text-start hover:bg-zinc-100 dark:hover:bg-white/10"><Eye className="mt-0.5 w-4 h-4 shrink-0 text-indigo-600 dark:text-aqua-300" aria-hidden /><span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Copy a view link</span><span className="block text-xs text-zinc-600 dark:text-zinc-300">Anyone can open it, no sign-in. Read-only, updates by itself.</span></span></button>
           <button type="button" role="menuitem" onClick={() => { setOpen(false); onPick('edit'); }} className="flex w-full items-start gap-2 rounded-xl p-2.5 text-start hover:bg-zinc-100 dark:hover:bg-white/10"><Users className="mt-0.5 w-4 h-4 shrink-0 text-pink-600 dark:text-pink-300" aria-hidden /><span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Copy an edit link</span><span className="block text-xs text-zinc-600 dark:text-zinc-300">Signed-in people edit it with you, live.</span></span></button>

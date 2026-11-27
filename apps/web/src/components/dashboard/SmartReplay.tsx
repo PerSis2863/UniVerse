@@ -5,7 +5,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { BookOpen, Check, ChevronDown, Clapperboard, ListChecks, Loader2, PlayCircle, Quote, Search, Sparkles, Star, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { pop, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Smart replay (Stage 4 · 4.6): each class with class notes gets chapters, "find where it was
@@ -122,7 +122,7 @@ export function ReplayPanel({ sessionId, chapters, recap, recordingUrl, canMakeR
           </button>
           <AnimatePresence initial={false}>
             {recapOpen && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+              <motion.div {...foldIn} className="overflow-hidden">
                 <div className="px-3 pb-3 space-y-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                   {recap.split(/\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
                 </div>
@@ -169,7 +169,7 @@ export function PracticeQuestions({ practice, canWatch, seek }: { practice: Prac
                 })}
               </div>
               {done && (
-                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                <motion.div initial={{ opacity: 0, transform: 'translateY(4px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
                   <span className="font-semibold">{mine === q.answer ? 'Right. ' : 'Not quite. '}</span>{q.explain}
                   {canWatch && <button type="button" onClick={() => seek(q.t)} className="ms-1.5 font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Watch where this was explained ({clock(q.t)})</button>}
                 </motion.div>

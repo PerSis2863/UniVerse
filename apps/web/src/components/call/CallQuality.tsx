@@ -6,7 +6,7 @@ import { Activity, Check, Star, WifiOff, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { CALL_ISSUES, grade, rate, type Grade, type Reading } from '@/lib/call-quality';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { pop, popIn, fadeIn, riseIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Call quality (Stage 5 · B8.1; numbers from src/lib/call-quality.ts): the Connection panel (my
@@ -46,9 +46,9 @@ export function ConnectionPanel({ open, onClose, me, people, server, audioOnly, 
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
+          <motion.div key="scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
           <motion.aside key="net" role="dialog" aria-label="Connection"
-            initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
+            {...riseIn}
             className="absolute z-40 inset-x-0 bottom-0 max-h-[78vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-auto sm:max-h-[calc(100%-12rem)] sm:w-[22rem] sm:rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
               <div className="min-w-0">
@@ -85,7 +85,7 @@ export function WeakNetwork({ show, onAudioOnly, onDismiss }: { show: boolean; o
   return (
     <AnimatePresence>
       {show && (
-        <motion.div role="status" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.snappy}
+        <motion.div role="status" initial={{ opacity: 0, transform: 'translateY(-10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className="pointer-events-auto rounded-2xl bg-amber-500/15 border border-amber-400/30 backdrop-blur-xl px-3 py-2 flex items-center gap-2 text-sm shadow-xl">
           <WifiOff className="w-4 h-4 text-amber-300 shrink-0" aria-hidden />
           <span className="flex-1 min-w-0 text-amber-100">Your network is weak, so video may freeze.</span>
@@ -117,7 +117,7 @@ export function RateCall({ callId, onDone }: { callId: string; onDone: () => voi
   };
   const skip = () => { try { localStorage.setItem(ASKED, String(Date.now())); } catch { /* private window */ } onDone(); };
   return (
-    <motion.div role="dialog" aria-labelledby="rate-title" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={spring.snappy}
+    <motion.div role="dialog" aria-labelledby="rate-title" {...popIn}
       className="w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-white/[0.08] border border-white/10 backdrop-blur-2xl p-5 space-y-3 text-center">
       {sent ? <p className="py-4 text-sm inline-flex items-center gap-2 justify-center"><Check className="w-4 h-4 text-emerald-300" aria-hidden />Thanks, that helps us make calls better.</p> : (
         <>

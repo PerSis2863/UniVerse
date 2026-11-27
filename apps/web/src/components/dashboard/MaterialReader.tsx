@@ -10,7 +10,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { SPEECH_RATES, readingLevel, setSpeechRate, speechRate } from '@/lib/display-prefs';
 import { LANGUAGES, isLanguage, languageName } from '@/lib/languages';
-import { spring } from '@/lib/motion';
+import { sheetIn, fadeIn } from '@/lib/motion';
 import type { Leveled, Level } from '@/lib/reading-level';
 import { speechSupported, useSpeech } from '@/lib/use-speech';
 import { useLanguageStore } from '@/store/language';
@@ -187,8 +187,8 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
       : mode === 'translated' && level === 'original' ? (allSame ? `It’s already in ${languageName(to)}.` : from && isLanguage(from) ? `Translated by AI from ${languageName(from)}` : '') : '';
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <motion.div role="dialog" aria-modal="true" aria-labelledby="reader-title" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} transition={spring.smooth} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 sm:rounded-2xl w-full max-w-3xl h-full sm:h-[88vh] flex flex-col shadow-2xl">
+    <motion.div {...fadeIn} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <motion.div role="dialog" aria-modal="true" aria-labelledby="reader-title" {...sheetIn()} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 sm:rounded-2xl w-full max-w-3xl h-full sm:h-[88vh] flex flex-col shadow-2xl">
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 sheet-safe-top">
           <div className="min-w-0">
             <h3 id="reader-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 truncate"><BookOpen className="w-4 h-4 text-indigo-500 shrink-0" /> {title}</h3>
