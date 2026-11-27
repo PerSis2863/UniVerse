@@ -97,7 +97,9 @@ export function touchstone(text: string, ports?: number) {
   return { f, n, zref, s };
 }
 /** The differential through response of a 4-port with ports 1, 2 the input pair and 3, 4 the output pair. */
-export const sdd21 = (m: C[][]): C => sc(add(add(m[2][0], sc(m[2][1], -1)), add(sc(m[3][0], -1), m[3][1])), 0.5);
+/** A 4-port's mixed-mode differential parameter from port pair Q to port pair P (ports 1, 2 in: [0, 1]; 3, 4 out). */
+export const sddPair = (m: C[][], P: number[], Q: number[]): C => sc(add(add(m[P[0]][Q[0]], sc(m[P[0]][Q[1]], -1)), add(sc(m[P[1]][Q[0]], -1), m[P[1]][Q[1]])), 0.5);
+export const sdd21 = (m: C[][]): C => sddPair(m, [2, 3], [0, 1]);
 /** Write S-parameters as Touchstone v1 text (RI, Hz). */
 export function writeTouchstone(f: number[], s: C[][][], zref = 50) {
   const n = s[0]?.length ?? 0, out = [`! Written by Hyperion`, `# HZ S RI R ${zref}`];
@@ -148,6 +150,15 @@ export function pulseResponse(f: number[], H: C[], rate: number, spu: number, sp
   return { p: pr, cursor: cur, dt: 1 / fs, N };
 }
 
+/** A response in time on impulseResponse's grid, per sample (dimensionless, whole: the analog channel's scattering
+ * responses, M585). */
+export function sampled(f: number[], H: C[], rate: number, spu: number, span = 512) {
+  const N = 2 ** Math.ceil(Math.log2(spu * span)), fs = rate * spu, bins = Array.from({ length: N / 2 + 1 }, (_, k) => (k * fs) / N);
+  const Hc = resample(f, H, bins), re = new Array(N).fill(0), im = new Array(N).fill(0);
+  for (let k = 0; k <= N / 2; k++) { re[k] = Hc[k][0]; im[k] = Hc[k][1]; if (k > 0 && k < N / 2) { re[N - k] = Hc[k][0]; im[N - k] = -Hc[k][1]; } }
+  im[N / 2] = 0;
+  return Array.from(dft(re, im, true)[0]);
+}
 /** The channel's impulse response h(t) (V/s, as IBIS-AMI's AMI_Init takes it) sampled every UI/spu: the IFFT of the
  * channel (times a CTLE if given), divided by the sample interval, cut where it has died away (at least 32 UI). */
 export function impulseResponse(f: number[], H: C[], rate: number, spu: number, span = 512, extra?: (f: number) => C) {

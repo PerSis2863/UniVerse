@@ -7,10 +7,12 @@ import { dft } from './fft';
 // [POWER Clamp] (an on-die termination shows as a straight line there) and the component's [Package] R_pkg L_pkg
 // C_pkg. Here each end becomes a small linear network around the channel's reference impedance: the transmitter a
 // source with its resistance, its pad and package and its edge; the receiver its package, pad and termination; both
-// scaled so an ideal matched end changes nothing. shortcut: linear around the operating point (the I-V curves' slope),
-// and the line's reflections between the two ends' mismatches aren't bounced back and forth.
+// scaled so an ideal matched end changes nothing. These linear forms describe the buffers and smooth the near-end
+// coupling edge; the channel itself goes through ibis-sim.ts (M585: the curves as they are, echoes included).
 
-export interface Analog { type: string; corner: string; rs: number; rt: number; cComp: number; rPkg: number; lPkg: number; cPkg: number; rise: number; notes: string[] }
+/** pu, pd, gc, pc: the [Pull-up], [Pull-down], [GND Clamp], [POWER Clamp] tables at the corner, rows [V I] (I into the
+ * pin; pull-up and power-clamp voltages measured from the supply); vcc the supply; rise, fall the 0–100% edges. */
+export interface Analog { type: string; corner: string; rs: number; rt: number; cComp: number; rPkg: number; lPkg: number; cPkg: number; rise: number; fall: number; vcc: number; pu: number[][]; pd: number[][]; gc: number[][]; pc: number[][]; notes: string[] }
 
 const SCALE: Record<string, number> = { T: 1e12, G: 1e9, M: 1e6, k: 1e3, m: 1e-3, u: 1e-6, n: 1e-9, p: 1e-12, f: 1e-15 };
 /** An IBIS number: 1.2p, 3.3, 50m, 2e-12 (the scale letter after it; M is mega, m milli); NaN for NA. */
@@ -34,7 +36,7 @@ function slope(rows: number[][], v: number) {
 
 /** A model's analog data at a corner (typ, min or max), or null if the file has no such [Model]. */
 export function readAnalog(text: string, model: string, corner = 'typ'): Analog | null {
-  let comment = '|', section = '', inModel = false, found = false, type = '', vcc = NaN, cComp = NaN, ramp = NaN;
+  let comment = '|', section = '', inModel = false, found = false, type = '', vcc = NaN, cComp = NaN, ramp = NaN, rampF = NaN;
   const pkg = { r: NaN, l: NaN, c: NaN }, tables: Record<string, number[][]> = {};
   for (const raw of text.split(/\r?\n/)) {
     const cc = /^\s*\[comment char\]\s*(\S)_char/i.exec(raw);
@@ -59,9 +61,9 @@ export function readAnalog(text: string, model: string, corner = 'typ'): Analog 
     if (section === 'model' || section === 'algorithmic model' || section === 'end algorithmic model') {
       if (/^model_type$/i.test(w[0])) type = w[1] ?? '';
       else if (/^c_comp$/i.test(w[0])) cComp = pick(w.slice(1), corner);
-    } else if (section === 'ramp' && /^dv\/dt_r$/i.test(w[0])) {
+    } else if (section === 'ramp' && /^dv\/dt_[rf]$/i.test(w[0])) {
       const col = w[1 + (COL[corner] ?? 0)], [dv, dt] = (col && !/^na$/i.test(col) ? col : w[1]).split('/');
-      if (ibisNum(dv) > 0 && ibisNum(dt) > 0) ramp = ibisNum(dt);
+      if (ibisNum(dv) > 0 && ibisNum(dt) > 0) { if (/r$/i.test(w[0])) ramp = ibisNum(dt); else rampF = ibisNum(dt); }
     } else if (tables[section]) {
       const v = ibisNum(w[0]), i = pick(w.slice(1), corner);
       if (Number.isFinite(v) && Number.isFinite(i)) tables[section].push([v, i]);
@@ -77,10 +79,10 @@ export function readAnalog(text: string, model: string, corner = 'typ'): Analog 
   const g = [slope(tables['gnd clamp'] ?? [], vdd / 2), slope(tables['power clamp'] ?? [], vdd / 2)].filter((r) => Number.isFinite(r) && r > 0).reduce((a, r) => a + 1 / r, 0);
   let rt = g > 0 ? 1 / g : Infinity;
   if (!(rt < 1e4)) { rt = 50; if (/input|i\/o/i.test(type)) notes.push('no termination in the clamp tables: 50 ohms taken'); }
-  return { type, corner, rs, rt, cComp: Number.isFinite(cComp) ? cComp : 0, rPkg: Number.isFinite(pkg.r) ? pkg.r : 0, lPkg: Number.isFinite(pkg.l) ? pkg.l : 0, cPkg: Number.isFinite(pkg.c) ? pkg.c : 0, rise: Number.isFinite(ramp) ? ramp / 0.6 : 0, notes };
+  return { type, corner, rs, rt, cComp: Number.isFinite(cComp) ? cComp : 0, rPkg: Number.isFinite(pkg.r) ? pkg.r : 0, lPkg: Number.isFinite(pkg.l) ? pkg.l : 0, cPkg: Number.isFinite(pkg.c) ? pkg.c : 0, rise: Number.isFinite(ramp) ? ramp / 0.6 : 0, fall: Number.isFinite(rampF) ? rampF / 0.6 : Number.isFinite(ramp) ? ramp / 0.6 : 0, vcc: vdd, pu: tables['pull up'] ?? [], pd: tables['pull down'] ?? [], gc: tables['gnd clamp'] ?? [], pc: tables['power clamp'] ?? [], notes };
 }
 
-type C = [number, number];
+export type C = [number, number];
 const add = (a: C, b: C): C => [a[0] + b[0], a[1] + b[1]];
 const mul = (a: C, b: C): C => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
 const div = (a: C, b: C): C => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
@@ -103,17 +105,17 @@ export function rxGain(a: Analog, f: number, z0 = 50): C {
   return mul(div(mul([2, 0], zp), add([z0, 0], zp)), div(zd, za));
 }
 
-/** An impulse response (every dt) through the front ends: zero-padded, by FFT, the first h.length samples. */
+/** An impulse response (every dt) through the linear front ends (used for the near-end coupling edge). */
 export function throughFrontEnds(h: number[], dt: number, tx: Analog | null | undefined, rx: Analog | null | undefined, z0 = 50): number[] {
   if (!tx && !rx) return h;
+  return filterImpulse(h, dt, (f) => { let g: C = [1, 0]; if (tx) g = mul(g, txGain(tx, f, z0)); if (rx) g = mul(g, rxGain(rx, f, z0)); return g; });
+}
+/** An impulse response (every dt) times a frequency response: zero-padded, by FFT, the first h.length samples. */
+export function filterImpulse(h: number[], dt: number, gain: (f: number) => C): number[] {
   let N = 1; while (N < 2 * h.length) N <<= 1;
   const [Xr, Xi] = dft(Array.from({ length: N }, (_, i) => h[i] ?? 0), new Array(N).fill(0)), re = new Array(N).fill(0), im = new Array(N).fill(0);
   for (let k = 0; k <= N / 2; k++) {
-    const f = k / (N * dt);
-    let g: C = [1, 0];
-    if (tx) g = mul(g, txGain(tx, f, z0));
-    if (rx) g = mul(g, rxGain(rx, f, z0));
-    const y = mul([Xr[k], Xi[k]], g);
+    const y = mul([Xr[k], Xi[k]], gain(k / (N * dt)));
     re[k] = y[0]; im[k] = y[1];
     if (k > 0 && k < N / 2) { re[N - k] = y[0]; im[N - k] = -y[1]; }
   }

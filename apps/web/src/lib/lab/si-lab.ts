@@ -3,7 +3,8 @@ import { textOf, type Lab } from './interp';
 import { cmat, imOf, mat, num, str, toMat, type Value } from './values';
 import { fileBytes, fileText, hasFile, writeFileText } from './files';
 import * as ami from './ami';
-import { readAnalog, type Analog } from './ibis-analog';
+import { filterImpulse, readAnalog, throughFrontEnds, type Analog } from './ibis-analog';
+import { analogImpulse, idealEnd } from './ibis-sim';
 import { bytesToB64, hasNative } from './native';
 import * as si from './si';
 import { call, col, def, field, isText, lines, need, nums, options, optNum, optText, record, row, rows } from './sci-kit';
@@ -36,13 +37,42 @@ function modelOf(lab: Lab, v: Value | undefined, who: string): ami.Model | null 
   const an = v.f.get('Analog'), analog = an?.k === 'struct' ? analogOf(an, who) : undefined;
   return { name: textOf(v.f.get('Name')!), ...(analog ? { analog } : {}), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ', maxAggressors: v.f.has('MaxInitAggressors') ? field(v, 'MaxInitAggressors', who) : 16, ...(v.f.has('BCIProtocol') && textOf(v.f.get('BCIProtocol')!) ? { bci: { protocol: textOf(v.f.get('BCIProtocol')!), interval: field(v, 'BCIInterval', who), training: field(v, 'BCITraining', who) } } : {}) } };
 }
-/** A model's analog buffer (M583) as a struct, and back. */
-const ANALOG: [string, keyof Analog][] = [['Driver', 'rs'], ['Termination', 'rt'], ['Ccomp', 'cComp'], ['Rpkg', 'rPkg'], ['Lpkg', 'lPkg'], ['Cpkg', 'cPkg'], ['Rise', 'rise']];
-const analogRecord = (a: Analog) => record([['ModelType', a.type], ['Corner', a.corner], ...ANALOG.map(([k, f]) => [k, a[f] as number] as [string, number]), ['Notes', a.notes.join('; ')]]);
+/** A model's analog buffer (M583) as a struct, and back (M585: with its I-V tables, supply and falling edge). */
+const ANALOG: [string, keyof Analog][] = [['Driver', 'rs'], ['Termination', 'rt'], ['Ccomp', 'cComp'], ['Rpkg', 'rPkg'], ['Lpkg', 'lPkg'], ['Cpkg', 'cPkg'], ['Rise', 'rise'], ['Fall', 'fall'], ['Vcc', 'vcc']];
+const TABLES: [string, 'pu' | 'pd' | 'gc' | 'pc'][] = [['PullUp', 'pu'], ['PullDown', 'pd'], ['GndClamp', 'gc'], ['PowerClamp', 'pc']];
+const analogRecord = (a: Analog) => record([['ModelType', a.type], ['Corner', a.corner], ...ANALOG.map(([k, f]) => [k, a[f] as number] as [string, number]), ...TABLES.map(([k, f]) => [k, a[f].length ? rows(a[f]) : mat(0, 0)] as [string, Value]), ['Notes', a.notes.join('; ')]]);
 function analogOf(v: Value, who: string): Analog {
-  const a: Analog = { type: v.k === 'struct' && v.f.has('ModelType') ? textOf(v.f.get('ModelType')!) : '', corner: v.k === 'struct' && v.f.has('Corner') ? textOf(v.f.get('Corner')!) : 'typ', rs: 50, rt: 50, cComp: 0, rPkg: 0, lPkg: 0, cPkg: 0, rise: 0, notes: [] };
-  for (const [k, f] of ANALOG) if (v.k === 'struct' && v.f.has(k)) { const x = field(v, k, who); if (!(x >= 0) || ((f === 'rs' || f === 'rt') && !(x > 0))) throw new LabError(`${who}: the model's Analog.${k} must be above 0.`); (a[f] as number) = x; }
+  const has = (k: string) => v.k === 'struct' && v.f.has(k);
+  const a: Analog = { type: has('ModelType') ? textOf((v as { f: Map<string, Value> }).f.get('ModelType')!) : '', corner: has('Corner') ? textOf((v as { f: Map<string, Value> }).f.get('Corner')!) : 'typ', rs: 50, rt: 50, cComp: 0, rPkg: 0, lPkg: 0, cPkg: 0, rise: 0, fall: 0, vcc: 1, pu: [], pd: [], gc: [], pc: [], notes: [] };
+  for (const [k, f] of ANALOG) if (has(k)) { const x = field(v, k, who); if (!(x >= 0) || ((f === 'rs' || f === 'rt' || f === 'vcc') && !(x > 0))) throw new LabError(`${who}: the model's Analog.${k} must be above 0.`); (a[f] as number) = x; }
+  for (const [k, f] of TABLES) if (has(k)) {
+    const M = toMat((v as { f: Map<string, Value> }).f.get(k)!);
+    if (M.d.length && M.c !== 2) throw new LabError(`${who}: the model's Analog.${k} is a table of [V I] rows.`);
+    a[f] = Array.from({ length: M.r }, (_, r) => [M.d[r], M.d[M.r + r]]);
+  }
   return a;
+}
+/** The channel through the chips' own buffers (M585): when either model brings its IBIS buffer, the channel's
+ * scattering responses (a 4-port's differential ones, per leg) driven and received by them in time, an ideal end
+ * standing in for the other; long enough for echoes to come and go (three times the matched response), any CTLE after
+ * it. Otherwise the plain impulse response. */
+function analogChannel(S: ReturnType<typeof sOf>, rate: number, spu: number, h: number[], dt: number, ctle: [number, number, number, number] | null, tx: ami.Model | null, rx: ami.Model | null) {
+  const ta = tx?.analog, ra = rx?.analog;
+  if (!ta && !ra) return { h, messages: [] as string[] };
+  const four = S.n === 4, P = four ? [[0, 1], [2, 3]] : [[0], [1]];
+  const resp = (i: number, j: number) => si.sampled(S.f, S.s.map((m) => (four ? si.sddPair(m, P[i], P[j]) : m[i][j])), rate, spu);
+  const s21 = resp(1, 0), n = Math.min(s21.length, 3 * h.length);
+  const ports = { s11: resp(0, 0).slice(0, n), s12: resp(0, 1).slice(0, n), s21: s21.slice(0, n), s22: resp(1, 1).slice(0, n) };
+  const r = analogImpulse(ports, n, dt, S.zref, ta ?? idealEnd(S.zref, 'tx'), ra ?? idealEnd(S.zref, 'rx'));
+  const fe = (x: number[]) => (ctle ? filterImpulse(x, dt, (f) => si.ctle(f, ...ctle)) : x);
+  const hh = fe(r.h), pk = Math.max(...hh.map(Math.abs));
+  let last = hh.length; while (last > h.length && Math.abs(hh[last - 1]) < 1e-5 * pk) last--;
+  const rise = fe(r.rise).slice(0, last), fall = fe(r.fall).slice(0, last), diff = Math.max(...rise.map((v, k) => Math.abs(v - fall[k]))) / (pk || 1);
+  const messages: string[] = [];
+  if (ta) messages.push(`${tx!.name} analog (${ta.corner}): driver ${ta.rs.toPrecision(3)} ohms near its rails, C_comp ${(ta.cComp * 1e12).toPrecision(3)} pF, edges ${(ta.rise * 1e12).toPrecision(3)} / ${(ta.fall * 1e12).toPrecision(3)} ps${ta.notes.length ? `; ${ta.notes.join('; ')}` : ''}`);
+  if (ra) messages.push(`${rx!.name} analog (${ra.corner}): termination ${ra.rt.toPrecision(3)} ohms at mid-supply, C_comp ${(ra.cComp * 1e12).toPrecision(3)} pF${ra.notes.length ? `; ${ra.notes.join('; ')}` : ''}`);
+  messages.push(`The buffers' rising and falling edges differ by ${(100 * diff).toFixed(1)}% of the response's peak (their average used)`);
+  return { h: hh.slice(0, last), rise, fall, messages, near: (x: number[]) => throughFrontEnds(x, dt, ta, ra, S.zref) };
 }
 const ctleOf = (v: Value | undefined): [number, number, number, number] | null => {
   if (!v) return null;
@@ -133,14 +163,14 @@ def('eyeDiagram', (a, nout, lab) => {
 /** The aggressors 'Crosstalk', [kNext kFext] makes, as impulse responses for the AMI flows: NEXT an edge (the near
  * end's coupling, unattenuated), FEXT the channel's own response differentiated (the far end's), each with its own
  * PRBS in the time-domain flow (the same scale and seeds as the eye without models). */
-function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSignals: boolean): ami.Aggressor[] {
+function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSignals: boolean, near: (x: number[]) => number[] = (x) => x): ami.Aggressor[] {
   const out: ami.Aggressor[] = [], sig = (i: number) => {
     if (!withSignals) return undefined;
     const a = si.symbols(si.prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed + 77 + 74 * i), e.pam4), x = new Array(a.length * spu);
     for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
     return x;
   };
-  if (e.xtalk[0]) { const hn = new Array(h.length).fill(0); hn[0] = (e.xtalk[0] * spu) / 4 / dt; hn[1] = -hn[0]; out.push({ h: hn, x: sig(out.length) }); }
+  if (e.xtalk[0]) { const hn = new Array(h.length).fill(0); hn[0] = (e.xtalk[0] * spu) / 4 / dt; hn[1] = -hn[0]; out.push({ h: near(hn), x: sig(out.length) }); }
   if (e.xtalk[1]) out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * e.xtalk[1] * (spu / 4)), x: sig(out.length) });
   return out;
 }
@@ -150,19 +180,22 @@ function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSigna
  * adapt. */
 function amiEye(S: ReturnType<typeof sOf>, H: si.C[], rate: number, spu: number, e: si.Eye, tx: ami.Model | null, rx: ami.Model | null, flowName: string, ctle: [number, number, number, number] | null) {
   if (flowName !== 'timedomain' && flowName !== 'statistical') throw new LabError("'Flow' is 'timedomain' or 'statistical'.");
-  const { h, dt } = si.impulseResponse(S.f, H, rate, spu, 512, ctle ? (x) => si.ctle(x, ...ctle) : undefined), ui = 1 / rate;
+  const plain = si.impulseResponse(S.f, H, rate, spu, 512, ctle ? (x) => si.ctle(x, ...ctle) : undefined), dt = plain.dt, ui = 1 / rate;
+  const an = analogChannel(S, rate, spu, plain.h, dt, ctle, tx, rx), h = an.h;
   if (flowName === 'statistical') {
-    const f = ami.flow(h, dt, ui, tx, rx, null, aggressorsOf(h, dt, spu, e, false)), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
+    const f = ami.flow(h, dt, ui, tx, rx, null, aggressorsOf(h, dt, spu, e, false, an.near)), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
     const agg = f.aggRx.map((c) => si.pulseFromImpulse(c, dt, spu).p);
+    f.messages.unshift(...an.messages);
     return { pulse, agg, measured: null, main: pulse.p[pulse.cursor], record: record([['Flow', 'statistical'], ['Impulse', row(f.hRx)], ['Aggressors', f.aggRx.length], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
   }
   const a = si.symbols(si.prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed), e.pam4), x = new Array(a.length * spu);
   for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
-  const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, e, true)), z = f.z!, al = si.alignWave(z, a, spu, Math.min(z.length - spu, h.length + 64 * spu));
+  const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, e, true, an.near)), z = f.z!, al = si.alignWave(z, a, spu, Math.min(z.length - spu, h.length + 64 * spu));
   const ignore = Math.ceil(Math.max(tx?.info.ignoreBits ?? 0, rx?.info.ignoreBits ?? 0) / (e.pam4 ? 2 : 1));
   if (a.length < ignore + 500) throw new LabError(`The models adapt over their first ${ignore} symbols (Ignore_Bits): give 'Symbols' at least ${ignore + 500}.`);
   const y = z.slice(al.delay), measured = si.measure(y, a, al.main, { ...e, dfe: 0, ffe: [] }, Math.max(16, ignore + 8));
   const clocks = f.clocks.length > 1 ? f.clocks : [];
+  f.messages.unshift(...an.messages);
   return { pulse: null, agg: undefined, measured, main: al.main, record: record([['Flow', 'timedomain'], ['Wave', row(z)], ['Delay', al.delay * dt], ['Clocks', row(clocks)], ['Aggressors', f.aggRx.length], ['UsedGetWave', row(f.usedGetWave.map(Number))], ...bciFields(f), ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
 }
 /** A back-channel link's record (M579): the protocol, when each block ran (UI) and what the transmitter reported. */
@@ -218,7 +251,7 @@ def('amiSimulate', (a, _n, lab) => {
   if (!tx && !rx) throw new LabError("amiSimulate needs a 'TxModel' or an 'RxModel' (from amiModel).");
   const spu = Math.round(optNum(o, 'SamplesPerUI', 16)), nsym = Math.round(optNum(o, 'Symbols', 5000)), mod = optText(o, 'Modulation', 'NRZ').toUpperCase(), fl = optText(o, 'Flow', 'timedomain').toLowerCase();
   if (!(spu >= 4 && spu <= 64 && nsym >= 100 && nsym <= 100000) || (mod !== 'NRZ' && mod !== 'PAM4') || (fl !== 'timedomain' && fl !== 'statistical')) throw new LabError(`${w}: 'SamplesPerUI' 4 to 64, 'Symbols' 100 to 100,000, 'Modulation' 'NRZ' or 'PAM4', 'Flow' 'timedomain' or 'statistical'.`);
-  const { h, dt } = si.impulseResponse(S.f, through(S), rate, spu), ui = 1 / rate;
+  const plain = si.impulseResponse(S.f, through(S), rate, spu), dt = plain.dt, ui = 1 / rate, an = analogChannel(S, rate, spu, plain.h, dt, null, tx, rx), h = an.h;
   let x: number[] | null = null, a2: number[] = [];
   if (fl === 'timedomain') {
     a2 = si.symbols(si.prbs(Math.round(optNum(o, 'PRBS', 7)), mod === 'PAM4' ? 2 * nsym : nsym, Math.round(optNum(o, 'Seed', 1))), mod === 'PAM4');
@@ -227,9 +260,10 @@ def('amiSimulate', (a, _n, lab) => {
   }
   const xt = o.has('Crosstalk') ? nums(o.get('Crosstalk')) : [0, 0];
   const eLike: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: [xt[0] ?? 0, xt[1] ?? 0], seed: Math.round(optNum(o, 'Seed', 1)) };
-  const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, eLike, fl === 'timedomain')), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
+  const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, eLike, fl === 'timedomain', an.near)), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
   const aggM = f.aggRx.length ? rows(f.aggRx) : mat(0, 0);
-  return [record([['Flow', fl], ['dt', dt], ['Impulse', row(f.h)], ['ImpulseTx', row(f.hTx)], ['ImpulseRx', row(f.hRx)], ['AggressorsRx', aggM], ['t', row(t(f.z ? f.z.length : f.h.length))], ...(f.z ? [['Wave', row(f.z)], ['Stimulus', row(x!)], ['Symbols', row(a2)]] as [string, Value][] : []), ['Clocks', row(f.clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ...bciFields(f), ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]])];
+  f.messages.unshift(...an.messages);
+  return [record([['Flow', fl], ['dt', dt], ['Impulse', row(f.h)], ['ImpulseTx', row(f.hTx)], ['ImpulseRx', row(f.hRx)], ...(an.rise ? [['ImpulseRise', row(an.rise)], ['ImpulseFall', row(an.fall!)]] as [string, Value][] : []), ['AggressorsRx', aggM], ['t', row(t(f.z ? f.z.length : f.h.length))], ...(f.z ? [['Wave', row(f.z)], ['Stimulus', row(x!)], ['Symbols', row(a2)]] as [string, Value][] : []), ['Clocks', row(f.clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ...bciFields(f), ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]])];
 });
 def('pdnImpedance', (a, nout, lab) => {
   const f = nums(a[0], 'The frequencies (Hz)'), o = options(a, 1, ['VRM', 'Caps', 'Plane', 'Die', 'Target', 'Step'], 'pdnImpedance'), parts: si.PdnPart[] = [];

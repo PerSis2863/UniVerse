@@ -1,7 +1,7 @@
 import { LabError } from './parse';
 import { b64ToF64, f64ToB64, native, nativePlatform } from './native';
 import { fftConvolve } from './si';
-import { throughFrontEnds, type Analog } from './ibis-analog';
+import type { Analog } from './ibis-analog';
 
 // IBIS-AMI models in Hyperion (M577, the owner, 27 Nov: IBIS-AMI "for the Hyperion download app which can do it"). A chip
 // maker ships an equaliser as a compiled library plus an .ami text file describing its settings (IBIS 7.2, chapter
@@ -126,13 +126,8 @@ export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: num
  * channel, the aggressors' signals through their coupling added, then the receiver's AMI_GetWave (or, without it, its
  * Init output convolved), and the receiver's clock times. h in V/s every dt.
  */
-export function flow(h0: number[], dt: number, ui: number, tx: Model | null, rx: Model | null, x: number[] | null, aggs0: Aggressor[] = []): FlowOut {
+export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: Model | null, x: number[] | null, aggs: Aggressor[] = []): FlowOut {
   const messages: string[] = [], paramsOut: string[] = [];
-  // The IBIS file's analog buffers (M583): the channel from pin to pin wrapped in the driver's and the receiver's pads
-  // and packages (the aggressors driven and received by the same kinds of buffer).
-  const ta = tx?.analog, ra = rx?.analog, h = throughFrontEnds(h0, dt, ta, ra), aggs = ta || ra ? aggs0.map((g) => ({ ...g, h: throughFrontEnds(g.h, dt, ta, ra) })) : aggs0;
-  if (ta) messages.push(`${tx!.name} analog (${ta.corner}): driver ${ta.rs.toPrecision(3)} ohms, C_comp ${(ta.cComp * 1e12).toPrecision(3)} pF, edge ${(ta.rise * 1e12).toPrecision(3)} ps${ta.notes.length ? `; ${ta.notes.join('; ')}` : ''}`);
-  if (ra) messages.push(`${rx!.name} analog (${ra.corner}): termination ${ra.rt.toPrecision(3)} ohms, C_comp ${(ra.cComp * 1e12).toPrecision(3)} pF${ra.notes.length ? `; ${ra.notes.join('; ')}` : ''}`);
   const note = (who: string, s: Session) => { if (s.message) messages.push(`${who}: ${s.message}`); if (s.paramsOut) paramsOut.push(`${who}: ${s.paramsOut}`); };
   const cols = [h, ...aggs.map((g) => g.h)], conv = (a: number[], b: number[]) => fftConvolve(a, b).map((v) => v * dt);
   // A back-channel link (M579): both ends speak the same BCI_Protocol and have GetWave: the app runs them in turns.

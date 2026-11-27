@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import * as ami from './ami';
 import * as si from './si';
-import { ibisNum, readAnalog, rxGain, throughFrontEnds, txGain } from './ibis-analog';
+import { ibisNum, readAnalog, rxGain, throughFrontEnds, txGain, type Analog } from './ibis-analog';
+import { analogImpulse, idealEnd, iv } from './ibis-sim';
 import { b64ToF64, f64ToB64, setNative, type Native } from './native';
 import { Lab } from './interp';
 import { Graphics } from './plot';
@@ -238,7 +239,7 @@ t = strsplit(e.AMI.BCI.TxParams, char(10));
 fprintf('%s|%s|%s|%d\\n', t{1}, t{end}, e.AMI.BCI.Files, numel(e.AMI.Clocks) > 1500)
 x = eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 2000, 'Crosstalk', [0 0.1]);
 fprintf('%s|%s|%d\\n', x.AMI.BCI.Files, x.AMI.BCI.AggressorTxParams, max(abs(x.AMI.Wave - e.AMI.Wave)) > 1e-3)`);
-    expect(out.trim()).toBe('(test_bci (tap -0.1))|(test_bci (tap -0.35))|hyperion_link.rx2tx|1\nhyperion_link.rx2tx, hyperion_link_a1.rx2tx|(test_bci (tap -0.35))|1');
+    expect(out.trim()).toBe('(test_bci (tap -0.1))|(test_bci (tap -0.35))|hyperion_link.rx2tx|1\na1/hyperion_link.rx2tx, hyperion_link.rx2tx|(test_bci (tap -0.35))|1');
   }, 60000);
 });
 
@@ -277,7 +278,7 @@ C_comp 0.4p NA NA
 1.0 20m 20m 20m
 [POWER Clamp]
 0.0 0 0 0
-1.0 20m 20m 20m
+1.0 -20m -20m -20m
 [End]
 `;
   it('reads a driver, a receiver and the package at each corner', () => {
@@ -290,7 +291,7 @@ C_comp 0.4p NA NA
     expect(ibisNum('3.3M')).toBe(3.3e6); expect(ibisNum('50m')).toBeCloseTo(0.05, 12); expect(ibisNum('NA')).toBeNaN();
   });
   it('an ideal end changes nothing; pads, packages and slow edges cut the high frequencies', () => {
-    const ideal = { type: '', corner: 'typ', rs: 50, rt: 50, cComp: 0, rPkg: 0, lPkg: 0, cPkg: 0, rise: 0, notes: [] };
+    const ideal = idealEnd(50, 'tx');
     for (const f of [0, 1e9, 2e10]) { expect(txGain(ideal, f)[0]).toBeCloseTo(1, 9); expect(rxGain(ideal, f)[0]).toBeCloseTo(1, 9); }
     const tx = readAnalog(IBS, 'serdes_tx')!, rx = readAnalog(IBS, 'serdes_rx')!, mag = (z: number[]) => Math.hypot(z[0], z[1]);
     expect(txGain(tx, 0)[0]).toBeCloseTo(100 / 90.2, 9);         // 40 ohms and the package's 0.2 into 50
@@ -311,9 +312,50 @@ fprintf('%.4f %.0f %d\\n', m.Analog.Driver, m.Analog.Rise * 1e12, isfield(n, 'An
     expect(out.trim()).toBe('33.3333 15 0');
     expect(() => lab.run("amiModel('chip.ibs', 'serdes_tx', 'Folder', '/x', 'Corner', 'fast')")).toThrow(/typ/);
     setNative(fake(tapOf));
-    const info = ami.readAmi(AMI), tx: ami.Model = { name: 'tx', file: { name: 't.so', path: '/t.so' }, params: ami.paramString(info, new Map()), info, analog: readAnalog(IBS, 'serdes_tx')! };
-    const h = [1e12, ...new Array(2047).fill(0)], f = ami.flow(h, 1e-12, 8e-12, tx, null, null);
-    expect(f.h.reduce((a, b) => a + b, 0) / (1e12 * 100 / 90.2)).toBeCloseTo(1, 6);
-    expect(f.messages[0]).toMatch(/tx analog \(typ\): driver 40\.0 ohms, C_comp 0\.600 pF, edge 20\.0 ps/);
+    lab.run(`S = sparamLine(1e8:1e8:4e10, 'Length', 0.1); m = amiModel('chip.ibs', 'serdes_tx', 'Folder', '/opt/models');
+r = amiSimulate(S, 10e9, 'TxModel', m, 'Flow', 'statistical'); m.Analog = []; m = rmfield(m, 'Analog'); p = amiSimulate(S, 10e9, 'TxModel', m, 'Flow', 'statistical');
+fprintf('%d %d %d\\n', isfield(r, 'ImpulseRise'), isfield(p, 'ImpulseRise'), max(abs(r.ImpulseRise - r.ImpulseFall)) > 0)
+disp(r.Messages)`);
+    const [l1, ...rest] = out.trim().split('\n').slice(1);
+    expect(l1).toBe('1 0 1');
+    expect(rest.join('\n')).toMatch(/tx analog \(typ\): driver 40\.0 ohms near its rails, C_comp 0\.600 pF, edges 20\.0 \/ 20\.0 ps[\s\S]*edges differ by/);
+  });
+});
+
+describe('the buffers in time: non-linear curves and echoes (M585)', () => {
+  const line = (r: number) => [[-10, -10 / r], [10, 10 / r]];
+  const end = (a: Partial<Analog>): Analog => ({ ...idealEnd(50, 'tx'), pu: [], pd: [], ...a });
+  /** A lossless matched line delayed by d samples. */
+  const ports = (n: number, d: number) => { const z = new Array(n).fill(0), s21 = [...z]; s21[d] = 1; return { s11: z, s22: z, s12: s21, s21 }; };
+  it('an ideal pair on a matched line gives the line itself, the same on both edges', () => {
+    const r = analogImpulse(ports(64, 5), 64, 1e-12, 50, idealEnd(50, 'tx'), idealEnd(50, 'rx'));
+    expect(r.h[5] * 1e-12).toBeCloseTo(1, 9);
+    expect(r.h.reduce((a, b) => a + Math.abs(b), 0) * 1e-12).toBeCloseTo(1, 9);
+    r.rise.forEach((v, k) => expect(v * 1e-12).toBeCloseTo(r.fall[k] * 1e-12, 9));
+  });
+  it('mismatched ends echo: each round trip brings back the two reflections multiplied', () => {
+    // a 25-ohm driver (reflects -1/3) and a 100-ohm termination (+1/3): arrivals at d, 3d, 5d …
+    const tx = end({ pu: line(-25), pd: line(25) }), rx = end({ gc: line(200), pc: line(-200) });
+    const r = analogImpulse(ports(64, 6), 64, 1e-12, 50, tx, rx), first = r.h[6] * 1e-12;
+    expect(first).toBeCloseTo((4 / 3) * (4 / 3), 9);               // (1 − Γs)(1 + ΓL) against a matched pair's 1
+    expect(r.h[18] / r.h[6]).toBeCloseTo(-1 / 9, 9);
+    expect(r.h[30] / r.h[6]).toBeCloseTo(1 / 81, 9);
+    expect(Math.abs(r.h[12] * 1e-12)).toBeLessThan(1e-9);
+  });
+  it('an uneven driver: a weak pull-up rises later than its strong pull-down falls; a table carried past its ends', () => {
+    const tx = end({ pu: line(-100), pd: line(25), rise: 40e-12, fall: 40e-12 }), r = analogImpulse(ports(160, 4), 160, 1e-12, 50, tx, idealEnd(50, 'rx'));
+    const half = (x: number[]) => { const tot = x.reduce((a, b) => a + b, 0); let acc = 0; return x.findIndex((v) => (acc += v) >= tot / 2); };
+    const area = (x: number[]) => x.reduce((a, b) => a + b, 0);
+    expect(area(r.rise) / area(r.fall)).toBeCloseTo(1, 9);         // both edges between the same two levels
+    expect(half(r.rise) - half(r.fall)).toBeGreaterThanOrEqual(8);
+    const sat = [[-0.2, 8e-3], [0, 0], [0.2, -8e-3], [10, -9e-3]];
+    expect(iv(sat, 20)).toBeCloseTo(-9e-3 - 1e-3 * (10 / 9.8), 9);
+    expect(iv(sat, -0.4)).toBeCloseTo(16e-3, 9);
+  });
+  it('a slow edge and a pad spread the response; the package and the pad hold its area', () => {
+    const tx = end({ pu: line(-50), pd: line(50), rise: 30e-12, fall: 30e-12, cComp: 1e-12, lPkg: 0.5e-9, cPkg: 0.2e-12 });
+    const r = analogImpulse(ports(512, 4), 512, 1e-12, 50, tx, idealEnd(50, 'rx'));
+    expect(Math.max(...r.h) * 1e-12).toBeLessThan(0.06);
+    expect(r.h.reduce((a, b) => a + b, 0) * 1e-12).toBeCloseTo(1, 4);
   });
 });

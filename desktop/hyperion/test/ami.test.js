@@ -64,7 +64,7 @@ test('a back-channel link: the receiver tells the transmitter its tap through th
   assert.equal(f64(r.wave).length, n);
 });
 
-test('neighbouring lines train their own transmitters, each by its own receiver (M582)', { skip: !built && 'no C compiler' }, async () => {
+test('neighbouring lines train their own transmitters, each by its own receiver (M582, M584)', { skip: !built && 'no C compiler' }, async () => {
   const bci = path.join(os.tmpdir(), `hyperion-bci-test${ext}`);
   execFileSync('gcc', ['-shared', '-fPIC', '-O2', path.join(__dirname, 'ami-test-bci.c'), '-o', bci]);
   const p = ami.prepare({ name: path.basename(bci), path: bci });
@@ -75,8 +75,13 @@ test('neighbouring lines train their own transmitters, each by its own receiver 
   const req = { tx: { params: '(test_bci (role tx) (tap -0.1) (BCI_ID "link1"))' }, rx: { params: '(test_bci (role rx) (BCI_ID "link1"))' }, impulse: b64(imp), rows: 64, dt: 1e-12, ui: 8e-12, wave: b64(wave), interval: 32, training: 200 };
   const r = await ami.link({ ...req, aggs: [{ wave: b64(agg), h: b64(couple) }] }, p, p);
   assert.equal(r.ok, true, r.error);
-  assert.deepEqual(r.files, ['link1.rx2tx', 'link1_a1.rx2tx']);
+  assert.deepEqual(r.files, ['a1/link1.rx2tx', 'link1.rx2tx']);   // each line in its own folder, the same BCI_ID
   assert.match(r.lanes[0].tx, /tap -0.35\)/);
+  // the neighbour's receiver hears the victim too: its highest voltage up by about the victim's tenth
+  // (the victim held at +0.4 V: through its FFE, 2/3 of it, a tenth of that reaches the neighbour)
+  const held = { ...req, wave: b64(new Array(n).fill(0.4)) }, peak = (x) => Number(/peak ([\d.]+)/.exec(x.lanes[0].rx)[1]);
+  const heard = await ami.link({ ...held, aggs: [{ wave: b64(agg), h: b64(couple) }] }, p, p), alone = await ami.link({ ...held, aggs: [{ wave: b64(agg), h: b64(new Array(64).fill(0)) }] }, p, p);
+  assert.ok(Math.abs(peak(heard) - peak(alone) - 0.4 * (2 / 3) * 0.1) < 0.01, `${peak(heard)} ${peak(alone)}`);
   const quiet = await ami.link(req, p, p), d = f64(r.wave).map((v, i) => v - f64(quiet.wave)[i]);
   assert.ok(Math.max(...d.map(Math.abs)) > 0.01 && Math.max(...d.map(Math.abs)) < 0.05);   // the neighbour's 0.4 V, a tenth, through its FFE
   assert.match((await ami.link({ ...req, aggs: [{ wave: b64([1]), h: b64(couple) }] }, p, p)).error, /bad sizes/);

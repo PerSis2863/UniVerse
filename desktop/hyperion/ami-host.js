@@ -95,24 +95,27 @@ function channel(h, dt, block) {
     return Float64Array.from(out.subarray(0, x.length));
   };
 }
-/** A 64-bit model loaded here, as one end of a link: init, a block through GetWave, close. */
-function local(file) {
+/** A 64-bit model loaded here, as one end of a link: init, a block through GetWave, close; each call made in the
+ * model's own folder (its line's, M584), where it reads and writes its back-channel files. */
+function local(file, dir) {
   const L = open(file);
   if (L.error) return L;
   let mem = null;
   return {
     getWave: !!L.getWave,
     init(imp, rows, dt, ui, params) {
+      process.chdir(dir);
       const pout = [null], m = [null], msg = [null], r = L.init(imp, rows, 0, dt, ui, params, pout, m, msg);
       mem = m[0];
       return { ret: Number(r), params: pout[0] || '', message: msg[0] || '' };
     },
     wave(part) {
+      process.chdir(dir);
       const clk = new Float64Array(part.length + 1).fill(-1), po = [null], r = L.getWave(part, part.length, clk, po, mem), clocks = [];
       for (let k = 0; k < clk.length && clk[k] >= 0; k++) clocks.push(clk[k]);
       return { ok: r !== 0, wave: part, clocks, params: po[0] || '' };
     },
-    async close() { if (L.close && mem) L.close(mem); mem = null; },
+    async close() { process.chdir(dir); if (L.close && mem) L.close(mem); mem = null; },
   };
 }
 /** A 32-bit model as one end of a link (M581): the 32-bit helper in its stepping mode, run in the shared folder;
@@ -157,21 +160,22 @@ function remote(file, exe, dir) {
     async close() { p.stdin.end('C'); await exited; },
   };
 }
-/** BCI_ID renamed for a neighbouring line's own link (M582), so its files never mix with the victim's. */
-const laneId = (params, j) => (j ? String(params).replace(/\(BCI_ID\s+"?([^")\s]*)"?\)/, (_, id) => `(BCI_ID "${id}_a${j}")`) : params);
 /**
  * A link with a back-channel (IBIS 6.1, BCI): both models run in a shared folder (they talk through files named with
  * the BCI_ID the tool gives both), and AMI_GetWave is called in turns: a block from the transmitter, through the
  * channel, into the receiver; blocks of BCI_Message_Interval_UI while training (BCI_Training_UI), then of 128 UI.
  * 64-bit models load here, 32-bit ones in the 32-bit helper (M581: each end its own; `helper` on a side says which).
- * Each neighbouring line (M582) is a link of its own, its transmitter trained by its own receiver (the BCI_ID with
- * _a1, _a2 …) over the same channel, its transmitter's output reaching the victim's pins through its coupling.
+ * Each neighbouring line (M582) is a link of its own, its transmitter trained by its own receiver over the same
+ * channel, in a folder of its own (a1, a2 …: their files never meet, whatever the model calls them). Every block, all
+ * the transmitters run first; then the victim's receiver hears its line plus each neighbour through its coupling, and
+ * each neighbour's receiver its own line plus the victim through the same coupling (taken as reciprocal; the
+ * neighbours, one on each side, are not coupled to each other).
  * req: { tx, rx: { file, params, helper? }, impulse, rows, dt, ui, wave, aggs: [{ wave, h }], interval, training, dir }.
  */
 async function link(req) {
-  try { process.chdir(req.dir); } catch { return { ok: false, error: 'The shared folder for the models could not be opened.' }; }
-  const ends = [], make = (side, who) => {
-    const e = side.helper ? remote(side.file, side.helper, req.dir) : local(side.file);
+  const fs = require('node:fs'), path = require('node:path');
+  const ends = [], make = (side, who, dir) => {
+    const e = side.helper ? remote(side.file, side.helper, dir) : local(side.file, dir);
     if (e.error) throw new Error(`${who}: ${e.error}`);
     ends.push(e);
     return e;
@@ -182,41 +186,45 @@ async function link(req) {
   let error = '';
   try {
     for (let j = 0; j <= aggs.length; j++) {
-      const name = j ? ` of neighbouring line ${j}` : '', T = make(req.tx, `Transmitter${name}`), R = make(req.rx, `Receiver${name}`);
-      const ti = await T.init(Float64Array.from(h), req.rows, req.dt, req.ui, laneId(req.tx.params, j));
+      const dir = j ? path.join(req.dir, `a${j}`) : req.dir;
+      try { fs.mkdirSync(dir, { recursive: true }); process.chdir(dir); } catch { throw new Error('The shared folder for the models could not be opened.'); }
+      const name = j ? ` of neighbouring line ${j}` : '', T = make(req.tx, `Transmitter${name}`, dir), R = make(req.rx, `Receiver${name}`, dir);
+      const ti = await T.init(Float64Array.from(h), req.rows, req.dt, req.ui, req.tx.params);
       if (!ti.ret) throw new Error(`The transmitter${name}'s AMI_Init refused${ti.message ? `: ${ti.message}` : ''}.`);
-      const ri = await R.init(Float64Array.from(h), req.rows, req.dt, req.ui, laneId(req.rx.params, j));
+      const ri = await R.init(Float64Array.from(h), req.rows, req.dt, req.ui, req.rx.params);
       if (!ri.ret) throw new Error(`The receiver${name}'s AMI_Init refused${ri.message ? `: ${ri.message}` : ''}.`);
       if (!T.getWave || !R.getWave) throw new Error('A back-channel link needs AMI_GetWave in both models.');
-      lanes.push({ T, R, ti, ri, x: j ? f64(aggs[j - 1].wave) : x0, chan: channel(h, req.dt, most), couple: j ? channel(f64(aggs[j - 1].h), req.dt, most) : null, tx: ti.params, rx: ri.params });
+      const hj = j ? f64(aggs[j - 1].h) : null;
+      lanes.push({ T, R, ti, ri, x: j ? f64(aggs[j - 1].wave) : x0, chan: channel(h, req.dt, most), into: hj && channel(hj, req.dt, most), from: hj && channel(hj, req.dt, most), tx: ti.params, rx: ri.params });
     }
     const out = new Float64Array(n), clocks = [], history = [];
     for (let at = 0; at < n && !error;) {
-      const len = Math.min(at < trainEnd ? small : big, n - at), xt = new Float64Array(len), victim = lanes[0];
-      // the neighbouring lines first: their own links run a block, their transmitters' output coupled into the victim
-      for (const L of lanes.slice(1)) {
+      const len = Math.min(at < trainEnd ? small : big, n - at), sent = [];
+      for (const [j, L] of lanes.entries()) {
         const t = await L.T.wave(Float64Array.from(L.x.subarray(at, at + len)));
-        if (!t.ok) { error = `A neighbouring line's transmitter AMI_GetWave refused at sample ${at}.`; break; }
-        const r = await L.R.wave(L.chan(t.wave));
-        if (!r.ok) { error = `A neighbouring line's receiver AMI_GetWave refused at sample ${at}.`; break; }
-        const c = L.couple(t.wave); for (let k = 0; k < len; k++) xt[k] += c[k];
-        L.tx = t.params || L.tx; L.rx = r.params || L.rx;
+        if (!t.ok) { error = `${j ? `Neighbouring line ${j}'s` : 'The'} transmitter's AMI_GetWave refused at sample ${at}.`; break; }
+        sent.push(t);
       }
       if (error) break;
-      const t = await victim.T.wave(Float64Array.from(x0.subarray(at, at + len)));
-      if (!t.ok) { error = `The transmitter's AMI_GetWave refused at sample ${at}.`; break; }
-      const pins = victim.chan(t.wave);
-      for (let k = 0; k < len; k++) pins[k] += xt[k];
-      const r = await victim.R.wave(pins);
-      if (!r.ok) { error = `The receiver's AMI_GetWave refused at sample ${at}.`; break; }
-      out.set(r.wave, at);
-      for (const c of r.clocks) clocks.push(c);
-      history.push({ ui: at / spu, tx: t.params, rx: r.params });
+      const pins = lanes.map((L, j) => L.chan(sent[j].wave));
+      lanes.forEach((L, j) => {
+        if (!j) return;
+        const c = L.into(sent[j].wave), back = L.from(sent[0].wave);
+        for (let k = 0; k < len; k++) { pins[0][k] += c[k]; pins[j][k] += back[k]; }
+      });
+      for (const [j, L] of lanes.entries()) {
+        const r = await L.R.wave(pins[j]);
+        if (!r.ok) { error = `${j ? `Neighbouring line ${j}'s` : 'The'} receiver's AMI_GetWave refused at sample ${at}.`; break; }
+        if (j) { L.tx = sent[j].params || L.tx; L.rx = r.params || L.rx; continue; }
+        out.set(r.wave, at);
+        for (const c of r.clocks) clocks.push(c);
+        history.push({ ui: at / spu, tx: sent[0].params, rx: r.params });
+      }
       at += len;
     }
     for (const e of ends.splice(0)) await e.close();
     let files = [];
-    try { files = require('node:fs').readdirSync(req.dir).sort(); } catch { /* none */ }
+    try { files = fs.readdirSync(req.dir, { recursive: true }).map((f) => String(f).split(path.sep).join('/')).filter((f) => !/^a\d+$/.test(f)).sort(); } catch { /* none */ }
     return { ok: !error, error: error || undefined, wave: b64(out), clocks: b64(Float64Array.from(clocks)), history, files, paramsOut: [lanes[0].ti.params, lanes[0].ri.params], messages: [lanes[0].ti.message, lanes[0].ri.message], lanes: lanes.slice(1).map((L) => ({ tx: L.tx, rx: L.rx })) };
   } catch (e) {
     for (const end of ends) { try { await end.close(); } catch { /* already gone */ } }

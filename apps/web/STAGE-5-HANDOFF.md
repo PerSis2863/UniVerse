@@ -13666,3 +13666,45 @@ ideal end = 1, the DC gains (40 Ω + 0.2 into 50; 25 Ω behind 0.2), a slow edge
 flow's message. Not built: the I-V curves' non-linear behaviour, [Rising/Falling Waveform] tables, the line's
 multiple reflections.
 
+## M584 (27 Nov): Hyperion IBIS-AMI: the neighbours hear the victim; each line in its own folder
+
+Two of M582's left-outs (the owner, 27 Nov: "do all of this"). `ami-host.js` `link`: every block, all the transmitters
+(victim and neighbours) run first; then the victim's receiver hears its line plus each neighbour through its coupling
+(`into`), and each neighbour's receiver its own line plus the victim's transmitter through the same coupling (`from`;
+reciprocal coupling taken, neighbours not coupled to each other: one on each side). Each overlap-add channel keeps
+its own tail. **Folders:** the victim runs in the link's folder, neighbour j in `a<j>/` under it, so the models keep
+their own BCI_ID and their files never meet, whether or not the model has a BCI_ID parameter (M582's `laneId`
+renaming removed). A 64-bit end `chdir`s to its folder before every call (`local(file, dir)`); a 32-bit end's helper
+is started there. `files` lists every file under the link's folder, the neighbours' as `a1/…`. Test model
+`ami-test-bci.c`: the receiver now reports `(peak V)`, the highest voltage it has seen. Tests: files
+`a1/link1.rx2tx`, `link1.rx2tx`; with the victim held at +0.4 V the neighbour's receiver peaks 0.4 × 2/3 × 0.1 higher
+than with no coupling; in a Hyperion script `e.AMI.BCI.Files` is `a1/hyperion_link.rx2tx, hyperion_link.rx2tx`.
+
+## M585 (27 Nov): Hyperion IBIS-AMI: the buffers in time, non-linear, with echoes
+
+The other two of M583's left-outs. `ibis-sim.ts` `analogImpulse(ports, n, dt, z0, tx, rx)`: the channel's step
+responses with the chips' own buffers, as IBIS-AMI tools characterise the analog channel. Ports: s11, s12, s21, s22
+per sample (`si.sampled`: the resampled response IFFT'd on impulseResponse's grid, not divided by dt, not cut); a
+4-port's differential ones (`si.sddPair(m, P, Q)`, `sdd21` now built on it) with the single-ended reference per leg
+(odd mode). Each end: die node (C_comp, the buffer's current from its tables: `-(ku·Ipu(Vcc−V) + kd·Ipd(V) + Igc(V) +
+Ipc(Vcc−V))`, IBIS currents into the pin), package R+L to the pin, C_pkg there; the line at the pin a Norton
+(I = g·Vp − j from s_pp[0] and what's already travelling, K); backward Euler, the pad voltage by Newton with
+bisection as a fallback (`solveEnd`; dt = Infinity gives the steady state). The transmitter's switching: ku 0→1 over
+the [Ramp]'s rise (falling the reverse over dV/dt_f, `Analog.fall`). Before the edge the steady state (port waves
+iterated with the responses summed); waves before 0 held (tail sums), so no warm-up run. The cross term s12[0]·a2 is
+lagged a sample (the line's delay makes it ~0). Output: the receiver's pad voltage minus its steady value, per edge;
+the impulse = its difference ÷ dt ÷ (Vcc/2) (an ideal matched pair gives the line), falling negated, `h` their
+average. `idealEnd(z0, 'tx' | 'rx')` stands in for the end without an IBIS buffer. **Signs:** a pull-up or power
+clamp table sources current: I = −V/r for a resistor to the supply (M583's fixture had it wrong; slopes used abs so
+nothing broke then). `Analog` gains `fall`, `vcc`, `pu`, `pd`, `gc`, `pc`; `m.Analog` carries them (PullUp, PullDown,
+GndClamp, PowerClamp, Fall, Vcc). `si-lab.ts` `analogChannel`: when either model has a buffer, n = 3 × the matched
+response (room for echoes, trimmed after), any CTLE applied after (`filterImpulse`), messages (each buffer, how much
+the edges differ); amiEye and amiSimulate use it (ImpulseRise, ImpulseFall); `ami.flow` no longer touches the
+buffers. The near-end coupling edge still goes through the linear `throughFrontEnds`. Cost: about n² × 2 per edge in
+the browser (n a few thousand samples). Tests: an ideal pair = the line, both edges the same; 25 Ω into 100 Ω on a
+delayed line: first arrival (1 − Γs)(1 + ΓL) = 16/9, then −1/9 and 1/81 of it every round trip, nothing between; a
+weak pull-up rising ≥ 8 samples later than the strong pull-down falls, the same area; a slow edge with pad and
+package spreading the response and keeping its area; `iv` past its ends; amiSimulate's ImpulseRise and messages.
+Not built: [Rising/Falling Waveform] tables (the ramp switches the curves instead), the two legs of a differential
+pair as separate non-linear buffers (one leg's half-circuit, mirrored), crosstalk couplings' own echoes.
+

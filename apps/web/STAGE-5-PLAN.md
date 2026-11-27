@@ -1916,6 +1916,8 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M581 | Hyperion IBIS-AMI: back-channel training with 32-bit models | **Done** (on `claude/hyperion-sciences-industries`) | The 32-bit helper's stepping mode: a link's ends run in turns whether each is 32- or 64-bit (`ami-host32.c` AMS1, `ami-host.js` `local`/`remote`, app 1.4.0) |
 | M582 | Hyperion IBIS-AMI: neighbouring lines' transmitters trained | **Done** (on `claude/hyperion-sciences-industries`) | Each crosstalk line a trained link of its own (BCI_ID `_a1`…), its transmitter's output coupled in; without a back-channel, its signal through the transmitter's GetWave |
 | M583 | Hyperion IBIS-AMI: the .ibs file's analog buffers | **Done** (on `claude/hyperion-sciences-industries`) | Driver resistance from I-V tables, [Ramp] edge, C_comp, [Package], termination from clamp tables, wrapped round the channel (`ibis-analog.ts`, `amiModel` 'Corner', 'Analog') |
+| M584 | Hyperion IBIS-AMI: neighbours hear the victim, each line its own folder | **Done** (on `claude/hyperion-sciences-industries`) | All transmitters run a block first; each neighbour's receiver hears the victim through its coupling; lines in folders a1, a2 … (no BCI_ID renaming) |
+| M585 | Hyperion IBIS-AMI: the buffers in time, non-linear, with echoes | **Done** (on `claude/hyperion-sciences-industries`) | The I-V curves switched over the ramp, the channel's s11/s12/s21/s22, rising and falling step responses averaged (`ibis-sim.ts`, `si.sampled`, `sddPair`) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
