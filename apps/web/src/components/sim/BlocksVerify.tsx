@@ -7,6 +7,7 @@ import { blockId, KINDS, type Diagram, type Req, type ReqKind } from '@/lib/sim/
 import { safeNames } from '@/lib/sim/blockir';
 import type { Verified } from '@/lib/sim/verify';
 import { ui } from './bench-ui';
+import { BlocksProve } from './BlocksProve';
 import type { FromVerify, ToVerify } from './verify.worker';
 
 // Hyperion Simulate → Blocks → Verify (M566): requirements written against the diagram's signals, then one press runs
@@ -38,7 +39,7 @@ ${v.all.filter((o) => !v.hit.includes(o.id)).length ? `<p>Not reached:</p><ul>${
 <h2>Tests</h2><table><tr><th>Test</th><th>Inputs changed</th><th>Outcomes reached</th></tr>${rows(v.tests.map((t) => [esc(t.name), esc(t.changes.map((c) => `${names.get(c.block)}: ${c.key} = ${c.value}`).join('; ') || 'none'), String(t.hit.length)]))}</table>
 <h2>Model checks</h2><ul>${v.checks.map((c) => `<li><strong>${c.level}</strong>: ${esc(c.text)}</li>`).join('')}</ul>
 <h2>Signal ranges seen</h2><table><tr><th>Block</th><th>Code name</th><th>Lowest</th><th>Highest</th></tr>${rows(Object.entries(v.ranges).map(([id, [lo, hi]]) => [esc(names.get(id) ?? id), `<code>${esc(code.get(id) ?? '')}</code>`, String(+lo.toPrecision(5)), String(+hi.toPrecision(5))]))}</table>
-<h2>What this is evidence for</h2><p>Requirements-based tests, decision coverage of the model, model and run-time checks and traceability are objectives of IEC 61508, ISO 26262 and DO-178C. This report is evidence toward them, not a certificate: certifying needs a qualified tool chain, the standard's full process and an assessor. Ranges are those the tests saw (dynamic), not a proof over every input.</p>
+<h2>What this is evidence for</h2><p>Requirements-based tests, decision coverage of the model, model and run-time checks and traceability are objectives of IEC 61508, ISO 26262 and DO-178C. This report is evidence toward them, not a certificate: certifying needs a qualified tool chain, the standard's full process and an assessor. Ranges are those the tests saw (dynamic); a chart's logic can be proved for every input with Prove (M573).</p>
 </body></html>`;
 }
 
@@ -126,6 +127,7 @@ export function BlocksVerify({ dg, names, setReqs }: { dg: Diagram; names: Map<s
           </section>
         </div>
       )}
+      <BlocksProve dg={dg} names={names} />
     </div>
   );
 }

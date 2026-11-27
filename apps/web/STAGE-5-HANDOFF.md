@@ -15848,3 +15848,31 @@ M568's left-out ("MATLAB's more advanced all-at-once tuning method", systune). B
   controller's high-frequency gain is Kp(1+N), the roll-off goal can't be met and every candidate failed (the UI's
   default is PIDF; found by the browser check). Now PIDF meets every goal too (hard 8.5 → 1.0).
 - Left out: multiloop (D-scaled) disk margins, decouplers, goals the person writes (custom weights, step targets).
+
+## M573 (27 Nov): Hyperion, proofs for every input (formal verification of charts)
+
+M566's left-out ("formal proof, model checking every input"). Blocks → Verify → **Prove for every input**
+(`src/lib/sim/prove.ts`, `BlocksProve.tsx`, `prove.worker.ts`), for the chosen Chart block.
+
+- **Abstract interpretation over intervals** (`boxes`): per flat state a box (a range per output and own variable).
+  The start is exact (`chartStart`); each step takes the inputs as anything in their ranges and `t`, `time` as any
+  time, follows every transition whose condition might hold (the box refined by it, `refine`), the during actions
+  otherwise (refined by every earlier condition being false, except past a transition with `after`, which may not have
+  waited), and joins what arrives; a box that grows more than 25 times is widened to ±∞ on the growing side, so it
+  ends. Sound: no box means never reached, a transition never refined-possible can never fire, a property true over
+  every box (`ivOf`, interval arithmetic for every chart operator) is proved, and the outputs' joined ranges are proved
+  bounds. Hidden `_since_*` and `time − _since_*` come out as any value, so timers never make a proof wrong (only less
+  sharp).
+- **Counterexample search** (`search`) when the boxes can't decide, or to show a state is reachable: seeded random
+  runs of the chart itself (400 × 40 steps per question), inputs from their ends, 0, every number in the conditions
+  and ±0.001, ±1 around them; steps of dt and long waits (the largest `after` + dt). Found: FALSIFIED (or "can be
+  reached") with the steps to replay; otherwise "Not decided", said plainly.
+- **Properties:** chart expressions over outputs, own variables, inputs and `in(State)` (`parseProperty` turns it into
+  `__in_State`, true when that name is part of the flat state's name: outer and side-by-side states count). Input
+  ranges per input (blank = any real number). Properties and ranges live in the window, not saved with the diagram.
+- Tests (`prove.test.ts`): an unreachable state and a dead (contradictory or shadowed) transition proved, bounds,
+  invariants, a counterexample, ranges changing the answer, a counter widened to [0, ∞), side-by-side regions' coupling
+  proved. Browser check `hyperion-control-ui.mjs` (Parallel, Ladder, At once, Prove; axe clean, light and dark).
+- Left out: proofs over the continuous blocks (the chart's inputs stand for whatever the diagram feeds it), relational
+  domains (octagons, polyhedra: two variables' relation is lost in boxes), temporal properties beyond "always" and
+  "can reach" (for example "within 2 s after").

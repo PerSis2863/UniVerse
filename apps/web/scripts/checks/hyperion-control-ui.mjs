@@ -1,4 +1,5 @@
-// M562– Simulate → Blocks → tools: the PID tuner on the cruise model (tables filled, Update block writes the gains).
+// M562– Simulate → Blocks → tools: the PID tuner on the cruise model (tables filled, Update block writes the gains);
+// M570–M573: side-by-side states drawn, Ladder Diagram, tuning all loops at once, proofs.
 // Axe at 1280, dark and light; no page errors.
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/hyperion-control-ui.mjs
 import { createRequire } from 'node:module';
@@ -20,14 +21,17 @@ try {
     await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
     await page.getByRole('group', { name: 'Kind of simulation' }).getByRole('button', { name: 'Blocks' }).click({ timeout: 120_000 });
     const tools = page.getByRole('group', { name: 'Tools' });
-    for (const tool of ['Tune', 'Logic', 'Real time', 'Code', 'Verify', 'Tune all', 'Modes']) {
+    for (const tool of ['Tune', 'Logic', 'Real time', 'Code', 'Verify', 'Tune all', 'Modes', 'Parallel', 'At once', 'Prove']) {
       if (only && only !== tool) continue;
-      const b = tools.getByRole('button', { name: tool === 'Tune all' ? 'Tune' : tool === 'Modes' ? 'Logic' : tool, exact: true });
+      const b = tools.getByRole('button', { name: ({ 'Tune all': 'Tune', 'At once': 'Tune', Modes: 'Logic', Parallel: 'Logic', Prove: 'Verify' })[tool] ?? tool, exact: true });
       if (!(await b.count())) continue;
       if (tool === 'Logic') await page.getByLabel('Start from').selectOption('tank');
       if (tool === 'Real time') await page.getByLabel('Start from').selectOption('hil');
       if (tool === 'Tune all') await page.getByLabel('Start from').selectOption('twoloops');
       if (tool === 'Modes') await page.getByLabel('Start from').selectOption('modes');
+      if (tool === 'Parallel') await page.getByLabel('Start from').selectOption('parallel');
+      if (tool === 'At once') await page.getByLabel('Start from').selectOption('twoloops');
+      if (tool === 'Prove') await page.getByLabel('Start from').selectOption('tank');
       await b.click();
       await page.waitForTimeout(2500);
       r[`${tool}-text`] = (await page.getByRole('region', { name: /tuner|logic|real time|code|verif/i }).innerText()).slice(0, 600);
@@ -45,7 +49,7 @@ try {
         r.livePins = (await page.getByText('Board pins').locator('..').innerText()).slice(0, 300);
       }
       if (tool === 'Code') {
-        for (const lang of ['cpp', 'st', 'verilog', 'vhdl']) { await page.getByLabel('Language').selectOption(lang); await page.waitForTimeout(300); r[`code-${lang}`] = (await page.locator('[data-code-file]').innerText()).slice(0, 80); }
+        for (const lang of ['cpp', 'st', 'ld', 'verilog', 'vhdl']) { await page.getByLabel('Language').selectOption(lang); await page.waitForTimeout(300); r[`code-${lang}`] = (await page.locator('[data-code-file]').innerText()).slice(0, 80); }
       }
       if (tool === 'Verify') {
         await page.getByLabel('Must').selectOption('settle');
@@ -60,6 +64,23 @@ try {
         await page.getByRole('button', { name: 'Tune all 2 loops together' }).click();
         await page.locator('[data-tune-all]').waitFor({ timeout: 30_000 });
         r.tuneAll = await page.getByRole('region', { name: 'Every loop together' }).innerText();
+      }
+      if (tool === 'Parallel') {
+        await page.getByRole('button', { name: 'Play' }).click();
+        await page.waitForTimeout(3000);
+        r.parallelTime = await page.locator('[data-chart-time]').innerText();
+      }
+      if (tool === 'At once') {
+        await page.getByRole('button', { name: 'Tune all at once (H∞)' }).click();
+        await page.locator('[data-systune]').waitFor({ timeout: 60_000 });
+        r.systune = await page.locator('[data-systune]').innerText();
+      }
+      if (tool === 'Prove') {
+        await page.getByLabel('A property that must always hold').fill('!(pump == 1 && alarm == 1)');
+        await page.getByRole('button', { name: 'Add', exact: true }).click();
+        await page.getByRole('button', { name: 'Prove', exact: true }).click();
+        await page.locator('[data-proofs]').waitFor({ timeout: 60_000 });
+        r.proofs = (await page.locator('[data-proofs]').innerText()).slice(0, 700);
       }
       if (tool === 'Tune') {
         await page.getByRole('button', { name: 'Update block' }).isEnabled({ timeout: 20_000 }).catch(() => {});
