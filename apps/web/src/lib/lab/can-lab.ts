@@ -6,9 +6,11 @@ import { mat, num, str, toMat, type Cell, type Struct, type Value } from './valu
 import * as C from './can';
 import { readOSM } from './osm';
 import * as S from './scenario';
-import { isScenario } from './scenario-lab';
+import { isScenario, specOf } from './scenario-lab';
+import * as RN from './render';
 
-// Hyperion's recorded driving data in the language (M576): canDatabase (DBC), readCANLog and writeCANLog (Vector
+// Hyperion's recorded driving data in the language (M576; M577: cameraImage and scenarioGroundTruth, a scenario's
+// camera pictures and their true labels): canDatabase (DBC), readCANLog and writeCANLog (Vector
 // .asc, candump), canSignalTimetable (every message's signals over time), canFrame (signals into a frame's bytes), and
 // roadNetwork (OpenStreetMap or OpenDRIVE roads into a drivingScenario).
 
@@ -78,4 +80,30 @@ def('roadNetwork', (a, _nout, lab) => {
   let s: Value = a[0];
   for (const r of roads) s = BUILTINS.road([s, mat(r.centers.length, 2, [...r.centers.map((p) => p[0]), ...r.centers.map((p) => p[1])]), str('Lanes'), num(r.lanes), str('LaneWidth'), num(r.laneWidth), str('Name'), str(r.name ?? '')], 1, lab)[0];
   return [s];
+});
+
+// ——— Camera pictures and their true labels (M577) ———
+const camOf = (a: Value[], from: number, what: string) => {
+  const o = new Map<string, Value>(); for (let i = from; i + 1 < a.length; i += 2) o.set(textOf(a[i]).toLowerCase(), a[i + 1]);
+  for (const k of o.keys()) if (!['mount', 'yaw', 'pitch', 'fieldofview', 'size', 'times', 'minvisible'].includes(k)) throw new LabError(`${what}: no option '${k}' ('Mount', 'Yaw', 'Pitch', 'FieldOfView', 'Size'${what === 'scenarioGroundTruth' ? ", 'Times', 'MinVisible'" : ''}).`);
+  const v = (k: string) => (o.has(k) ? [...toMat(o.get(k)!).d] : undefined), size = v('size') ?? [360, 640], m = v('mount');
+  if (!(size[0] >= 16 && size[1] >= 16 && size[0] * size[1] <= 4_000_000)) throw new LabError(`${what}: 'Size' is [rows columns], 16 to about 2000 each.`);
+  return { cam: { mount: m ? [m[0] ?? 1.9, m[1] ?? 0, m[2] ?? 1.3] as [number, number, number] : undefined, yaw: v('yaw')?.[0], pitch: v('pitch')?.[0], fov: v('fieldofview')?.[0], height: Math.round(size[0]), width: Math.round(size[1]) }, times: v('times'), minVisible: v('minvisible')?.[0] ?? 0.2 };
+};
+const labelsStruct = (L: RN.Label[]): Struct => struct([['Boxes', mat(L.length, 4, [0, 1, 2, 3].flatMap((j) => L.map((l) => l.box[j])))], ['Classes', cell(L.map((l) => str(l.cls)))], ['Truth', col(L.map((l) => l.truth + 1))], ['Visible', col(L.map((l) => l.visible))]]);
+def('cameraImage', (a, nout) => {
+  if (!isScenario(a[0])) throw new LabError("[img, labels] = cameraImage(s, t, 'Mount', [1.9 0 1.3], 'FieldOfView', 70, 'Size', [360 640]): what the ego vehicle's camera sees at time t.");
+  const spec = specOf(a[0] as Struct), t = a[1] ? toMat(a[1]).d[0] : 0, { cam } = camOf(a, 2, 'cameraImage');
+  const run = wrap(() => S.runScenario({ ...spec, sensors: [] })), k = Math.max(0, Math.min(run.t.length - 1, Math.round(t / spec.dt)));
+  const im = RN.cameraImage(run, k, spec.ego ?? 0, cam), H = im.height, W = im.width, d = new Float64Array(H * W * 3);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) for (let c = 0; c < 3; c++) d[y + x * H + c * H * W] = im.rgb[3 * (y * W + x) + c];
+  return [{ k: 'mat', r: H, c: W, p: 3, d, cls: 'uint8' } as Value, labelsStruct(im.labels)].slice(0, Math.max(1, nout));
+});
+def('scenarioGroundTruth', (a) => {
+  if (!isScenario(a[0])) throw new LabError("gt = scenarioGroundTruth(s, 'Times', 0:0.5:5, 'MinVisible', 0.2): the true boxes in the ego camera's picture at those times (automatic labels).");
+  const spec = specOf(a[0] as Struct), { cam, times, minVisible } = camOf(a, 1, 'scenarioGroundTruth');
+  const run = wrap(() => S.runScenario({ ...spec, sensors: [] })), T = times ?? run.t.filter((_, i) => i % Math.max(1, Math.round(0.5 / spec.dt)) === 0);
+  if (T.length > 2000) throw new LabError('scenarioGroundTruth: at most 2,000 frames.');
+  const frames = T.map((t) => { const k = Math.max(0, Math.min(run.t.length - 1, Math.round(t / spec.dt))); return labelsStruct(RN.cameraImage(run, k, spec.ego ?? 0, cam).labels.filter((l) => l.visible >= minVisible)); });
+  return [struct([['Times', col(T)], ['LabelDefinitions', cell(['car', 'truck', 'pedestrian', 'bicycle'].map((x) => str(x)))], ['Labels', { k: 'cell', r: T.length, c: 1, d: frames }]])];
 });

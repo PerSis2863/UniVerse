@@ -15942,3 +15942,22 @@ and north of the nodes' centre (equirectangular), lanes from the tag or the kind
   remote), OSM distances (97 m and 100 m at 51.5°N) and the filter, the language; the browser check loads an .osm.
 - Not yet: ROS bags, labelling, deployment, test benches (the next items); live CAN hardware (a browser can't reach a
   CAN interface; the computer app could later, with the person's own adapter).
+
+## M577: automated driving 5: camera pictures and the Labeller (27 Nov)
+
+The owner's automated-driving page, "visualize and label data" (its Ground Truth Labeler).
+- **`render.ts`**: `cameraImage(run, k, ego, cam)` draws what a pinhole camera on the ego car sees (sky, ground, road
+  strips and markings far to near, each actor a shaded cuboid, nearest last; faces cut at a 0.3 m near plane) into an
+  RGB buffer and an id buffer, and returns the true labels: each actor's box [x y w h] and `visible`, its pixels left
+  uncovered by nearer things over the pixels it drew (counted right after drawing it). `interpolateBox` for keyframes.
+- In the language (`can-lab.ts`): `[img, labels] = cameraImage(s, t, 'Mount', 'Yaw', 'Pitch', 'FieldOfView', 'Size')`
+  (a uint8 rows×cols×3 picture; Boxes, Classes, Truth, Visible), `gt = scenarioGroundTruth(s, 'Times', 'MinVisible')`.
+- **Simulate → Machines → Labeller** (`LabelBench.tsx`): frames every 0.5 s from a ready scenario or the person's own
+  pictures (kept on the device, up to 500); drag to draw, label buttons and new labels, Delete, arrow keys; "Label every
+  frame from the scenario's truth" (dashed boxes) and "Fill in between the frames you labelled"; labels as .json; Open
+  in Code. The ready scenarios moved to `scenario-presets.ts` (shared with the Scenario designer).
+- Checked: `render.test.ts` (left/right placement, a car half behind a truck, nothing behind the camera, the language),
+  `scripts/checks/hyperion-labeller-ui.mjs` (frames draw, labels from truth, a drawn box, axe light and dark).
+- **Trap:** a truck 15 m ahead hides a car 40 m ahead completely unless it sits more than ~4.5 m to the side.
+- Not yet: ROS bags, deployment (ROS 2 / AUTOSAR around the generated C), requirements and test benches (next).
+

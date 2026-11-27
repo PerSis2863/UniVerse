@@ -166,4 +166,6 @@ writeCANLog | writeCANLog(frames, 'out.asc') | Frames written as a Vector ASCII 
 canSignalTimetable | tt = canSignalTimetable(frames, db, 'Message') | Every message the database knows, decoded: its Time and each signal (physical values; NaN where a multiplexed signal wasn't sent). With a name, that message only.
 canFrame | data = canFrame(db, 'Message', struct('Signal', value, …)) | A frame's bytes from physical values (rounded to each signal's step, held to its range of bits).
 roadNetwork | s = roadNetwork(s, 'OpenStreetMap', 'map.osm'), roadNetwork(s, 'OpenDRIVE', 'roads.xodr') | Roads from a map into a drivingScenario: an OpenStreetMap file's drivable ways (metres east and north of its centre; lanes from the lanes tag or the kind of road), or an OpenDRIVE file's roads.
+cameraImage | [img, labels] = cameraImage(s, t, 'Mount', [1.9 0 1.3], 'Yaw', 0, 'Pitch', 2, 'FieldOfView', 70, 'Size', [360 640]) | What the ego vehicle's camera sees at time t (a picture, uint8 rows × columns × 3), and the true labels: each actor's Boxes [x y w h], Classes, Truth (its number) and how much of it is Visible.
+scenarioGroundTruth | gt = scenarioGroundTruth(s, 'Times', 0:0.5:5, 'MinVisible', 0.2) | Automatic labels for a scenario's camera frames: at each time, the boxes of the actors at least that visible.
 `;
