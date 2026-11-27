@@ -12,3 +12,4 @@ import './space-lab';
 import './rail-lab';
 import './pointcloud-lab';
 import './fusion-lab';
+import './can-lab';

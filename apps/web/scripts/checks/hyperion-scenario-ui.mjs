@@ -36,6 +36,12 @@ try {
       if (i === 2 && /none$/.test(r.facts)) fail.push(`${theme}: the crash wasn't found`);
       if (shots) await page.screenshot({ path: `${shots}/scenario-${i}-${theme}.png` });
     }
+    // M576: an OpenStreetMap file loads as roads (the actors start afresh)
+    const osm = `<?xml version="1.0"?><osm version="0.6"><node id="1" lat="51.5000" lon="-0.1200"/><node id="2" lat="51.5000" lon="-0.1186"/><node id="3" lat="51.5009" lon="-0.1186"/><node id="4" lat="51.5004" lon="-0.1200"/><way id="10"><nd ref="1"/><nd ref="2"/><nd ref="3"/><tag k="highway" v="primary"/><tag k="lanes" v="2"/></way><way id="13"><nd ref="1"/><nd ref="4"/><tag k="highway" v="residential"/></way></osm>`;
+    await page.locator('input[type="file"][accept*=".osm"]').setInputFiles({ name: 'map.osm', mimeType: 'application/xml', buffer: Buffer.from(osm) });
+    await page.waitForTimeout(800);
+    if ((await page.locator('section[aria-label="The run"] p.bg-amber-50').count()) > 0) fail.push(`${theme}: the map didn't load`);
+    if (shots) await page.screenshot({ path: `${shots}/scenario-osm-${theme}.png` });
     // a click in "Add a car" adds an actor
     const before = Number((await page.locator('section[aria-label="The run"] .font-mono').first().innerText()).trim());
     await page.getByRole('button', { name: 'Add a car', exact: true }).click();

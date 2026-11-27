@@ -15917,3 +15917,28 @@ Jacobian numerically) with `quatToEuler` / `eulerToQuat` (Z-Y-X; world x east, y
   the others: occlusion working), fusion's localisation the best, GOSPA's parts, the IMU filters (pitch and roll within
   1°, the magnetometer holding the heading within 1° and better than 6-axis), AP 5/6 on a hand-checked case, the language.
 - Not done: deep object detectors (SSD, YOLO: no trained weights here; the scores are ready for one).
+
+
+## M576 (27 Nov): automated driving 4: CAN data (DBC, logs) and OpenStreetMap roads
+
+The page's "access live and recorded driving data… CAN" and "OpenStreetMap". **`src/lib/lab/can.ts`** (pure): `readDBC`
+(BO_ with the extended bit, SG_ with Intel @1 or Motorola @0, sign, factor, offset, range, unit, the multiplexor M and
+mN signals, VAL_ tables), `decodeSignal` (BigInt so 64-bit signals stay exact; Motorola walks the "sawtooth": the
+start bit is the MSB, then down the byte and to the next byte's top), `decodeFrame` (multiplexed signals only when
+selected), `encodeFrame` (rounded to the step, held to the bit width), `readCANLog` (Vector ASCII .asc, its CAN FD lines,
+and candump: `(t) iface id#hex`, `##` FD, remote frames `#R` skipped), `writeASC`, `signalTimetables`.
+**`osm.ts`**: an .osm file's drivable ways (highway motorway … service; footways, buildings left out) in metres east
+and north of the nodes' centre (equirectangular), lanes from the tag or the kind, names.
+- In the language (`can-lab.ts`): canDatabase (Messages, Signals; the parsed form kept as JSON in Raw), readCANLog
+  (Time, ID, Extended, Channel, Length, Data), writeCANLog, canSignalTimetable (a struct per message, or one), canFrame,
+  roadNetwork(s, 'OpenStreetMap' | 'OpenDRIVE', file).
+- The Scenario designer: "Load a map (.osm, .xodr)" (read in the browser, up to 60 roads), the roads drawn before any
+  car is added (a still placeholder only places the camera; no sensor cones until a real car), clicked road points
+  shown as dots, a hint to add the ego car.
+- **Traps:** TypeScript's target refuses `1n` literals (use `BigInt(1)`); candump's `#R` was taken as empty data by the
+  alternation order (`R\d*` first).
+- Checked (`can.test.ts`): a hand-worked Motorola 16-bit, an Intel offset, a 12-bit signed signal, a Motorola nibble,
+  value tables, multiplexing, encode = decode's inverse, clamping, .asc round trip, candump (standard, extended, FD,
+  remote), OSM distances (97 m and 100 m at 51.5°N) and the filter, the language; the browser check loads an .osm.
+- Not yet: ROS bags, labelling, deployment, test benches (the next items); live CAN hardware (a browser can't reach a
+  CAN interface; the computer app could later, with the person's own adapter).

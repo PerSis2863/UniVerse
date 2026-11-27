@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import * as S from '@/lib/lab/scenario';
 import * as PC from '@/lib/lab/pointcloud';
 import { scenarioTracks } from '@/lib/lab/scenario-track';
+import { readOSM } from '@/lib/lab/osm';
 import { shareFragment } from '@/lib/lab/share';
 import { NumField, ui } from './bench-ui';
 
@@ -64,6 +65,7 @@ export function ScenarioBench() {
   const boxes = useRef(new WeakMap<object, number[][]>());
 
   const result = useMemo(() => {
+    if (!design.actors.length) return { run: null, error: '' }; // nothing to run yet: the hint below says what to do
     try { return { run: S.runScenario(specOf(design), { cloudEvery: 2 }), error: '' }; }
     catch (e) { return { run: null, error: (e as Error).message }; }
   }, [design]);
@@ -83,8 +85,14 @@ export function ScenarioBench() {
     return () => cancelAnimationFrame(raf);
   }, [playing, n]);
 
+  // with no actors yet, the roads alone are drawn (a still, invisible ego only places the chase camera)
+  const shownRun = useMemo((): S.Run | null => {
+    if (run) return run;
+    const roads = design.roads.filter((r) => r.centers.length >= 2).map(S.makeRoad), r0 = roads[0];
+    return { t: [0], poses: [[{ x: r0?.x[0] ?? 0, y: r0?.y[0] ?? 0, yaw: r0?.h[0] ?? 0, v: 0 }]], actors: [{ cls: 'car', L: 0.01, W: 0.01, H: 0.01, name: '' }], roads, detections: [], lanes: [], clouds: [], collisions: [] };
+  }, [run, design.roads]);
   const draw = useEffectEvent(() => {
-    const b = box.current;
+    const b = box.current, run = shownRun;
     if (!b || !run) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.max(300, Math.floor((b.clientWidth - 24 - 12) / 2)), H = 360; // the panel's padding, the gap
     const setup = (c: HTMLCanvasElement | null) => { if (!c) return null; c.style.width = `${W}px`; c.style.height = `${H}px`; c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); const ctx = c.getContext('2d')!; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return ctx; };
@@ -93,7 +101,8 @@ export function ScenarioBench() {
     // ——— bird's eye ———
     const g = setup(top.current);
     if (g) {
-      const xs = [...run.roads.flatMap((r) => r.x), ...run.poses.flatMap((p) => p.map((q) => q.x))], ys = [...run.roads.flatMap((r) => r.y), ...run.poses.flatMap((p) => p.map((q) => q.y))];
+      const clicked = design.roads.flatMap((r) => r.centers);
+      const xs = [...run.roads.flatMap((r) => r.x), ...run.poses.flatMap((p) => p.map((q) => q.x)), ...clicked.map((c) => c[0]), ...(clicked.length || run.roads.length ? [] : [-50, 50])], ys = [...run.roads.flatMap((r) => r.y), ...run.poses.flatMap((p) => p.map((q) => q.y)), ...clicked.map((c) => c[1]), ...(clicked.length || run.roads.length ? [] : [-50, 50])];
       const x0 = Math.min(...xs) - 15, x1 = Math.max(...xs) + 15, y0 = Math.min(...ys) - 15, y1 = Math.max(...ys) + 15, s = Math.min(W / (x1 - x0), H / (y1 - y0));
       const ox = (W - (x1 - x0) * s) / 2, oy = (H - (y1 - y0) * s) / 2;
       view.current = { x0: x0 - ox / s, y0: y1 + oy / s, s };
@@ -105,9 +114,12 @@ export function ScenarioBench() {
         for (const bd of B) { g.strokeStyle = paint; g.lineWidth = bd.solid ? 1.5 : 1; g.setLineDash(bd.solid ? [] : [6, 6]); g.beginPath(); bd.x.forEach((x, i) => { const [px, py] = P(x, bd.y[i]); if (i) g.lineTo(px, py); else g.moveTo(px, py); }); g.stroke(); }
         g.setLineDash([]);
       }
+      // the road points clicked so far
+      g.fillStyle = dark ? '#fafafa' : '#18181b';
+      for (const [cx, cy] of clicked) { const [px, py] = P(cx, cy); g.beginPath(); g.arc(px, py, 2.5, 0, 2 * Math.PI); g.fill(); }
       // the sensors' coverage, from the ego vehicle
       const sp = specOf(design);
-      sp.sensors.forEach((se) => {
+      if (result.run) sp.sensors.forEach((se) => {
         if (se.kind === 'lidar') return;
         const fov = ((se.fov ?? (se.kind === 'radar' ? 20 : 40)) * Math.PI) / 180, R = Math.min(se.range ?? (se.kind === 'radar' ? 174 : 150), 120), m = se.mount ?? [0, 0, 0];
         const cx = ego.x + m[0] * Math.cos(ego.yaw), cy = ego.y + m[0] * Math.sin(ego.yaw);
@@ -209,6 +221,17 @@ export function ScenarioBench() {
     const url = URL.createObjectURL(new Blob([S.writeOpenDRIVE(roads, 'Hyperion scenario')], { type: 'application/xml' })), a = document.createElement('a');
     a.href = url; a.download = 'scenario.xodr'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  // M576: roads from a map file (OpenStreetMap or OpenDRIVE), read here in the browser; the actors start afresh
+  const [mapError, setMapError] = useState('');
+  const loadMap = async (f: File | undefined) => {
+    setMapError('');
+    if (!f) return;
+    try {
+      if (f.size > 20_000_000) throw new Error('That file is over 20 MB.');
+      const text = await f.text(), roads = /\.xodr$/i.test(f.name) ? S.readOpenDRIVE(text) : readOSM(text).roads.slice(0, 60);
+      setPreset(-1); setDesign((d) => ({ ...d, roads: roads.map((r) => ({ centers: r.centers, lanes: r.lanes, laneWidth: r.laneWidth, name: r.name })), actors: [] })); setK(0); setMode('car');
+    } catch (e) { setMapError((e as Error).message); }
+  };
   const openInCode = async () => router.push(`/hyperion#${await shareFragment({ name: 'scenario.m', view: 'code', code: codeOf(design) })}`);
   const D = run?.detections ?? [], seen = new Set(D.filter((d) => d.truth >= 0).map((d) => d.truth)).size;
   const { label, small } = ui;
@@ -244,11 +267,14 @@ export function ScenarioBench() {
           {([['vision', 'Camera (objects and lanes)'], ['radar', 'Radar'], ['lidar', 'Lidar (points, and the boxes it finds)']] as const).map(([key, t]) => <label key={key} className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" className="accent-violet-600" checked={design[key]} onChange={(e) => setDesign((d) => ({ ...d, [key]: e.target.checked }))} />{t}</label>)}
         </fieldset>
         <div className="flex flex-wrap gap-1.5 border-t border-zinc-200/80 pt-3 dark:border-white/10">
+          <label className={cn(small, 'cursor-pointer')}>Load a map (.osm, .xodr)<input type="file" accept=".osm,.xodr,.xml" className="sr-only" onChange={(e) => { void loadMap(e.target.files?.[0]); e.target.value = ''; }} /></label>
           <button type="button" className={small} onClick={download} disabled={!design.roads.some((r) => r.centers.length >= 2)}><Download className="h-3.5 w-3.5" aria-hidden />OpenDRIVE (.xodr)</button>
           <button type="button" className={small} onClick={() => void openInCode()}><Code2 className="h-3.5 w-3.5" aria-hidden />Open in Code</button>
         </div>
       </aside>
       <section ref={box} className="panel flex min-w-0 flex-1 flex-col gap-3 p-3" aria-label="The run" data-no-motion>
+        {mapError && <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{mapError}</p>}
+        {!design.actors.length && <p className="rounded-lg bg-zinc-50 p-2.5 text-xs text-zinc-700 dark:bg-white/[0.04] dark:text-zinc-200">Choose “Add a car” and click on a road: the first car is the ego car, which carries the sensors.</p>}
         {result.error && <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{result.error}</p>}
         <div className="flex items-center gap-2">
           <button type="button" className={cn(small, 'border border-zinc-200 dark:border-white/15')} disabled={!run} onClick={() => setPlaying((p) => !p)}>{playing ? <><Pause className="h-3.5 w-3.5" aria-hidden />Pause</> : <><Play className="h-3.5 w-3.5" aria-hidden />Play</>}</button>

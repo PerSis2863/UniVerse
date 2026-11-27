@@ -158,4 +158,12 @@ ahrsfilter | [q, euler] = ahrsfilter(accel, gyro, mag, fs, 'Beta', 0.1) | Orient
 imuReadings | [accel, gyro, mag] = imuReadings(euler, fs, 'Bias', [0 0 0], 'Seed', 1) | What an IMU reads along an orientation history [yaw pitch roll] (degrees, a row a sample): gravity, body rates (with a gyro bias) and Earth's field, with noise.
 bboxOverlapRatio | r = bboxOverlapRatio(A, B) | The overlap (intersection over union) of every box [x y width height] in A with every box in B.
 evaluateDetectionPrecision | [ap, recall, precision] = evaluateDetectionPrecision(detections, truth, 0.5) | An object detector's average precision: detections [image x y w h score] against the truth [image x y w h] at an overlap threshold.
+
+# Recorded driving data
+canDatabase | db = canDatabase('car.dbc') | A CAN database (DBC): its Messages (name, ID, length, sender) and their Signals (start bit, length, byte order, sign, factor, offset, range, units; value tables and multiplexing kept).
+readCANLog | frames = readCANLog('drive.asc') | A CAN log, Vector ASCII (.asc, CAN FD too) or Linux candump: Time, ID, Extended, Channel, Length and Data (a row of bytes a frame).
+writeCANLog | writeCANLog(frames, 'out.asc') | Frames written as a Vector ASCII log.
+canSignalTimetable | tt = canSignalTimetable(frames, db, 'Message') | Every message the database knows, decoded: its Time and each signal (physical values; NaN where a multiplexed signal wasn't sent). With a name, that message only.
+canFrame | data = canFrame(db, 'Message', struct('Signal', value, …)) | A frame's bytes from physical values (rounded to each signal's step, held to its range of bits).
+roadNetwork | s = roadNetwork(s, 'OpenStreetMap', 'map.osm'), roadNetwork(s, 'OpenDRIVE', 'roads.xodr') | Roads from a map into a drivingScenario: an OpenStreetMap file's drivable ways (metres east and north of its centre; lanes from the lanes tag or the kind of road), or an OpenDRIVE file's roads.
 `;
