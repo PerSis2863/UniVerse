@@ -21,7 +21,7 @@ import { closedLoopStable, tuneAll } from './tune-all';
 //
 // The plant is linearised once with every loop open: G_ij from PID j's output to the error PID i acts on (M568's
 // `plantSeenBy` for every pair). Then S = (I + G·C)⁻¹ on a grid of frequencies, C = diag(C_i). The gains move in
-// log-space (signs kept) by Nelder–Mead from M568's sequential design and from a few spread starts (systune's random
+// log-space (signs kept; a PIDF's filter time too, as systune tunes it) by Nelder–Mead from M568's sequential design and from a few spread starts (systune's random
 // starts), minimising soft + 100 · how far the hard goal is missed; the best stable result wins.
 
 export interface SysLoop { id: string; gains: Gains; peak: number; disk: number; Pm: number; Gm: number }
@@ -50,7 +50,7 @@ function sensDiag(L: C[][]): C[] {
   return A.map((row, i) => row[m + i]);
 }
 
-const keysOf = (type: PidType): (keyof Gains)[] => ({ P: ['Kp'], I: ['Ki'], PI: ['Kp', 'Ki'], PD: ['Kp', 'Kd'], PID: ['Kp', 'Ki', 'Kd'], PIDF: ['Kp', 'Ki', 'Kd'] } as Record<PidType, (keyof Gains)[]>)[type];
+const keysOf = (type: PidType): (keyof Gains)[] => ({ P: ['Kp'], I: ['Ki'], PI: ['Kp', 'Ki'], PD: ['Kp', 'Kd'], PID: ['Kp', 'Ki', 'Kd'], PIDF: ['Kp', 'Ki', 'Kd', 'Tf'] } as Record<PidType, (keyof Gains)[]>)[type];
 
 /** The goals for these gains: the tracking peak and disk margin per loop. */
 export function goals(G: Tf[][], gains: Gains[], wb: number[], pm: number, grid: number[]) {
@@ -89,11 +89,10 @@ export function systune(dg: Diagram, opts: { type?: PidType; pm?: number; N?: nu
   const toGains = (x: number[]): Gains[] => ids.map((_, i) => {
     const g: Gains = { Kp: 0, Ki: 0, Kd: 0, Tf: 0 };
     keys.forEach((k, j) => { g[k] = sign[i][j] * Math.exp(x[i * keys.length + j]); });
-    if (type === 'PIDF' && g.Kd) g.Tf = Math.abs(g.Kd / (g.Kp || 1) / N);
     return g;
   });
   const withAll = (gs: Gains[]): Diagram => ({ ...dg, blocks: dg.blocks.map((b) => { const i = ids.indexOf(b.id); return i < 0 ? b : { ...b, p: { ...b.p, Kp: gs[i].Kp, Ki: gs[i].Ki, Kd: gs[i].Kd, N: gs[i].Tf ? 1 / gs[i].Tf : b.p.N } }; }) });
-  const x0 = seq.loops.flatMap((l) => keys.map((k) => Math.log(Math.max(1e-6, Math.abs(l.gains[k]) || 1e-3))));
+  const x0 = seq.loops.flatMap((l) => keys.map((k) => Math.log(Math.max(1e-6, Math.abs(k === 'Tf' && !l.gains.Tf ? Math.abs(l.gains.Kd / (l.gains.Kp || 1) / N) : l.gains[k]) || 1e-3))));
   let evals = 0;
   const score = (x: number[]) => {
     evals++;

@@ -24,6 +24,8 @@ function viewOf(ch: Chart, active: number, via: number) {
     const box = (name: string) => { const exact = w.leaves.findIndex((l) => l.split('.').pop() === name); return exact >= 0 ? exact : w.leaves.findIndex((l) => l.split('.').includes(name)); };
     const fired = new Set(via >= 0 ? w.parts[via] : []);
     return {
+      // A leaf's column: the region it sits in (the state just inside a parallel one), or its outermost state.
+      groups: w.leaves.map((l) => { const p = l.split('.'), k = p.findIndex((x) => w.parallel.includes(x)); return k >= 0 && k + 1 < p.length ? p.slice(0, k + 2).join('.') : p[0]; }),
       names: w.leaves, parents: w.leafParents, acts: w.leaves.map(() => ''), lit: new Set(w.active[active] ?? []), start: new Set(w.active[0]), parallel: new Set(w.parallel),
       edges: w.src.map((e, k): Edge => ({ from: box(e.from), to: box(e.to), text: w.leaves[box(e.from)]?.split('.').pop() === e.from ? e.text : `${e.text} (from ${e.from})`, on: fired.has(k) })),
     };
@@ -44,14 +46,19 @@ function viewOf(ch: Chart, active: number, via: number) {
 /** A flat state's name for a narrow label: each active leaf's own name (`Pump.Idle | Light.Red` → `Idle + Red`). */
 const short = (name: string) => (name.includes(' | ') ? name.split(' | ').map((x) => x.split('.').pop()).join(' + ') : name);
 
-function layout(n: number) {
+function layout(n: number, groups?: string[]) {
+  if (groups) {
+    // Side-by-side states (M570): each region (or state outside them) its own column, its states down it.
+    const cols = [...new Set(groups)], row = new Map<string, number>();
+    return groups.map((g) => { const r = row.get(g) ?? 0; row.set(g, r + 1); return { x: 50 + cols.indexOf(g) * GX, y: 60 + r * GY }; });
+  }
   const cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.6)));
   return Array.from({ length: n }, (_, i) => ({ x: 40 + (i % cols) * GX, y: 50 + Math.floor(i / cols) * GY }));
 }
 
 function ChartDrawing({ ch, active, via }: { ch: Chart; active: number; via: number }) {
   const v = viewOf(ch, active, via);
-  const pos = layout(v.names.length), W = Math.max(...pos.map((p) => p.x)) + SW + 40, H = Math.max(...pos.map((p) => p.y)) + SH + 50;
+  const pos = layout(v.names.length, 'groups' in v ? v.groups : undefined), W = Math.max(...pos.map((p) => p.x)) + SW + 40, H = Math.max(...pos.map((p) => p.y)) + SH + 50;
   const centre = (i: number) => ({ x: pos[i].x + SW / 2, y: pos[i].y + SH / 2 });
   /** Where the line from a box's centre towards (dx, dy) leaves the box. */
   const edge = (i: number, dx: number, dy: number) => { const c = centre(i), k = Math.min(SW / 2 / Math.abs(dx || 1e-9), SH / 2 / Math.abs(dy || 1e-9)); return { x: c.x + dx * k, y: c.y + dy * k }; };
@@ -154,8 +161,8 @@ export function BlocksLogic({ dg, names, result }: { dg: Diagram; names: Map<str
         <div className="min-w-0 space-y-2 text-[13px]">
           <p className="text-xs font-semibold text-zinc-900 dark:text-white">What ran</p>
           <ul className="space-y-1">
-            {ch.states.map((st, i) => <li key={st.name} className="flex justify-between gap-2"><span>State {st.name}</span><span className={cn('font-mono tabular-nums', !trace?.visits[i] && 'text-amber-700 dark:text-amber-400')}>{trace ? (trace.visits[i] ? `entered ${trace.visits[i]}×` : 'never') : '—'}</span></li>)}
-            {ch.trans.map((tr, i) => <li key={i} className="flex justify-between gap-2"><span className="min-w-0 truncate" title={tr.text}>{ch.states[tr.from].name} → {ch.states[tr.to].name}</span><span className={cn('shrink-0 font-mono tabular-nums', !trace?.fired[i] && 'text-amber-700 dark:text-amber-400')}>{trace ? (trace.fired[i] ? `${trace.fired[i]}×` : 'never') : '—'}</span></li>)}
+            {ch.states.map((st, i) => <li key={st.name} className="flex justify-between gap-2"><span title={st.name}>State {short(st.name)}</span><span className={cn('font-mono tabular-nums', !trace?.visits[i] && 'text-amber-700 dark:text-amber-400')}>{trace ? (trace.visits[i] ? `entered ${trace.visits[i]}×` : 'never') : '—'}</span></li>)}
+            {ch.trans.map((tr, i) => <li key={i} className="flex justify-between gap-2"><span className="min-w-0 truncate" title={tr.text}>{short(ch.states[tr.from].name)} → {short(ch.states[tr.to].name)}</span><span className={cn('shrink-0 font-mono tabular-nums', !trace?.fired[i] && 'text-amber-700 dark:text-amber-400')}>{trace ? (trace.fired[i] ? `${trace.fired[i]}×` : 'never') : '—'}</span></li>)}
           </ul>
         </div>
       </div>

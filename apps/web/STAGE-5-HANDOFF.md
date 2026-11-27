@@ -15797,7 +15797,8 @@ inner states are regions that are all active at once.
 - **Drawing:** `Chart.written` keeps the chart as written (leaves, which are active in each flat state, outer states,
   the parallel ones, transitions and which of them each flat transition fired); `viewOf` in `BlocksLogic.tsx` draws the
   leaves with every region's active one lit, a solid box marked "(side by side)" round a parallel state. Flat states are
-  named `On.Pump.Idle | On.Light.Green`, shortened on the timeline to `Idle + Green`.
+  named `On.Pump.Idle | On.Light.Green`, shortened on the timeline and in "What ran" to `Idle + Green`. Each region (or
+  state outside them) is its own column of the drawing (`layout(n, groups)`), so region boxes never overlap.
 - Example "A pump and its light (states side by side)"; tests: both regions in one step, the light's `after` counted
   from its own entry, the outer transition leaving both, refusals, the emulated code following the simulation.
 - Left out: history junctions, events broadcast between regions (regions talk through variables), inner transitions
@@ -15843,4 +15844,7 @@ M568's left-out ("MATLAB's more advanced all-at-once tuning method", systune). B
   phase reads lower than the classic one for the same loop.
 - Two-loop example (PI, 60°): tracking 1.49 → 0.50, hard 1.27 → 1.00, about 1.5 s. In the time domain y1's overshoot
   42 % → 25 %, the dip when the other loop steps 28 % → 0.1 %.
+- **A PIDF's filter time is tuned too** (one more log-variable per loop): with M568's fixed `Tf = Kd/(Kp·N)` the
+  controller's high-frequency gain is Kp(1+N), the roll-off goal can't be met and every candidate failed (the UI's
+  default is PIDF; found by the browser check). Now PIDF meets every goal too (hard 8.5 → 1.0).
 - Left out: multiloop (D-scaled) disk margins, decouplers, goals the person writes (custom weights, step targets).

@@ -13,4 +13,11 @@ describe('tuning every loop at once (M572)', () => {
     expect(r.soft).toBeLessThanOrEqual(r.startSoft * 1.0001 + (r.startHard > 1 ? 100 : 0));
     for (const l of r.loops) expect(l.Pm).toBeGreaterThanOrEqual(60 - 1e-3);
   });
+  it('tunes a PIDF’s filter time too (a fixed fast filter can’t roll off)', () => {
+    const d = EXAMPLES.find((e) => e.id === 'twoloops')!.make(), r = systune(d, { type: 'PIDF', pm: 60, N: 100 });
+    expect(r.stable).toBe(true);
+    expect(r.hard).toBeLessThanOrEqual(1 + 1e-6);
+    expect(r.startHard).toBeGreaterThan(2);
+    expect(r.soft).toBeLessThan(r.startSoft);
+  }, 30_000);
 });
