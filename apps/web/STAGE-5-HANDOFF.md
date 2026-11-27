@@ -15709,3 +15709,41 @@ still moved by `x` / `y` / `scale` (the page's thread) or opened by height on th
   `spring`); let eslint's unused list and `tsc`'s missing names decide instead of a regex.
 - **Rule:** a new section that folds open is `{...foldIn}` with `overflow-hidden`; a small arrival or swap animates
   `transform: 'translateY(6px)'` → `'translateY(0px)'` on `pop.spring`, not `y`.
+
+
+## M568 (27 Nov): Hyperion mixed-signal design: PLLs, data converters, SerDes, verification
+
+The owner, 27 Nov, with screenshots of MathWorks' mixed-signal page (top-down design, verification, PLLs, data
+converters, SerDes and high-speed links): "can you please build this in hyperion". Hyperion already had a converter
+with flaws, adcmetrics, inldnl, sigmadelta and a simple PLL (M426, M437); this adds the rest, our own code from the
+textbook methods:
+- **`src/lib/lab/mixsig.ts`** (pure): `pllDesign` (a charge-pump PLL's passive loop filter C1 ∥ (R2 + C2) for a bandwidth
+  and phase margin: τp = (sec φ − tan φ)/ωc, τz = 1/(ωc²τp)), `pllBode`, `pllSim` (edge by edge: a tri-state PFD, the
+  charge pump into the filter, the VCO and divider; fractional N by a MASH 1-1-1; each period's *average* frequency, so
+  a fractional loop's average is exact), `pllNoise` (reference ×|N H|², VCO ×|1 − H|², the MASH's shaped noise, RMS
+  jitter); `archAdc` (flash with comparator offsets, SAR with a mismatched capacitor DAC, pipeline of 1.5-bit stages
+  with gain error and offsets the redundancy forgives up to 0.125 of the range), `archDac` (binary, thermometer,
+  segmented, with static INL/DNL); `prbs` (O.150's polynomials), `linkPulse` (a minimum-phase lossy channel from skin
+  and dielectric loss by the real cepstrum, CTLE, TX FFE), `linkRun` (NRZ or PAM4 through it with noise, jitter and a
+  zero-forcing DFE: eye height and width, the statistical bathtub, a bang-bang CDR).
+- **`mixsig-lab.ts`**: plldesign, pllsim, pllnoise, adcarch, dacarch, prbs, serdes, eyediagram, and two verification
+  exports: `dpigen` (a script function as C via `codegen`'s `generate`, a SystemVerilog module calling it through
+  DPI-C, and a self-checking testbench whose expected answers are Hyperion's own) and `amigen` (an IBIS-AMI model: the
+  .ami parameter file, a .ibs pointing at it, and the C of AMI_Init / AMI_GetWave / AMI_Close for a TX FFE or an RX
+  CTLE (a bilinear biquad) and DFE). Help in `help-mixsig.ts`; registered in both workers.
+- **Simulate → Mixed-signal** (`src/components/sim/MixedSignalBench.tsx`): Phase-locked loop (the designed parts, lock
+  time, jitter; locking, Bode, phase noise, control voltage), Data converters (ENOB, SNR, SINAD, SFDR; the spectrum, the
+  ADC's INL from a coherent code-density test, the DAC's DNL and INL), SerDes links (eye height and width, width at BER
+  1e-12; the eye after the DFE, the bathtub, the pulse response, the CDR settling), Verification (what dpigen and amigen
+  write, with examples to open in Code). Each tab has Open in Code with the same settings as a script.
+- Checked: `mixsig.test.ts` (the filter crosses 0 dB at the bandwidth with the margin asked; integer and fractional
+  loops lock; ideal converters are 10 bits and each flaw costs bits; a thermometer DAC's DNL is a quarter of a binary
+  one's; PRBS7's period; 20 dB of loss closes the eye and FFE + CTLE + DFE reopen it; the generated DPI C and both AMI
+  libraries compile with `cc -Wall -Werror`, and the TX model applies its taps), `mixsig-demos.test.ts` (the
+  Verification tab's examples run), `scripts/checks/hyperion-mixsig-ui.mjs` (every tab draws at 1280 in light and dark,
+  axe-clean, no errors).
+- Left out: a SystemVerilog simulator here (none in the container; the testbench is for the owner's tools), IBIS buffer
+  I-V and V-t tables (they come from a transistor-level design; the .ibs says where to add them), S-parameter files for
+  the channel (the loss model stands in), and co-simulation with Cadence or Synopsys tools (they're paid).
+- **Rules:** a new converter or link measure goes in `mixsig.ts` with its test; the bench recomputes in `useMemo` on a
+  deferred copy of its settings; the eye plots at most 160 traces.

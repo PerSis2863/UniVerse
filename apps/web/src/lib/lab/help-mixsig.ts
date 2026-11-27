@@ -1,0 +1,16 @@
+// Help for Hyperion's mixed-signal design (M568), kept apart from help.ts like the other late toolboxes. Same form:
+// `name | how to call it | what it does`, `# ` starts a section.
+
+export const MIXSIG_HELP = `
+# Mixed-signal design
+plldesign | p = plldesign(fref, fout, bandwidth, 'PhaseMargin', 55, 'Kvco', 100e6, 'Icp', 1e-3) | A charge-pump PLL's loop filter (C1 beside R2 and C2) for a loop bandwidth (Hz) and phase margin, with N = fout/fref (fractional allowed), Kvco in Hz/V and the pump's current in A. Drawn without outputs as the open loop's Bode plot.
+pllsim | s = pllsim(p, 'Cycles', 400, 'Start', f0, 'Order', 3, 'Leakage', 0) | The PLL in time, edge by edge: a phase-frequency detector, the charge pump into the loop filter, the VCO and its divider (a MASH sigma-delta for a fractional N). Gives the control voltage, the output frequency each reference period, the phase error and the lock time; drawn without outputs.
+pllnoise | s = pllnoise(p, f, 'Reference', -150, 'VCO', -110, 'At', 1e6, 'Corner', 0, 'Floor', -165) | The output's phase noise (dBc/Hz) at offsets f: the reference's through the loop, the VCO's (dBc/Hz at 'At' Hz, −20 dB a decade) high-passed by it, a fractional-N loop's sigma-delta noise, and the RMS jitter. Drawn without outputs.
+adcarch | [codes, xq] = adcarch(x, 'SAR', bits, [lo hi], 'Offset', 0, 'Mismatch', 0, 'Gain', 0, 'Noise', 0, 'Seed', 1) | An ADC of a chosen architecture: 'Flash' (comparator offsets in LSB), 'SAR' (a capacitor DAC whose unit capacitors spread by 'Mismatch'), 'Pipeline' (1.5-bit stages: gain error, and comparator offsets as a share of the range that the redundancy forgives up to 0.125). Measure it with adcmetrics and inldnl.
+dacarch | [out, inl, dnl] = dacarch('Segmented', bits, mismatch, 'MSB', 5, 'Seed', 1) | A current-steering DAC's output for every code with its static INL and DNL (LSB): 'Binary', 'Thermometer' (one source a step: small DNL) or 'Segmented' (the top 'MSB' bits thermometer). Drawn without outputs.
+prbs | b = prbs(order, n, seed) | A pseudo-random bit sequence PRBS7, 9, 11, 15, 23 or 31 (ITU-T O.150's polynomials), n bits.
+serdes | s = serdes('Rate', 25e9, 'Loss', 20, 'PAM4', false, 'FFE', [-0.1 0.8 -0.1], 'CTLE', 8, 'DFE', 3, 'Noise', 0.01, 'Jitter', 0.01, 'Bits', 2000) | A serial link end to end: PRBS data (NRZ or PAM4) through a lossy channel (dB at Nyquist, skin and dielectric loss), a TX FFE, an RX CTLE (dB of peaking) and a zero-forcing DFE, with noise and jitter. The eye's height and width, the BER bathtub, a bang-bang CDR; drawn without outputs as four plots.
+eyediagram | eyediagram(x, n, traces) | An eye diagram: two-symbol windows of the waveform x (n samples a symbol) drawn over each other.
+dpigen | dpigen('name', {example inputs}) | Verification: a function of the script as C (name.c, name.h), a SystemVerilog block that calls it through DPI-C (name_dpi.sv) and a self-checking testbench (name_tb.sv) whose expected answers are Hyperion's own, for an IC design simulator.
+amigen | amigen('name', 'Rx', 'CTLE', 8, 'DFE', 3, 'Rate', 25e9) | An IBIS-AMI equaliser model for channel simulation: the .ami parameter file, a .ibs file pointing at it, and the C of AMI_Init, AMI_GetWave and AMI_Close ('Tx' with 'FFE' taps, or 'Rx' with a CTLE and DFE) to build into the model's library.
+`;

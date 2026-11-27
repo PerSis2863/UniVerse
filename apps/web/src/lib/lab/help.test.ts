@@ -15,6 +15,7 @@ import './maint-lab';
 import './dsp-lab';
 import './energy-lab';
 import './grid-lab';
+import './mixsig-lab';
 import './comms-lab';
 import './image-lab';
 import './radar-lab';

@@ -1,0 +1,374 @@
+import { LabError } from './parse';
+import { BUILTINS, type Builtin } from './builtins';
+import { textOf, type Lab } from './interp';
+import { FileStore } from './files';
+import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
+import * as M from './mixsig';
+import { CodegenError, generate, type Cls, type Ty } from './codegen';
+
+// Hyperion's mixed-signal design in the language (M568): plldesign, pllsim, pllnoise (a charge-pump PLL from its
+// specification to lock and jitter), adcarch and dacarch (converter architectures with their mismatch; adcmetrics and
+// inldnl are their testbench), prbs and serdes (a serial link with its equalisers, eye, bathtub and CDR), and two
+// verification exports: dpigen (a function as C with a SystemVerilog DPI-C wrapper and a self-checking testbench)
+// and amigen (an IBIS-AMI equaliser model: its .ami parameter file and the C of AMI_Init / AMI_GetWave / AMI_Close).
+
+const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
+const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 0, lab);
+const row = (v: number[]) => mat(1, v.length, v);
+const col = (v: number[]) => mat(v.length, 1, v);
+const files = (lab: Lab) => { const s = (lab.host as { files?: unknown }).files; return s instanceof FileStore ? s : null; };
+const wrap = <T,>(f: () => T): T => { try { return f(); } catch (e) { if (e instanceof LabError) throw e; throw new LabError((e as Error).message); } };
+const struct = (f: [string, Value][]): Struct => ({ k: 'struct', f: new Map(f) });
+const yes = (v: boolean) => ({ ...num(v ? 1 : 0), logical: true });
+/** 'Name', value pairs from index `from` on, by lower-cased name; refuses names it doesn't know. */
+function opts(a: Value[], from: number, names: string[], what: string) {
+  const o = new Map<string, Value>();
+  for (let i = from; i < a.length; i += 2) {
+    if (a[i].k !== 'str') throw new LabError(`${what}: options come as 'Name', value pairs.`);
+    const k = textOf(a[i]).toLowerCase();
+    if (!names.includes(k)) throw new LabError(`${what}: no option '${textOf(a[i])}' (it takes ${names.map((n) => `'${n}'`).join(', ')}).`);
+    if (i + 1 >= a.length) throw new LabError(`${what}: '${textOf(a[i])}' needs a value.`);
+    o.set(k, a[i + 1]);
+  }
+  const n = (k: string) => (o.has(k) ? toMat(o.get(k)!).d[0] : undefined);
+  const v = (k: string) => (o.has(k) ? [...toMat(o.get(k)!).d] : undefined);
+  const t = (k: string) => (o.has(k) ? textOf(o.get(k)!) : undefined);
+  const b = (k: string) => (o.has(k) ? !!toMat(o.get(k)!).d[0] : undefined);
+  return { n, v, t, b };
+}
+const field = (s: Value | undefined, name: string, what: string) => {
+  if (s?.k !== 'struct') throw new LabError(`${what}: the design from plldesign.`);
+  const v = s.f.get(name); if (!v) throw new LabError(`${what}: the design has no ${name} (make it with plldesign).`);
+  return toMat(v).d[0];
+};
+const designOf = (s: Value | undefined, what: string): M.PllDesign => {
+  const f = (n: string) => field(s, n, what);
+  return { fref: f('Fref'), fout: f('Fout'), bandwidth: f('Bandwidth'), phaseMargin: f('PhaseMargin'), kvco: f('Kvco'), icp: f('Icp'), n: f('N'), c1: f('C1'), c2: f('C2'), r2: f('R2'), crossover: f('Bandwidth'), margin: f('PhaseMargin') };
+};
+const logspace = (a: number, b: number, n: number) => Array.from({ length: n }, (_, i) => 10 ** (Math.log10(a) + (Math.log10(b) - Math.log10(a)) * i / (n - 1)));
+
+// ——— PLL ———
+def('plldesign', (a, nout, lab) => {
+  if (a.length < 3) throw new LabError("plldesign(fref, fout, bandwidth, 'PhaseMargin', 55, 'Kvco', 100e6, 'Icp', 1e-3): a charge-pump PLL's loop filter.");
+  const o = opts(a, 3, ['phasemargin', 'kvco', 'icp'], 'plldesign');
+  const d = wrap(() => M.pllDesign({ fref: toMat(a[0]).d[0], fout: toMat(a[1]).d[0], bandwidth: toMat(a[2]).d[0], phaseMargin: o.n('phasemargin') ?? 55, kvco: o.n('kvco') ?? 100e6, icp: o.n('icp') ?? 1e-3 }));
+  const s = struct([['Fref', num(d.fref)], ['Fout', num(d.fout)], ['N', num(d.n)], ['Bandwidth', num(d.bandwidth)], ['PhaseMargin', num(d.margin)], ['Kvco', num(d.kvco)], ['Icp', num(d.icp)], ['C1', num(d.c1)], ['C2', num(d.c2)], ['R2', num(d.r2)]]);
+  if (nout > 0) return [s];
+  const f = logspace(d.bandwidth / 100, Math.min(d.fref / 2, d.bandwidth * 100), 300), b = M.pllBode(d, f);
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'semilogx', row(f), row(b.mag)); call(lab, 'yline', num(0), str('--')); call(lab, 'ylabel', str('Open-loop gain (dB)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`N = ${+d.n.toFixed(6)} · C1 = ${eng(d.c1)}F · C2 = ${eng(d.c2)}F · R2 = ${eng(d.r2)}Ω · margin ${d.margin.toFixed(1)}°`));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'semilogx', row(f), row(b.phase)); call(lab, 'yline', num(-180), str('--')); call(lab, 'ylabel', str('Phase (°)')); call(lab, 'xlabel', str('Frequency (Hz)')); call(lab, 'grid', str('on'));
+  return [];
+});
+const eng = (x: number) => { const p = [[1e-15, 'f'], [1e-12, 'p'], [1e-9, 'n'], [1e-6, 'µ'], [1e-3, 'm'], [1, ''], [1e3, 'k'], [1e6, 'M'], [1e9, 'G']] as const; let best: (typeof p)[number] = p[0]; for (const q of p) if (Math.abs(x) >= q[0]) best = q; return `${+(x / best[0]).toPrecision(3)} ${best[1]}`; };
+def('pllsim', (a, nout, lab) => {
+  const d = designOf(a[0], 'pllsim');
+  const o = opts(a, 1, ['cycles', 'start', 'order', 'tolerance', 'leakage'], 'pllsim');
+  const cycles = Math.round(o.n('cycles') ?? 400);
+  if (!(cycles >= 20 && cycles <= 20000)) throw new LabError('pllsim: 20 to 20,000 reference periods.');
+  const order = o.n('order'); if (order !== undefined && ![0, 1, 2, 3].includes(order)) throw new LabError("pllsim: 'Order' is the sigma-delta's, 0 to 3.");
+  const r = wrap(() => M.pllSim(d, { cycles, f0: o.n('start'), mash: order as 0 | 1 | 2 | 3 | undefined, tol: o.n('tolerance'), leak: o.n('leakage') }));
+  if (nout > 0) return [struct([['Time', col(r.t)], ['Vc', col(r.vc)], ['Frequency', col(r.fout)], ['PhaseError', col(r.phaseErr)], ['Modulus', col(r.nUsed)], ['LockTime', num(r.locked ? r.lockTime : NaN)], ['Locked', yes(r.locked)]])];
+  const us = row(r.t.map((t) => t * 1e6));
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', us, row(r.fout.map((f) => f / 1e6))); call(lab, 'yline', num(d.fout / 1e6), str('--')); call(lab, 'ylabel', str('Output (MHz)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(r.locked ? `Locked after ${(r.lockTime * 1e6).toFixed(2)} µs` : 'Not locked yet (more cycles, a wider bandwidth or a larger Kvco)'));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', us, row(r.vc)); call(lab, 'ylabel', str('Control voltage (V)')); call(lab, 'xlabel', str('Time (µs)')); call(lab, 'grid', str('on'));
+  return [];
+});
+def('pllnoise', (a, nout, lab) => {
+  const d = designOf(a[0], 'pllnoise');
+  const f = a[1] && a[1].k === 'mat' ? [...toMat(a[1]).d] : logspace(1e3, Math.min(d.fref / 2, 100e6), 200);
+  if (f.length < 2 || f.some((x, i) => !(x > 0) || (i && x <= f[i - 1]))) throw new LabError('pllnoise: offsets above 0 Hz, increasing.');
+  const o = opts(a, a[1] && a[1].k === 'mat' ? 2 : 1, ['reference', 'vco', 'at', 'corner', 'floor', 'order'], 'pllnoise');
+  const r = M.pllNoise(d, f, { refNoise: o.n('reference'), vcoNoise: o.n('vco'), vcoAt: o.n('at'), vcoCorner: o.n('corner'), floor: o.n('floor'), mash: o.n('order') });
+  if (nout > 0) return [struct([['Offset', col(f)], ['Total', col(r.total)], ['Reference', col(r.ref)], ['VCO', col(r.vco)], ['SigmaDelta', col(r.sd)], ['Jitter', num(r.jitter)]])];
+  call(lab, 'semilogx', row(f), row(r.total), str('k')); call(lab, 'hold', str('on'));
+  call(lab, 'semilogx', row(f), row(r.ref), str('--')); call(lab, 'semilogx', row(f), row(r.vco), str('--'));
+  const sd = r.sd.some(Number.isFinite); if (sd) call(lab, 'semilogx', row(f), row(r.sd.map((v) => (Number.isFinite(v) ? v : NaN))), str('--'));
+  call(lab, 'hold', str('off')); call(lab, 'legend', ...[str('Total'), str('Reference'), str('VCO'), ...(sd ? [str('Sigma-delta')] : [])]);
+  call(lab, 'xlabel', str('Offset (Hz)')); call(lab, 'ylabel', str('Phase noise (dBc/Hz)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`RMS jitter ${(r.jitter * 1e15).toFixed(0)} fs (${eng(f[0])}Hz to ${eng(f[f.length - 1])}Hz)`));
+  return [];
+});
+
+// ——— Converters ———
+def('adcarch', (a, nout) => {
+  if (a.length < 3) throw new LabError("adcarch(x, 'SAR', bits, [lo hi], 'Offset', 0, 'Mismatch', 0, 'Gain', 0, 'Noise', 0, 'Seed', 1): 'Flash', 'SAR' or 'Pipeline'.");
+  const x = toMat(a[0], 'The signal') as Mat, arch = textOf(a[1]).toLowerCase() as M.AdcArch, bits = Math.round(toMat(a[2]).d[0]);
+  if (!['flash', 'sar', 'pipeline'].includes(arch)) throw new LabError("adcarch: the architecture is 'Flash', 'SAR' or 'Pipeline'.");
+  if (!(bits >= 3 && bits <= 20)) throw new LabError('adcarch: 3 to 20 bits.');
+  const range = a[3] && a[3].k === 'mat' ? toMat(a[3]).d : [-1, 1];
+  if (!(range[1] > range[0])) throw new LabError('adcarch: a range [lo hi] with lo < hi.');
+  const o = opts(a, a[3] && a[3].k === 'mat' ? 4 : 3, ['offset', 'mismatch', 'gain', 'noise', 'seed'], 'adcarch');
+  const codes = wrap(() => M.archAdc([...x.d], arch, bits, range[0], range[1], { offset: o.n('offset'), mismatch: o.n('mismatch'), gain: o.n('gain'), noise: o.n('noise'), seed: o.n('seed') }));
+  const step = (range[1] - range[0]) / 2 ** bits;
+  return [mat(x.r, x.c, codes), mat(x.r, x.c, codes.map((c) => range[0] + (c + 0.5) * step))].slice(0, Math.max(1, nout));
+});
+def('dacarch', (a, nout, lab) => {
+  if (a.length < 3) throw new LabError("dacarch('Segmented', bits, mismatch, 'MSB', 5, 'Seed', 1): 'Binary', 'Thermometer' or 'Segmented'.");
+  const arch = textOf(a[0]).toLowerCase() as M.DacArch, bits = Math.round(toMat(a[1]).d[0]), mm = toMat(a[2]).d[0];
+  if (!['binary', 'thermometer', 'segmented'].includes(arch)) throw new LabError("dacarch: the architecture is 'Binary', 'Thermometer' or 'Segmented'.");
+  if (!(bits >= 2 && bits <= 16)) throw new LabError('dacarch: 2 to 16 bits.');
+  if (!(mm >= 0 && mm < 0.5)) throw new LabError('dacarch: the unit sources’ mismatch is a share from 0 to 0.5 (0.01 is 1%).');
+  const o = opts(a, 3, ['msb', 'seed'], 'dacarch');
+  const r = wrap(() => M.archDac(arch, bits, mm, { msb: o.n('msb'), seed: o.n('seed') }));
+  if (nout > 0) return [row(r.out), row(r.inl), row(r.dnl)];
+  const k = row(r.out.map((_, i) => i)), w = (v: number[]) => Math.max(...v.map(Math.abs)).toFixed(2);
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', k, row(r.dnl)); call(lab, 'ylabel', str('DNL (LSB)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`${arch[0].toUpperCase() + arch.slice(1)} DAC, ${bits} bits: worst DNL ${w(r.dnl)} LSB, worst INL ${w(r.inl)} LSB`));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', k, row(r.inl)); call(lab, 'ylabel', str('INL (LSB)')); call(lab, 'xlabel', str('Code')); call(lab, 'grid', str('on'));
+  return [];
+});
+
+// ——— SerDes ———
+def('prbs', (a) => {
+  const order = Math.round(toMat(a[0] ?? num(7)).d[0]), n = Math.round(toMat(a[1] ?? num(2 ** Math.min(order, 16) - 1)).d[0]);
+  if (!(n >= 1 && n <= 10_000_000)) throw new LabError('prbs(order, n): up to 10,000,000 bits.');
+  return [col(wrap(() => M.prbs(order, n, a[2] ? toMat(a[2]).d[0] : 1)))];
+});
+const SERDES = ['rate', 'loss', 'skin', 'pam4', 'ffe', 'ctle', 'ctlefrequency', 'dfe', 'noise', 'jitter', 'bits', 'order', 'seed', 'samplesperui'];
+const linkOf = (a: Value[], from: number, what: string) => {
+  const o = opts(a, from, SERDES, what);
+  const rate = o.n('rate') ?? 10e9, bits = Math.round(o.n('bits') ?? 2000), sps = Math.round(o.n('samplesperui') ?? 32);
+  if (!(rate > 0)) throw new LabError(`${what}: 'Rate' is the bit rate (bits a second).`);
+  if (!(bits >= 200 && bits <= 100_000)) throw new LabError(`${what}: 200 to 100,000 bits.`);
+  if (!(sps >= 8 && sps <= 128)) throw new LabError(`${what}: 8 to 128 samples a symbol.`);
+  const dfe = Math.round(o.n('dfe') ?? 0); if (!(dfe >= 0 && dfe <= 8)) throw new LabError(`${what}: 0 to 8 DFE taps.`);
+  return { rate, loss: o.n('loss') ?? 10, skin: o.n('skin'), pam4: o.b('pam4') ?? false, ffe: o.v('ffe'), ctle: o.n('ctle'), ctleAt: o.n('ctlefrequency'), dfe, noise: o.n('noise') ?? 0.01, jitter: o.n('jitter') ?? 0.01, bits, order: o.n('order'), seed: o.n('seed'), sps };
+};
+def('serdes', (a, nout, lab) => {
+  const s = linkOf(a, 0, 'serdes'), r = wrap(() => M.linkRun(s)), sps = r.pulse.sps;
+  if (nout > 0) return [struct([['EyeHeight', num(r.eyeHeight)], ['EyeWidth', num(r.eyeWidth)], ['WidthAtBER', num(r.widthAt)], ['BestPhase', num(r.bestPhase / sps)], ['Main', num(r.pulse.main)], ['Pre', row(r.pulse.pre)], ['Post', row(r.pulse.post)], ['DFETaps', row(r.dfeTaps)], ['Pulse', col(r.pulse.p.slice(0, Math.min(r.pulse.p.length, r.pulse.peak + 16 * sps)))], ['Wave', col(r.wave)], ['Symbols', col(r.symbols)], ['BER', col(r.bathtub.ber)], ['CDRPhase', col(r.cdr.map((p) => p / sps))]])];
+  const ui = 1 / (s.pam4 ? s.rate / 2 : s.rate);
+  // the pulse response, in symbols
+  const P = r.pulse.p.slice(0, Math.min(r.pulse.p.length, r.pulse.peak + 12 * sps));
+  call(lab, 'subplot', num(2), num(2), num(1)); call(lab, 'plot', row(P.map((_, i) => (i - r.pulse.peak) / sps)), row(P)); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('Symbols from the main cursor')); call(lab, 'title', str(`Pulse response (main ${r.pulse.main.toFixed(3)})`));
+  call(lab, 'subplot', num(2), num(2), num(2)); eye(lab, r.wave, sps, 300);
+  call(lab, 'title', str(r.eyeHeight > 0 ? `Eye ${r.eyeHeight.toFixed(3)} high, ${(r.eyeWidth * 100).toFixed(0)}% wide` : 'The eye is closed'));
+  call(lab, 'subplot', num(2), num(2), num(3)); call(lab, 'semilogy', row(r.bathtub.phase), row(r.bathtub.ber)); call(lab, 'yline', num(1e-12), str('--')); call(lab, 'ylim', row([1e-18, 1])); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('Sampling phase (UI)'));
+  call(lab, 'title', str(`Bathtub: ${(r.widthAt * 100).toFixed(0)}% open at 1e-12`));
+  call(lab, 'subplot', num(2), num(2), num(4)); call(lab, 'plot', row(r.cdr.map((_, i) => i * ui * 1e9)), row(r.cdr.map((p) => p / sps))); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('Time (ns)')); call(lab, 'ylabel', str('Phase (UI)')); call(lab, 'title', str('Bang-bang CDR'));
+  return [];
+});
+/** Draws an eye: `traces` two-symbol windows of the waveform overlaid. */
+function eye(lab: Lab, w: number[], sps: number, traces: number) {
+  const n = 2 * sps + 1, start = 16, k = Math.min(traces, Math.floor((w.length / sps - start - 3)));
+  if (k < 1) throw new LabError('eyediagram: the waveform is too short for one eye.');
+  const Y = new Array(n * k);
+  for (let j = 0; j < k; j++) for (let i = 0; i < n; i++) Y[i + j * n] = w[(start + j) * sps + i];
+  call(lab, 'plot', col(Array.from({ length: n }, (_, i) => i / sps)), mat(n, k, Y), str('b'));
+  call(lab, 'xlabel', str('Time (UI)')); call(lab, 'grid', str('on'));
+}
+def('eyediagram', (a, _nout, lab) => {
+  const w = [...toMat(a[0] ?? num(NaN), 'The waveform').d], sps = Math.round(toMat(a[1] ?? num(NaN)).d[0]);
+  if (!(sps >= 2)) throw new LabError('eyediagram(x, n): n samples a symbol (at least 2).');
+  eye(lab, w, sps, a[2] ? Math.round(toMat(a[2]).d[0]) : 300);
+  return [];
+});
+
+// ——— Verification exports ———
+const SV: Record<string, string> = { double: 'real', float: 'shortreal', int8_t: 'byte', uint8_t: 'byte unsigned', int16_t: 'shortint', uint16_t: 'shortint unsigned', int32_t: 'int', uint32_t: 'int unsigned', int64_t: 'longint', uint64_t: 'longint unsigned', bool: 'bit' };
+interface Arg { out: boolean; ty: string; name: string; n: number }
+/** The arguments of a generated C prototype `void f(const double x[8], double k, double y[8], double *t);`. */
+function parseProto(h: string, name: string): { args: Arg[]; ret: string } {
+  const m = h.match(new RegExp(`(\\w+)\\s+${name}\\s*\\(([^)]*)\\);`));
+  if (!m) throw new LabError(`dpigen: no prototype for ${name} in the generated header.`);
+  const args = m[2].trim() === 'void' || !m[2].trim() ? [] : m[2].split(',').map((p) => {
+    const q = p.trim().match(/^(const\s+)?(\w+)\s+(\*?)(\w+)(?:\[(\d+)\])?$/);
+    if (!q) throw new LabError(`dpigen: can't read the argument “${p.trim()}”.`);
+    return { out: !q[1] && (!!q[3] || !!q[5]), ty: q[2], name: q[4], n: q[5] ? +q[5] : 1 };
+  });
+  return { args, ret: m[1] };
+}
+const svLit = (ty: string, x: number) => (ty === 'double' || ty === 'float' ? (Number.isInteger(x) ? x.toFixed(1) : x.toPrecision(17)) : String(Math.trunc(x)));
+def('dpigen', (a, nout, lab) => {
+  const name = a[0] ? textOf(a[0]).replace(/\.m$/, '') : '';
+  if (!/^[A-Za-z]\w*$/.test(name)) throw new LabError("dpigen('name', {example inputs}): a function of the script to verify in a SystemVerilog simulator.");
+  const ex = a[1], exs = !ex ? [] : ex.k === 'cell' ? ex.d : [ex];
+  const tys: Ty[] = exs.map((v, i) => {
+    if (v.k !== 'mat' || v.im || (v.p ?? 1) > 1) throw new LabError(`dpigen: input ${i + 1} is a real number or matrix.`);
+    return { cls: (v.logical ? 'logical' : v.cls ?? 'double') as Cls, r: v.r, c: v.c };
+  });
+  let out: { c: string; h: string };
+  try { out = generate(lab.fns, name, tys); } catch (e) { if (e instanceof CodegenError) throw new LabError(`dpigen: ${e.message}`); throw e; }
+  const { args, ret } = parseProto(out.h, name);
+  if (ret !== 'void') args.push({ out: true, ty: ret, name: 'result', n: 1 });
+  const svT = (t: string) => { const s = SV[t]; if (!s) throw new LabError(`dpigen: the C type ${t} has no SystemVerilog match.`); return s; };
+  const dim = (x: Arg) => (x.n > 1 ? ` [${x.n}]` : '');
+  const formal = args.filter((x) => x.name !== 'result').map((x) => `${x.out ? 'output' : 'input'} ${svT(x.ty)} ${x.name}${dim(x)}`).join(', ');
+  const imp = `  import "DPI-C" function ${ret === 'void' ? 'void' : svT(ret)} ${name}(${formal});`;
+  const callExpr = `${ret === 'void' ? '' : 'result = '}${name}(${args.filter((x) => x.name !== 'result').map((x) => x.name).join(', ')});`;
+  const sv = `// ${name}_dpi.sv: Hyperion's ${name} as a SystemVerilog block through DPI-C (made by dpigen).
+// Compile ${name}.c with the simulator (e.g. xrun ${name}.c ${name}_dpi.sv ${name}_tb.sv, or vcs -sverilog …).
+module ${name}_dpi (
+  input  logic clk${args.map((x) => `,\n  ${x.out ? 'output' : 'input '} ${svT(x.ty)} ${x.name}${dim(x)}`).join('')}
+);
+${imp}
+  always @(posedge clk) ${callExpr}
+endmodule
+`;
+  // the expected answers: Hyperion runs the function on the examples
+  const res = lab.call(name, exs, args.filter((x) => x.out).length);
+  const outs = args.filter((x) => x.out);
+  const decl = args.map((x) => `  ${svT(x.ty)} ${x.name}${dim(x)};`).join('\n');
+  let k = 0;
+  const set = args.filter((x) => !x.out).map((x) => { const v = toMat(exs[k++]).d; return x.n > 1 ? Array.from({ length: x.n }, (_, i) => `    ${x.name}[${i}] = ${svLit(x.ty, v[i])};`).join('\n') : `    ${x.name} = ${svLit(x.ty, v[0])};`; }).join('\n');
+  const tol = (t: string) => (t === 'double' ? '1e-9' : t === 'float' ? '1e-4' : '0');
+  const checks = outs.map((x, j) => {
+    const want = res[j] ? toMat(res[j]).d : [];
+    const one = (lhs: string, w: number) => `    if (${tol(x.ty) === '0' ? `${lhs} !== ${svLit(x.ty, w)}` : `(${lhs} - ${svLit(x.ty, w)} > ${tol(x.ty)}) || (${svLit(x.ty, w)} - ${lhs} > ${tol(x.ty)})`}) begin errors++; $display("MISMATCH ${lhs}: got %0g, want ${w}", ${lhs}); end`;
+    return x.n > 1 ? Array.from({ length: x.n }, (_, i) => one(`${x.name}[${i}]`, want[i] ?? NaN)).join('\n') : one(x.name, want[0] ?? NaN);
+  }).join('\n');
+  const tb = `// ${name}_tb.sv: a self-checking testbench for ${name}_dpi (made by dpigen): Hyperion's own answers for the example
+// inputs are the scoreboard; the simulator passes when the C block gives the same.
+module ${name}_tb;
+  logic clk = 0;
+${decl}
+  int errors = 0;
+  ${name}_dpi dut (.clk(clk)${args.map((x) => `, .${x.name}(${x.name})`).join('')});
+  initial begin
+${set}
+    #1 clk = 1; #1 clk = 0;
+${checks}
+    if (errors == 0) $display("PASS: ${name} matches Hyperion"); else $display("FAIL: %0d mismatches", errors);
+    $finish;
+  end
+endmodule
+`;
+  const fs = files(lab);
+  if (fs) { fs.putText(`${name}.c`, out.c); fs.putText(`${name}.h`, out.h); fs.putText(`${name}_dpi.sv`, sv); fs.putText(`${name}_tb.sv`, tb); }
+  if (nout > 0) return [struct([['C', str(out.c)], ['H', str(out.h)], ['SV', str(sv)], ['Testbench', str(tb)]])];
+  lab.host.out(`Wrote ${name}.c, ${name}.h, ${name}_dpi.sv and ${name}_tb.sv${fs ? ' to Hyperion’s files' : ''}:\n\n${sv}\n`);
+  return [];
+});
+
+def('amigen', (a, nout, lab) => {
+  const name = a[0] ? textOf(a[0]) : '', side = a[1] ? textOf(a[1]).toLowerCase() : '';
+  if (!/^[A-Za-z]\w*$/.test(name) || !['tx', 'rx'].includes(side)) throw new LabError("amigen('name', 'Tx', 'FFE', [-0.1 0.8 -0.1], 'Rate', 25e9) or amigen('name', 'Rx', 'CTLE', 8, 'DFE', 3, 'Rate', 25e9): an IBIS-AMI equaliser model.");
+  const o = opts(a, 2, ['ffe', 'ctle', 'ctlefrequency', 'dfe', 'rate'], 'amigen');
+  const rate = o.n('rate') ?? 10e9, ffe = o.v('ffe') ?? [0, 1, 0], ctle = o.n('ctle') ?? 0, dfe = Math.round(o.n('dfe') ?? 0), fp = o.n('ctlefrequency') ?? rate / 2;
+  if (!(rate > 0) || !(ctle >= 0 && ctle <= 30) || !(dfe >= 0 && dfe <= 16) || ffe.length > 16) throw new LabError('amigen: a positive rate, CTLE peaking 0 to 30 dB, up to 16 DFE taps and 16 FFE taps.');
+  const tx = side === 'tx';
+  const ami = tx
+    ? `(${name}
+  (Description "Hyperion TX FFE, ${ffe.length} taps")
+  (Reserved_Parameters
+    (AMI_Version (Usage Info) (Type String) (Value "7.1"))
+    (Init_Returns_Impulse (Usage Info) (Type Boolean) (Value True))
+    (GetWave_Exists (Usage Info) (Type Boolean) (Value True))
+    (Max_Init_Aggressors (Usage Info) (Type Integer) (Value 0)))
+  (Model_Specific
+${ffe.map((c, i) => `    (tap${i} (Usage In) (Type Float) (Format Range ${c} -1 1) (Default ${c}) (Description "FFE tap ${i}"))`).join('\n')}))
+`
+    : `(${name}
+  (Description "Hyperion RX: CTLE ${ctle} dB at ${eng(fp)}Hz${dfe ? `, DFE ${dfe} taps` : ''}")
+  (Reserved_Parameters
+    (AMI_Version (Usage Info) (Type String) (Value "7.1"))
+    (Init_Returns_Impulse (Usage Info) (Type Boolean) (Value True))
+    (GetWave_Exists (Usage Info) (Type Boolean) (Value True))
+    (Max_Init_Aggressors (Usage Info) (Type Integer) (Value 0)))
+  (Model_Specific
+    (ctle_peaking_db (Usage In) (Type Float) (Format Range ${ctle} 0 30) (Default ${ctle}))
+    (ctle_peak_hz (Usage In) (Type Float) (Format Value ${fp}) (Default ${fp}))
+    (dfe_taps (Usage In) (Type Integer) (Format Range ${dfe} 0 16) (Default ${dfe}))))
+`;
+  const ibs = `[IBIS Ver]   7.1
+[File Name]  ${name.toLowerCase()}.ibs
+[File Rev]   1.0
+[Source]     Hyperion amigen
+[Component]  ${name}
+[Manufacturer] Hyperion
+[Package]
+| variable   typ   min   max
+R_pkg        0.1   0.05  0.2
+L_pkg        0.5nH 0.3nH 0.8nH
+C_pkg        0.3pF 0.2pF 0.4pF
+[Pin] signal_name model_name
+1     ${tx ? 'txp' : 'rxp'}  ${name}_buf
+[Model] ${name}_buf
+Model_type ${tx ? 'Output' : 'Input'}
+C_comp 0.5pF 0.4pF 0.6pF
+[Algorithmic Model]
+Executable Windows_VisualStudio_64 ${name}_win64.dll ${name}.ami
+Executable Linux_gcc_64 ${name}_linux64.so ${name}.ami
+[End Algorithmic Model]
+| The buffer's I-V and V-t tables come from the transistor-level design: add [Pulldown], [Pullup], [Ramp] here.
+[End]
+`;
+  const c = `/* ${name}_ami.c: an IBIS-AMI ${tx ? 'transmitter FFE' : 'receiver CTLE and DFE'} (made by Hyperion's amigen).
+   Build: gcc -shared -fPIC -O2 -o ${name}_linux64.so ${name}_ami.c -lm (Windows: cl /LD). Parameters arrive as the
+   .ami file's tree; this model reads its own defaults (${tx ? 'the taps' : 'the CTLE and DFE'}) and keeps them simple. */
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifdef _WIN32
+#define AMI_EXPORT __declspec(dllexport)
+#else
+#define AMI_EXPORT
+#endif
+typedef struct { double dt, ui; long spb; ${tx ? `double taps[${Math.max(1, ffe.length)}]; int ntaps, main;` : 'double a1, a2, b0, b1, b2, x1, x2, y1, y2; int ndfe; double dfe[16]; double last[16];'} } State;
+${tx ? `static const double TAPS[] = { ${ffe.join(', ')} };` : `static const double PEAK_DB = ${ctle}, PEAK_HZ = ${fp};`}
+${tx ? `/* y[n] = Σ c_k x[n − (k − main)·spb]: the FFE on a waveform sampled every dt */
+static void ffe(State *s, double *w, long n) {
+  double *y = calloc((size_t)n, sizeof *y);
+  for (long i = 0; i < n; i++) for (int k = 0; k < s->ntaps; k++) { long j = i - (long)(k - s->main) * s->spb; if (j >= 0 && j < n) y[i] += s->taps[k] * w[j]; }
+  memcpy(w, y, (size_t)n * sizeof *w); free(y);
+}` : `/* the CTLE as a biquad by the bilinear transform: H(s) = (1 + s/wz) / ((1 + s/wp)(1 + s/(4 wp))) / peaking */
+static void ctle_init(State *s) {
+  double pk = pow(10, PEAK_DB / 20), wp = 2 * M_PI * PEAK_HZ, wz = wp / pk, wp2 = 4 * wp, K = 2 / s->dt;
+  double n0 = 1 / pk, n1 = 1 / (pk * wz), d0 = 1, d1 = 1 / wp + 1 / wp2, d2 = 1 / (wp * wp2);
+  double A0 = d2 * K * K + d1 * K + d0, A1 = 2 * d0 - 2 * d2 * K * K, A2 = d2 * K * K - d1 * K + d0;
+  s->b0 = (n1 * K + n0) / A0; s->b1 = (2 * n0) / A0; s->b2 = (n0 - n1 * K) / A0; s->a1 = A1 / A0; s->a2 = A2 / A0;
+  s->x1 = s->x2 = s->y1 = s->y2 = 0;
+}
+static void ctle(State *s, double *w, long n) {
+  for (long i = 0; i < n; i++) {
+    double x = w[i], y = s->b0 * x + s->b1 * s->x1 + s->b2 * s->x2 - s->a1 * s->y1 - s->a2 * s->y2;
+    s->x2 = s->x1; s->x1 = x; s->y2 = s->y1; s->y1 = y; w[i] = y;
+  }
+}`}
+AMI_EXPORT long AMI_Init(double *impulse_matrix, long row_size, long aggressors, double sample_interval, double bit_time,
+                         char *AMI_parameters_in, char **AMI_parameters_out, void **AMI_memory_handle, char **msg) {
+  State *s = calloc(1, sizeof *s);
+  (void)aggressors; (void)AMI_parameters_in;
+  s->dt = sample_interval; s->ui = bit_time; s->spb = (long)(bit_time / sample_interval + 0.5);
+${tx ? `  s->ntaps = ${ffe.length}; s->main = 0;
+  for (int k = 0; k < s->ntaps; k++) { s->taps[k] = TAPS[k]; if (fabs(TAPS[k]) > fabs(TAPS[s->main])) s->main = k; }
+  ffe(s, impulse_matrix, row_size);` : `  ctle_init(s); ctle(s, impulse_matrix, row_size); ctle_init(s);
+  /* DFE taps by zero forcing: the equalised pulse's post-cursors at the peak's phase, one symbol apart */
+  s->ndfe = ${dfe};
+  if (s->ndfe) {
+    double *p = calloc((size_t)row_size, sizeof *p); long pk = 0;
+    for (long i = 0; i < row_size; i++) { for (long j = 0; j < s->spb && i - j >= 0; j++) p[i] += impulse_matrix[i - j] * s->dt; if (p[i] > p[pk]) pk = i; }
+    for (int k = 0; k < s->ndfe; k++) { long i = pk + (long)(k + 1) * s->spb; s->dfe[k] = i < row_size ? p[i] : 0; }
+    free(p);
+  }`}
+  *AMI_memory_handle = s;
+  static char out[256], note[] = "Hyperion ${tx ? 'TX FFE' : 'RX CTLE/DFE'} ready";
+  strcpy(out, "(${name})"); *AMI_parameters_out = out; *msg = note;
+  return 1;
+}
+AMI_EXPORT long AMI_GetWave(double *wave, long wave_size, double *clock_times, char **AMI_parameters_out, void *AMI_memory_handle) {
+  State *s = AMI_memory_handle;
+${tx ? `  (void)clock_times; ffe(s, wave, wave_size);` : `  ctle(s, wave, wave_size);
+  /* DFE: at each symbol, subtract the taps times the earlier decisions (a slicer at 0) for the symbol's samples */
+  if (s->ndfe) for (long i = 0; i < wave_size; i++) {
+    if (i % s->spb == 0) { for (int k = s->ndfe - 1; k > 0; k--) s->last[k] = s->last[k - 1]; s->last[0] = i ? (wave[i - 1] >= 0 ? 1 : -1) : 0; }
+    double fb = 0; for (int k = 0; k < s->ndfe; k++) fb += s->dfe[k] * s->last[k];
+    wave[i] -= fb;
+  }
+  if (clock_times) clock_times[0] = -1;`}
+  static char out[64]; strcpy(out, "(${name})"); *AMI_parameters_out = out;
+  return 1;
+}
+AMI_EXPORT long AMI_Close(void *AMI_memory_handle) { free(AMI_memory_handle); return 1; }
+`;
+  const fs = files(lab);
+  if (fs) { fs.putText(`${name}.ami`, ami); fs.putText(`${name.toLowerCase()}.ibs`, ibs); fs.putText(`${name}_ami.c`, c); }
+  if (nout > 0) return [struct([['AMI', str(ami)], ['IBIS', str(ibs)], ['C', str(c)]])];
+  lab.host.out(`Wrote ${name}.ami, ${name.toLowerCase()}.ibs and ${name}_ami.c${fs ? ' to Hyperion’s files' : ''}:\n\n${ami}\n`);
+  return [];
+});
