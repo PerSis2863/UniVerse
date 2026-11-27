@@ -181,6 +181,39 @@ Off -> On: u < 0`;
   });
 });
 
+describe('deep history: the whole inside resumes (M575)', () => {
+  const text = (h: string) => `inputs: u, v, fault
+outputs: y
+state Running ${h}
+state Slow in Running
+  entry: y = 2
+state Fast in Running
+state Cool in Fast
+  entry: y = 3
+state Hot in Fast
+  entry: y = 4
+state Fault
+  entry: y = -1
+Running -> Fault: fault > 0.5
+Slow -> Fast: u > 1
+Cool -> Hot: v > 1
+Fault -> Running: fault < 0.5`;
+  const walk = (h: string) => {
+    const ch = parseChart(text(h)), r = chartStart(ch), seen: string[] = [];
+    for (const [t, u, v, fault] of [[0.1, 2, 0, 0], [0.2, 0, 2, 0], [0.3, 0, 0, 1], [0.4, 0, 0, 0]]) { chartStep(ch, r, { u, v, fault }, t); seen.push(ch.states[r.active].name); }
+    return seen;
+  };
+  it('history deep comes back to Fast.Hot; shallow history to Fast.Cool; none to Slow', () => {
+    expect(walk('history deep').at(-1)).toBe('Running.Fast.Hot');
+    expect(walk('history').at(-1)).toBe('Running.Fast.Cool');
+    expect(walk('').at(-1)).toBe('Running.Slow');
+    expect(parseChart(text('history deep')).deep).toEqual(['Running']);
+  });
+  it('deep only goes with history', () => {
+    expect(() => parseChart('state A deep\nstate B in A')).toThrow(/goes with history/);
+  });
+});
+
 describe('history: a state resumes where it was left (M574)', () => {
   const text = (h: string) => `inputs: u, fault
 outputs: y

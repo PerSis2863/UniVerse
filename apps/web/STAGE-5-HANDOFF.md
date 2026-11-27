@@ -15911,3 +15911,46 @@ M573's three left-outs, plus the red Checks run on 8746f99.
 - Left out: deep history (Stateflow's is shallow too), relating signals to each other in the diagram (an integrator in
   a loop is bounded by the run's length, not by the loop holding it), proofs past the run's end for the diagram part.
 
+
+## M575 (27 Nov): Hyperion, the diagram's loops proved together, forever, and deep history
+
+M574's four left-outs (loose ranges in a loop, a loop of integrators going to "any value", one level of history, the
+diagram part covering only the run).
+
+- **The linear part as one system** (`prove-linear.ts`): `linearNet` joins gains, sums, integrators, transfer functions
+  and PIDs into ẋ = Ax + Bu, s = Cx + Du; u are the "cuts" (outputs of every other block that feed a linear one). Each
+  signal: free response range + Σ (D + ∫h⁺ + ∫h⁻)·[u] (`coefficients`, `sigRange`), h = C e^{At} B followed by RK4
+  (columns [B | x0], step ≤ 0.2/(1 + max row sum), budget 2e8 multiply-adds). Signals are grouped by the closed set of
+  states they depend on (`closure`); **forever** only when that part is stable (`abscissa`: the largest real part of
+  its eigenvalues, `eigvals` from `lab/complex.ts`, < 0), followed until it dies away (1e-13 of the peak) with a tail
+  margin of 2·|h(T)|/|α|; an unstable part (a bare integrator) gets "any value" forever and the run's bound over the run.
+  The convolution over the whole loop is never looser than block by block, so it replaces M574's per-block integrator,
+  transfer-function and PID rules (and `impulseParts`, removed).
+- **A chart with its plant** (`prove-loop.ts`, `loopRanges`): when a chart's inputs read linear signals whose states its
+  own outputs move, the loop is one discrete system per dt: x ← Φx + Γ·y (chart outputs held, exact) + P·u + N·u (other
+  cuts, positive and negative parts of ∫e^{As}b, so they may vary within the step). Boxes per (state, steps active):
+  states with `after` are split into ⌈after/dt⌉+2 pieces (capped at 4000 nodes, then "maybe" as before) so a timed
+  state can't drift longer than its timer allows. A chart input that is exactly one plant state takes that state's
+  name, so its conditions narrow the plant (`level >= 2`). Growth: plain joins up to 2000 times per node (guards
+  usually stop it first), then widening to the next **threshold** (numbers in the conditions, ±2^k), then up to 60
+  rounds of **narrowing** (each box met with what really reaches it). Without the 2000 joins the tank's Filling state
+  kept −∞ (a self-loop with no guard on that side can't be narrowed back): keep that in mind before lowering it.
+- **`diagramRanges`** now solves twice (`solve(dg, net, stop)` and `solve(…, Infinity)`: a ramp grows to ±∞ forever),
+  fixpoint over the other blocks with the linear signals recomputed each round, then each chart's loop result capped in
+  (`loop`: its outputs, and linear signals from the plant's state ranges widened by one step's drift dt·|ẋ|, since boxes
+  hold at the steps), then 6 narrowing rounds. `sig` is the run's ranges capped by the forever ones; `forever` is new;
+  `chartInputRanges(…, 'forever')`. The worker sends `forever: true` when the chart's forever inputs equal the run's;
+  the window then says "These hold after the run too, so the proof does".
+- Results: the tank example's level [0.985, 2.515] (was [−94.5, 89.5]), forever; the damped spring's x within ±1.01
+  forever (was ±∞); a PI loop on 1/(s+1) bounded forever.
+- **Deep history** (`state X history deep`, `chart.ts`): every state inside X with states of its own (not a parallel
+  one) gets `history` too, so the whole inside resumes; `Chart.deep` lists them, drawn "(H*: remembers all inside)".
+  "deep" alone is refused. Difference from UML's deep history: entering an inner state of X directly from outside also
+  resumes that inner state's own inside (it has `history`).
+- Tests: `prove-diagram.test.ts` (spring forever, bare integrator run only, PI loop, the tank with a proof that only
+  holds with the diagram's ranges), `chart.test.ts` (deep vs shallow vs none). Browser check `hyperion-control-ui.mjs`
+  (ONLY=Prove) waits for "These hold after the run too".
+- Left out: relations between two plant states inside a chart loop (boxes per state, so a 2-state oscillating plant
+  under a chart can still widen; the linear bound then applies), saturations and products inside the chart's loop are
+  taken at their ranges (not followed step by step), delays are still cuts (their start value or anything their input
+  had), and several charts in one loop are each proved with the others' outputs as ranges.

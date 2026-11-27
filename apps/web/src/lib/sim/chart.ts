@@ -18,7 +18,8 @@
 // (starting at 0). Expressions: numbers, names, + − * / ^, comparisons, && || !, abs min max sqrt sin cos exp floor,
 // and `t`, the seconds the state has been active. `state Machine history` (M574) remembers which of its inner states was
 // active when it was left, and going back into Machine resumes that one (its own inside starts afresh unless it has
-// `history` too, as Stateflow's history junction does). The same tree is what the code generators print (M565).
+// `history` too, as Stateflow's history junction does); `state Machine history deep` (M575) resumes the whole inside,
+// every level down. The same tree is what the code generators print (M565).
 
 export type Expr =
   | { k: 'num'; v: number }
@@ -35,6 +36,8 @@ export interface Chart {
   inputs: string[]; outputs: string[]; locals: string[]; states: ChartState[]; trans: Transition[]; init?: Assign[]; parents?: string[][];
   /** States with `history` (M574): they resume their last inner state. */
   history?: string[];
+  /** States with `history deep` (M575): everything inside them resumes as it was (their inner states are in `history` too). */
+  deep?: string[];
   /** Side-by-side (parallel, AND) states (M570): the chart as written, for drawing. `leaves`: its innermost states
    * (full names); `active[i]`: which of them flat state i has active; `leafParents`: each leaf's outer states;
    * `parallel`: the states whose inside runs side by side; `src`: its transitions between leaves (or outer states);
@@ -131,7 +134,7 @@ const assigns = (src: string, line: number): Assign[] => src.split(';').map((s) 
 export function parseChart(text: string): Chart {
   const inputs: string[] = [], outputs: string[] = [], states: ChartState[] = [], raw: { from: string; to: string; cond: Expr; after: number; action: Assign[]; line: number; text: string }[] = [];
   let cur: ChartState | null = null;
-  const parentOf = new Map<string, string>(), parallel = new Set<string>(), history = new Set<string>();
+  const parentOf = new Map<string, string>(), parallel = new Set<string>(), history = new Set<string>(), deep = new Set<string>();
   text.split('\n').forEach((full, idx) => {
     const line = idx + 1, s = full.replace(/%.*$|\/\/.*$/, '').trim();
     if (!s) return;
@@ -141,7 +144,7 @@ export function parseChart(text: string): Chart {
       for (const n of list) if (!NAME.test(n) || RESERVED.has(n)) throw new Error(`Line ${line}: “${n}” can’t be a name here.`);
       (m[1].toLowerCase() === 'inputs' ? inputs : outputs).push(...list);
       cur = null;
-    } else if ((m = /^state\s+([A-Za-z_]\w*)(?:\s+in\s+([A-Za-z_]\w*))?((?:\s+\(?(?:parallel|history)\)?)*)\s*$/i.exec(s))) {
+    } else if ((m = /^state\s+([A-Za-z_]\w*)(?:\s+in\s+([A-Za-z_]\w*))?((?:\s+\(?(?:parallel|history|deep)\)?)*)\s*$/i.exec(s))) {
       if (states.some((st) => st.name === m![1])) throw new Error(`Line ${line}: there are two states called ${m[1]}.`);
       if (RESERVED.has(m[1])) throw new Error(`Line ${line}: “${m[1]}” can’t be a state's name.`);
       if (m[2] && !states.some((st) => st.name === m![2])) throw new Error(`Line ${line}: ${m[2]} has to come before the states inside it.`);
@@ -150,6 +153,7 @@ export function parseChart(text: string): Chart {
       parentOf.set(m[1], m[2] ?? '');
       if (/parallel/i.test(m[3] ?? '')) parallel.add(m[1]);
       if (/history/i.test(m[3] ?? '')) history.add(m[1]);
+      if (/deep/i.test(m[3] ?? '')) { if (!history.has(m[1])) throw new Error(`Line ${line}: “deep” goes with history: state ${m[1]} history deep.`); deep.add(m[1]); }
       if (parallel.has(m[1]) && history.has(m[1])) throw new Error(`Line ${line}: ${m[1]} runs its inside side by side, so all of it is always active: it has nothing to remember.`);
     } else if ((m = /^(entry|during|exit)\s*:\s*(.*)$/i.exec(s))) {
       if (!cur) throw new Error(`Line ${line}: ${m[1]} actions go under a “state” line.`);
@@ -164,7 +168,7 @@ export function parseChart(text: string): Chart {
       try { cond = rest ? parseExpr(rest) : { k: 'num', v: 1 }; } catch (err) { throw new Error(`Line ${line}: ${(err as Error).message}.`); }
       raw.push({ from: m[1], to: m[2], cond, after, action, line, text: (m[3] ?? '').trim() });
       cur = null;
-    } else throw new Error(`Line ${line}: “${s.slice(0, 40)}” isn’t a chart line (inputs:, outputs:, state Name [in Outer] [parallel | history], entry:, during:, exit:, or A -> B: condition).`);
+    } else throw new Error(`Line ${line}: “${s.slice(0, 40)}” isn’t a chart line (inputs:, outputs:, state Name [in Outer] [parallel | history [deep]], entry:, during:, exit:, or A -> B: condition).`);
   });
   if (!states.length) throw new Error('A chart needs at least one “state Name” line.');
   if (states.length > 30) throw new Error('A chart can have at most 30 states.');
@@ -182,7 +186,12 @@ export function parseChart(text: string): Chart {
   const ch: Chart = { inputs, outputs, locals, states, trans };
   for (const st of parallel) if (![...parentOf.values()].includes(st)) throw new Error(`Line ${states.find((x) => x.name === st)!.line}: ${st} runs its inside side by side, but nothing is inside it.`);
   for (const st of history) if (![...parentOf.values()].includes(st)) throw new Error(`Line ${states.find((x) => x.name === st)!.line}: ${st} remembers its inner state, but nothing is inside it.`);
-  return [...parentOf.values()].some(Boolean) ? flatten(ch, parentOf, parallel, history) : ch;
+  // `history deep` (M575): every state inside that has states of its own remembers too, all the way down (a parallel
+  // one has nothing to remember, its regions inside do), so coming back restores the whole inside as it was left.
+  const inside = (anc: string, x: string): boolean => { for (let p = parentOf.get(x); p; p = parentOf.get(p)) if (p === anc) return true; return false; };
+  for (const d of deep) for (const st of states) if (inside(d, st.name) && !parallel.has(st.name) && [...parentOf.values()].includes(st.name)) history.add(st.name);
+  const flat = [...parentOf.values()].some(Boolean) ? flatten(ch, parentOf, parallel, history) : ch;
+  return deep.size ? { ...flat, deep: [...deep] } : flat;
 }
 
 /** A chart's running state: the active state, when it was entered, every variable's value. */

@@ -73,7 +73,7 @@ function ChartDrawing({ ch, active, via }: { ch: Chart; active: number; via: num
       {[...new Set(v.parents.flat())].map((outer) => {
         const inside = v.parents.map((ps, i) => (ps.includes(outer) ? i : -1)).filter((i) => i >= 0), depth = Math.max(...inside.map((i) => v.parents[i].length - v.parents[i].indexOf(outer)));
         const pad = 10 * depth, x0 = Math.min(...inside.map((i) => pos[i].x)) - pad, y0 = Math.min(...inside.map((i) => pos[i].y)) - pad - 14, x1 = Math.max(...inside.map((i) => pos[i].x)) + SW + pad, y1 = Math.max(...inside.map((i) => pos[i].y)) + SH + pad;
-        return <g key={outer}><rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} rx={14} fill="none" strokeDasharray={v.parallel.has(outer) ? undefined : '5 4'} className="stroke-zinc-400 dark:stroke-zinc-500" /><text x={x0 + 10} y={y0 + 13} fontSize={11} fontWeight={600} className="fill-zinc-700 dark:fill-zinc-200">{outer}{v.parallel.has(outer) ? ' (side by side)' : ''}{ch.history?.includes(outer) ? ' (H: remembers)' : ''}</text></g>;
+        return <g key={outer}><rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} rx={14} fill="none" strokeDasharray={v.parallel.has(outer) ? undefined : '5 4'} className="stroke-zinc-400 dark:stroke-zinc-500" /><text x={x0 + 10} y={y0 + 13} fontSize={11} fontWeight={600} className="fill-zinc-700 dark:fill-zinc-200">{outer}{v.parallel.has(outer) ? ' (side by side)' : ''}{ch.deep?.includes(outer) ? ' (H*: remembers all inside)' : ch.history?.includes(outer) ? ' (H: remembers)' : ''}</text></g>;
       })}
       {v.edges.map((tr, k) => {
         if (tr.from < 0 || tr.to < 0) return null;

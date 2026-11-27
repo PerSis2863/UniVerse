@@ -78,7 +78,7 @@ export function BlocksProve({ dg, names, setRules }: { dg: Diagram; names: Map<s
           </fieldset>
         ))}
       </div>
-      {fromDiagram && <p className="max-w-[75ch] text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Hyperion works out every value the diagram can feed this chart during its run (0 … {dg.stop} s): sources’ own ranges, through gains, sums, saturations, integrators, transfer functions, delays and other charts, round loops (the chart’s own outputs too) until nothing grows. The proof then covers the chart inside this diagram, not any input.</p>}
+      {fromDiagram && <p className="max-w-[75ch] text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Hyperion works out every value the diagram can feed this chart: sources’ own ranges, through saturations, delays and other charts; the gains, sums, integrators, transfer functions and PIDs as one system (a stable loop is bounded forever); and this chart together with what it drives and reads back (a tank’s level held by the pump it switches). The proof then covers the chart inside this diagram, not any input.</p>}
       {!ch && <p className="text-xs text-red-700 dark:text-red-400">This chart has a mistake in its text: fix it first.</p>}
       <ul className="space-y-1">
         {props.map((p, i) => <li key={i} className="flex items-center gap-2"><span className="font-mono">always {p}</span><button type="button" className={ui.small} onClick={() => setProps(props.filter((_, j) => j !== i))} aria-label={`Remove always ${p}`}><Trash2 className="h-3.5 w-3.5" aria-hidden /></button></li>)}
@@ -91,7 +91,7 @@ export function BlocksProve({ dg, names, setRules }: { dg: Diagram; names: Map<s
       {res && 'error' in res && <p className="text-xs text-red-700 dark:text-red-400">{res.error}</p>}
       {ok && (
         <div className="space-y-3" data-proofs>
-          {fromDiagram && 'ranges' in res! && <p className="text-xs text-zinc-700 dark:text-zinc-200">The diagram feeds it: {Object.entries(res.ranges).map(([x, [lo, hi]]) => <span key={x} className="me-3 font-mono" translate="no">{x} ∈ [{fmt(lo)}, {fmt(hi)}]</span>)}{res.widened ? ' (a loop kept growing, so some ranges were opened to ∞: still sound)' : ''}</p>}
+          {fromDiagram && 'ranges' in res! && <p className="text-xs text-zinc-700 dark:text-zinc-200">The diagram feeds it: {Object.entries(res.ranges).map(([x, [lo, hi]]) => <span key={x} className="me-3 font-mono" translate="no">{x} ∈ [{fmt(lo)}, {fmt(hi)}]</span>)}{res.widened ? ' (a loop kept growing, so some ranges were opened to ∞: still sound)' : ''}. {res.forever ? 'These hold after the run too, so the proof does.' : `These hold during the run (0 … ${dg.stop} s), so the proof covers the run.`}</p>}
           <p className="text-xs text-zinc-600 dark:text-zinc-300" aria-live="polite">{ok.states} reachable state{ok.states === 1 ? '' : 's'} analysed{ok.widened ? ' (some values grow without a bound found: their ranges were opened to ∞, which keeps the proof sound)' : ''}; {ok.tries} runs searched for examples, in {(res!.ms / 1000).toFixed(1)} s.</p>
           {groups.filter(([, list]) => list.length).map(([title, list]) => (
             <div key={title}>

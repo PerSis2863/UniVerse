@@ -1,6 +1,6 @@
 // M562– Simulate → Blocks → tools: the PID tuner on the cruise model (tables filled, Update block writes the gains);
 // M570–M573: side-by-side states drawn, Ladder Diagram, tuning all loops at once, proofs; M574: proofs with the
-// diagram's ranges, kept with the diagram.
+// diagram's ranges, kept with the diagram; M575: the tank proved with its chart, holding after the run too.
 // Axe at 1280, dark and light; no page errors.
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/hyperion-control-ui.mjs
 import { createRequire } from 'node:module';
@@ -86,6 +86,8 @@ try {
         await page.getByLabel('Inputs from the rest of the diagram').check();
         await page.getByRole('button', { name: 'Prove', exact: true }).click();
         await page.locator('[data-proofs]').getByText('The diagram feeds it').waitFor({ timeout: 60_000 });
+        // M575: the tank is proved with its chart, so the ranges (and the proof) hold after the run too.
+        await page.locator('[data-proofs]').getByText('These hold after the run too').waitFor({ timeout: 10_000 });
         r.proofsDiagram = (await page.locator('[data-proofs]').innerText()).slice(0, 700);
         await page.waitForTimeout(1200);
         r.kept = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('uv-sim-blocks') ?? '{}').prove ?? null));

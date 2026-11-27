@@ -80,7 +80,7 @@ function sampled(f: (x: number) => number, a: Iv): Iv {
 }
 
 /** The ranges narrowed to where `e` is `want` (a variable compared with something; and, or, not). Null: impossible. */
-function refine(e: Expr, env: Record<string, Iv>, want: boolean): Record<string, Iv> | null {
+export function refine(e: Expr, env: Record<string, Iv>, want: boolean): Record<string, Iv> | null {
   const t = truth(ivOf(e, env));
   if (t === (want ? F : T)) return null;
   if (e.k === 'un' && e.op === '!') return refine(e.a, env, !want);
@@ -111,13 +111,13 @@ function refine(e: Expr, env: Record<string, Iv>, want: boolean): Record<string,
   return env;
 }
 
-const runIv = (list: Assign[], env: Record<string, Iv>) => { const out = { ...env }; for (const a of list) out[a.name] = ivOf(a.e, out); return out; };
+export const runIv = (list: Assign[], env: Record<string, Iv>) => { const out = { ...env }; for (const a of list) out[a.name] = ivOf(a.e, out); return out; };
 
 /** `in(State)` written as a name each flat state can answer. */
 const IN = /\bin\s*\(\s*([A-Za-z_]\w*)\s*\)/g;
-const inName = (s: string) => `__in_${s}`;
+export const inName = (s: string) => `__in_${s}`;
 export function parseProperty(src: string): Expr { return parseExpr(src.replace(IN, (_, s: string) => inName(s))); }
-const partsOf = (flatName: string) => new Set(flatName.split(/[.|\s]+/).filter(Boolean));
+export const partsOf = (flatName: string) => new Set(flatName.split(/[.|\s]+/).filter(Boolean));
 
 /** Every flat state's box: the ranges its variables can have there (null: never reached). */
 export function boxes(ch: Chart, ranges: Record<string, Iv>, dtMin = 0) {
