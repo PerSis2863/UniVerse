@@ -20,4 +20,5 @@ sparameters | s = sparameters('channel.s4p'), sparameters('model', 'Loss', 20, '
 rfwrite | rfwrite(s, 'name.s2p') | Writes S-parameters as a Touchstone file in Hyperion's files.
 s2sdd | d = s2sdd(s, [1 3 2 4]) | A 4-port's differential 2-port (SDD): the pairs as [plus minus] at each end (ports 1 and 3 at one end, 2 and 4 at the other by default).
 rfparam | v = rfparam(s, i, j) | One S-parameter over frequency, complex (rfparam(s, 2, 1) is S21).
+spicegen | spicegen('name.cir', p), spicegen('name.cir', 'buffer', 'Vdd', 1.8, …, 'Spectre', true) | A SPICE netlist of a Hyperion design for a circuit simulator (ngspice, Xyce, Cadence Spectre, Synopsys HSPICE): a PLL's loop filter from plldesign (an AC analysis: v(out) is its impedance), or the output buffer with ibisbuffer's options (a transient into 50 Ω). Run it with cosim and compare with Hyperion's own answer.
 `;

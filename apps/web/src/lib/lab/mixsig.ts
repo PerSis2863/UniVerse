@@ -38,7 +38,7 @@ export function pllDesign(s: PllSpec): PllDesign {
   return { ...d, crossover: s.bandwidth, margin: 180 + b.phase[0] };
 }
 /** The loop filter's impedance Z(jω) = (1 + jωτz) / (jω Ctot (1 + jωτp)). */
-function zf(d: PllDesign, w: number): [number, number] {
+export function zf(d: PllDesign, w: number): [number, number] {
   const ctot = d.c1 + d.c2, tz = d.r2 * d.c2, tp = d.r2 * d.c1 * d.c2 / ctot;
   // (1 + j w tz) / (j w ctot (1 + j w tp))
   const nr = 1, ni = w * tz, dr = -w * w * ctot * tp, di = w * ctot, m = dr * dr + di * di;

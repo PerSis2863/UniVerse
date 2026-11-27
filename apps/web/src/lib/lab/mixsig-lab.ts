@@ -511,3 +511,49 @@ def('rfparam', (a) => {
   m.im = Float64Array.from({ length: F }, (_, k) => sp.im[TS.at(sp, i, j, k)]);
   return [m];
 });
+
+// ——— Netlists for SPICE simulators (M572): Hyperion's designs for ngspice, Xyce, Spectre or HSPICE (cosim runs them) ———
+const g6 = (x: number) => +x.toPrecision(6);
+def('spicegen', (a, nout, lab) => {
+  const name = a[0] ? textOf(a[0]) : '';
+  if (!/^[\w.-]+\.(cir|sp|scs)$/i.test(name)) throw new LabError("spicegen('name.cir', p) writes a netlist: p from plldesign (its loop filter, an AC analysis), or 'buffer' with ibisbuffer's options (the output stage into 50 Ω, a transient).");
+  const what = a[1];
+  if (!what) throw new LabError('spicegen: the design (a plldesign result, or \'buffer\').');
+  const o = opts(a, 2, [...BUFFER_OPTS, 'spectre', 'from', 'to'], 'spicegen');
+  const head = o.b('spectre') ? 'simulator lang=spice\n' : '';
+  let deck: string;
+  if (what.k === 'struct') {
+    const d = designOf(what, 'spicegen'), f1 = o.n('from') ?? d.bandwidth / 100, f2 = o.n('to') ?? Math.min(d.fref / 2, d.bandwidth * 100);
+    if (!(f1 > 0 && f2 > f1)) throw new LabError("spicegen: 'From' and 'To' are frequencies with From < To.");
+    deck = `* ${name}: Hyperion's PLL loop filter (plldesign: N = ${g6(d.n)}, ${g6(d.bandwidth)} Hz, ${g6(d.margin)} deg)
+* 1 A AC from the charge pump into the filter: v(out) is its impedance Z (ohms); compare with Hyperion's pllBode.
+${head}IPUMP 0 out DC 0 AC 1
+C1 out 0 ${g6(d.c1)}
+R2 out mid ${g6(d.r2)}
+C2 mid 0 ${g6(d.c2)}
+RDC out 0 1e15
+.ac dec 50 ${g6(f1)} ${g6(f2)}
+.end
+`;
+  } else if (textOf(what).toLowerCase() === 'buffer') {
+    const s = bufferOf(o);
+    deck = `* ${name}: Hyperion's output buffer (ibisbuffer): a level-1 CMOS stage, the input falling at 0.2 ns, the pad rising
+* into ${s.rload} ohms and ${g6(s.ccomp)} F. Compare v(pad) with ibisbuffer's rising waveform.
+${head}VDD vdd 0 ${g6(s.vdd)}
+VG g 0 PWL(0 ${g6(s.vdd)} 0.2n ${g6(s.vdd)} ${g6(0.2e-9 + s.tin)} 0)
+M1 pad g 0 0 nch W=${g6(s.n.w)} L=${g6(s.n.l)}
+M2 pad g vdd vdd pch W=${g6(s.p.w)} L=${g6(s.p.l)}
+RL pad 0 ${g6(s.rload)}
+CC pad 0 ${g6(s.ccomp)}
+.model nch nmos level=1 kp=${g6(s.n.kp)} vto=${g6(s.n.vto)} lambda=${g6(s.n.lambda)}
+.model pch pmos level=1 kp=${g6(s.p.kp)} vto=${g6(-s.p.vto)} lambda=${g6(s.p.lambda)}
+.tran 1p 2n
+.end
+`;
+  } else throw new LabError("spicegen: the design is a plldesign result or 'buffer'.");
+  const fs = files(lab);
+  if (fs) fs.putText(name, deck);
+  if (nout > 0) return [str(deck)];
+  lab.host.out(`Wrote ${name}${fs ? ' to Hyperion’s files' : ''}: run it with cosim('ngspice', '${name}') (or 'xyce', 'spectre', 'hspice').\n\n${deck}`);
+  return [];
+});

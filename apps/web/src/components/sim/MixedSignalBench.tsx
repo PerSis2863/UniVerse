@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Code2 } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
@@ -299,9 +299,30 @@ amigen('hyper_tx', 'Tx', 'FFE', [-0.1 0.8 -0.1], 'Rate', 25e9)
 amigen('hyper_rx', 'Rx', 'CTLE', 8, 'DFE', 3, 'Rate', 25e9)
 type hyper_rx_ami.c
 `;
+const SPICE_DEMO = `% Hyperion's design in a circuit simulator on your computer (ngspice, Xyce, Cadence Spectre, Synopsys HSPICE),
+% its answer read back and compared with Hyperion's own: the PLL's loop filter impedance.
+p = plldesign(25e6, 2.4e9, 500e3, 'Kvco', 100e6, 'Icp', 1e-3);
+spicegen('loop.cir', p)
+r = cosim('ngspice', 'loop.cir');
+f = r.Results.frequency; z = r.Results.v_out;
+semilogx(real(f), 20*log10(abs(z))), grid on
+xlabel('Frequency (Hz)'), ylabel('|Z| (dB ohm)'), title('The loop filter, from the circuit simulator')
+% The SystemVerilog testbench in Verilator (or 'xrun', 'vcs', 'qrun'):
+%   dpigen(...) as in the DPI example, then r = cosim('verilator', 'quantise_tb')
+`;
+type Sims = Record<string, { name: string; kind: string }>;
 function VerifyPane() {
   const open = useOpenInCode();
   const card = 'rounded-xl border border-zinc-200/80 p-4 dark:border-white/10';
+  // M572: in the computer app, the simulators on this computer (desktop/hyperion/simulators.js); null in a browser
+  const [sims, setSims] = useState<Sims | null>(null);
+  useEffect(() => {
+    const d = (window as Window & { hyperionDesktop?: { simulators?: () => Promise<Sims> } }).hyperionDesktop;
+    let live = true;
+    d?.simulators?.().then((x) => { if (live) setSims(x); }, () => { if (live) setSims({}); });
+    return () => { live = false; };
+  }, []);
+  const found = sims ? Object.entries(sims) : [];
   return (
     <section className="panel grid grid-cols-1 gap-3 p-4 lg:grid-cols-2" aria-label="Verification" data-no-motion>
       <div className={card}>
@@ -316,7 +337,12 @@ function VerifyPane() {
         <p className="mt-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">name.ami · name.ibs · name_ami.c</p>
         <button type="button" className={cn(ui.small, 'mt-3 border border-zinc-200 dark:border-white/15')} onClick={() => void open('ami_demo.m', AMI_DEMO)}><Code2 className="h-3.5 w-3.5" aria-hidden />Try it in Code</button>
       </div>
-      <p className="text-xs text-zinc-500 dark:text-zinc-400 lg:col-span-2">Hyperion writes the files; compiling the C and running the simulator happen in your own design tools.</p>
+      <div className={cn(card, 'lg:col-span-2')}>
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Your simulators</h3>
+        <p className="mt-1 text-[13px] text-zinc-600 dark:text-zinc-300">Hyperion’s computer app runs the simulators installed on your computer, free (Verilator, ngspice, Xyce) or licensed (Cadence Xcelium and Spectre, Synopsys VCS and HSPICE, Siemens Questa), on these files, asking you first, and brings the results back into your script: <span className="font-mono">cosim</span>, with netlists from <span className="font-mono">spicegen</span>.</p>
+        <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{sims === null ? 'In a browser: open Hyperion’s computer app (Install Hyperion) to run them.' : found.length ? `On this computer: ${found.map(([, v]) => v.name).join(', ')}.` : 'None found on this computer’s PATH yet.'}</p>
+        <button type="button" className={cn(ui.small, 'mt-3 border border-zinc-200 dark:border-white/15')} onClick={() => void open('cosim_demo.m', SPICE_DEMO)}><Code2 className="h-3.5 w-3.5" aria-hidden />Try it in Code</button>
+      </div>
     </section>
   );
 }

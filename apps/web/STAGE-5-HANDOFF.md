@@ -15816,3 +15816,25 @@ the CTLE as its own complex poles and zero.
 - Checked: `touchstone.test.ts` (both versions and the column-order quirk, a 4-port round trip, SDD of two lines, a
   channel through a file giving the same eye as the same channel modelled, a lossless line, the refusal), the browser
   check loads a 4-port into SerDes links (eye 0.187, 81% wide).
+
+
+## M572 (27 Nov): mixed-signal left-outs 4: the link to Cadence and Synopsys tools
+
+The last of M568's left-outs. Their tools are licensed and can't be bundled or called from a server, so the link is
+the one their users have: Hyperion writes what the tools read and runs them where they're installed (M569's computer
+app), and reads their answers back.
+- **`spicegen`** (`mixsig-lab.ts`): a PLL's loop filter from `plldesign` (1 A AC from the pump: v(out) is Z, an AC
+  sweep) or the output buffer from ibisbuffer's options (level-1 CMOS, 50 Ω and C_comp, a transient). Plain SPICE3,
+  read by ngspice, Xyce and HSPICE; `'Spectre', true` adds Spectre's `simulator lang=spice` line. `zf` (the loop
+  filter's impedance) is exported from `mixsig.ts` to compare.
+- **Checked end to end, for real** (`cosim-spice.test.ts`, where ngspice is installed): spicegen writes the netlist,
+  cosim sends it, the computer app's own `desktop/hyperion/simulators.js` (run in a child process in place of the app's
+  window) runs ngspice, the binary raw file comes back through `rawread`, and ngspice's impedance equals Hyperion's
+  designed one to 1 part in 10⁴ (the netlist keeps 6 digits) and the buffer's edge crosses 50% within 10 ps of
+  ibisbuffer's; the Verification tab's example runs as written.
+- **Simulate → Mixed-signal → Verification → Your simulators**: in the computer app, the simulators found on the
+  computer (`hyperionDesktop.simulators()`); in a browser, a line saying to open the app; a "Try it in Code" example
+  (spicegen, cosim, a plot of ngspice's answer).
+- Not done: Verilog-A models (no compiler for them here to check one: OpenVAF isn't packaged), and Cadence's or
+  Synopsys's own simulators (not on this machine: their runs in simulators.js follow their documented command lines,
+  untested here). ngspice, Xyce and Verilator are the free ones tried.
