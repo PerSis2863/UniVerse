@@ -683,4 +683,37 @@ disp(dcControllerCode(r.Kp(2), r.Ki(2), 2e-5, 800))
 v = dcControllerCode(r.Kp(2), r.Ki(2), 2e-5, 800, 'Language', 'verilog');
 fprintf('Verilog: %d lines\\n', numel(strfind(v, char(10))))
 ` },
+  { name: 'datacenter_cooling.m', code: `% Data centres: cooling 130 kW AI racks
+% 1. A year of hourly weather for a hot, humid site (made up but typical)
+h = 15:24:8759;                                   % 3 pm each day keeps it quick
+dry = 27 + 6*cos(2*pi*(h/24 - 200)/365) + 5*cos(2*pi*(mod(h, 24) - 15)/24);
+wet = wetBulb(dry, 60);
+% 2. Air against single-phase and two-phase liquid for a 20 MW hall
+figure; coolingCompare(20000, 130, 'Chip', 1200, 'Dry', dry, 'Wet', wet, 'FacilityWater', 32)
+c = coolingCompare(20000, 130, 'Chip', 1200, 'Dry', dry, 'Wet', wet, 'FacilityWater', 32);
+names = {'Air', 'Single-phase', 'Two-phase'};
+for k = 1:3
+  fprintf('%-12s pPUE %.3f, chip %.0f C, chiller %3d of %d days, %.2f L/kWh\\n', names{k}, c.pPUE(k), c.ChipMax(k), c.ChillerHours(k), numel(h), c.WUE(k))
+end
+% 3. The chiller at part load and pump control strategies
+plr = 0.1:0.05:1;
+[~, cop] = chillerPower(2000, 6, plr, 28);
+q = linspace(0.2, 1, 50);
+figure; subplot(1, 2, 1); plot(plr, cop, 'LineWidth', 2); xlabel('Part load'); ylabel('COP'); grid on; title('Chiller')
+subplot(1, 2, 2); plot(q, pumpPower(q, 1, 15, 'Strategy', 'constant'), q, pumpPower(q, 1, 15), q, pumpPower(q, 1, 15, 'Strategy', 'dpreset'), 'LineWidth', 1.5)
+legend('Constant speed', 'Variable speed', 'Pressure reset'); xlabel('Flow (share)'); ylabel('Pump power (kW)'); grid on
+% 4. One rack through a training job's start, a pump failure at 20 minutes, with and without a spare
+t = 0:10:3600;
+P = 60e3 + 70e3*(t > 300);
+figure; coolingLoop(t, P, 'FailAt', 1200, 'Pumps', [2 1])
+bad = coolingLoop(t, P, 'FailAt', 1200, 'Pumps', [2 0]);
+fprintf('Without a spare pump the chips reach %.0f C (%.0f s over 85 C)\\n', bad.Peak, bad.SecondsOver)
+% 5. Predictive maintenance: the CDU's exchanger fouling, read from its temperatures each week
+wk = 0:7:140;
+Thi = 45 + 0.002*wk; Tho = 35 + 0.006*wk; Tci = 30*ones(size(wk)); Tco = Tci + (Thi - Tho);
+UA = hxUA(Thi, Tho, Tci, Tco, 3.2);
+figure; foulingTrend(wk, UA, 0.8)
+f = foulingTrend(wk, UA, 0.8);
+fprintf('Clean the exchanger on day %.0f\\n', f.CleanAt)
+` },
 ];

@@ -13408,3 +13408,29 @@ against average within 5 V, both codes. Not built: the PFC's own switching and g
 `dcHarmonics` 'afe'), cascaded modules with voltage balancing, the transformer's leakage and magnetising design,
 thermal models of the devices, hardware-in-the-loop (another branch builds real-time runs, M564), extended phase
 shift modulation.
+
+## M574 (27 Nov): Hyperion data centres: cooling
+
+The fourth data-centre page ("Cooling system equipment developers"), `dc-cool.ts` (it reuses M571's `carnotCOP` and
+`mechanicalShare`). **The three architectures** (`cooling`, one hour; `compare`, many): air (24 °C supply on 14 °C
+chilled water, 12 K across, 600 Pa at 55%, chip = 36 + 0.05 K/W·P; workable to 50 kW a rack and 90 °C), single-phase
+cold plates (80% to a secondary loop 3 K over the facility water with 10 K rise, 250 + 150 kPa at 60%, chip = loop + 5
++ 0.02 K/W·P), two-phase (85% boiling 6 K over the facility water, 160 kJ/kg at 70% exit quality, chip = Tsat + 0.012
+K/W·P); the rest of each by air. Heat rejection: the chiller makes up the `mechanicalShare` with the wet bulb + tower
+approach against the supply (chilled 14 °C or facility water), COP at half Carnot; tower fans 0.8% of the heat
+rejected; evaporation at 2.43 MJ/kg × cycles/(cycles − 1). `wetBulb`: Stull 2011. **Chiller**: rated COP at 30 °C
+condenser scaled by the Carnot ratio, part-load input 0.2 + 0.2·PLR + 0.6·PLR² (a variable-speed curve; COP peaks
+mid-load). **Pumps and fans**: constant speed (full power), variable speed holding ≥ 40% of full head at the far end,
+pressure reset on the system curve (stat + (1 − stat)x²) times x. **The loop** (`loop`): two lumped temperatures, the
+chips (C) and the coolant (M), R = R0(0.5 + 0.5(m0/m)^0.8), the CDU at ε = 1 − e^(−UA/(m cp)) to the facility water
+(the facility side taken as the larger stream), RK4 at 0.5 s, starting in steady state (2,000 s settled at the first
+load); pump speed by a clamped PI on the coolant (anti-windup by clamping the integrator), flow n × the running
+pumps' share (a spare keeps it at full); fouling a linear loss of UA over the run; pump power Pfull·n³. **Maintenance**:
+`hxUA` from LMTD (equal differences handled), `foulingTrend` fits 1/UA linearly against time (a fouling resistance
+builds up linearly) and solves for the clean threshold. Language: `coolingCompare` (stacked bars and the hottest chip
+against 90 °C), `chillerPower`, `pumpPower`, `coolingLoop`, `hxUA`, `foulingTrend`, `wetBulb`. Tests: Stull's values,
+air failing at 130 kW while both liquids work with a lower pPUE, warm water needing no chiller at an 18 °C wet bulb, WUE
+1–3 L/kWh, chiller hours, the chiller's COP at rating, part load and cool water, the cube law, the PI raising speed and
+holding 42 °C with the heat removed, a pump failure overheating only without a spare, fouling warming a fixed-speed
+loop, UA by hand and the trend's clean date exactly. Not built: refrigerant property tables (two-phase pressure drop and
+dry-out), rack-by-rack air recirculation (CFD), immersion tanks, adiabatic dry coolers, a chiller plant's sequencing.
