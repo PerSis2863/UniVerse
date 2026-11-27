@@ -229,7 +229,9 @@ const Q = (x: number) => 0.5 * erfc(x / Math.SQRT2);
  * `dfe` taps cancelling post cursors with correct decisions, jitter per symbol (RJ σ and dual-Dirac DJ in UI) as a
  * shift of each trace, Gaussian noise σ (V). Height and width at the best phase, the BER there (noise and jitter
  * included, per bit), the bathtub, the width at the target BER, and the mask's verdict. */
-export function eye(pulse: { p: number[]; cursor: number }, e: Eye) {
+/** `agg`: aggressors' own pulse responses on the victim's time base (an AMI receiver's equalised ones), used in place of
+ * the NEXT and FEXT built from 'Crosstalk'. */
+export function eye(pulse: { p: number[]; cursor: number }, e: Eye, agg?: number[][]) {
   const { spu } = e, scale = e.swing / 2, pre = 8, post = 80;
   const shaped = (p: number[], c: number) => { const out = new Array(p.length).fill(0); e.ffe.forEach((w, i) => { const sh = (i - e.ffePre) * spu; for (let n = 0; n < p.length; n++) { const m = n - sh; if (m >= 0 && m < p.length) out[n] += w * p[m]; } }); return { p: out, c }; };
   const main = e.ffe.length ? shaped(pulse.p, pulse.cursor) : { p: pulse.p, c: pulse.cursor };
@@ -241,7 +243,9 @@ export function eye(pulse: { p: number[]; cursor: number }, e: Eye) {
   const agg1 = e.xtalk[0] ? symbols(prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed + 77), e.pam4) : [], agg2 = e.xtalk[1] ? symbols(prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed + 151), e.pam4) : [];
   const L = n * spu, y = new Float64Array(L);
   const sup = (sym: number[], resp: number[]) => { for (let k = 0; k < sym.length; k++) { const base = (k - pre) * spu; for (let j = 0; j < resp.length; j++) { const idx = base + j; if (idx >= 0 && idx < L) y[idx] += sym[k] * resp[j]; } } };
-  sup(a, P); if (nextP) sup(agg1, nextP); if (fextP) sup(agg2, fextP);
+  sup(a, P);
+  if (agg) agg.forEach((ap, i) => sup(symbols(prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed + 77 + 74 * i), e.pam4), cut(ap, main.c)));
+  else { if (nextP) sup(agg1, nextP); if (fextP) sup(agg2, fextP); }
   const taps = Array.from({ length: e.dfe }, (_, k) => P[pre * spu + (k + 1) * spu]);
   if (e.dfe) for (let k = 0; k < n; k++) { let fb = 0; for (let q = 0; q < e.dfe; q++) if (k - q - 1 >= 0) fb += taps[q] * a[k - q - 1]; for (let j = 0; j < spu; j++) { const idx = k * spu + j - (spu >> 1); if (idx >= 0 && idx < L) y[idx] -= fb; } }
   return { ...measure(y, a, P[pre * spu], e, pre + 4), dfeTaps: taps, mainCursor: P[pre * spu] };

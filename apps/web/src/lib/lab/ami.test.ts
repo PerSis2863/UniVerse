@@ -11,15 +11,18 @@ import { Graphics } from './plot';
 import { FileStore } from './files';
 import './sciences';
 
+const calls: number[] = [];
 const AMI = fs.readFileSync(path.join(__dirname, 'fixtures', 'test-ffe.ami'), 'utf8');
 afterEach(() => setNative(null));
 
 /** A stand-in for the computer app: the test model's two-tap FFE done in JavaScript. */
 const fake = (tapOf: (p: string) => number): Native => (_op, body) => {
-  const b = body as { params: string; impulse: string; dt: number; ui: number; wave?: string };
+  const b = body as { params: string; impulse: string; rows: number; dt: number; ui: number; wave?: string };
   const tap = tapOf(b.params), spu = Math.round(b.ui / b.dt), k = 1 / (1 + 2 * Math.abs(tap));
   const ffe = (x: number[]) => x.map((v, i) => k * ((1 + tap) * v + tap * (i >= spu ? x[i - spu] : 0)));
-  const out: Record<string, unknown> = { ok: true, impulse: f64ToB64(ffe(b64ToF64(b.impulse))), paramsOut: '(test_tx)', message: 'fake', hasGetWave: true };
+  const flat = b64ToF64(b.impulse), cols = Array.from({ length: flat.length / b.rows }, (_, c) => ffe(flat.slice(c * b.rows, (c + 1) * b.rows)));
+  calls.push(cols.length);
+  const out: Record<string, unknown> = { ok: true, impulse: f64ToB64(cols.flat()), paramsOut: '(test_tx)', message: 'fake', hasGetWave: true };
   if (b.wave) { const w = ffe(b64ToF64(b.wave)); out.wave = f64ToB64(w); out.clocks = f64ToB64(w.filter((_, i) => i % spu === 0).map((_, i) => (i + 0.5) * b.ui)); }
   return out;
 };
@@ -45,7 +48,7 @@ describe('IBIS-AMI in Hyperion (M577)', () => {
     expect(() => ami.readAmi('(rx (Model_Specific')).toThrow(/never closed/);
   });
   it('in a browser, says the models need the computer app', () => {
-    expect(() => ami.session({ name: 't', file: { name: 't.dll', path: '/x/t.dll' }, params: '(t)', info: ami.readAmi(AMI) }, [1, 0], 1, 1)).toThrow(/computer app/);
+    expect(() => ami.session({ name: 't', file: { name: 't.dll', path: '/x/t.dll' }, params: '(t)', info: ami.readAmi(AMI) }, [[1, 0]], 1, 1)).toThrow(/computer app/);
   });
   it('the statistical flow equalises the impulse; the time-domain flow runs the waveform through both models', () => {
     setNative(fake(tapOf));
@@ -75,6 +78,23 @@ amiModel('C:/models/tx.dll', 'tx.ami')`);
     expect(out).toMatch(/tap = -0.2 {2}-0.5 to 0/);
   });
 
+  it('crosstalk: the aggressors go to AMI_Init as extra columns (up to Max_Init_Aggressors) and shrink the eye', () => {
+    setNative(fake(tapOf));
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    (lab.host as { files: FileStore }).files.load('tx.ami', { bytes: new TextEncoder().encode(AMI) });
+    (lab.host as { files: FileStore }).files.load('one.ami', { bytes: new TextEncoder().encode(AMI.replace('(Ignore_Bits', '(Max_Init_Aggressors (Usage Info) (Type Integer) (Value 1))\n    (Ignore_Bits')) });
+    calls.length = 0;
+    lab.run(`S = sparamLine(1e8:1e8:4e10, 'Length', 0.2); tx = amiModel('C:/m/tx.dll', 'tx.ami'); one = amiModel('C:/m/tx.dll', 'one.ami');
+a = eyeDiagram(S, 28e9, 'TxModel', tx, 'Flow', 'statistical', 'Symbols', 1200);
+b = eyeDiagram(S, 28e9, 'TxModel', tx, 'Flow', 'statistical', 'Symbols', 1200, 'Crosstalk', [0.03 0.05]);
+c = eyeDiagram(S, 28e9, 'TxModel', tx, 'Symbols', 1200, 'Crosstalk', [0.03 0.05]);
+d = eyeDiagram(S, 28e9, 'TxModel', one, 'Flow', 'statistical', 'Symbols', 1200, 'Crosstalk', [0.03 0.05]);
+r = amiSimulate(S, 28e9, 'TxModel', tx, 'Flow', 'statistical', 'Crosstalk', [0.03 0.05]);
+fprintf('%d %d %d %d\\n', b.Height < a.Height, c.Height < a.Height, b.AMI.Aggressors, size(r.AggressorsRx, 1))`);
+    expect(out.trim()).toBe('1 1 2 2');
+    expect(calls).toContain(3); expect(calls).toContain(2);   // three columns, and two for the model limited to one aggressor
+  });
   // The real thing: the desktop app's runner loads the compiled test model (needs desktop/hyperion's koffi and gcc).
   const desk = path.resolve(__dirname, '../../../../../desktop/hyperion');
   const lib = path.join(os.tmpdir(), 'hyperion-ami-vitest.so');
@@ -102,4 +122,51 @@ fprintf('%.4f %.4f %d\\n', e0.Height, e1.Height, numel(e2.AMI.Clocks))`);
     expect(h1).toBeGreaterThan(h0); expect(clocks).toBeGreaterThan(1000);
     expect(si.alignWave([0, 1, 0, -1, 0, 1], [1, -1, 1], 2, 2).delay).toBe(1);
   }, 60000);
+});
+
+describe('IBIS files (M578)', () => {
+  const IBS = `[IBIS Ver] 7.1
+[Comment Char] #_char
+[Component] chip  # a comment
+[Model] serdes_tx
+Model_type Output
+[Algorithmic Model]
+Executable Windows_VisualStudio_32 tx32.dll tx.ami
+Executable Windows_VisualStudio_64 tx64.dll tx.ami
+Executable Linux_gcc4.8_64 libtx64.so tx.ami   # the Linux one
+[End Algorithmic Model]
+[Model] plain_io
+Model_type I/O
+[Model] repeater
+[Algorithmic Model]
+Executable_Rx Linux_gcc_64 rep_rx.so rep_rx.ami
+Executable_Tx Linux_gcc_64 rep_tx.so rep_tx.ami
+[End Algorithmic Model]
+[End]
+`;
+  it('lists the algorithmic models and picks the library for this computer, 64-bit first', () => {
+    const m = ami.readIbis(IBS);
+    expect(m.map((x) => x.name)).toEqual(['serdes_tx', 'repeater']);
+    expect(m[0].executables.map((e) => [e.os, e.bits, e.lib])).toEqual([['windows', 32, 'tx32.dll'], ['windows', 64, 'tx64.dll'], ['linux', 64, 'libtx64.so']]);
+    setNative(() => ({}), { platform: 'win32', arch: 'x64' });
+    expect(ami.pickExecutable(m[0]).lib).toBe('tx64.dll');
+    setNative(() => ({}), { platform: 'linux', arch: 'x64' });
+    expect(ami.pickExecutable(m[0]).lib).toBe('libtx64.so');
+    expect(ami.pickExecutable(m[1], 'tx').lib).toBe('rep_tx.so');
+    setNative(() => ({}), { platform: 'darwin', arch: 'arm64' });
+    expect(() => ami.pickExecutable(m[0])).toThrow(/no library for mac/);
+  });
+  it('amiModel from an .ibs file finds the files in Hyperion\'s files or a folder on the computer', () => {
+    setNative(() => ({}), { platform: 'linux', arch: 'x64' });
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    const files = (lab.host as { files: FileStore }).files;
+    files.load('chip.ibs', { bytes: new TextEncoder().encode(IBS) });
+    files.load('tx.ami', { bytes: new TextEncoder().encode(AMI) });
+    lab.run(`m = amiModel('chip.ibs', 'serdes_tx', 'Folder', '/opt/models', 'tap', -0.3); fprintf('%s|%s|%s\\n', m.Executable, m.Platform, m.Parameters)
+ibisModels('chip.ibs')`);
+    expect(out).toMatch(/^\/opt\/models\/libtx64\.so\|Linux_gcc4\.8_64\|\(test_tx \(tap -0\.3\)/);
+    expect(out).toMatch(/repeater:\n {2}Linux_gcc_64 {2}rep_rx\.so {2}rep_rx\.ami {2}\(rx\)/);
+    expect(() => lab.run("amiModel('chip.ibs', 'serdes_tx')")).toThrow(/Put libtx64\.so in your files/);
+  });
 });

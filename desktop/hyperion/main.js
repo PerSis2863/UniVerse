@@ -115,7 +115,7 @@ async function mayLoad(name, sha) {
   if (checkboxChecked) models.all = true; else models.ok.add(sha);
   return true;
 }
-ipcMain.handle('hyperion:native', (e) => { if (!trusted(e)) throw new Error('Not allowed.'); return { url: 'hyperion-native://app', token: NATIVE_TOKEN }; });
+ipcMain.handle('hyperion:native', (e) => { if (!trusted(e)) throw new Error('Not allowed.'); return { url: 'hyperion-native://app', token: NATIVE_TOKEN, platform: process.platform, arch: process.arch }; });
 const tokenOk = (t) => typeof t === 'string' && t.length === NATIVE_TOKEN.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(NATIVE_TOKEN));
 async function native(request) {
   const headers = { 'Access-Control-Allow-Origin': ORIGIN, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', Vary: 'Origin' };

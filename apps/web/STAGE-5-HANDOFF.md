@@ -13541,3 +13541,28 @@ blob worker posting synchronously, the model run in the utility process, asked o
 with and without the scheme. Not built: aggressor columns (crosstalk impulse responses into AMI_Init), IBIS file
 parsing ([Algorithmic Model] lines), AMI_Resolve / back-channel training (IBIS 7), Table-type parameters, DLL_Path and
 DLL_ID, PAM4 thresholds given by the model, 32-bit models (koffi in a 64-bit app can't load them).
+
+## M578 (27 Nov): Hyperion IBIS-AMI: crosstalk into the models, IBIS files
+
+The owner sent M577's left-outs back (27 Nov); this item takes two of them. **Crosstalk into the models**: AMI_Init
+takes an impulse matrix, the victim's response then one column per aggressor (rows × (1 + aggressors), column-major),
+at most the model's `Max_Init_Aggressors` (reserved parameter; 16 if not given: columns beyond it come back as they
+went in). `ami.session` now takes and returns columns; `flow(…, aggs)` carries `Aggressor { h, x? }` through Tx Init
+and Rx Init (statistical: `aggRx`, the receiver's equalised aggressor responses) and, in the time-domain flow, adds
+each aggressor's signal convolved with its (Tx Init-equalised, when the Tx has no GetWave) coupling to what reaches the
+receiver's pins (the aggressors' own transmitters taken as plain drivers: `shortcut:`-level, stated in the doc
+comment). `aggressorsOf` builds them from 'Crosstalk' [kNext kFext] like M576's eye: NEXT as an edge (kn·spu/4/dt,
+−same next sample), FEXT as the channel's impulse differentiated × kf·spu/4, signals with seeds +77, +151 (the eye's
+own). `si.eye(pulse, e, agg)` uses given aggressor pulses (on the victim's time base, cut at its cursor) instead of
+its own NEXT/FEXT. `amiSimulate` takes 'Crosstalk' and returns `AggressorsRx`; eyeDiagram's e.AMI.Aggressors counts
+them. **IBIS files**: `readIbis` (keywords in brackets, [Comment Char] honoured, [Model] then [Algorithmic Model] …
+[End Algorithmic Model], `Executable`, `Executable_Tx`, `Executable_Rx` lines: platform `OS_Compiler_Bits`, library,
+.ami); `pickExecutable` takes the app's `platform` (win32 → windows, linux, darwin → mac/macos/osx) now sent with the
+native token (`hyperion:native` returns `process.platform` and `process.arch`; `setNative(bridge, info)`,
+`nativePlatform()`), 64-bit first, a role for repeaters; in a browser the first entry, so settings still list.
+`amiModel('chip.ibs', 'model', 'Folder', path, 'Role', 'rx', …)`: the library from Hyperion's files by its base name,
+or `Folder/<name>` on the computer; the .ami must be in the files; struct field `Platform`. `ibisModels('chip.ibs')`
+lists them. Tests: three columns sent and two for a model limited to one aggressor, crosstalk lowering both flows'
+eyes, `AggressorsRx` rows; an .ibs with a changed comment character, 32/64-bit Windows and Linux lines and a repeater,
+the pick per system, mac refused with the list, amiModel from the .ibs with a folder, the missing-library message.
+Not built: reading the .ibs's buffer models ([Model] I-V tables) for the analog front end.

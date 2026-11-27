@@ -1,5 +1,5 @@
 import { LabError } from './parse';
-import { b64ToF64, f64ToB64, native } from './native';
+import { b64ToF64, f64ToB64, native, nativePlatform } from './native';
 import { fftConvolve } from './si';
 
 // IBIS-AMI models in Hyperion (M577, the owner, 27 Nov: IBIS-AMI "for the Hyperion download app which can do it"). A chip
@@ -36,7 +36,7 @@ export function parseAmi(text: string): Node {
 }
 
 export interface Param { path: string[]; name: string; usage: string; type: string; value?: string; list?: string[]; range?: [number, number, number]; description: string }
-export interface AmiInfo { root: string; params: Param[]; reserved: Record<string, string>; initReturnsImpulse: boolean; getWaveExists: boolean; ignoreBits: number; modulation: string }
+export interface AmiInfo { root: string; params: Param[]; reserved: Record<string, string>; initReturnsImpulse: boolean; getWaveExists: boolean; ignoreBits: number; modulation: string; maxAggressors: number }
 
 const kids = (n: Node) => n.items.filter((x): x is Node => typeof x !== 'string');
 const words = (n: Node) => n.items.filter((x): x is string => typeof x === 'string');
@@ -65,8 +65,8 @@ export function readAmi(text: string): AmiInfo {
   };
   for (const sec of kids(root)) if (/^(reserved_parameters|model_specific)$/i.test(sec.name)) for (const c of kids(sec)) walk(c, [c.name], /model_specific/i.test(sec.name) ? 'Model_Specific' : 'Reserved_Parameters');
   const flag = (k: string) => /^true$/i.test(unq(reserved[k] ?? ''));
-  const ignore = Number(reserved.Ignore_Bits);
-  return { root: root.name, params, reserved, initReturnsImpulse: flag('Init_Returns_Impulse') || (!('Init_Returns_Impulse' in reserved) && flag('Use_Init_Output')), getWaveExists: flag('GetWave_Exists'), ignoreBits: Number.isFinite(ignore) && ignore > 0 ? Math.round(ignore) : 0, modulation: unq(reserved.Modulation ?? 'NRZ').toUpperCase() };
+  const ignore = Number(reserved.Ignore_Bits), maxAgg = Number(reserved.Max_Init_Aggressors);
+  return { root: root.name, params, reserved, initReturnsImpulse: flag('Init_Returns_Impulse') || (!('Init_Returns_Impulse' in reserved) && flag('Use_Init_Output')), getWaveExists: flag('GetWave_Exists'), ignoreBits: Number.isFinite(ignore) && ignore > 0 ? Math.round(ignore) : 0, modulation: unq(reserved.Modulation ?? 'NRZ').toUpperCase(), maxAggressors: Number.isFinite(maxAgg) && maxAgg >= 0 ? Math.round(maxAgg) : 16 };
 }
 
 /** The settings string AMI_Init takes, (root (name value) (branch (name value))), for the In and InOut parameters:
@@ -100,41 +100,96 @@ export function paramString(m: AmiInfo, choices: Map<string, string>): string {
 }
 
 export interface Model { name: string; file: { name: string; bytes?: string; path?: string }; params: string; info: AmiInfo }
-export interface Session { impulse: number[]; wave?: number[]; clocks: number[]; paramsOut: string; message: string; hasGetWave: boolean }
-/** One model session in the computer app: AMI_Init on the impulse response (V/s), then AMI_GetWave on the waveform in
- * blocks of 128 UI if one is given and the model has it. */
-export function session(m: Model, h: number[], dt: number, ui: number, wave?: number[]): Session {
-  const r = native('ami', { executable: m.file, params: m.params, impulse: f64ToB64(h), rows: h.length, aggressors: 0, dt, ui, ...(wave ? { wave: f64ToB64(wave), block: Math.round((128 * ui) / dt) } : {}) });
-  return { impulse: b64ToF64(String(r.impulse)), wave: typeof r.wave === 'string' ? b64ToF64(r.wave) : undefined, clocks: typeof r.clocks === 'string' ? b64ToF64(r.clocks) : [], paramsOut: String(r.paramsOut ?? ''), message: String(r.message ?? ''), hasGetWave: !!r.hasGetWave };
+export interface Session { impulse: number[]; columns: number[][]; wave?: number[]; clocks: number[]; paramsOut: string; message: string; hasGetWave: boolean }
+/** One model session in the computer app: AMI_Init on the impulse matrix (the victim's response then each aggressor's,
+ * V/s; at most the model's Max_Init_Aggressors), then AMI_GetWave on the waveform in blocks of 128 UI if one is given
+ * and the model has it. Aggressor columns the model wasn't given come back as they went in. */
+export function session(m: Model, cols: number[][], dt: number, ui: number, wave?: number[]): Session {
+  const rows = cols[0].length, n = Math.min(cols.length - 1, m.info.maxAggressors), flat = new Array(rows * (1 + n));
+  for (let c = 0; c <= n; c++) for (let r = 0; r < rows; r++) flat[c * rows + r] = cols[c][r] ?? 0;
+  const r = native('ami', { executable: m.file, params: m.params, impulse: f64ToB64(flat), rows, aggressors: n, dt, ui, ...(wave ? { wave: f64ToB64(wave), block: Math.round((128 * ui) / dt) } : {}) });
+  const back = b64ToF64(String(r.impulse)), columns = cols.map((col, c) => (c <= n ? back.slice(c * rows, (c + 1) * rows) : col));
+  return { impulse: columns[0], columns, wave: typeof r.wave === 'string' ? b64ToF64(r.wave) : undefined, clocks: typeof r.clocks === 'string' ? b64ToF64(r.clocks) : [], paramsOut: String(r.paramsOut ?? ''), message: String(r.message ?? ''), hasGetWave: !!r.hasGetWave };
 }
 
-export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; z?: number[]; clocks: number[]; messages: string[]; paramsOut: string[]; usedGetWave: [boolean, boolean] }
+/** A neighbouring line's coupling into the victim: its impulse response (V/s) and, in the time-domain flow, its signal. */
+export interface Aggressor { h: number[]; x?: number[] }
+export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: number[][]; z?: number[]; clocks: number[]; messages: string[]; paramsOut: string[]; usedGetWave: [boolean, boolean] }
 /**
- * The IBIS flows. Statistical: h → the transmitter's AMI_Init (its output used when Init_Returns_Impulse) → the
- * receiver's AMI_Init: the equalised impulse response. Time-domain: the transmitter's AMI_GetWave on the stimulus x (or,
- * without GetWave, its Init output as part of the channel), convolved with the channel, then the receiver's
- * AMI_GetWave (or, without it, its Init output convolved), and the receiver's clock times. h in V/s every dt.
+ * The IBIS flows. Statistical: the impulse matrix (h and the aggressors') → the transmitter's AMI_Init (its output used
+ * when Init_Returns_Impulse) → the receiver's AMI_Init: the equalised responses. Time-domain: the transmitter's
+ * AMI_GetWave on the stimulus x (or, without GetWave, its Init output as part of the channel), convolved with the
+ * channel, the aggressors' signals through their coupling added, then the receiver's AMI_GetWave (or, without it, its
+ * Init output convolved), and the receiver's clock times. h in V/s every dt.
  */
-export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: Model | null, x: number[] | null): FlowOut {
+export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: Model | null, x: number[] | null, aggs: Aggressor[] = []): FlowOut {
   const messages: string[] = [], paramsOut: string[] = [];
   const note = (who: string, s: Session) => { if (s.message) messages.push(`${who}: ${s.message}`); if (s.paramsOut) paramsOut.push(`${who}: ${s.paramsOut}`); };
+  const cols = [h, ...aggs.map((g) => g.h)], conv = (a: number[], b: number[]) => fftConvolve(a, b).map((v) => v * dt);
   const useTxWave = !!(x && tx?.info.getWaveExists);
-  const txs = tx ? session(tx, h, dt, ui, useTxWave ? x! : undefined) : null;
+  const txs = tx ? session(tx, cols, dt, ui, useTxWave ? x! : undefined) : null;
   if (txs) note(tx!.name, txs);
-  const hTx = txs && tx!.info.initReturnsImpulse ? txs.impulse : h;
+  const txCols = txs && tx!.info.initReturnsImpulse ? txs.columns : cols;
   if (!x) {
-    const rxs = rx ? session(rx, hTx, dt, ui) : null;
+    const rxs = rx ? session(rx, txCols, dt, ui) : null;
     if (rxs) note(rx!.name, rxs);
-    return { h, hTx, hRx: rxs && rx!.info.initReturnsImpulse ? rxs.impulse : hTx, clocks: [], messages, paramsOut, usedGetWave: [false, false] };
+    const out = rxs && rx!.info.initReturnsImpulse ? rxs.columns : txCols;
+    return { h, hTx: txCols[0], hRx: out[0], aggRx: out.slice(1), clocks: [], messages, paramsOut, usedGetWave: [false, false] };
   }
-  // time domain: what reaches the receiver's pins
-  const sent = useTxWave && txs?.wave ? txs.wave : x, chan = useTxWave ? h : hTx;
-  const atPins = fftConvolve(sent, chan).map((v) => v * dt);
+  // time domain: what reaches the receiver's pins (the aggressors' transmitters are taken as plain drivers)
+  const sent = useTxWave && txs?.wave ? txs.wave : x, chanCols = useTxWave ? cols : txCols;
+  const atPins = conv(sent, chanCols[0]);
+  aggs.forEach((g, i) => { if (g.x) conv(g.x, chanCols[i + 1]).forEach((v, k) => { if (k < atPins.length) atPins[k] += v; }); });
   const useRxWave = !!rx?.info.getWaveExists;
-  const rxs = rx ? session(rx, chan, dt, ui, useRxWave ? atPins : undefined) : null;
+  const rxs = rx ? session(rx, chanCols, dt, ui, useRxWave ? atPins : undefined) : null;
   if (rxs) note(rx!.name, rxs);
   let z = atPins;
   if (rxs && useRxWave && rxs.wave) z = rxs.wave;
-  else if (rxs && rx!.info.initReturnsImpulse) z = fftConvolve(sent, rxs.impulse).map((v) => v * dt);
-  return { h, hTx, hRx: rxs && rx!.info.initReturnsImpulse ? rxs.impulse : chan, z, clocks: rxs?.clocks ?? [], messages, paramsOut, usedGetWave: [useTxWave, useRxWave] };
+  else if (rxs && rx!.info.initReturnsImpulse) {
+    z = conv(sent, rxs.columns[0]);
+    aggs.forEach((g, i) => { if (g.x) conv(g.x, rxs.columns[i + 1]).forEach((v, k) => { if (k < z.length) z[k] += v; }); });
+  }
+  const out = rxs && rx!.info.initReturnsImpulse ? rxs.columns : chanCols;
+  return { h, hTx: txCols[0], hRx: out[0], aggRx: out.slice(1), z, clocks: rxs?.clocks ?? [], messages, paramsOut, usedGetWave: [useTxWave, useRxWave] };
+}
+
+export interface Executable { platform: string; os: string; bits: number; lib: string; ami: string; role: string }
+export interface IbisModel { name: string; executables: Executable[] }
+/** The IBIS file's models that have an [Algorithmic Model]: each Executable line's platform (OS_Compiler_Bits), library
+ * and .ami file (Executable_Tx and Executable_Rx too, for repeaters). The comment character may be changed by
+ * [Comment Char]. */
+export function readIbis(text: string): IbisModel[] {
+  let comment = '|', model = '', inAlgo = false;
+  const out: IbisModel[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const cc = /^\s*\[comment char\]\s*(\S)_char/i.exec(raw);
+    if (cc) { comment = cc[1]; continue; }
+    const at = raw.indexOf(comment), line = (at >= 0 ? raw.slice(0, at) : raw).trim();
+    if (!line) continue;
+    const kw = /^\[([^\]]+)\]\s*(.*)$/.exec(line);
+    if (kw) {
+      const k = kw[1].trim().toLowerCase().replace(/\s+/g, ' ');
+      if (k === 'model') { model = kw[2].split(/\s+/)[0]; inAlgo = false; }
+      else if (k === 'algorithmic model') { inAlgo = true; if (!out.some((m) => m.name === model)) out.push({ name: model || '(unnamed)', executables: [] }); }
+      else if (k === 'end algorithmic model') inAlgo = false;
+      continue;
+    }
+    if (!inAlgo) continue;
+    const w = line.split(/\s+/);
+    if (/^executable(_tx|_rx)?$/i.test(w[0]) && w.length >= 4) {
+      const parts = w[1].split('_'), bits = Number(parts[parts.length - 1]);
+      out.find((m) => m.name === model)!.executables.push({ platform: w[1], os: parts[0].toLowerCase(), bits: Number.isFinite(bits) ? bits : 0, lib: w[2], ami: w[3], role: /_tx$/i.test(w[0]) ? 'tx' : /_rx$/i.test(w[0]) ? 'rx' : '' });
+    }
+  }
+  return out;
+}
+const OS: Record<string, string> = { win32: 'windows', linux: 'linux', darwin: 'mac' };
+/** The executable for this computer: its system, 64-bit first (32-bit models run through the app's 32-bit helper);
+ * in a browser the first Windows or Linux one, so its settings can still be listed. */
+export function pickExecutable(m: IbisModel, role = ''): Executable {
+  const here = nativePlatform(), os = here ? OS[here.platform] ?? here.platform : null;
+  const fit = m.executables.filter((e) => (!role || !e.role || e.role === role) && (os ? e.os === os || (os === 'mac' && /^(mac|macos|osx|darwin)/.test(e.os)) : true));
+  const best = fit.sort((a, b) => (b.bits === 64 ? 1 : 0) - (a.bits === 64 ? 1 : 0))[0];
+  if (!best) throw new LabError(`The model ${m.name} has no library for ${os ?? 'this computer'} (it has: ${m.executables.map((e) => e.platform).join(', ') || 'none'}).`);
+  return best;
 }

@@ -5,7 +5,7 @@ import { fileBytes, fileText, hasFile, writeFileText } from './files';
 import * as ami from './ami';
 import { bytesToB64, hasNative } from './native';
 import * as si from './si';
-import { call, col, def, field, isText, lines, need, nums, options, optNum, optText, record, row } from './sci-kit';
+import { call, col, def, field, isText, lines, need, nums, options, optNum, optText, record, row, rows } from './sci-kit';
 
 // Hyperion's signal and power integrity in the language (M576): sparamLine, sparameters, rfparam, touchstoneWrite,
 // ctleResponse, pulseResponse, eyeDiagram, pdnImpedance, irDrop. MathWorks spreads these over the RF, Signal
@@ -32,7 +32,7 @@ function modelOf(lab: Lab, v: Value | undefined, who: string): ami.Model | null 
   if (v.k !== 'struct' || !v.f.has('Executable') || !v.f.has('Parameters')) throw new LabError(`'${who}' takes a model from amiModel.`);
   const exe = textOf(v.f.get('Executable')!), name = exe.split(/[\\/]/).pop() || exe;
   const file = hasFile(lab, exe) ? { name, bytes: bytesToB64(fileBytes(lab, exe)) } : { name, path: exe };
-  return { name: textOf(v.f.get('Name')!), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ' } };
+  return { name: textOf(v.f.get('Name')!), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ', maxAggressors: v.f.has('MaxInitAggressors') ? field(v, 'MaxInitAggressors', who) : 16 } };
 }
 const ctleOf = (v: Value | undefined): [number, number, number, number] | null => {
   if (!v) return null;
@@ -103,7 +103,7 @@ def('eyeDiagram', (a, nout, lab) => {
   const p = amiOut?.pulse ?? pulse(ctle), fv = o.get('FFE'), taps = o.has('FFETaps') ? nums(o.get('FFETaps')) : [1, 2];
   if (fv && isText(fv)) { if (fv.v.toLowerCase() !== 'auto') throw new LabError("'FFE' is the taps or 'auto'."); base.ffe = si.ffeZeroForcing(p.p, p.cursor, spu, taps[0], taps[1] ?? 2); base.ffePre = taps[0]; }
   else if (fv) { base.ffe = nums(fv); base.ffePre = Math.round(optNum(o, 'FFEPre', 1)); if (base.ffePre < 0 || base.ffePre >= base.ffe.length) throw new LabError("'FFEPre' counts the pre-cursor taps, fewer than the taps."); }
-  const e = amiOut?.measured ? { ...amiOut.measured, dfeTaps: [] as number[], mainCursor: amiOut.main } : si.eye(p, base);
+  const e = amiOut?.measured ? { ...amiOut.measured, dfeTaps: [] as number[], mainCursor: amiOut.main } : si.eye(p, base, amiOut?.agg);
   if (nout > 0) return [record([...(amiOut ? [['AMI', amiOut.record]] as [string, Value][] : []), ['Height', e.heightBest], ['HeightAtBER', e.heightAtBer], ['Width', e.width], ['WidthAtBER', e.widthAtBer], ['BER', e.ber], ['BestPhase', e.best], ['Bathtub', row(e.bath)], ['DFETaps', row(e.dfeTaps)], ['FFETaps', row(base.ffe)], ['CTLE', ctle ? row(ctle) : mat(0, 0)], ['MaskPass', +e.maskPass], ['MainCursor', e.mainCursor]])];
   const xs: number[] = [], ys: number[] = [];
   e.traces.forEach((tr, k) => { tr.forEach((v, j) => { xs.push((j - spu) / spu + e.jitter[k]); ys.push(v); }); xs.push(NaN); ys.push(NaN); });
@@ -120,33 +120,66 @@ def('eyeDiagram', (a, nout, lab) => {
 /** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) through the statistical or the
  * time-domain flow; statistical gives a pulse for the usual eye, time-domain a received waveform measured as it is
  * (the receiver's own equaliser replaces FFE and DFE), its first symbols left out while the models adapt. */
+/** The aggressors 'Crosstalk', [kNext kFext] makes, as impulse responses for the AMI flows: NEXT an edge (the near
+ * end's coupling, unattenuated), FEXT the channel's own response differentiated (the far end's), each with its own
+ * PRBS in the time-domain flow (the same scale and seeds as the eye without models). */
+function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSignals: boolean): ami.Aggressor[] {
+  const out: ami.Aggressor[] = [], sig = (i: number) => {
+    if (!withSignals) return undefined;
+    const a = si.symbols(si.prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed + 77 + 74 * i), e.pam4), x = new Array(a.length * spu);
+    for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
+    return x;
+  };
+  if (e.xtalk[0]) { const hn = new Array(h.length).fill(0); hn[0] = (e.xtalk[0] * spu) / 4 / dt; hn[1] = -hn[0]; out.push({ h: hn, x: sig(out.length) }); }
+  if (e.xtalk[1]) out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * e.xtalk[1] * (spu / 4)), x: sig(out.length) });
+  return out;
+}
+/** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) and the aggressors' through the
+ * statistical or the time-domain flow; statistical gives pulses for the usual eye, time-domain a received waveform
+ * measured as it is (the receiver's own equaliser replaces FFE and DFE), its first symbols left out while the models
+ * adapt. */
 function amiEye(S: ReturnType<typeof sOf>, H: si.C[], rate: number, spu: number, e: si.Eye, tx: ami.Model | null, rx: ami.Model | null, flowName: string, ctle: [number, number, number, number] | null) {
   if (flowName !== 'timedomain' && flowName !== 'statistical') throw new LabError("'Flow' is 'timedomain' or 'statistical'.");
   const { h, dt } = si.impulseResponse(S.f, H, rate, spu, 512, ctle ? (x) => si.ctle(x, ...ctle) : undefined), ui = 1 / rate;
   if (flowName === 'statistical') {
-    const f = ami.flow(h, dt, ui, tx, rx, null), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
-    return { pulse, measured: null, main: pulse.p[pulse.cursor], record: record([['Flow', 'statistical'], ['Impulse', row(f.hRx)], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
+    const f = ami.flow(h, dt, ui, tx, rx, null, aggressorsOf(h, dt, spu, e, false)), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
+    const agg = f.aggRx.map((c) => si.pulseFromImpulse(c, dt, spu).p);
+    return { pulse, agg, measured: null, main: pulse.p[pulse.cursor], record: record([['Flow', 'statistical'], ['Impulse', row(f.hRx)], ['Aggressors', f.aggRx.length], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
   }
   const a = si.symbols(si.prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed), e.pam4), x = new Array(a.length * spu);
   for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
-  const f = ami.flow(h, dt, ui, tx, rx, x), z = f.z!, al = si.alignWave(z, a, spu, Math.min(z.length - spu, h.length + 64 * spu));
+  const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, e, true)), z = f.z!, al = si.alignWave(z, a, spu, Math.min(z.length - spu, h.length + 64 * spu));
   const ignore = Math.ceil(Math.max(tx?.info.ignoreBits ?? 0, rx?.info.ignoreBits ?? 0) / (e.pam4 ? 2 : 1));
   if (a.length < ignore + 500) throw new LabError(`The models adapt over their first ${ignore} symbols (Ignore_Bits): give 'Symbols' at least ${ignore + 500}.`);
   const y = z.slice(al.delay), measured = si.measure(y, a, al.main, { ...e, dfe: 0, ffe: [] }, Math.max(16, ignore + 8));
   const clocks = f.clocks.length > 1 ? f.clocks : [];
-  return { pulse: null, measured, main: al.main, record: record([['Flow', 'timedomain'], ['Wave', row(z)], ['Delay', al.delay * dt], ['Clocks', row(clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
+  return { pulse: null, agg: undefined, measured, main: al.main, record: record([['Flow', 'timedomain'], ['Wave', row(z)], ['Delay', al.delay * dt], ['Clocks', row(clocks)], ['Aggressors', f.aggRx.length], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
 }
 def('amiModel', (a, nout, lab) => {
-  const exe = a[0] ? textOf(a[0]) : '', src = a[1] ? textOf(a[1]) : '';
-  if (!/\.(dll|so|dylib)$/i.test(exe) || !src) throw new LabError("amiModel('model.dll', 'model.ami', 'name', value, …): the library (in your files, or its full path on this computer) and its .ami file (in your files, or its text).");
-  const info = ami.readAmi(src.includes('(') ? src : fileText(lab as Lab, src)), choices = new Map<string, string>();
+  let exe = a[0] ? textOf(a[0]) : '', src = a[1] ? textOf(a[1]) : '', picked = '';
+  const pairs = new Map<string, Value>();
   for (let i = 2; i < a.length; i += 2) {
     if (!isText(a[i]) || a[i + 1] === undefined) throw new LabError('amiModel: the settings come as name, value pairs.');
-    const v = a[i + 1];
-    choices.set((a[i] as { v: string }).v, isText(v) ? v.v : String(toMat(v).d[0]));
+    pairs.set((a[i] as { v: string }).v, a[i + 1]);
   }
+  // From an IBIS file (M578): the model's [Algorithmic Model] picks the library for this computer; its files are looked
+  // for in Hyperion's files, or the library in 'Folder' on this computer.
+  if (/\.ibs$/i.test(exe)) {
+    const models = ami.readIbis(fileText(lab as Lab, exe)), m = models.find((x) => x.name.toLowerCase() === src.toLowerCase());
+    if (!m) throw new LabError(`${exe} has no model "${src}" with an [Algorithmic Model] (it has: ${models.map((x) => x.name).join(', ') || 'none'}).`);
+    const folder = pairs.has('Folder') ? textOf(pairs.get('Folder')!) : '', role = pairs.has('Role') ? textOf(pairs.get('Role')!).toLowerCase() : '';
+    pairs.delete('Folder'); pairs.delete('Role');
+    const ex = ami.pickExecutable(m, role), base = (f: string) => f.split(/[\\/]/).pop()!;
+    exe = hasFile(lab as Lab, base(ex.lib)) ? base(ex.lib) : folder ? `${folder.replace(/[\\/]+$/, '')}/${base(ex.lib)}` : '';
+    if (!exe) throw new LabError(`Put ${base(ex.lib)} in your files, or give where it is on this computer: amiModel('${a[0] && textOf(a[0])}', '${src}', 'Folder', 'C:\\models').`);
+    if (!hasFile(lab as Lab, base(ex.ami))) throw new LabError(`Put the model's settings file ${base(ex.ami)} in your files.`);
+    src = base(ex.ami); picked = ex.platform;
+  }
+  if (!/\.(dll|so|dylib)$/i.test(exe) || !src) throw new LabError("amiModel('model.dll', 'model.ami', 'name', value, …) or amiModel('device.ibs', 'model name', …): the library (in your files, or its full path on this computer) and its .ami file (in your files, or its text).");
+  const info = ami.readAmi(src.includes('(') ? src : fileText(lab as Lab, src)), choices = new Map<string, string>();
+  for (const [k, v] of pairs) choices.set(k, isText(v) ? v.v : String(toMat(v).d[0]));
   const params = ami.paramString(info, choices), inputs = info.params.filter((p) => /^(in|inout)$/i.test(p.usage));
-  const m = record([['Type', 'amiModel'], ['Name', info.root], ['Executable', exe], ['Parameters', params], ['InitReturnsImpulse', +info.initReturnsImpulse], ['GetWaveExists', +info.getWaveExists], ['IgnoreBits', info.ignoreBits], ['Modulation', info.modulation]]);
+  const m = record([['Type', 'amiModel'], ['Name', info.root], ['Executable', exe], ['Parameters', params], ['InitReturnsImpulse', +info.initReturnsImpulse], ['GetWaveExists', +info.getWaveExists], ['IgnoreBits', info.ignoreBits], ['MaxInitAggressors', info.maxAggressors], ['Modulation', info.modulation], ['Platform', picked]]);
   if (nout > 0) return [m];
   const lines = [`IBIS-AMI model ${info.root} (${exe}): Init ${info.initReturnsImpulse ? 'returns the equalised impulse' : 'does not return an impulse'}, GetWave ${info.getWaveExists ? 'yes' : 'no'}${info.ignoreBits ? `, adapts over ${info.ignoreBits} bits` : ''}.`, 'Settings you can choose:'];
   for (const p of inputs) lines.push(`  ${p.path.join('.')} = ${p.value ?? '(none)'}${p.list ? `  one of ${p.list.join(' ')}` : p.range ? `  ${p.range[1]} to ${p.range[2]}` : ''}${p.description ? `  ${p.description}` : ''}`);
@@ -154,10 +187,16 @@ def('amiModel', (a, nout, lab) => {
   (lab as Lab).host.out(lines.join('\n') + '\n');
   return [];
 });
+def('ibisModels', (a, nout, lab) => {
+  const models = ami.readIbis(fileText(lab as Lab, textOf(a[0] ?? str(''))));
+  if (nout > 0) return [record(models.map((m) => [m.name, str(m.executables.map((e) => `${e.platform} ${e.lib} ${e.ami}${e.role ? ` (${e.role})` : ''}`).join('\n'))] as [string, Value]))];
+  (lab as Lab).host.out((models.length ? models.map((m) => `${m.name}:\n${m.executables.map((e) => `  ${e.platform}  ${e.lib}  ${e.ami}${e.role ? `  (${e.role})` : ''}`).join('\n')}`).join('\n') : 'No model in this file has an [Algorithmic Model].') + '\n');
+  return [];
+});
 def('amiAvailable', () => [num(hasNative() ? 1 : 0)]);
 def('amiSimulate', (a, _n, lab) => {
   const S = sOf(a[0], 'amiSimulate'), rate = need(a[1], 'amiSimulate(S, symbol rate, …)'), w = 'amiSimulate';
-  const o = options(a, 2, ['TxModel', 'RxModel', 'Flow', 'Symbols', 'Modulation', 'PRBS', 'Swing', 'SamplesPerUI', 'Seed'], w);
+  const o = options(a, 2, ['TxModel', 'RxModel', 'Flow', 'Symbols', 'Modulation', 'PRBS', 'Swing', 'SamplesPerUI', 'Seed', 'Crosstalk'], w);
   const tx = modelOf(lab as Lab, o.get('TxModel'), 'TxModel'), rx = modelOf(lab as Lab, o.get('RxModel'), 'RxModel');
   if (!tx && !rx) throw new LabError("amiSimulate needs a 'TxModel' or an 'RxModel' (from amiModel).");
   const spu = Math.round(optNum(o, 'SamplesPerUI', 16)), nsym = Math.round(optNum(o, 'Symbols', 5000)), mod = optText(o, 'Modulation', 'NRZ').toUpperCase(), fl = optText(o, 'Flow', 'timedomain').toLowerCase();
@@ -169,8 +208,11 @@ def('amiSimulate', (a, _n, lab) => {
     const sw = optNum(o, 'Swing', 0.8); x = new Array(a2.length * spu);
     for (let k = 0; k < a2.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a2[k] * sw) / 2;
   }
-  const f = ami.flow(h, dt, ui, tx, rx, x), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
-  return [record([['Flow', fl], ['dt', dt], ['Impulse', row(f.h)], ['ImpulseTx', row(f.hTx)], ['ImpulseRx', row(f.hRx)], ['t', row(t(f.z ? f.z.length : f.h.length))], ...(f.z ? [['Wave', row(f.z)], ['Stimulus', row(x!)], ['Symbols', row(a2)]] as [string, Value][] : []), ['Clocks', row(f.clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]])];
+  const xt = o.has('Crosstalk') ? nums(o.get('Crosstalk')) : [0, 0];
+  const eLike: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: [xt[0] ?? 0, xt[1] ?? 0], seed: Math.round(optNum(o, 'Seed', 1)) };
+  const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, eLike, fl === 'timedomain')), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
+  const aggM = f.aggRx.length ? rows(f.aggRx) : mat(0, 0);
+  return [record([['Flow', fl], ['dt', dt], ['Impulse', row(f.h)], ['ImpulseTx', row(f.hTx)], ['ImpulseRx', row(f.hRx)], ['AggressorsRx', aggM], ['t', row(t(f.z ? f.z.length : f.h.length))], ...(f.z ? [['Wave', row(f.z)], ['Stimulus', row(x!)], ['Symbols', row(a2)]] as [string, Value][] : []), ['Clocks', row(f.clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]])];
 });
 def('pdnImpedance', (a, nout, lab) => {
   const f = nums(a[0], 'The frequencies (Hz)'), o = options(a, 1, ['VRM', 'Caps', 'Plane', 'Die', 'Target', 'Step'], 'pdnImpedance'), parts: si.PdnPart[] = [];

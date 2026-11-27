@@ -6,8 +6,10 @@ import { LabError } from './parse';
 // the functions that need one say so.
 
 export type Native = (op: string, body: object) => Record<string, unknown>;
-let bridge: Native | null = null;
-export const setNative = (n: Native | null) => { bridge = n; };
+let bridge: Native | null = null, where: { platform: string; arch: string } | null = null;
+/** The bridge and, from the app, the computer's system and processor (Node's names: win32, darwin, linux; x64, arm64). */
+export const setNative = (n: Native | null, info?: { platform: string; arch: string }) => { bridge = n; where = n ? info ?? null : null; };
+export const nativePlatform = () => where;
 export const hasNative = () => bridge !== null;
 export function native(op: string, body: object) {
   if (!bridge) throw new LabError("IBIS-AMI models run only in Hyperion's computer app: they are compiled programs a browser can't run. Install it with Hyperion's Install button, then run this again there.");
