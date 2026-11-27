@@ -4,6 +4,7 @@ import { currentAppNow } from '@/lib/current-app';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
+import { sheetIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { Check, Loader2, Megaphone, Search, Users, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
@@ -83,7 +84,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+      <motion.div {...sheetIn()}
         className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="p-5 pb-3 flex items-center justify-between">
           <h3 className="text-lg font-black text-zinc-900 dark:text-white">{mode === 'chat' ? 'New chat' : mode === 'group' ? 'New group' : 'Broadcast'}</h3>

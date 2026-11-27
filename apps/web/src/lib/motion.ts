@@ -38,6 +38,19 @@ export const ease = {
   out: [0.22, 1, 0.36, 1] as const,
 };
 
+/** M481: a window that is a bottom sheet on phones and centred on larger screens: it slides up from the edge on a
+ *  phone (iOS's sheet) and opens as the search window does elsewhere (`popIn`). Read when it opens, not on the server. */
+export function sheetIn() {
+  if (typeof window === 'undefined' || window.innerWidth >= 640) return popIn;
+  return {
+    initial: { transform: 'translateY(100%)' }, animate: { transform: 'translateY(0%)' },
+    exit: { transform: 'translateY(100%)', transition: { duration: 0.24, ease: ease.ios } }, transition: spring.smooth,
+  };
+}
+
+/** M481: `popIn` for a menu that opens above its button (a list over a text box): it rises a touch instead. */
+export const popUp = { ...popIn, initial: { ...pop.from, transform: 'translateY(6px) scale(0.94)' }, exit: { ...pop.out, transform: 'translateY(4px) scale(0.97)' } };
+
 /** Fade + slight rise, for content that appears once. */
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 8 },

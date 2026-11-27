@@ -12,7 +12,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { errorMessage } from '@/lib/api';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { fadeUp, list, sheetIn } from '@/lib/motion';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
@@ -60,7 +60,7 @@ export function GroupAutopilot({ group, onClose }: { group: { id: string | numbe
   const [tab, setTab] = useState<'plan' | 'progress'>('plan');
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <motion.div role="dialog" aria-modal="true" aria-labelledby="autopilot-title" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} transition={spring.smooth} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 sm:rounded-2xl w-full max-w-2xl h-full sm:h-[85vh] flex flex-col shadow-2xl">
+      <motion.div role="dialog" aria-modal="true" aria-labelledby="autopilot-title" {...sheetIn()} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 sm:rounded-2xl w-full max-w-2xl h-full sm:h-[85vh] flex flex-col shadow-2xl">
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 sm:rounded-t-2xl sheet-safe-top">
           <div className="min-w-0">
             <h3 id="autopilot-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Wand2 className="w-4 h-4 text-indigo-500" /> Project autopilot</h3>

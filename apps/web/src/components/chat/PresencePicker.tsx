@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { PRESENCE_LABEL, type Presence } from '@/lib/presence';
-import { spring, popIn } from '@/lib/motion';
+import { popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 

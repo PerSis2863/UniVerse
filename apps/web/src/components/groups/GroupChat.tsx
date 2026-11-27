@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
+import { sheetIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Check, Edit2, Hash, ImageIcon, Loader2, Paperclip, Send, Trash2, X } from 'lucide-react';
@@ -151,9 +152,7 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 20, opacity: 0 }}
+        {...sheetIn()}
         className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 sm:rounded-2xl w-full max-w-2xl h-full sm:h-[80vh] flex flex-col shadow-2xl"
       >
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/20 sm:rounded-t-2xl">

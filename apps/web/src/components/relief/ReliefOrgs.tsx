@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { sheetIn } from '@/lib/motion';
 import { Building2, CalendarClock, ChevronRight, KeyRound, Loader2, LocateFixed, MapPin, Plus, TriangleAlert, Users, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ReliefTabs } from './ReliefTabs';
@@ -172,7 +173,7 @@ export function ShiftCard({ s, now, hot, onChange, admin }: { s: ShiftView; now:
 export function Sheet({ title, onClose, onSubmit, children }: { title: string; onClose: () => void; onSubmit: (e: React.FormEvent) => void; children: React.ReactNode }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="fixed inset-0 z-[120] grid place-items-end sm:place-items-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <motion.form initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ type: 'spring', stiffness: 360, damping: 32 }} onClick={(e) => e.stopPropagation()} onSubmit={onSubmit}
+      <motion.form {...sheetIn()} onClick={(e) => e.stopPropagation()} onSubmit={onSubmit}
         className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#0f0f11] p-5 sm:p-6 shadow-2xl border border-zinc-200 dark:border-white/10" aria-label={title}>
         <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold text-zinc-900 dark:text-white">{title}</h2><button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 grid place-items-center rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
         {children}

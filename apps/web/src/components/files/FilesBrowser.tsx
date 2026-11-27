@@ -15,7 +15,7 @@ import { ImageViewer } from '@/components/chat/ImageViewer';
 import { formatBytes, uploadChatFile } from '@/components/chat/chat-client';
 import { extractText } from '@/components/files/extract-text';
 import { previewKind } from '@/lib/pdf';
-import { fadeUp, list, spring, popIn } from '@/lib/motion';
+import { fadeUp, list, popIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { removeWithUndo } from '@/lib/undo';

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ShieldAlert } from 'lucide-react';
 import { GAMES, tooYoung, type GameId } from '@/lib/play';
-import { spring, popIn } from '@/lib/motion';
+import { popIn } from '@/lib/motion';
 
 // Rated games (M36: 12+, 16+, 18+): an account whose birth date says younger can't play them (the
 // server refuses too); without a birth date the player confirms their age once on this device.

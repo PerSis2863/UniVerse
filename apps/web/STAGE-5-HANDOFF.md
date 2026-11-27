@@ -12647,3 +12647,23 @@ own way:
   none with Reduce Motion.
 - Tried in a browser at 1280: a fold-out section 23 → 222 px over ~0.3 s; Grades' Download Transcript window from 97%
   to its place on the spring, fading out on Cancel; no page errors.
+
+
+## M481 (27 Nov): the last windows and lists like the search window
+
+The owner, 27 Nov: "check if anything else is left out". A sweep of every framer-motion part that floats (fixed or
+absolute, a dialog, menu or list) and isn't on `popIn`: 88 found. Most are right as they are: the dark backdrops
+behind windows (a fade), side panels sliding in from an edge (Groups, Internships, class details, threads, boards'
+extras), full-screen viewers (photos, files, status, QR codes), the call's panels rising from its bar, game overlays,
+the notifications sheet. Changed:
+- **`sheetIn()` in `src/lib/motion.ts`:** a window that is a bottom sheet on phones and centred on computers (it rose
+  20–50 px on computers too): on a computer the search window's opening (`popIn`), on a phone the sheet's slide from
+  the bottom edge (`spring.smooth`, out in 0.24 s on Apple's curve); read when it opens. On ten: oral practice,
+  start-ups, communities, New chat / New group, the reading window, group autopilot, group chat's window, call
+  favourites, Relief's organisations window and Relief's own.
+- **`popUp`:** `popIn` rising a touch, for a list that opens above its text box: the @-mention list (`MentionInput`).
+- Unused `spring` imports left by M480 removed (7 files).
+- Tried in a browser: New chat on a computer opens from 94% and 6 px up and settles; on a phone it slides up from the
+  bottom; no page errors.
+- **Rule:** a new window that is a sheet on phones uses `{...sheetIn()}`; a menu or window that floats uses
+  `{...popIn}` (`{...popUp}` above its button); not on a part with `layout` or `drag`.
