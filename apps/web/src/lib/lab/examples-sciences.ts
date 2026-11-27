@@ -602,4 +602,32 @@ demand = 400:25:1200;
 figure; area(demand, Pd); legend('Unit 1', 'Unit 2', 'Unit 3'); xlabel('Demand (MW)'); ylabel('Output (MW)'); title('Who runs as demand grows'); grid on
 fprintf('Solar farm LCOE: %.3f a kWh\\n', lcoe(8e5, 1.5e4, 1.6e6, 0.07, 25, 'Degradation', 0.005))
 ` },
+  { name: 'datacenter_power.m', code: `% Data centres: from one accelerator to a gigawatt campus
+% 1. An AI server and how its power follows the work
+s = dcServer('Chips', 8, 'Chip', 'gpu1000');
+u = 0:0.1:1;
+[P, parts] = dcServerPower(s, u, 'Inlet', 27);
+fprintf('Server: %.1f kW idle, %.1f kW flat out (peak in hot air %.1f kW)\\n', P(1)/1e3, P(end)/1e3, s.Peak/1e3)
+figure; plot(u, P/1e3, 'LineWidth', 2); xlabel('Accelerator utilisation'); ylabel('Wall power (kW)'); grid on; title('One server')
+% 2. A training job across a hall of 10,000 servers: power swings in step
+t = 0:0.05:120;
+w = dcWorkload(t, 'Checkpoint', [60 6], 'Period', 3);
+hall = dcServerPower(s, w) * 10000 / 1e6;    % MW
+figure; plot(t, hall); xlabel('Time (s)'); ylabel('Hall IT power (MW)'); grid on
+title(sprintf('Swings of %.0f MW within a second', max(hall) - min(hall)))
+% 3. The whole facility through a summer day: cooling and PUE
+h = 0:23;
+Tout = 24 + 8*cos(2*pi*(h - 15)/24);
+Pit = mean(hall) * ones(size(h));
+f = dcFacility(Pit, Tout, 'Rated', 120, 'Supply', 22);
+fprintf('PUE from %.2f at night to %.2f in the afternoon\\n', min(f.PUE), max(f.PUE))
+figure; dcFacility(Pit, Tout, 'Rated', 120, 'Supply', 22)
+% 4. A gigawatt campus built in four phases (year it opens, IT MW)
+phases = [1 250; 2 250; 3 300; 4 400];
+c = dcCampus(phases, 6, 'Fill', 15, 'Climate', [16 10 6]);
+fprintf('Year %d: peak %.0f MW, %.1f TWh a year\\n', [c.Year c.PeakMW c.EnergyGWh/1e3]')
+figure; dcCampus(phases, 6, 'Fill', 15, 'Climate', [16 10 6])
+% 5. How much air or water carries a 130 kW rack's heat away
+fprintf('A 130 kW rack: %.1f m3/s of air at 12 K, or %.0f L/min of water at 10 K\\n', dcHeatFlow(130e3, 12, 'air'), dcHeatFlow(130e3, 10, 'water'))
+` },
 ];

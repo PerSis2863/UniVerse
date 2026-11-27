@@ -14,3 +14,4 @@ import './risk-lab';
 import './teach-lab';
 import './matsci-lab';
 import './agri-lab';
+import './dc-power-lab';

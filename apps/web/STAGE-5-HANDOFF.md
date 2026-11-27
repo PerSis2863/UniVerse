@@ -13335,3 +13335,25 @@ Comptonization's photon count and slope, the corona's X-rays and the options in 
 hull per cube cluster (our parts stay exact cells met with the mesh), its symmetry term and non-axis planes in the cube
 search; the transfer in curved space with the gas's motion between its parts; Compton scattering down, and the corona's
 own geometry (a slab over the disc, not a sphere) and its light falling back on the disc.
+
+## M571 (27 Nov): Hyperion data centres: power demand from chip to campus
+
+The owner, 27 Nov ("build all of this in hyperion", with six of MathWorks' data-centre pages: hyperscalers, utilities,
+power converters, cooling, on-site generation and storage, high-speed interconnects). Built as six toolboxes, M571–M576,
+in the sciences group's pattern (pure `dc-*.ts`, the language in `dc-*-lab.ts`, imported from `sciences.ts`, help under
+"# Data centres" in `help-sciences.ts`, one example each in `examples-sciences.ts`). **Power demand**, `dc-power.ts`:
+a chip is idle + (TDP − idle)·u^exp (`CHIPS`: gpu700, gpu1000, gpu1200, tpu, cpu; generic, no makers' names); a server
+adds CPUs at a third of the load plus a tenth, a base (memory, network, disks) and fans by the cube of a speed set by
+the heat and +4%/K of inlet over 25 °C, behind a supply losing R(0.01 + 0.02x + 0.015x²) (96% at half load, 89% at a
+tenth). `workload`: training chips in step (`compute` share of `period` at `high`, the rest at `low`, 0.02 for
+`checkpointFor` s every `checkpointEvery`), or inference (a daily cosine peaking 14:00 with LCG noise). The facility:
+UPS rated(0.008 + 0.012x + 0.012x²), distribution 0.3% rated + 1.2% load, cooling `fanPump`·heat plus a chiller at
+`eta` of Carnot's COP (evaporator supply − 5, condenser air + approach; at most 12) on the `mechanicalShare` (0 when the
+air + approach is 2 K under the supply, 1 at 2 K over), other 1% of rated. `campus`: phases [year MW] each filling
+linearly over `fill` months to `utilisation`, ±5% daily wave, every hour of every year through the facility with
+`climate` (mean, seasonal cosine warmest day 205, daily warmest 15:00). Language: `dcServer` (a struct, Type
+'dcServer'; the supply sized at 1.25× full, rounded to 100 W), `dcServerPower` (with parts), `dcWorkload`,
+`dcFacility` (a stack and PUE drawn), `dcCampus`, `dcHeatFlow`. Tests: idle to TDP, the supply curve, ~10 kW for an
+8-accelerator server, fans faster in warm air, the training trace's levels and checkpoint, Carnot and free cooling, PUE
+1.05–1.6, the campus's capacity steps and gigawatt peak, heat flows. Not built: measured server power curves (SPECpower
+files), the network switches' power, a grid-tied UPS's battery, water-side economisers by hour of a real weather file.
