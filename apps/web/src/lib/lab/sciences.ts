@@ -16,3 +16,4 @@ import './matsci-lab';
 import './agri-lab';
 import './dc-power-lab';
 import './dc-grid-lab';
+import './dc-convert-lab';

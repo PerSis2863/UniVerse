@@ -13381,3 +13381,30 @@ the settled Δf = ΔP/(D + 1/R), the first RoCoF ΔP/2H, a battery raising the n
 resonance at √(ssc/cap) amplifying it more than fivefold, active front ends passing, ITIC points. Not built:
 unbalanced (per-phase) flows and negative sequence, flicker (Pst), a full network's harmonic load flow, EMT-level
 converter control during faults (the converters are M573's), UFLS relays.
+
+## M573 (27 Nov): Hyperion data centres: the 800 V solid-state transformer
+
+The third data-centre page ("Power converter developers"), `dc-convert.ts`: one module of an 800 V DC solid-state
+transformer. **The DAB**: P = V1·nV2·φ(π − |φ|)/(2π² fs L) (n = N1/N2), `dabPhase` its inverse (the smaller root,
+NaN past π/2), `dabDesign` (n = V1/V2, L from P at φ, π/6 by default). `dabWaveform`: v_L = V1·s1(t) − nV2·s1(t − φ/2π)
+integrated over `m` samples, mean removed (half-wave symmetry makes the steady-state current zero-mean); zero-voltage
+switching when the current is ≤ 0 at the primary's rising edge and ≥ 0 at the secondary's; the power read back as
+mean(v1·i) (within 1% of the formula at 2000 samples). `dabLosses`: conduction 2·I²rms·Rds a bridge (the secondary
+n times the current), switching four transitions a period a bridge, E scaled by |I|/iref and V/vref, turn-on added only
+off zero voltage; core and winding. `DEVICES` typical 1200 V / 650–900 V SiC (16 mΩ, 4 mΩ, 0.6 mJ off, 1.5 mJ on at
+1200 V 50 A; a first try at 80 mΩ made light load the most efficient). **The closed loop** (`sstSimulate`): the PFC as
+a power source lagging its reference by tauI, the reference the DAB's power ÷ ηPFC fed forward plus a PI on the link
+(without the feedforward a 100 kW step sagged the 1600 V link by 160 V at 20 Hz); the DAB's PI on the bus sets φ
+(clamped ±π/2, integrators clamped); both sampled every ts with the previous sample's reading (a one-sample delay),
+held between. `sstGains`: Kp1 = ω1·C1·V1 (the link's energy loop), Kp2 = ω2·C2/(∂I2/∂φ at the phase of half the
+rating), Ki = Kp·ω/5. Average value integrates by Euler at min(ts/20, 10 µs); 'switching' integrates the inductor
+current at 200 steps a period (≤ 5,000 periods a run), the DAB power for the feedforward filtered over 20 periods; it
+starts on the steady-state current. **Code**: `controllerCode` writes the PI as C (float, anti-windup) or Verilog
+(signed Q15.16 by default, products in 64 bits shifted back). Language: `dabDesign` (a struct, Type 'dab'),
+`dabPower`, `dabWaveform`, `dabEfficiency`, `sstSimulate`, `dcControllerCode`. Tests: the rating at the design phase,
+Pmax's ratio, the inverse, the waveform's power, ZVS at unity gain and lost at light load off-gain, efficiency 97–99.9%
+mid-load and lower at light load, a 100 kW step held and back to 800 V with the grid power at load/η², switching
+against average within 5 V, both codes. Not built: the PFC's own switching and grid currents (its THD is M572's
+`dcHarmonics` 'afe'), cascaded modules with voltage balancing, the transformer's leakage and magnetising design,
+thermal models of the devices, hardware-in-the-loop (another branch builds real-time runs, M564), extended phase
+shift modulation.

@@ -655,4 +655,32 @@ figure; dcHarmonics(120, 34.5, 3000, 'Rectifier', [0.3 0.2 0.3 0.2], 'Capacitor'
 V = [0.1 0.55 0.72 0.85 0.6 0.0];  dur = [0.01 0.05 0.3 2 0.8 0.03];
 figure; itic(V, dur)
 ` },
+  { name: 'datacenter_sst.m', code: `% Data centres: an 800 V DC solid-state transformer for AI racks
+% 1. Design the dual active bridge: 1600 V link to the 800 V bus, 250 kW at 50 kHz
+d = dabDesign(1600, 800, 250e3, 50e3);
+fprintf('n = %.2f, L = %.1f uH, at most %.0f kW\\n', d.n, 1e6*d.L, d.Pmax/1e3)
+phi = linspace(-pi/2, pi/2, 101);
+figure; plot(phi*180/pi, dabPower(1600, 800, d.n, d.L, d.fs, phi)/1e3, 'LineWidth', 2); grid on
+xlabel('Phase shift (degrees)'); ylabel('Power (kW)'); title('Power set by the phase shift')
+% 2. One switching period: is it soft-switching?
+figure; dabWaveform(1600, 800, d.n, d.L, d.fs, pi/6)
+% 3. Efficiency across the load with silicon-carbide switches
+P = linspace(20e3, 250e3, 24);
+figure; dabEfficiency(1600, 800, d.n, d.L, d.fs, P, 'Rds', [0.016 0.004])
+% 4. The closed loop against an AI training load that swings 120 to 220 kW every 4 ms
+t = 0:2e-5:0.04;
+load = 170e3 + 50e3*sign(sin(2*pi*t/8e-3));
+bw = 300;      % slider 50 800
+figure; sstSimulate(d, t, load, 'Bandwidth', [20 bw])
+r = sstSimulate(d, t, load, 'Bandwidth', [20 bw]);
+fprintf('Bus held within %.1f V; tuned Kp = %.3g rad/V, Ki = %.3g rad/(V s)\\n', max(abs(r.V2 - 800)), r.Kp(2), r.Ki(2))
+% 5. The same converter switching for real, 2 ms: the bus ripple at 100 kHz
+ts = 0:2e-6:2e-3;
+s = sstSimulate(d, ts, 200e3, 'Fidelity', 'switching');
+figure; plot(ts*1e3, s.V2); xlabel('Time (ms)'); ylabel('Bus (V)'); grid on; title('Ideal switching: ripple on the bus')
+% 6. The controller as code for the processor and for an FPGA
+disp(dcControllerCode(r.Kp(2), r.Ki(2), 2e-5, 800))
+v = dcControllerCode(r.Kp(2), r.Ki(2), 2e-5, 800, 'Language', 'verilog');
+fprintf('Verilog: %d lines\\n', numel(strfind(v, char(10))))
+` },
 ];
