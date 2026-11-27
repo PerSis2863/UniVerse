@@ -114,10 +114,10 @@ export function LabelBench() {
     setNote('');
     for (const f of [...files].slice(0, 500)) {
       // M578: a ROS bag or MCAP file gives its first camera topic's pictures
-      if (/\.(bag|mcap)$/i.test(f.name)) {
+      if (/\.(bag|mcap|db3)$/i.test(f.name)) {
         try {
-          const bag = RB.readBag(new Uint8Array(await f.arrayBuffer())), k = bag.topics.findIndex((t) => /(^|\/)Image$/.test(t.type));
-          if (k < 0) { setNote(`${f.name} has no camera (sensor_msgs/Image) topic.`); continue; }
+          const bag = RB.readBag(new Uint8Array(await f.arrayBuffer())), k = bag.topics.findIndex((t) => /(^|\/)(Compressed)?Image$/.test(t.type));
+          if (k < 0) { setNote(`${f.name} has no camera (sensor_msgs/Image or CompressedImage) topic.`); continue; }
           for (const m of bag.messages.filter((x) => x.topic === k).slice(0, 500 - list.length)) {
             const im = RB.readImage(RB.decodeMessage(bag, m) as Record<string, unknown>), px = new ImageData(im.w, im.h), n = im.w * im.h;
             for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) { const o = 4 * (y * im.w + x), q = y + x * im.h, sc = im.sixteen ? 1 / 257 : 1; for (let c = 0; c < 3; c++) px.data[o + c] = im.data[q + (im.ch > 1 ? c * n : 0)] * sc; px.data[o + 3] = 255; }
@@ -153,7 +153,7 @@ export function LabelBench() {
             {mine.length > 0 && <option value={-1}>Your pictures ({mine.length})</option>}
           </select>
         </label>
-        <label className={cn(small, 'cursor-pointer self-start border border-zinc-200 dark:border-white/15')}>Open pictures or a ROS bag…<input type="file" accept="image/*,.bag,.mcap" multiple className="sr-only" onChange={(e) => { void openPictures(e.target.files); e.target.value = ''; }} /></label>
+        <label className={cn(small, 'cursor-pointer self-start border border-zinc-200 dark:border-white/15')}>Open pictures or a ROS bag…<input type="file" accept="image/*,.bag,.mcap,.db3" multiple className="sr-only" onChange={(e) => { void openPictures(e.target.files); e.target.value = ''; }} /></label>
         <fieldset className="space-y-1.5 border-t border-zinc-200/80 pt-3 dark:border-white/10">
           <legend className={lab}>Drag on the picture to draw a</legend>
           <div className="flex flex-wrap gap-1.5">{labels.map((l) => <button key={l.name} type="button" aria-pressed={label === l.name} onClick={() => setLabel(l.name)} className={cn(small, 'border border-zinc-200 dark:border-white/15', label === l.name && ui.on)}><span className="h-2.5 w-2.5 rounded-sm" style={{ background: l.colour }} aria-hidden />{l.name}</button>)}</div>

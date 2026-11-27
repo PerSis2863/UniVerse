@@ -15988,3 +15988,29 @@ The owner's automated-driving page, "access live and recorded driving data… RO
 - Not yet: bz2 and zstd, `.db3` directly, CompressedImage (JPEG/PNG), writing bags, live ROS topics (a browser can't
   join a ROS network; the computer app could later).
 
+## M579: ROS bags' left-outs: bz2, zstd, .db3 and compressed pictures (27 Nov)
+
+The owner pasted M578's left-outs back (27 Nov), taken as "do these". The `rosbags` install stays refused (it needs the
+owner's own yes), so everything here is our own code, checked against real encoders that are already on the machine.
+- **`bzip2.ts`** (`bunzip2`): stream header, blocks (selectors by move-to-front, delta-coded lengths, canonical
+  Huffman tables, RUNA/RUNB zero runs), the Burrows–Wheeler transform undone, the last run-length step; streams in a row
+  joined; CRCs not checked; randomised blocks refused. Checked against the `bzip2` program (levels 1 and 9, several
+  blocks; the test runs only where the program exists) and a fixed stream.
+- **`zstd.ts`** (`zstd`, RFC 8878): frames and skippable frames, raw/RLE/compressed blocks, Huffman literals (direct or
+  FSE-coded weights, 1 or 4 streams, tables kept for treeless blocks), FSE sequence tables (predefined, RLE, described,
+  repeated), repeat offsets, matches that overlap. Dictionaries refused; checksum skipped. Checked against Node's own
+  zstd (`zlib.zstdCompressSync`, Node 22.15+; levels 1–19, up to 300 kB, noise, runs, floats) and a fixed frame.
+  **Trap:** Node's types don't list `ZSTD_c_*` yet: the test reads them from `zlib.constants` with fallbacks.
+- **`sqlite-read.ts`** (`SqliteFile`): the file header, table B-trees (interior 0x05, leaf 0x0d), overflow pages,
+  records; columns from the CREATE TABLE text; an INTEGER PRIMARY KEY takes the row id. No WAL (ROS closes its bags).
+  Integers past 2^53 lose their last digits (nanosecond times are kept to ~256 ns).
+- **`rosbag.ts`**: bz2 chunks (ROS 1) and zstd chunks (MCAP); `.db3` bags (`readDb3` → `fromDb3`: topics, messages,
+  and `message_definitions` since Iron); `knownDefs` for common ROS 2 types (std_msgs basics, geometry_msgs, tf2,
+  nav_msgs/Odometry, Imu, NavSatFix, Image, CompressedImage, PointCloud2, LaserScan) when a bag names a type without its
+  definition (a .db3 before Iron, an MCAP channel with an empty schema); `readImage` takes a CompressedImage (JPEG by
+  `dicom-codecs`' decoder, baseline only; PNG by `decodePng`: any colour type, 8/16 bits, palettes, not interlaced).
+- The page's reply slot (M521) holds about 6 MB, too small for real bags: that's why the SQLite reader is our own and
+  runs in the engine, not sql.js on the page. sql.js is used only in the test, to write a real .db3.
+- The Labeller opens .bag, .mcap and .db3, and CompressedImage topics.
+- Not yet: bags from real ROS tools (the owner can upload one), dictionaries in zstd, progressive JPEG, writing bags.
+

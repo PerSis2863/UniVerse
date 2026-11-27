@@ -5,6 +5,10 @@ import { FileStore } from './files';
 import { Graphics } from './plot';
 import { toMat, type Struct, type Cell } from './values';
 import './machines-lab';
+import * as zlib from 'node:zlib';
+import { execFileSync } from 'node:child_process';
+import { encodeJpeg } from './jpeg';
+import { png } from './colormap';
 
 // M578: ROS 1 bags and MCAP files, built here byte by byte from the published layouts, read back.
 const te = new TextEncoder(), enc = (s: string) => te.encode(s);
@@ -95,8 +99,66 @@ describe('Hyperion ROS bags (M578)', () => {
   it('decodes LZ4 matches, and names what it can’t read', () => {
     const blk = [0x35, 97, 98, 99, 3, 0, 0x00];
     expect(new TextDecoder().decode(R.lz4(cat(new Uint8Array([0x04, 0x22, 0x4d, 0x18, 0x60, 0x40, 0x82]), n32(blk.length), new Uint8Array(blk), n32(0))))).toBe('abcabcabcabc');
-    expect(() => R.readBag(enc('SQLite format 3\0'))).toThrow(/MCAP/);
-    expect(() => R.readBag(cat(enc('#ROSBAG V2.0\n'), record([['op', op(5)], ['compression', enc('bz2')], ['size', n32(4)]], new Uint8Array(4))))).toThrow(/bz2/);
+    expect(() => R.readBag(enc('SQLite format 3\0'))).toThrow(/too short/);
+    expect(() => R.readBag(cat(enc('#ROSBAG V2.0\n'), record([['op', op(5)], ['compression', enc('xz')], ['size', n32(4)]], new Uint8Array(4))))).toThrow(/bz2 and LZ4/);
+  });
+  // M579
+  const hasBz = (() => { try { execFileSync('bzip2', ['--help'], { stdio: 'ignore' }); return true; } catch { return false; } })();
+  const zst = (zlib as { zstdCompressSync?: (b: Uint8Array) => Uint8Array }).zstdCompressSync;
+  it.runIf(hasBz)('reads a ROS 1 bag packed with bz2', () => {
+    const inner = cat(conn(0, '/car', 'demo/Car', CAR), msg(0, 1.5, car(1, 12.5)), msg(0, 2.0, car(2, 13)));
+    const bz = new Uint8Array(execFileSync('bzip2', ['-c'], { input: inner }));
+    const bag = R.readBag(cat(enc('#ROSBAG V2.0\n'), record([['op', op(5)], ['compression', enc('bz2')], ['size', n32(inner.length)]], bz)));
+    expect(bag.messages.map((m) => (R.decodeMessage(bag, m) as { speed: number }).speed)).toEqual([12.5, 13]);
+  });
+  it.runIf(!!zst)('reads an MCAP file packed with zstd', () => {
+    const plain = mcap(''), bag0 = R.readBag(plain);
+    // rebuild the chunk with zstd: the same records, compressed
+    const dv = new DataView(plain.buffer, plain.byteOffset), hdrEnd = 8 + 9 + Number(dv.getBigUint64(9, true)), c = plain.subarray(hdrEnd + 9);
+    const cdv = new DataView(c.buffer, c.byteOffset), recLen = Number(cdv.getBigUint64(32, true)), recs = c.subarray(40, 40 + recLen), z = new Uint8Array(zst!(recs));
+    const body = cat(n64(3e9), n64(3.2e9), n64(recs.length), n32(0), mstr('zstd'), n64(z.length), z);
+    const bag = R.readBag(cat(plain.subarray(0, hdrEnd), rec(6, body), rec(0x0f, n32(0)), rec(2, cat(n64(0), n64(0), n32(0)))));
+    expect(bag.messages.length).toBe(bag0.messages.length);
+    expect(R.decodeMessage(bag, bag.messages[2])).toMatchObject({ point: { x: 8 } });
+  });
+  it('reads a ROS 2 .db3 bag’s tables, with and without definitions', () => {
+    const bag = R.fromDb3({ topics: [{ id: 1, name: '/goal', type: 'geometry_msgs/msg/PointStamped', format: 'cdr' }, { id: 2, name: '/odom', type: 'nav_msgs/msg/Odometry', format: 'cdr' }, { id: 3, name: '/x', type: 'my_pkg/msg/Thing', format: 'cdr' }],
+      messages: [{ topic: 1, ns: 5e9, data: stamped(1.25) }, { topic: 2, ns: 4e9, data: (() => { const w = new W(true).i32(4).u32(0).str('odom').str('base'); for (let i = 0; i < 7; i++) w.f64(i); for (let i = 0; i < 36; i++) w.f64(0); for (let i = 0; i < 6; i++) w.f64(10 + i); for (let i = 0; i < 36; i++) w.f64(0); return w.out; })() }, { topic: 3, ns: 6e9, data: new Uint8Array(8) }],
+      definitions: [{ type: 'geometry_msgs/msg/PointStamped', encoding: 'ros2msg', text: POINT }] });
+    expect(bag.format).toBe('db3'); expect(bag.messages.map((m) => m.t)).toEqual([4, 5, 6]);
+    expect(R.decodeMessage(bag, bag.messages[0])).toMatchObject({ child_frame_id: 'base', pose: { pose: { position: { x: 0, y: 1, z: 2 }, orientation: { w: 6 } } }, twist: { twist: { linear: { x: 10 }, angular: { z: 15 } } } });
+    expect(R.decodeMessage(bag, bag.messages[1])).toMatchObject({ point: { x: 1.25 } });
+    expect(() => R.decodeMessage(bag, bag.messages[2])).toThrow(/Iron/);
+  });
+  it('reads a real SQLite .db3 bag (rosbag2’s tables, big rows on overflow pages, deep trees)', async () => {
+    const SQL = await (await import('sql.js')).default();
+    for (const withDefs of [true, false]) {
+      const db = new SQL.Database();
+      db.run('CREATE TABLE schema(schema_version INTEGER PRIMARY KEY,ros_distro TEXT NOT NULL);CREATE TABLE topics(id INTEGER PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,serialization_format TEXT NOT NULL,offered_qos_profiles TEXT NOT NULL);CREATE TABLE messages(id INTEGER PRIMARY KEY,topic_id INTEGER NOT NULL,timestamp INTEGER NOT NULL, data BLOB NOT NULL);CREATE INDEX timestamp_idx ON messages (timestamp ASC);');
+      if (withDefs) db.run('CREATE TABLE message_definitions(id INTEGER PRIMARY KEY,topic_type TEXT NOT NULL,encoding TEXT NOT NULL,encoded_message_definition TEXT NOT NULL,type_description_hash TEXT NOT NULL)', []);
+      db.run("INSERT INTO topics VALUES (1,'/goal','geometry_msgs/msg/PointStamped','cdr',''),(2,'/cam','sensor_msgs/msg/Image','cdr','')");
+      if (withDefs) db.run('INSERT INTO message_definitions VALUES (1,?,?,?,?)', ['geometry_msgs/msg/PointStamped', 'ros2msg', POINT, '']);
+      const img = (k: number) => { const px = Array.from({ length: 120 * 80 * 3 }, (_, i) => (i + k) & 255); return new W(true).i32(k).u32(0).str('cam').u32(80).u32(120).str('rgb8').u8(0).u32(360).bytes(px).out; };
+      const ins = db.prepare('INSERT INTO messages(topic_id,timestamp,data) VALUES (?,?,?)');
+      for (let i = 0; i < 3000; i++) ins.run([1, 1_700_000_000_000_000_000 + i * 1e7, stamped(i)]);
+      for (let k = 0; k < 4; k++) ins.run([2, 1_700_000_000_000_000_000 + k * 1e8, img(k)]);
+      ins.free();
+      const bag = R.readBag(db.export()); db.close();
+      expect(bag.format).toBe('db3'); expect(bag.topics.map((t) => t.count)).toEqual([3000, 4]);
+      const goals = bag.messages.filter((m) => m.topic === 0);
+      expect(R.decodeMessage(bag, goals[2999])).toMatchObject({ point: { x: 2999 } });
+      expect(goals[1].t - goals[0].t).toBeCloseTo(0.01, 3);
+      const im = R.readImage(R.decodeMessage(bag, bag.messages.filter((m) => m.topic === 1)[3]) as Record<string, unknown>);
+      expect([im.h, im.w, im.data[0], im.data[1]]).toEqual([80, 120, 3, 363 & 255]);
+    }
+  });
+  it('reads compressed pictures: JPEG and PNG', () => {
+    const w = 16, h = 8, rgba = new Uint8Array(w * h * 4);
+    for (let i = 0; i < w * h; i++) rgba.set([200, (i % w) * 10, 40, 255], 4 * i);
+    const j = R.readImage({ format: 'jpeg', data: encodeJpeg(w, h, rgba, 95) }), p = R.readImage({ format: 'png', data: Uint8Array.from(atob(png(w, h, rgba).split(',')[1]), (c) => c.charCodeAt(0)) });
+    expect([j.h, j.w, j.ch, p.h, p.w, p.ch]).toEqual([8, 16, 3, 8, 16, 3]);
+    expect(Math.abs(j.data[0] - 200)).toBeLessThan(8); expect(p.data[0]).toBe(200); expect(p.data[h * 5 + h * w]).toBe(50); // green at column 5
+    expect(() => R.readImage({ format: 'tiff', data: new Uint8Array(4) })).toThrow(/JPEG and PNG/);
   });
   it('in the language', () => {
     const files = new FileStore(), l = new Lab({ out: () => {}, files, graphics: new Graphics() });

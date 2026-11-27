@@ -2120,6 +2120,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M576 | Automated driving 4: CAN data (DBC, logs) and OpenStreetMap roads | **Done** | `can.ts`, `osm.ts`, `can-lab.ts` (canDatabase, readCANLog, writeCANLog, canSignalTimetable, canFrame, roadNetwork); the Scenario designer loads .osm and .xodr maps. |
 | M577 | Automated driving 5: camera pictures and the Labeller | **Done** | `render.ts` (a pinhole camera's picture of a scenario, true boxes and how much of each shows), `can-lab.ts` (cameraImage, scenarioGroundTruth), Simulate → Machines → Labeller (`LabelBench.tsx`: draw boxes, labels from the truth, fill between keyframes, .json, Open in Code). |
 | M578 | Automated driving 6: ROS bags (ROS 1 .bag and MCAP) | **Done** | `rosbag.ts` (ROS 1 bag 2.0, MCAP, LZ4, messages from the bag's own definitions: ROS 1, CDR, JSON; images and point clouds), `rosbag-lab.ts` (rosbagreader, ros2bagreader, readMessages, rosTimeseries, rosReadImage, rosReadXYZ, rosReadField); the Labeller opens a bag's camera topic. |
+| M579 | ROS bags' left-outs: bz2, zstd, .db3, compressed pictures | **Done** | `bzip2.ts`, `zstd.ts` (our own decoders, checked against the bzip2 program and Node's zstd), `sqlite-read.ts` (SQLite tables without SQL), `rosbag.ts` (.db3 bags, common types known without definitions, JPEG/PNG CompressedImage); the Labeller opens .db3 and compressed camera topics. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 
