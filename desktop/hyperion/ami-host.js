@@ -170,9 +170,10 @@ function remote(file, exe, dir) {
  * the transmitters run first; then the victim's receiver hears its line plus each neighbour through its coupling, and
  * each neighbour's receiver its own line plus the victim through the same coupling (taken as reciprocal). A neighbour
  * further out on the same side (M588: `inner`, the lane just inside it, 1-based) and that lane hear each other too,
- * through the inner lane's own coupling (the lines equally spaced); lines on opposite sides, the victim between them,
- * are not coupled.
- * req: { tx, rx: { file, params, helper? }, impulse, rows, dt, ui, wave, aggs: [{ wave, h, inner? }], interval, training, dir }.
+ * through the inner lane's own coupling (the lines equally spaced). The first lane on each side (M589: `across`, the
+ * one on the other side, and `share`, its own coupling coefficient) hear each other through the victim: a lane's leak
+ * into the victim, and that share of it on into the other.
+ * req: { tx, rx: { file, params, helper? }, impulse, rows, dt, ui, wave, aggs: [{ wave, h, inner?, across?, share? }], interval, training, dir }.
  */
 async function link(req) {
   const fs = require('node:fs'), path = require('node:path');
@@ -207,6 +208,15 @@ async function link(req) {
       if (!Number.isInteger(k) || k < 1 || k > aggs.length || k === j) throw new Error(`Neighbouring line ${j}: the line inside it is 1 to ${aggs.length}, not itself.`);
       const hk = f64(aggs[k - 1].h);
       pairs.push({ j, k, toJ: channel(hk, req.dt, most), toK: channel(hk, req.dt, most) });
+    });
+    // across the victim (M589): j hears k through k's leak into the victim, a share (j's own coupling) passed on
+    aggs.forEach((g, i) => {
+      if (g.across === undefined) return;
+      const k = g.across, j = i + 1, o = aggs[k - 1];
+      if (!Number.isInteger(k) || k < 1 || k > aggs.length || k === j || o.across !== j) throw new Error(`Neighbouring line ${j}: the line across the victim is another of 1 to ${aggs.length}, and it names this one back.`);
+      if (k < j) return;
+      const sj = Number(g.share) || 0, sk = Number(o.share) || 0, hj = f64(g.h), hk = f64(o.h);
+      pairs.push({ j, k, toJ: channel(hk.map((v) => v * sj), req.dt, most), toK: channel(hj.map((v) => v * sk), req.dt, most) });
     });
     const out = new Float64Array(n), clocks = [], history = [];
     for (let at = 0; at < n && !error;) {

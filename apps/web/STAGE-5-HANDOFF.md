@@ -13782,3 +13782,27 @@ a link told [-, -, 1, 2] for two lines per side; in the computer app a second ne
 it (held at 0.4 V: peak up 0.4 × 2/3 × 0.1), an `inner` of itself refused. Not built: the victim hearing a neighbour
 through another (k², second order); neighbours across the victim; distributed coupling (each row couples at one place).
 
+
+## M589 (27 Nov): Hyperion IBIS-AMI: a neighbour through another, neighbours across the victim, a neighbour all along a stretch
+
+M588's three left-outs (the owner pasted the list, 27 Nov). **Who sits where:** `si.crosstalkRows(xtalk)` gives each
+row's `inner` (the row just inside it on the same side; only rows with some coupling count, as M588) and `across` (the
+first row on side 1 and the first on side −1 point at each other; side 0 has none); `aggressorsOf` and `si.eye` both use
+it. **Through another (second order):** an outer line leaks into the inner one as the inner one leaks into the victim
+(equal spacing), and the inner line's own coefficient of it goes on: the inner row's same-kind response × its k, added
+with the outer row's own pattern (NEXT through NEXT, FEXT through FEXT; a lumped rule, not the four-way NEXT/FEXT mix of
+real coupled lines). In `si.eye` it is added to the outer row's response; for the AMI flows `aggressorsOf` appends it as
+its own `Aggressor` with `of` = the outer entry's index (always after every first-order entry): the time-domain flow
+reuses the outer line's transmitted wave (`aggSent[of]`), the statistical eye adds its pulse to the outer line's, and a
+link leaves it out (`used` skips `of`), because there the lanes really hear each other (M588). **Across:** in a link
+only (to the victim's eye it is third order): `Aggressor.across` and `share` (its k), `ami.flow` maps them to lanes, the
+computer app's `link` adds a pair: lane j hears lane k through k's leak into the victim × j's share, and back; both must
+name each other, or it is refused. **A stretch:** 'Crosstalk' takes a fifth column `to` (≥ `at`): `nextPath` averages
+the near-end waves of 24 places along it (the coupling spread evenly, the same total), whole symbols dropped before the
+nearest place's peak; FEXT is unchanged (its total builds the same wherever it couples). Tests: `crosstalkRows`; two
+rows stacked on one side change the eye by more than 1e-5 V but less than 0.3 of their own bite against the same two on
+opposite sides; a neighbour spread from the receiver's end to halfway bites less than one lumped at the end; a stretch
+backwards refused; the link told `across`/`share` and no `of` lanes; in the computer app a lane across the victim hears
+the other (held at 0.4 V) at 0.4 × 2/3 × 0.1 × its share, one not named back refused. Not built: the four-way mix of
+NEXT and FEXT in second order (each kind goes on as itself); a line across the victim heard by the victim (third order);
+coupling that changes along a stretch (spread evenly).

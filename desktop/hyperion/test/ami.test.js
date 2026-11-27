@@ -91,6 +91,10 @@ test('neighbouring lines train their own transmitters, each by its own receiver 
   const pk2 = (x) => Number(/peak ([\d.]+)/.exec(x.lanes[1].rx)[1]);
   assert.ok(Math.abs(pk2(outer) - pk2(apart) - 0.4 * (2 / 3) * 0.1) < 0.01, `${pk2(outer)} ${pk2(apart)}`);
   assert.match((await ami.link({ ...req, aggs: [n1, { ...n2, inner: 2 }] }, p, p)).error, /not itself/);
+  // M589: across the victim, the second lane hears the first's leak into the victim, half of it passed on (its share)
+  const across = await ami.link({ ...req, aggs: [{ ...n1, across: 2, share: 0.3 }, { ...n2, across: 1, share: 0.5 }] }, p, p);
+  assert.ok(Math.abs(pk2(across) - pk2(apart) - 0.4 * (2 / 3) * 0.1 * 0.5) < 0.005, `${pk2(across)} ${pk2(apart)}`);
+  assert.match((await ami.link({ ...req, aggs: [{ ...n1, across: 2 }, n2] }, p, p)).error, /names this one back/);
 });
 
 test('a 32-bit model runs through the 32-bit helper (M580)', { skip: (!fs.existsSync(path.join(__dirname, '..', 'bin', 'ami-host32-linux')) || process.platform !== 'linux') && 'no 32-bit helper here' }, async () => {

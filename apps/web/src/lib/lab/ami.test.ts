@@ -529,3 +529,36 @@ describe('M588: a neighbour partway along, neighbours side by side, the fixture 
     expect(sent.aggs!.map((a) => a.inner)).toEqual([undefined, undefined, 1, 2]);
   });
 });
+
+describe('M589: a neighbour through another, neighbours across the victim, a neighbour all along a stretch', () => {
+  it('rows and who sits inside or across', () => {
+    const r = si.crosstalkRows([[0.05, 0.05, 1], [0.05, 0.05, -1], [0.05, 0.05, 1], [0, 0, -1], [0.05, 0, 0]]);
+    expect(r.inner).toEqual([undefined, undefined, 0, 1, undefined]);
+    expect(r.across).toEqual([1, 0, undefined, undefined, undefined]);
+  });
+  it('a line further out also reaches the victim through the line inside it (second order, small)', () => {
+    const pulse = { p: Array.from({ length: 2000 }, (_, k) => Math.exp(-(((k - 200) / 12) ** 2))), cursor: 200 };
+    const e: si.Eye = { rate: 28e9, spu: 16, pam4: false, order: 7, nsym: 1200, swing: 0.8, ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: [], seed: 1 };
+    const [none, apart, stacked] = [[], [[0.1, 0.1, 1], [0.1, 0.1, -1]], [[0.1, 0.1, 1], [0.1, 0.1, 1]]].map((x) => si.eye(pulse, { ...e, xtalk: x as si.Eye['xtalk'] }).heightBest);
+    // the same two lines and patterns: stacked on one side the outer one also comes in through the inner, a tenth more
+    expect(Math.abs(stacked - apart)).toBeGreaterThan(1e-5);
+    expect(Math.abs(stacked - apart)).toBeLessThan(0.3 * (none - apart));
+  });
+  it('a neighbour beside the line all along a stretch: its near-end noise spread over the round trip', () => {
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    // a lumped neighbour at the receiver's end makes one sharp edge; the same coupling spread from there to halfway is
+    // smeared over the round trip, a smaller bite out of the eye
+    lab.run("S = sparamLine((1:400)*1e8, 'Length', 0.2); b = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0]); c = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0 0.5]); fprintf('%d\\n', c.Height > b.Height + 1e-3)");
+    expect(out.trim()).toBe('1');
+    expect(() => lab.run("e = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0.5 0.2]);")).toThrow(/nearer place to the further/);
+  });
+  it('a link is told the lines across the victim and their shares, second-order paths left to the lanes themselves', () => {
+    let sent: { aggs?: { inner?: number; across?: number; share?: number }[] } = {};
+    setNative((_op, body) => { sent = body as typeof sent; const b = body as { wave: string }; return { ok: true, wave: b.wave, clocks: f64ToB64([]), history: [], files: [], paramsOut: ['', ''], messages: ['', ''], lanes: [] }; });
+    const info = ami.readAmi(fs.readFileSync(path.join(__dirname, 'fixtures', 'test-bci.ami'), 'utf8')), tx: ami.Model = { name: 'tx', file: { name: 'b.so', path: '/b.so' }, params: ami.paramString(info, new Map()), info };
+    const x = new Array(64).fill(0.4), g = (o: Partial<ami.Aggressor>) => ({ h: [1e11, 0, 0, 0], x, ...o });
+    ami.flow([1e12, 0, 0, 0], 1e-12, 8e-12, tx, { ...tx, name: 'rx' }, x, [g({ across: 1, share: 0.1 }), g({ across: 0, share: 0.2 }), g({ inner: 0 }), g({ of: 2 })]);
+    expect(sent.aggs!.map((a) => [a.inner, a.across, a.share])).toEqual([[undefined, 2, 0.1], [undefined, 1, 0.2], [1, undefined, undefined]]);
+  });
+});

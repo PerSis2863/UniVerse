@@ -1921,6 +1921,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M586 | Hyperion IBIS-AMI: waveform tables, two-leg pairs, crosstalk echoes, faster | **Done** (on `claude/hyperion-sciences-industries`) | [Rising/Falling Waveform] → `switching`, a 4-port's legs each its own buffer, `arrivalResponse` for NEXT, block FFT sums (`ibis-sim.ts` `run`, `Past`) |
 | M587 | Hyperion IBIS-AMI: fixture and package de-embedded, legs solved together, each neighbour its own echoes | **Done** (on `claude/hyperion-sciences-industries`) | `fixtureCurrent`, `run`'s joint sweep, `arrivalResponse(…, side)`, `Crosstalk` rows (`crosstalkOf`, `Eye.xtalk` rows) |
 | M588 | Hyperion IBIS-AMI: a neighbour partway along, neighbours side by side, the fixture in fine steps | **Done** (on `claude/hyperion-sciences-industries`) | 'Crosstalk' 4th column `at` (`nextPath`, `Eye.xtalkPath`), `Aggressor.inner` → the link's `pairs` (`ami-host.js`), `fixtureCurrent` sub-steps |
+| M589 | Hyperion IBIS-AMI: a neighbour through another, neighbours across the victim, a neighbour all along a stretch | **Done** (on `claude/hyperion-sciences-industries`) | `si.crosstalkRows` (inner, across); second order in `si.eye` and as `Aggressor.of` entries (left out of a link); 'Crosstalk' 5th column `to` (`nextPath` averages 24 places); `across` + `share` to the computer app's `link` |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

@@ -188,59 +188,82 @@ function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSigna
     for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
     return x;
   };
-  const last = new Map<number, number>();
+  // (M588) a row's line just inside it on the same side, (M589) the first line on the other side of the victim
+  const rows = si.crosstalkRows(e.xtalk), at: { n?: number; f?: number }[] = [];
   e.xtalk.forEach(([kn, kf, side], r) => {
-    // (M588) the line just inside this one on the same side, if any: the two leak into each other in a link
-    const inner = last.get(side ?? 0), first = out.length, path = e.xtalkPath?.[r];
+    const q = rows.inner[r], inner = q === undefined ? undefined : at[q].n ?? at[q].f, path = e.xtalkPath?.[r], me: { n?: number; f?: number } = {};
     if (kn) {
       let hn = new Array(h.length).fill(0); hn[0] = (kn * spu) / 4 / dt; hn[1] = -hn[0];
       if (path) hn = convolve(hn, path, hn.length);
-      out.push({ h: near(hn, side ?? 0), x: sig(out.length), inner });
+      me.n = out.length; out.push({ h: near(hn, side ?? 0), x: sig(out.length), inner, share: kn });
     }
-    if (kf) out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * kf * (spu / 4)), x: sig(out.length), inner });
-    if (out.length > first) last.set(side ?? 0, first);
+    if (kf) { me.f = out.length; out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * kf * (spu / 4)), x: sig(out.length), inner, share: kf }); }
+    at.push(me);
+  });
+  // (M589) second order: a line further out leaks into the line inside it as that one leaks into the victim (equally
+  // spaced) and a share of it goes on; outside a link (where the lines really hear each other) as its own entry, with
+  // the outer line's signal. And the first line on each side told of the one across the victim.
+  e.xtalk.forEach((_, r) => {
+    const q = rows.inner[r];
+    if (q !== undefined) for (const k of ['n', 'f'] as const) {
+      const mine = at[r][k], theirs = at[q][k];
+      if (mine !== undefined && theirs !== undefined) out.push({ h: out[theirs].h.map((v) => v * out[theirs].share!), x: out[mine].x, of: mine });
+    }
+    const o = rows.across[r], mine = at[r].n ?? at[r].f, theirs = o === undefined ? undefined : at[o].n ?? at[o].f;
+    if (mine !== undefined && theirs !== undefined) out[mine].across = theirs;
   });
   return out;
 }
 /** 'Crosstalk': [kNext kFext], or one row per neighbouring line [kNext kFext], [kNext kFext side] or [kNext kFext side
  * at] (side 1 beside the pair's first leg, −1 its second, 0 a neighbouring pair; with several rows and no side given,
  * they sit on alternate sides, M584's one on each side, the later rows further out; at, M588, where along the line the
- * neighbour runs beside it: 0 at the receiver's end, 1 at the transmitter's). */
+ * neighbour runs beside it: 0 at the receiver's end, 1 at the transmitter's; a fifth column, M589, where it stops:
+ * beside the line all along from at to there, its coupling spread evenly over that stretch). */
 function crosstalkOf(v: Value | undefined): si.Eye['xtalk'] {
   if (!v) return [];
   const M = toMat(v);
   if (M.r * M.c === 0) return [];
-  if (!(M.c >= 2 && M.c <= 4) && !(M.r === 1 && M.c <= 4)) throw new LabError("'Crosstalk' is [kNext kFext], or a row per neighbour [kNext kFext], [kNext kFext side] or [kNext kFext side at].");
+  if (!(M.c >= 2 && M.c <= 5) && !(M.r === 1 && M.c <= 5)) throw new LabError("'Crosstalk' is [kNext kFext], or a row per neighbour [kNext kFext], [kNext kFext side], [kNext kFext side at] or [kNext kFext side from to].");
   return Array.from({ length: M.r }, (_, r) => {
     const at = (c: number) => (c < M.c ? M.d[c * M.r + r] : undefined), sd = at(2), where = at(3) ?? 0;
     if (sd !== undefined && ![0, 1, -1].includes(sd)) throw new LabError("'Crosstalk': a neighbour's side is 1 (beside the first leg), -1 (the second) or 0 (a neighbouring pair).");
-    if (!(where >= 0 && where <= 1)) throw new LabError("'Crosstalk': where a neighbour runs beside the line is 0 (the receiver's end) to 1 (the transmitter's).");
+    const to = at(4) ?? where;
+    if (!(where >= 0 && where <= 1 && to >= where && to <= 1)) throw new LabError("'Crosstalk': where a neighbour runs beside the line is 0 (the receiver's end) to 1 (the transmitter's), a stretch from the nearer place to the further.");
     const side = (sd ?? (M.r > 1 ? (r % 2 ? -1 : 1) : 0)) as 0 | 1 | -1;
-    return [at(0) ?? 0, at(1) ?? 0, side, where];
+    return [at(0) ?? 0, at(1) ?? 0, side, where, to];
   });
 }
 /**
  * The way back from a neighbour that runs beside the line partway along (M588): its near-end wave starts `at` of the way
  * down and comes back to the receiver over that part twice, the channel's own transfer raised to 2·at (its loss and
  * delay, a uniform line's), per sample every dt. Whole symbols of delay are dropped: the neighbour's pattern is
- * independent of the victim's, so only the part of a symbol (and the loss) changes what the eye sees.
+ * independent of the victim's, so only the part of a symbol (and the loss) changes what the eye sees. Over a stretch
+ * (M589) the waves of 24 places along it are averaged, the coupling spread evenly: the near-end noise lasts the round
+ * trip over the stretch instead of one edge.
  */
-function nextPath(f: number[], H: si.C[], at: number, rate: number, spu: number): number[] {
+function nextPath(f: number[], H: si.C[], from: number, to: number, rate: number, spu: number): number[] {
   let u = 0, prev = 0;
-  const Hs = H.map(([re, im], k): si.C => {
-    const ph = Math.atan2(im, re);
-    u = k ? u + ph - prev - 2 * Math.PI * Math.round((ph - prev) / (2 * Math.PI)) : ph; prev = ph;
-    const m = Math.hypot(re, im) ** (2 * at);
-    return [m * Math.cos(2 * at * u), m * Math.sin(2 * at * u)];
+  const mag = H.map(([re, im]) => Math.hypot(re, im)), ph = H.map(([re, im], k) => {
+    const p = Math.atan2(im, re);
+    u = k ? u + p - prev - 2 * Math.PI * Math.round((p - prev) / (2 * Math.PI)) : p; prev = p;
+    return u;
   });
-  const r = si.impulseResponse(f, Hs, rate, spu, 256), g = r.h.map((v) => v * r.dt);
-  let pk = 0; for (let k = 1; k < g.length; k++) if (Math.abs(g[k]) > Math.abs(g[pk])) pk = k;
-  return g.slice(spu * Math.floor(pk / spu));
+  // (M589) a stretch: the near-end waves of every place along it, averaged (the coupling spread evenly), 24 places
+  const m = to > from ? 24 : 1, sum: number[] = [];
+  let pk = 0;
+  for (let i = 0; i < m; i++) {
+    const a = m > 1 ? from + ((to - from) * (i + 0.5)) / m : from;
+    const r = si.impulseResponse(f, H.map((_, k): si.C => { const g = mag[k] ** (2 * a); return [g * Math.cos(2 * a * ph[k]), g * Math.sin(2 * a * ph[k])]; }), rate, spu, 256);
+    r.h.forEach((v, k) => { sum[k] = (sum[k] ?? 0) + (v * r.dt) / m; });
+    // whole symbols of delay before the nearest place's wave are dropped
+    if (!i) for (let k = 1; k < r.h.length; k++) if (Math.abs(r.h[k]) > Math.abs(r.h[pk])) pk = k;
+  }
+  return sum.slice(spu * Math.floor(pk / spu));
 }
-/** The rows' ways back (only for those partway along). */
+/** The rows' ways back (only for those partway along or over a stretch). */
 const pathsOf = (S: ReturnType<typeof sOf>, xt: si.Eye['xtalk'], rate: number, spu: number) => {
   const H = through(S);
-  return xt.map((x) => (x[3] ? nextPath(S.f, H, x[3], rate, spu) : undefined));
+  return xt.map((x) => (x[3] || x[4] ? nextPath(S.f, H, x[3] ?? 0, x[4] ?? x[3] ?? 0, rate, spu) : undefined));
 };
 /** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) and the aggressors' through the
  * statistical or the time-domain flow; statistical gives pulses for the usual eye, time-domain a received waveform
@@ -251,8 +274,10 @@ function amiEye(S: ReturnType<typeof sOf>, H: si.C[], rate: number, spu: number,
   const plain = si.impulseResponse(S.f, H, rate, spu, 512, ctle ? (x) => si.ctle(x, ...ctle) : undefined), dt = plain.dt, ui = 1 / rate;
   const an = analogChannel(S, rate, spu, plain.h, dt, ctle, tx, rx), h = an.h;
   if (flowName === 'statistical') {
-    const f = ami.flow(h, dt, ui, tx, rx, null, aggressorsOf(h, dt, spu, e, false, an.near)), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
-    const agg = f.aggRx.map((c) => si.pulseFromImpulse(c, dt, spu).p);
+    const gs = aggressorsOf(h, dt, spu, e, false, an.near), f = ami.flow(h, dt, ui, tx, rx, null, gs), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
+    // (M589) a second-order path added to its outer line's own pulse (the same signal)
+    const agg: number[][] = [];
+    f.aggRx.forEach((c, i) => { const p = si.pulseFromImpulse(c, dt, spu).p, of = gs[i]?.of; if (of === undefined) agg.push(p); else { const t = agg[of]; p.forEach((v, j) => { t[j] = (t[j] ?? 0) + v; }); } });
     f.messages.unshift(...an.messages);
     return { pulse, agg, measured: null, main: pulse.p[pulse.cursor], record: record([['Flow', 'statistical'], ['Impulse', row(f.hRx)], ['Aggressors', f.aggRx.length], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
   }
