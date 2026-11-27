@@ -5,6 +5,7 @@ import { autoTime, bodeOf, minreal, stepOf, type Tf } from '@/lib/lab/control';
 import { autoWc, pidReport, tunePid, type Gains, type PidType } from '@/lib/lab/pidtune';
 import { linearize } from '@/lib/sim/linearize';
 import { tuneAll, type AllResult } from '@/lib/sim/tune-all';
+import { systune, type SysResult } from '@/lib/sim/systune';
 import { pade } from '@/lib/lab/pade';
 
 const conv = (a: number[], b: number[]) => { const o = new Array<number>(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => { o[i + j] += x * y; })); return o; };
@@ -19,8 +20,10 @@ export interface ToTune { id: number; plant: Plant; type: PidType; speed: number
 export interface Report { stable: boolean; rise: number; settle: number; overshoot: number; peak: number; Gm: number; Wcg: number; Pm: number; Wcp: number }
 /** M568: every PID block tuned together. */
 export interface ToTuneAll { id: number; all: true; diagram: Diagram; type: PidType; pm: number; N: number; at: number }
+/** M572: every gain chosen at once against goals on the whole closed loop. */
+export interface ToSystune { id: number; sys: true; diagram: Diagram; type: PidType; pm: number; N: number; at: number }
 export interface FromTune {
-  id: number; error?: string; all?: AllResult; plant?: Tf; tuned?: Gains; wc?: number; wc0?: number;
+  id: number; error?: string; all?: AllResult; sys?: SysResult; plant?: Tf; tuned?: Gains; wc?: number; wc0?: number;
   t?: number[]; curves?: Record<'track' | 'disturb' | 'effort', { tuned: number[]; base: number[] }>;
   w?: number[]; bode?: { tuned: { mag: number[]; phase: number[] }; base: { mag: number[]; phase: number[] } };
   tunedRep?: Report; baseRep?: Report;
@@ -39,8 +42,13 @@ function plantOf(p: Plant): Tf {
   return g;
 }
 
-self.onmessage = (e: MessageEvent<ToTune | ToTuneAll>) => {
+self.onmessage = (e: MessageEvent<ToTune | ToTuneAll | ToSystune>) => {
   const q = e.data;
+  if ('sys' in q) {
+    try { postMessage({ id: q.id, sys: systune(q.diagram, { type: q.type, pm: q.pm, N: q.N, at: q.at }) } satisfies FromTune); }
+    catch (err) { postMessage({ id: q.id, error: err instanceof Error ? err.message : String(err), sys: { loops: [], soft: NaN, hard: NaN, stable: false, startSoft: NaN, startHard: NaN, evals: 0, starts: 0, met: false } } satisfies FromTune); }
+    return;
+  }
   if ('all' in q) {
     try { postMessage({ id: q.id, all: tuneAll(q.diagram, { type: q.type, pm: q.pm, N: q.N, at: q.at }) } satisfies FromTune); }
     catch (err) { postMessage({ id: q.id, error: err instanceof Error ? err.message : String(err), all: { loops: [], rounds: 0, settled: false, stable: false, slowestPole: NaN } } satisfies FromTune); }

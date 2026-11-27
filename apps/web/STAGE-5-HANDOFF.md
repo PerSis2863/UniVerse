@@ -15823,3 +15823,24 @@ M565's left-out. Blocks → Code → "Ladder Diagram (IEC 61131-3)" (`src/lib/si
 - Not tried in a real PLC tool here (none in the container): the XML follows the TC6 2.01 schema's element names; if a
   tool complains on import, its message names the element.
 - Left out: function block diagram (FBD) and sequential function chart (SFC) output.
+
+## M572 (27 Nov): Hyperion, tuning every loop at once (structured H∞)
+
+M568's left-out ("MATLAB's more advanced all-at-once tuning method", systune). Blocks → Tune → **Tune all at once
+(H∞)** (`src/lib/sim/systune.ts`, `systune`, run in `tune.worker.ts` as a `ToSystune` message).
+
+- **The plant** once, every loop open (all PID gains 0): `G_ij` = `linearize(open, pid_j, what feeds pid_i)`, negated.
+  Then on 140 frequencies, `S = (I + G·C)⁻¹` (`sensDiag`, complex Gauss–Jordan); `S_ii` is loop i's sensitivity with
+  the others closed.
+- **Goals** (`goals`): soft, tracking `max_i ‖W_i S_ii‖∞` with `W_i = (s/2 + ω_i)/(s + 0.001 ω_i)`, ω_i from M568's
+  crossovers; hard, the disk margin `α_i = 1/‖S_ii − ½‖∞ ≥ 2 tan(PM/2)` and roll-off `‖W_T (1 − S_ii)‖∞ ≤ 1`,
+  `W_T = (s + 5ω_i)/(10ω_i)`. **Trap:** without the roll-off goal the gains run off to 10¹³ (more gain always tracks
+  better on paper; the closed loop then fails its stability check).
+- **Search:** gains in log-space (signs from M568's design), Nelder–Mead restarted three times from where it stops,
+  from M568's design and three spread starts (seeded); score = soft + 100 · (hard − 1)⁺; gains kept within e⁹ of the
+  start; the best whose whole loop is stable (`closedLoopStable` on the diagram) wins, else M568's design stays.
+- Disk margin shown as the phase (±2 atan(α/2)) and gain (±20 log((2+α)/(2−α)) dB) it guarantees together, so its
+  phase reads lower than the classic one for the same loop.
+- Two-loop example (PI, 60°): tracking 1.49 → 0.50, hard 1.27 → 1.00, about 1.5 s. In the time domain y1's overshoot
+  42 % → 25 %, the dip when the other loop steps 28 % → 0.1 %.
+- Left out: multiloop (D-scaled) disk margins, decouplers, goals the person writes (custom weights, step targets).
