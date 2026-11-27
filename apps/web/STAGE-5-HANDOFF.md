@@ -15802,3 +15802,24 @@ inner states are regions that are all active at once.
   from its own entry, the outer transition leaving both, refusals, the emulated code following the simulation.
 - Left out: history junctions, events broadcast between regions (regions talk through variables), inner transitions
   that don't leave the outer state.
+
+## M571 (27 Nov): Hyperion, Ladder Diagram from block diagrams
+
+M565's left-out. Blocks → Code → "Ladder Diagram (IEC 61131-3)" (`src/lib/sim/ladder.ts`, `genLadder`).
+
+- **Lowering** (`lowerLadder`): the same `steps` as every language (now exported from `blockcode.ts` with `roles`,
+  `initLines`, `cNum`, `Stmt`), one box per operation into temporaries (`t1…` LREAL, `b1…` BOOL, `i1…` DINT); a
+  comparison is a box writing a BOOL, then a contact on it; && is contacts in series, || parallel branches, ! a normally
+  closed contact (De Morgan pushes it down to the contacts). An if / case becomes guard coils `g1…`, every arm's guard
+  worked out before any arm's actions (an earlier arm's actions must not change what a later arm reads), and each
+  action's box has its guard's contact on EN. floor and fmod are TRUNC → DINT_TO_LREAL boxes; delays index the ring
+  (`buf[buf_k]`) with the array set in its declaration (PLCopen `repetitionValue`); the first call's set-up hangs off
+  `[/started] → (first)`.
+- **Files:** `model_ladder.txt` (rungs drawn in text: `--[ x ]--`, `--[/x ]--`, branches between `+`, `( coil )`,
+  `[ y := OP(a, b) ]`) and `model.xml` (PLCopen TC6 XML 2.01, a function block with an LD body: power rails, contacts,
+  coils, blocks with EN/ENO, in- and out-variables; positions laid out simply).
+- **Tests** (`ladder.test.ts`): `runLadder` steps the rungs and matches `emulate` to 1e-9 on seven diagrams (charts,
+  states inside and side by side, coupled loops, a delay); the XML is well formed, every connection names an element.
+- Not tried in a real PLC tool here (none in the container): the XML follows the TC6 2.01 schema's element names; if a
+  tool complains on import, its message names the element.
+- Left out: function block diagram (FBD) and sequential function chart (SFC) output.

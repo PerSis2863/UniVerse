@@ -1,5 +1,6 @@
 import type { Diagram } from './blocks';
 import { buildIr, chartAssigns, chartExpr, type E, type Ir } from './blockir';
+import { genLadder } from './ladder';
 
 // Hyperion Simulate → Blocks → Code (M565, the owner's picture: "automatically generating optimized C, C++,
 // IEC 61131-3 Structured Text, … Verilog, or VHDL code directly from … Simulink"). Every language prints the same
@@ -9,15 +10,15 @@ import { buildIr, chartAssigns, chartExpr, type E, type Ir } from './blockir';
 // a signal have no meaning and are refused by name. Each comes with a small program (C, C++) or test bench (Verilog,
 // VHDL) that runs it and prints the outputs; tests compile and run those and hold them against `emulate`.
 
-export type Lang = 'c' | 'cpp' | 'st' | 'verilog' | 'vhdl';
-export const LANGS: { id: Lang; name: string }[] = [{ id: 'c', name: 'C' }, { id: 'cpp', name: 'C++' }, { id: 'st', name: 'Structured Text (IEC 61131-3)' }, { id: 'verilog', name: 'Verilog' }, { id: 'vhdl', name: 'VHDL' }];
+export type Lang = 'c' | 'cpp' | 'st' | 'ld' | 'verilog' | 'vhdl';
+export const LANGS: { id: Lang; name: string }[] = [{ id: 'c', name: 'C' }, { id: 'cpp', name: 'C++' }, { id: 'st', name: 'Structured Text (IEC 61131-3)' }, { id: 'ld', name: 'Ladder Diagram (IEC 61131-3)' }, { id: 'verilog', name: 'Verilog' }, { id: 'vhdl', name: 'VHDL' }];
 export interface CodeFile { name: string; text: string }
 
-type Stmt = { k: 'set'; name: string; e: E } | { k: 'read'; name: string; buf: string } | { k: 'write'; buf: string; n: number; e: E } | { k: 'if'; arms: { c: E; body: Stmt[] }[]; other: Stmt[] } | { k: 'case'; name: string; arms: { v: number; body: Stmt[] }[] };
+export type Stmt = { k: 'set'; name: string; e: E } | { k: 'read'; name: string; buf: string } | { k: 'write'; buf: string; n: number; e: E } | { k: 'if'; arms: { c: E; body: Stmt[] }[]; other: Stmt[] } | { k: 'case'; name: string; arms: { v: number; body: Stmt[] }[] };
 const V = (name: string): E => ({ k: 'var', name }), N = (v: number): E => ({ k: 'num', v });
 
 /** The step as statements, the same for every language. */
-function steps(ir: Ir): Stmt[] {
+export function steps(ir: Ir): Stmt[] {
   const out: Stmt[] = [];
   for (const s of ir.signals) out.push(s.read ? { k: 'read', name: s.name, buf: s.read } : { k: 'set', name: s.name, e: s.e });
   for (const o of ir.outputs) out.push({ k: 'set', name: o.name, e: o.e });
@@ -46,7 +47,7 @@ function steps(ir: Ir): Stmt[] {
 }
 
 /** What each name is: an input, an output, kept from step to step, or worked out each step. */
-function roles(ir: Ir) {
+export function roles(ir: Ir) {
   const r = new Map<string, 'in' | 'out' | 'keep' | 'local' | 'int' | 'buf'>();
   for (const i of ir.inputs) r.set(i.name, 'in');
   for (const o of ir.outputs) r.set(o.name, 'out');
@@ -81,7 +82,7 @@ function printStmts(list: Stmt[], ind: string, p: { set: (name: string, e: E) =>
 
 // ——— C and C++ (doubles) ———
 
-const cNum = (v: number) => { const s = String(v); return /[.eE]/.test(s) || !Number.isFinite(v) ? (Number.isFinite(v) ? s : v > 0 ? 'HUGE_VAL' : '-HUGE_VAL') : `${s}.0`; };
+export const cNum = (v: number) => { const s = String(v); return /[.eE]/.test(s) || !Number.isFinite(v) ? (Number.isFinite(v) ? s : v > 0 ? 'HUGE_VAL' : '-HUGE_VAL') : `${s}.0`; };
 function cExpr(e: E, ref: (n: string) => string): string {
   const r = (x: E) => cExpr(x, ref);
   switch (e.k) {
@@ -205,7 +206,7 @@ int main(int argc, char **argv) {
 }
 
 /** What every kept name starts at: states, the charts' first entry actions. */
-function initLines(ir: Ir): [string, E][] {
+export function initLines(ir: Ir): [string, E][] {
   const out: [string, E][] = [['t', N(0)], ...ir.delays.map((d): [string, E] => [`${d.buf}_k`, N(0)])];
   for (const s of ir.states) out.push([s.name, N(s.init)]);
   for (const c of ir.charts) {
@@ -494,6 +495,7 @@ export function generateCode(dg: Diagram, lang: Lang, model = 'model'): CodeFile
   if (lang === 'c') return genC(ir, model);
   if (lang === 'cpp') return genCpp(ir, model);
   if (lang === 'st') return genSt(ir, model);
+  if (lang === 'ld') return genLadder(ir, model);
   if (lang === 'verilog') return genVerilog(ir, model);
   return genVhdl(ir, model);
 }
