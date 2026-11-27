@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { FEATURES, healthScript } from '@/lib/lab/health-meta';
 import type { LifeTest, Rank } from '@/lib/lab/health';
 import { shareFragment } from '@/lib/lab/share';
+import { watchWorker } from '@/lib/error-monitor';
 import { NumField, ui } from '@/components/sim/bench-ui';
 import type { FromHealth, Source, ToHealth } from './health.worker';
 
@@ -80,6 +81,7 @@ export function HealthApp() {
         else if (m.job === want.current.life) { setLifeError(m.error); setLife(null); }
       }
     };
+    watchWorker(w, 'machine health', (msg) => { setError(msg); setBusy(false); });
     worker.current = w;
     return () => w.terminate();
   }, []);

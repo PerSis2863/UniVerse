@@ -15954,3 +15954,21 @@ diagram part covering only the run).
   under a chart can still widen; the linear bound then applies), saturations and products inside the chart's loop are
   taken at their ranges (not followed step by step), delays are still cuts (their start value or anything their input
   had), and several charts in one loop are each proved with the others' outputs as ranges.
+
+## M576 (27 Nov): fix, Machine health stuck on "computing…"
+
+The owner's screenshot: Hyperion → Learn → Machine health with the Recording and Feature lists empty and "computing…"
+forever (Signal, Spectrum, Envelope spectrum never drawn).
+
+- Not the maths: the same code draws all three in under 2 s in `local:dev` and in a production build (`local:serve`).
+  The page waited for its background worker (`health.worker.ts`) with no `error` handler, so a worker that never
+  started (its script gone: a tab left open across a deploy, PR #163 had just gone live) left it waiting for ever.
+  Cloudflare's `_headers` already give `/_next/static/*` the isolation header the workers need (M521), so not that.
+- `watchWorker(w, name, failed)` in `src/lib/error-monitor.ts`: a bare `error` (no message: the script didn't load)
+  goes through `captureError` as a `ChunkLoadError`, so the page reloads once to the new version like any old chunk
+  (then the site's Reload screen); a crash with a message is reported as a runtime error; either way `failed(message)`.
+  Used by Learn's three tabs: Machine health (shows the error, stops "computing…"), Classify (`useLatestWorker` ends
+  the job) and Sciences. Test `error-monitor.test.ts`; checked in a browser with the worker's file blocked (one reload,
+  then the Reload screen).
+- Other Hyperion pages still create workers without it (20 more `new Worker(new URL(…))`, listed by
+  `grep -rn "new Worker(new URL" src`): add `watchWorker` where a page shows a busy state while it waits.
