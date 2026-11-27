@@ -6,6 +6,8 @@ import { mat, num, str, toMat, type Mat, type Struct, type Value } from './value
 import * as M from './mixsig';
 import { CodegenError, generate, type Cls, type Ty } from './codegen';
 import { askPage, waits } from './wait';
+import { parseRaw as rawPlots } from './spice-raw';
+import { BUFFER0, corner, ibisFile, ivTables, ramp, transient, type BufferSpec } from './ibis';
 
 // Hyperion's mixed-signal design in the language (M568): plldesign, pllsim, pllnoise (a charge-pump PLL from its
 // specification to lock and jitter), adcarch and dacarch (converter architectures with their mismatch; adcmetrics and
@@ -243,10 +245,49 @@ endmodule
   return [];
 });
 
+// ——— IBIS buffers (M570) ———
+const BUFFER_OPTS = ['vdd', 'wn', 'wp', 'l', 'kpn', 'kpp', 'vt', 'lambda', 'ccomp', 'rise', 'rload'];
+/** The buffer from 'Vdd', 'Wn', 'Wp', 'L', 'KPn', 'KPp', 'Vt', 'Lambda', 'Ccomp', 'Rise' and 'Rload' (BUFFER0's otherwise). */
+function bufferOf(o: ReturnType<typeof opts>): BufferSpec {
+  const b = BUFFER0, l = o.n('l') ?? b.n.l, vt = o.n('vt') ?? b.n.vto, lam = o.n('lambda') ?? b.n.lambda;
+  const s: BufferSpec = { ...b, vdd: o.n('vdd') ?? b.vdd, ccomp: o.n('ccomp') ?? b.ccomp, tin: o.n('rise') ?? b.tin, rload: o.n('rload') ?? b.rload,
+    n: { ...b.n, w: o.n('wn') ?? b.n.w, l, kp: o.n('kpn') ?? b.n.kp, vto: vt, lambda: lam }, p: { ...b.p, w: o.n('wp') ?? b.p.w, l, kp: o.n('kpp') ?? b.p.kp, vto: vt, lambda: lam } };
+  const pos = [s.vdd, s.ccomp, s.tin, s.rload, s.n.w, s.n.l, s.n.kp, s.p.w, s.p.kp];
+  if (!pos.every((x) => Number.isFinite(x) && x > 0)) throw new LabError('The buffer’s supply, sizes, KP, capacitance, input rise and load must be positive.');
+  if (!(s.n.vto > 0 && s.n.vto < s.vdd) || !(lam >= 0 && lam < 1)) throw new LabError('The buffer’s threshold is between 0 and the supply, its lambda 0 to 1.');
+  if (s.vdd > 5 || s.tin > 1e-8 || s.ccomp > 1e-10) throw new LabError('The buffer: a supply up to 5 V, an input rise up to 10 ns, a pad capacitance up to 100 pF.');
+  return s;
+}
+def('ibisbuffer', (a, nout, lab) => {
+  const name = a[0] ? textOf(a[0]) : '';
+  if (!/^[A-Za-z]\w*$/.test(name)) throw new LabError("ibisbuffer('name', 'Vdd', 1.8, 'Wn', 40e-6, 'Wp', 80e-6, 'L', 0.18e-6, 'KPn', 200e-6, 'KPp', 80e-6, 'Vt', 0.45, 'Ccomp', 1.5e-12, 'Rise', 100e-12): an IBIS model of a CMOS output buffer.");
+  const o = opts(a, 1, [...BUFFER_OPTS, 'ami'], 'ibisbuffer'), s = bufferOf(o);
+  const ibs = ibisFile(name, s, { ami: o.t('ami') });
+  const fs = files(lab);
+  if (fs) fs.putText(`${name.toLowerCase()}.ibs`, ibs);
+  const iv = ivTables(s, 'typ'), rp = ramp(s, 'typ');
+  if (nout > 0) {
+    const t2 = (r: readonly (readonly [number, number])[]) => mat(r.length, 2, [...r.map((x) => x[0]), ...r.map((x) => x[1])]);
+    return [struct([['IBIS', str(ibs)], ['Pulldown', t2(iv.pulldown)], ['Pullup', t2(iv.pullup)], ['GNDClamp', t2(iv.gndClamp)], ['POWERClamp', t2(iv.powerClamp)], ['RiseTime', num(rp.rise.dt)], ['FallTime', num(rp.fall.dt)], ['RiseSlope', num(rp.rise.dv / rp.rise.dt)], ['FallSlope', num(rp.fall.dv / rp.fall.dt)]])];
+  }
+  const C = ['typ', 'min', 'max'] as const;
+  call(lab, 'subplot', num(1), num(2), num(1)); call(lab, 'hold', str('on'));
+  for (const c of C) { const t = ivTables(s, c); call(lab, 'plot', row(t.pulldown.map((r) => r[0])), row(t.pulldown.map((r) => r[1] * 1e3))); }
+  for (const c of C) { const t = ivTables(s, c); call(lab, 'plot', row(t.pullup.map((r) => s.vdd - r[0])), row(t.pullup.map((r) => r[1] * 1e3)), str('--')); }
+  call(lab, 'hold', str('off')); call(lab, 'xlabel', str('Pin voltage (V)')); call(lab, 'ylabel', str('Current into the pin (mA)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str('Pulldown (solid) and pullup (dashed): typical, slow, fast'));
+  call(lab, 'subplot', num(1), num(2), num(2)); call(lab, 'hold', str('on'));
+  for (const c of C) for (const rising of [true, false]) { const w = transient(s, c, rising, rising ? 0 : corner(s, c).vdd, { n: 600 }); call(lab, 'plot', row(w.t.map((t) => t * 1e9)), row(w.v)); }
+  call(lab, 'hold', str('off')); call(lab, 'xlabel', str('Time (ns)')); call(lab, 'ylabel', str('Pin (V) into 50 Ω'));
+  call(lab, 'title', str(`Rise ${(rp.rise.dt * 1e12).toFixed(0)} ps, fall ${(rp.fall.dt * 1e12).toFixed(0)} ps (20–80%, typical)`)); call(lab, 'grid', str('on'));
+  lab.host.out(`Wrote ${name.toLowerCase()}.ibs${fs ? ' to Hyperion’s files' : ''} (IBIS 7.1, typical, slow and fast corners).\n`);
+  return [];
+});
+
 def('amigen', (a, nout, lab) => {
   const name = a[0] ? textOf(a[0]) : '', side = a[1] ? textOf(a[1]).toLowerCase() : '';
   if (!/^[A-Za-z]\w*$/.test(name) || !['tx', 'rx'].includes(side)) throw new LabError("amigen('name', 'Tx', 'FFE', [-0.1 0.8 -0.1], 'Rate', 25e9) or amigen('name', 'Rx', 'CTLE', 8, 'DFE', 3, 'Rate', 25e9): an IBIS-AMI equaliser model.");
-  const o = opts(a, 2, ['ffe', 'ctle', 'ctlefrequency', 'dfe', 'rate'], 'amigen');
+  const o = opts(a, 2, ['ffe', 'ctle', 'ctlefrequency', 'dfe', 'rate', ...BUFFER_OPTS], 'amigen');
   const rate = o.n('rate') ?? 10e9, ffe = o.v('ffe') ?? [0, 1, 0], ctle = o.n('ctle') ?? 0, dfe = Math.round(o.n('dfe') ?? 0), fp = o.n('ctlefrequency') ?? rate / 2;
   if (!(rate > 0) || !(ctle >= 0 && ctle <= 30) || !(dfe >= 0 && dfe <= 16) || ffe.length > 16) throw new LabError('amigen: a positive rate, CTLE peaking 0 to 30 dB, up to 16 DFE taps and 16 FFE taps.');
   const tx = side === 'tx';
@@ -273,29 +314,8 @@ ${ffe.map((c, i) => `    (tap${i} (Usage In) (Type Float) (Format Range ${c} -1 
     (ctle_peak_hz (Usage In) (Type Float) (Format Value ${fp}) (Default ${fp}))
     (dfe_taps (Usage In) (Type Integer) (Format Range ${dfe} 0 16) (Default ${dfe}))))
 `;
-  const ibs = `[IBIS Ver]   7.1
-[File Name]  ${name.toLowerCase()}.ibs
-[File Rev]   1.0
-[Source]     Hyperion amigen
-[Component]  ${name}
-[Manufacturer] Hyperion
-[Package]
-| variable   typ   min   max
-R_pkg        0.1   0.05  0.2
-L_pkg        0.5nH 0.3nH 0.8nH
-C_pkg        0.3pF 0.2pF 0.4pF
-[Pin] signal_name model_name
-1     ${tx ? 'txp' : 'rxp'}  ${name}_buf
-[Model] ${name}_buf
-Model_type ${tx ? 'Output' : 'Input'}
-C_comp 0.5pF 0.4pF 0.6pF
-[Algorithmic Model]
-Executable Windows_VisualStudio_64 ${name}_win64.dll ${name}.ami
-Executable Linux_gcc_64 ${name}_linux64.so ${name}.ami
-[End Algorithmic Model]
-| The buffer's I-V and V-t tables come from the transistor-level design: add [Pulldown], [Pullup], [Ramp] here.
-[End]
-`;
+  // M570: a complete IBIS model: the buffer's own I-V and V-t tables at three corners (ibis.ts), pointing at this .ami
+  const ibs = ibisFile(name, bufferOf(o), { ami: `${name}.ami`, tx });
   const c = `/* ${name}_ami.c: an IBIS-AMI ${tx ? 'transmitter FFE' : 'receiver CTLE and DFE'} (made by Hyperion's amigen).
    Build: gcc -shared -fPIC -O2 -o ${name}_linux64.so ${name}_ami.c -lm (Windows: cl /LD). Parameters arrive as the
    .ami file's tree; this model reads its own defaults (${tx ? 'the taps' : 'the CTLE and DFE'}) and keeps them simple. */
@@ -420,49 +440,9 @@ def('cosim', (a, nout, lab) => {
   lab.host.out(`${out}${out.endsWith('\n') ? '' : '\n'}${passed ? '✓' : '✗'} ${id0}${r.error ? `: ${r.error}` : ''} (${((r.ms ?? 0) / 1000).toFixed(1)} s)\n`);
   return [];
 });
-/** A SPICE raw file (ngspice, Xyce, Spectre's nutascii; text or binary) as its plots: variables, real or complex. */
-export function parseRaw(bytes: Uint8Array) {
-  const plots: { name: string; vars: string[]; complex: boolean; data: { re: number[]; im?: number[] }[] }[] = [];
-  let at = 0;
-  const line = () => { const e = bytes.indexOf(10, at); const s = dec.decode(bytes.subarray(at, e < 0 ? bytes.length : e)).replace(/\r$/, ''); at = e < 0 ? bytes.length : e + 1; return s; };
-  while (at < bytes.length) {
-    let name = '', flags = '', nv = 0, np = 0; const vars: string[] = [];
-    let mode: 'binary' | 'values' | '' = '';
-    while (at < bytes.length) {
-      const l = line(), m = /^([A-Za-z. ]+):\s*(.*)$/.exec(l);
-      if (!m) continue;
-      const k = m[1].trim().toLowerCase();
-      if (k === 'plotname') name = m[2].trim();
-      else if (k === 'flags') flags = m[2].toLowerCase();
-      else if (k === 'no. variables') nv = +m[2];
-      else if (k === 'no. points') np = +m[2];
-      else if (k === 'variables') { const first = m[2].trim(); const rows = first ? [first] : []; while (rows.length < nv) rows.push(line()); for (const r of rows) vars.push(r.trim().split(/\s+/)[1] ?? `v${vars.length}`); }
-      else if (k === 'binary') { mode = 'binary'; break; }
-      else if (k === 'values') { mode = 'values'; break; }
-    }
-    if (!mode) break;
-    if (!(nv > 0 && np >= 0 && nv <= 10_000 && np <= 50_000_000)) throw new LabError('rawread: this isn’t a SPICE raw file Hyperion understands.');
-    const complex = flags.includes('complex'), data = vars.map(() => ({ re: new Array<number>(np), ...(complex ? { im: new Array<number>(np) } : {}) }));
-    if (mode === 'binary') {
-      const w = complex ? 16 : 8, need = np * nv * w;
-      if (at + need > bytes.length) throw new LabError('rawread: the file ends early.');
-      const dv = new DataView(bytes.buffer, bytes.byteOffset + at, need);
-      for (let p = 0; p < np; p++) for (let v = 0; v < nv; v++) { const o2 = (p * nv + v) * w; data[v].re[p] = dv.getFloat64(o2, true); if (complex) data[v].im![p] = dv.getFloat64(o2 + 8, true); }
-      at += need;
-    } else {
-      // "point\tvalue" then a value a line; complex values as re,im
-      const nums: string[] = [];
-      while (nums.length < np * nv && at < bytes.length) { const t = line().trim(); if (!t) continue; const parts = t.split(/\s+/); nums.push(parts.length > 1 && nums.length % nv === 0 ? parts[1] : parts[parts.length - 1]); }
-      nums.forEach((t, i) => { const p = Math.floor(i / nv), v = i % nv, [re, im] = t.split(','); data[v].re[p] = +re; if (complex) data[v].im![p] = +(im ?? 0); });
-    }
-    plots.push({ name, vars, complex, data });
-  }
-  if (!plots.length) throw new LabError('rawread: no plots in this raw file.');
-  return plots;
-}
 const fieldName = (v: string, used: Set<string>) => { let n = v.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'v'; if (!/^[A-Za-z]/.test(n)) n = `v_${n}`; let k = n, i = 2; while (used.has(k)) k = `${n}_${i++}`; used.add(k); return k; };
 function rawStruct(bytes: Uint8Array, which = 0): Struct {
-  const plots = parseRaw(bytes), p = plots[Math.min(plots.length - 1, Math.max(0, which))], used = new Set<string>();
+  const plots = wrap(() => rawPlots(bytes)), p = plots[Math.min(plots.length - 1, Math.max(0, which))], used = new Set<string>();
   const f: [string, Value][] = [['Plot', str(p.name)]];
   p.vars.forEach((v, i) => { const m = mat(p.data[i].re.length, 1, p.data[i].re); if (p.complex && p.data[i].im!.some((x) => x !== 0)) m.im = Float64Array.from(p.data[i].im!); f.push([fieldName(v, used), m]); });
   return struct(f);

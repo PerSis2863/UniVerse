@@ -15773,3 +15773,23 @@ base of the fourth).
   installed; cosim's files and answers with a stand-in app), the codegen tests with the new header.
 - **[owner]:** after merging, publish the computer app again (GitHub → Actions → "Hyperion desktop" → Run workflow, with
   "publish" ticked) so it has the simulators; in a browser cosim says it needs the app.
+
+
+## M570 (27 Nov): mixed-signal left-outs 2: IBIS buffer I-V and V-t tables
+
+The second of M568's left-outs. **`src/lib/lab/ibis.ts`**: a CMOS push-pull output stage from its transistors (SPICE
+level-1 MOSFETs: KP, VTO, LAMBDA, W, L; symmetric when drain and source swap), ESD clamp diodes, the pad's capacitance,
+at three corners (`corner`: slow = 20% weaker, thresholds +10%, supply −10%, 100 °C; fast the opposite, 0 °C) into IBIS
+7.1's tables: [Pulldown] and [Pullup] (the driver alone, clamps out; Pullup against Vdd − Vpin), [GND Clamp] and [POWER
+Clamp], [Ramp] (20–80% into R_load, to ground rising and the supply falling), two [Rising Waveform] and two [Falling
+Waveform] (50 Ω to ground and to the supply), with [Temperature Range], [Voltage Range], C_comp, Vinl/Vinh and the
+package. `ibisFile(name, spec, { ami })` writes it; the edges are an RK4 run of C·dV/dt = −I_pin − (V − V_fix)/R from the
+DC point. In the language: **`ibisbuffer`** (name.ibs, the tables as outputs, drawn without), and **amigen**'s .ibs is
+now the complete model pointing at its .ami (`bufferOf` reads the same options).
+- **Checked against ngspice** (installed in the container; `ibis.test.ts`, skipped where it isn't): the pulldown and
+  pullup equal ngspice's level-1 currents to 0.1 µA from −1.35 to 3.15 V (beyond that ngspice adds the transistors' own
+  body diodes, which IBIS keeps in the clamp tables); the rising edge into 50 Ω crosses 20, 50 and 80% within 10 ps of
+  ngspice's transient. The ngspice results come through `spice-raw.ts` (M569's raw reader, moved to a plain module so
+  tools can load it).
+- Not done: the official IBIS syntax checker (ibischk) couldn't be fetched here (ibis.org is blocked), and installing
+  PyBERT's parser wasn't allowed; the tests check every section is present and the corners ordered.

@@ -288,7 +288,7 @@ function VerifyPane() {
       </div>
       <div className={card}>
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">IBIS-AMI models</h3>
-        <p className="mt-1 text-[13px] text-zinc-600 dark:text-zinc-300">The equalisers from SerDes links as IBIS-AMI models for channel simulation: the .ami parameter file, the .ibs file that points at it, and the C of the model’s library (build it with gcc or Visual Studio).</p>
+        <p className="mt-1 text-[13px] text-zinc-600 dark:text-zinc-300">The equalisers from SerDes links as IBIS-AMI models for channel simulation: the .ami parameter file, the .ibs file that points at it with the output buffer’s own I-V and switching tables at typical, slow and fast corners (ibisbuffer), and the C of the model’s library (build it with gcc or Visual Studio).</p>
         <p className="mt-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">name.ami · name.ibs · name_ami.c</p>
         <button type="button" className={cn(ui.small, 'mt-3 border border-zinc-200 dark:border-white/15')} onClick={() => void open('ami_demo.m', AMI_DEMO)}><Code2 className="h-3.5 w-3.5" aria-hidden />Try it in Code</button>
       </div>
