@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Ban, Droplet, Droplets, ImagePlus, Loader2, X } from 'lucide-react';
 import { SCENES, type Background } from '@/lib/call-background';
-import { spring } from '@/lib/motion';
+import { spring, fadeIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Choosing a call background (src/lib/call-background.ts): none, blur, strong blur, a scene or your
@@ -31,9 +31,9 @@ export function BackgroundSheet({ open, onClose, value, onPick, busy, custom, on
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="bg-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30" aria-hidden />
+          <motion.div key="bg-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30" aria-hidden />
           <div key="bg" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-            <motion.div role="dialog" aria-label="Background" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
+            <motion.div role="dialog" aria-label="Background" {...barPop}
               className="pointer-events-auto w-full max-w-md rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -59,7 +59,7 @@ export function BackgroundSheet({ open, onClose, value, onPick, busy, custom, on
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
                 <AnimatePresence>
                   {busy && (
-                    <motion.div key="busy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 rounded-xl bg-[#151517]/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-sm text-center px-6">
+                    <motion.div key="busy" {...fadeIn} className="absolute inset-0 rounded-xl bg-[#151517]/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-sm text-center px-6">
                       <Loader2 className="w-6 h-6 animate-spin text-fuchsia-300" />
                       Getting backgrounds ready… (the first time takes a moment)
                     </motion.div>

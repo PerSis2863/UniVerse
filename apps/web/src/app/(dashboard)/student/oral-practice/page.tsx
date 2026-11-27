@@ -16,7 +16,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { LANGUAGES } from '@/lib/languages';
-import { fadeUp, sheetIn } from '@/lib/motion';
+import { fadeUp, sheetIn, fadeIn } from '@/lib/motion';
 import { ORAL_KINDS, type OralKind } from '@/lib/oral';
 import { cn } from '@/lib/utils';
 import { AiReceiptChoice, AiReceiptView, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
@@ -168,7 +168,7 @@ function ResultSheet({ id, onClose, onDeleted }: { id: string; onClose: () => vo
     finally { setBusy(false); }
   };
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <motion.div {...fadeIn} className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div role="dialog" aria-modal="true" aria-labelledby="oral-sheet-title" {...sheetIn()} className="bg-white dark:bg-zinc-900 w-full sm:max-w-xl max-h-[90vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl">
         <div className="flex items-center justify-between gap-3 p-4 border-b border-zinc-200 dark:border-zinc-800">
           <h2 id="oral-sheet-title" className="font-semibold text-zinc-900 dark:text-white">Your oral</h2>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { popIn } from '@/lib/motion';
+import { popIn, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import {  Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -179,7 +179,7 @@ export default function NGOMarketplacePage() {
 
       <AnimatePresence>
         {selected && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div {...fadeIn}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={e => e.target === e.currentTarget && setSelected(null)}>
             <motion.div {...popIn}

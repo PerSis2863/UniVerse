@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Clapperboard, Link2, ListVideo, Loader2, Lock, LockOpen, MessageSquareText, Pause, Play, Send, Square, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
-import { spring } from '@/lib/motion';
+import { spring, fadeIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { FilePlayer, YouTubePlayer, youTubeEmbed, youTubeId, youTubeThumb, type Player, type WatchSrc } from '@/lib/youtube-player';
 
@@ -339,9 +339,9 @@ export function WatchPicker({ open, callId, onClose, onStart }: { open: boolean;
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="watch-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
+          <motion.div key="watch-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
           <div key="watch-pick" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-            <motion.div role="dialog" aria-label="Watch together" initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.97 }} transition={spring.smooth} className={sheet}>
+            <motion.div role="dialog" aria-label="Watch together" {...barPop} className={sheet}>
               <div className="flex items-center justify-between">
                 <p className="font-semibold inline-flex items-center gap-2"><ListVideo className="w-4 h-4 text-fuchsia-300" />Watch together</p>
                 <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>

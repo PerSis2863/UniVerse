@@ -46,7 +46,7 @@ import { InterpretersSheet } from './CallInterpreters';
 import { combine, grade, readStats, type Reading, type Snapshot } from '@/lib/call-quality';
 import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
-import { spring } from '@/lib/motion';
+import { spring, fadeIn, riseIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useSpatialAudio } from './use-spatial-audio';
 
@@ -2800,9 +2800,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       <AnimatePresence>
         {moreOpen && phase === 'live' && (
           <>
-            <motion.div key="more-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMoreOpen(false)} className="absolute inset-0 z-30" aria-hidden />
+            <motion.div key="more-scrim" {...fadeIn} onClick={() => setMoreOpen(false)} className="absolute inset-0 z-30" aria-hidden />
             <div key="more" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-              <motion.div role="dialog" aria-label="More call options" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
+              <motion.div role="dialog" aria-label="More call options" {...barPop}
                 className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2 grid grid-cols-3 gap-1">
                 {moreItems.map((it, i) => (
                   <motion.div key={it.key} className={cn(it.phoneOnly && 'sm:hidden')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.02 }}>
@@ -2872,7 +2872,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>
         {settingsOpen && (
-          <motion.div key="settings" initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.98 }} transition={spring.smooth}
+          <motion.div key="settings" {...barPop}
             role="dialog" aria-label="Call settings"
             className="absolute inset-x-3 sm:inset-x-auto sm:end-6 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:w-96 max-h-[60vh] overflow-y-auto rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4">
             <div className="flex items-center justify-between">
@@ -2934,7 +2934,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       {/* Voicemail: nobody answered, leave a voice message instead. */}
       <AnimatePresence>
         {voicemail && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={spring.smooth} className="absolute inset-x-0 bottom-0 p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] bg-[#151517]/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center gap-3 text-center">
+          <motion.div {...riseIn} className="absolute inset-x-0 bottom-0 p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] bg-[#151517]/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center gap-3 text-center">
             <p className="font-semibold">{voicemail === 'recording' ? 'Recording your voice message…' : voicemail === 'sending' ? 'Sending…' : `${info?.title ?? 'They'} didn’t answer`}</p>
             {voicemail === 'offer' && <p className="text-sm text-zinc-400">Leave a voice message? They’ll get it in the chat with a transcript.</p>}
             <div className="flex gap-3">

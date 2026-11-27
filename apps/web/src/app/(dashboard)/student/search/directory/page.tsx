@@ -6,7 +6,7 @@ import { Search, Mail, Filter, Building2, X, User, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { popIn } from '@/lib/motion';
+import { popIn, fadeIn } from '@/lib/motion';
 import useSWR from 'swr';
 import { LoadError } from '@/components/ui/LoadError';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -115,7 +115,7 @@ export default function StudentDirectory() {
         {activeModal === 'filter' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              {...fadeIn}
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setActiveModal(null)}
             />

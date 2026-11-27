@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
+import { fadeIn } from '@/lib/motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Factory, Globe2, Loader2, Lock, Maximize2, Megaphone, Minimize2, Minus, Pause, Play, Plus, Radio, Sparkles, Target, Wand2, X } from 'lucide-react';
@@ -615,7 +616,7 @@ export function MarketMap() {
             {/* PRO teaser */}
             <AnimatePresence>
               {locked && market?.locked && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 grid place-items-center p-4 bg-[#111113]/40 backdrop-blur-[2px]">
+                <motion.div {...fadeIn} className="absolute inset-0 grid place-items-center p-4 bg-[#111113]/40 backdrop-blur-[2px]">
                   <motion.div initial={{ y: 16, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.98 }} transition={{ type: 'spring', stiffness: 360, damping: 30 }} className="relative max-w-md rounded-3xl trace-hero text-white p-7 shadow-2xl">
                     <button type="button" onClick={() => setLocked(false)} aria-label="Close" className="absolute right-3 top-3 w-8 h-8 grid place-items-center rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
                     <span className="passport-pill">PRO</span>

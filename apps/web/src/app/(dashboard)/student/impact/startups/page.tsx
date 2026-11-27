@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { popIn, sheetIn } from '@/lib/motion';
+import { popIn, sheetIn, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Rocket, Users,   Sparkles,  CheckCircle2, X, Send,  Lightbulb, Building2,  ArrowUpRight, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -194,7 +194,7 @@ export default function StartupIncubatorPage() {
       {/* Startup Detail Modal */}
       <AnimatePresence>
         {selected && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div {...fadeIn}
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
             onClick={e => e.target === e.currentTarget && setSelected(null)}>
             <motion.div {...sheetIn()}
@@ -242,7 +242,7 @@ export default function StartupIncubatorPage() {
       {/* Pitch Modal */}
       <AnimatePresence>
         {pitching && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div {...fadeIn}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={e => e.target === e.currentTarget && setPitching(false)}>
             <motion.div {...popIn}

@@ -4,7 +4,7 @@ import { currentAppNow } from '@/lib/current-app';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
-import { sheetIn } from '@/lib/motion';
+import { sheetIn, fadeIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { Check, Loader2, Megaphone, Search, Users, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
@@ -83,7 +83,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
     setSelected((cur) => (cur.some((s) => s.id === p.id) ? cur.filter((s) => s.id !== p.id) : [...cur, p]));
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <motion.div {...fadeIn} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div {...sheetIn()}
         className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="p-5 pb-3 flex items-center justify-between">

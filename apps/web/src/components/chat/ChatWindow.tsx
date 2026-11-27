@@ -9,6 +9,7 @@ import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { sideIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { ArrowDown, Bookmark, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock, Check, Copy, CornerUpRight, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1228,7 +1229,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
 
   return (
     <motion.aside
-      initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}
+      {...sideIn()}
       className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-s border-[var(--separator)] bg-[var(--card-bg)] overflow-y-auto"
     >
       <div className="flex items-center justify-between px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06]">

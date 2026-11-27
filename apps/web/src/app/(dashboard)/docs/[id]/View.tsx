@@ -25,7 +25,7 @@ import { FindBar, PageSetupSheet, WordCount, usePageSetup } from '@/components/d
 import { fillContents, headingsOf } from '@/components/docs/word-ext';
 import { pageCss, type PageSetup } from '@/lib/page-setup';
 import type * as Y from 'yjs';
-import { spring } from '@/lib/motion';
+import { spring, sideIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { templateById } from '@/lib/doc-templates';
 import { downloadDocx, downloadMarkdown, importFile } from '@/components/docs/doc-files';
@@ -172,13 +172,13 @@ function DocPage({ id }: { id: string }) {
         </div>
         <AnimatePresence>
           {panel === 'comments' && (
-            <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
+            <motion.aside key="comments" {...sideIn()}
               className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#1d1d20] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <Comments docId={id} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(null)} pick={() => pickText(editor)} go={(q) => goToQuote(editor, q)} />
             </motion.aside>
           )}
           {panel === 'suggestions' && (
-            <motion.aside key="suggestions" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
+            <motion.aside key="suggestions" {...sideIn()}
               className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#1d1d20] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <SuggestionsPanel editor={editor} canEdit={editable} onClose={() => setPanel(null)} />
             </motion.aside>

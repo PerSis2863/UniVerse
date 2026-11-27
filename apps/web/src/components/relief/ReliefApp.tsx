@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { sheetIn } from '@/lib/motion';
+import { sheetIn, fadeIn } from '@/lib/motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertTriangle, BadgeCheck, Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Siren, Sparkles, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
@@ -524,7 +524,7 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
     } finally { setSaving(false); }
   };
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] grid place-items-end sm:place-items-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
+    <motion.div {...fadeIn} className="fixed inset-0 z-[120] grid place-items-end sm:place-items-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
       <motion.form {...sheetIn()} onClick={(e) => e.stopPropagation()} onSubmit={(e) => void save(e)}
         className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#0f0f11] p-5 sm:p-6 shadow-2xl border border-zinc-200 dark:border-white/10" aria-label="Ask or offer help">
         <div className="flex items-center justify-between"><h2 className="text-lg font-bold text-zinc-900 dark:text-white">Ask or offer help</h2><button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 grid place-items-center rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>

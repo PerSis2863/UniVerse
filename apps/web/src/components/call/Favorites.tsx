@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Loader2, Phone, Plus, Search, Star, Video, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
-import { spring, sheetIn } from '@/lib/motion';
+import { spring, sheetIn, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { auraOf } from '@/components/chat/chat-client';
@@ -100,7 +100,7 @@ function AddFavorite({ onClose, onAdded }: { onClose: () => void; onAdded: () =>
     catch (e) { toast.error((e as Error).message); }
   };
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <motion.div {...fadeIn} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div data-sheet {...sheetIn()} role="dialog" aria-modal="true" aria-label="Add a favourite" className="w-full sm:max-w-md max-h-[80vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="p-5 pb-3 flex items-center justify-between"><h3 className="text-lg font-black text-zinc-900 dark:text-white">Add a favourite</h3><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-5 h-5" /></button></div>
         <div className="px-5 mb-2 relative"><Search className="absolute start-8 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" className="w-full ps-10 pe-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" /></div>

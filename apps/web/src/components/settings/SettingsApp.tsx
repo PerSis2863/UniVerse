@@ -23,7 +23,7 @@ import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
 import { chime, setSounds, soundsOn } from '@/lib/sounds';
 import { ACCENTS, accent as savedAccent, setAccent, type Accent, menuPlace, setMenuPlace, type MenuPlace, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setSmoothScroll, smoothScrollOn, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
-import { spring } from '@/lib/motion';
+import { spring, edgeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
 import { authedJson } from '@/lib/authed-fetch';
@@ -189,7 +189,7 @@ export function SettingsApp({ role }: { role: Role }) {
             <motion.div animate={{ opacity: current ? 0 : 1, x: current ? -40 : 0 }} transition={spring.smooth} aria-hidden={!!current} inert={!!current} className={cn(current && 'pointer-events-none')}>{list}</motion.div>
             <AnimatePresence>
               {current && (
-                <motion.div key={current.id} initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={spring.smooth} className="absolute inset-x-0 top-0 min-h-full">
+                <motion.div key={current.id} {...edgeIn()} className="absolute inset-x-0 top-0 min-h-full">
                   <button type="button" onClick={() => go(null)} className="mb-3 -ms-1 inline-flex items-center gap-0.5 text-[17px] text-tint-text pressable"><ChevronLeft className="w-6 h-6" /> Settings</button>
                   <SectionBody id={current.id} role={role} title={current.label} />
                 </motion.div>

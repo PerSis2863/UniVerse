@@ -6,7 +6,7 @@ import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Loader2, MessageCircle, Send, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { sideIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { type ChatMessage, chatJson, timeLabel } from './chat-client';
@@ -42,7 +42,7 @@ export function ThreadPanel({ conversationId, rootId, me, onClose }: { conversat
 
 
   return (
-    <motion.aside initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }} transition={spring.smooth}
+    <motion.aside {...sideIn()}
       className="absolute inset-0 md:static md:w-[360px] shrink-0 z-30 flex flex-col min-h-0 border-s border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#151517]" aria-label="Thread">
       <div className="flex items-center justify-between h-16 px-4 border-b border-zinc-200/80 dark:border-white/[0.06] shrink-0">
         <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><MessageCircle className="w-4 h-4 text-indigo-500" /> Thread</p>

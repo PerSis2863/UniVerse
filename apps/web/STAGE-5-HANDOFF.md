@@ -12667,3 +12667,25 @@ the notifications sheet. Changed:
   bottom; no page errors.
 - **Rule:** a new window that is a sheet on phones uses `{...sheetIn()}`; a menu or window that floats uses
   `{...popIn}` (`{...popUp}` above its button); not on a part with `layout` or `drag`.
+
+
+## M482 (27 Nov): the rest smoothed, each keeping its own movement
+
+The owner, 27 Nov, on the parts M481 left alone (backdrops, side panels, viewers, the call's panels): "smooth them, keep
+their style". Each keeps its own movement but now runs on the search window's timing, as one `transform` string (the
+compositor runs it; framer's `x` / `y` / `scale` ran on the page's thread), closing quicker than it opens. New in
+`src/lib/motion.ts`:
+- **`fadeIn`**: a window's dark backdrop, in 0.2 s on Apple's curve, out 0.15 s (49 backdrops; most had framer's default).
+- **`edgeIn()`**: a side panel all the way in from the end edge on `spring.smooth`, out 0.24 s (Groups, Internships'
+  two, class details, a Settings page on phones); mirrors in Arabic (`document.dir`), which the old `x: '100%'` didn't.
+- **`sideIn()`**: a pane a short way in from the end side (threads, a chat's side pane, boards' extras, the call's
+  board, the side panels of documents, sheets and slides); mirrors too.
+- **`riseIn`**: the call's panels rising from its bar (chat, people, agenda, Q&A, interpreters, quality, breakouts…).
+- **`barPop`**: small windows over the call's bar (More, Reactions, Background, polls, Watch together, settings).
+- **`viewIn`** is there for a full-screen viewer that should grow a touch; the viewers themselves now use `fadeIn`.
+- Left alone: games (their overlays are part of play), the landing, slides' own animations, the notifications sheet
+  (already a transform on `spring.smooth`), image swiping (`drag`), and anything with `layout`.
+- Tried in a browser at 1280 (`scripts/checks/smooth-rest-ui.mjs`): Internships' Filters panel slides 230 → 6 px over
+  ~0.3 s and settles at 0; it closes in under 0.3 s; no page errors.
+- **Rule:** a backdrop is `{...fadeIn}`, a side panel `{...edgeIn()}` (or `{...sideIn()}` for a short slide), a panel
+  from a bottom bar `{...riseIn}`; don't put a `transition` prop after the spread (it would override the preset's).

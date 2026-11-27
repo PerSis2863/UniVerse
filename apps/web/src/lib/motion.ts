@@ -51,6 +51,46 @@ export function sheetIn() {
 /** M481: `popIn` for a menu that opens above its button (a list over a text box): it rises a touch instead. */
 export const popUp = { ...popIn, initial: { ...pop.from, transform: 'translateY(6px) scale(0.94)' }, exit: { ...pop.out, transform: 'translateY(4px) scale(0.97)' } };
 
+/** M482 (the owner, 27 Nov: "smooth them, keep their style"): the parts that keep their own movement, on the search
+ *  window's timing: in on a firm spring as one transform string (the compositor runs it), out quicker, easing in. */
+const outQuick = { duration: 0.16, ease: [0.4, 0, 1, 1] as const };
+/** The dark backdrop behind a window, panel or viewer: a fade, in 0.2 s, out 0.15 s. */
+export const fadeIn = {
+  initial: { opacity: 0 }, animate: { opacity: 1 },
+  exit: { opacity: 0, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] as const } }, transition: { duration: 0.2, ease: ease.ios },
+};
+/** A full-screen viewer (photo, file, QR): fades in with a touch of size, out as a fade. */
+export const viewIn = {
+  initial: { opacity: 0, transform: 'scale(0.98)' }, animate: { opacity: 1, transform: 'scale(1)' },
+  exit: { opacity: 0, transition: outQuick }, transition: pop.spring,
+};
+/** A panel rising from a button bar at the bottom (the call's panels): 24 px up on the search window's spring. */
+export const riseIn = {
+  initial: { opacity: 0, transform: 'translateY(24px)' }, animate: { opacity: 1, transform: 'translateY(0px)' },
+  exit: { opacity: 0, transform: 'translateY(16px)', transition: outQuick }, transition: pop.spring,
+};
+/** A small window over a call's button bar (More, Reactions, Background, a poll): rises 16 px from 96%. */
+export const barPop = {
+  initial: { opacity: 0, transform: 'translateY(16px) scale(0.96)' }, animate: { opacity: 1, transform: 'translateY(0px) scale(1)' },
+  exit: { opacity: 0, transform: 'translateY(10px) scale(0.98)', transition: outQuick }, transition: pop.spring,
+};
+/** A pane that slides a short way in from the end side (a thread, a document's side panel). Mirrors in Arabic. */
+export function sideIn() {
+  const d = typeof document !== 'undefined' && document.dir === 'rtl' ? -1 : 1;
+  return {
+    initial: { opacity: 0, transform: `translateX(${24 * d}px)` }, animate: { opacity: 1, transform: 'translateX(0px)' },
+    exit: { opacity: 0, transform: `translateX(${16 * d}px)`, transition: outQuick }, transition: pop.spring,
+  };
+}
+/** A side panel that slides all the way in from the end edge (Groups, Internships, class details). Mirrors in Arabic. */
+export function edgeIn() {
+  const off = typeof document !== 'undefined' && document.dir === 'rtl' ? 'translateX(-100%)' : 'translateX(100%)';
+  return {
+    initial: { transform: off }, animate: { transform: 'translateX(0%)' },
+    exit: { transform: off, transition: { duration: 0.24, ease: ease.ios } }, transition: spring.smooth,
+  };
+}
+
 /** Fade + slight rise, for content that appears once. */
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 8 },

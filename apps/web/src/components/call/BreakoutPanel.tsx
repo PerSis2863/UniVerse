@@ -5,7 +5,7 @@ import { useTick } from '@/lib/use-now';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowLeft, Clock, DoorOpen, LifeBuoy, Megaphone, Minus, Plus, Send, Shuffle, Users, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
-import { spring, popIn } from '@/lib/motion';
+import { spring, popIn, fadeIn, riseIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Breakout rooms (Stage 4 · 2.6): the host splits the call into smaller rooms (shuffled, by hand, or
@@ -77,8 +77,8 @@ export function BreakoutPanel({ open, onClose, bo, people, room, onSend, onJoin 
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="bo-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
-          <motion.aside key="bo" role="dialog" aria-label="Breakout rooms" initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth} className={panel}>
+          <motion.div key="bo-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
+          <motion.aside key="bo" role="dialog" aria-label="Breakout rooms" {...riseIn} className={panel}>
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
               <p className="font-semibold inline-flex items-center gap-2"><DoorOpen className="w-4 h-4 text-fuchsia-300" />Breakout rooms</p>
               <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -371,9 +371,9 @@ export function RoomPicker({ open, onClose, bo, onPick }: { open: boolean; onClo
     <AnimatePresence>
       {open && bo && (
         <>
-          <motion.div key="pick-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
+          <motion.div key="pick-scrim" {...fadeIn} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
           <div key="pick" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
-            <motion.div role="dialog" aria-label="Choose a breakout room" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
+            <motion.div role="dialog" aria-label="Choose a breakout room" {...barPop}
               className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2">
               <p className="px-3 pt-2 pb-1 text-sm font-semibold">Choose a room</p>
               <ul className="max-h-[50vh] overflow-y-auto">
