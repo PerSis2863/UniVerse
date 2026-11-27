@@ -630,4 +630,29 @@ figure; dcCampus(phases, 6, 'Fill', 15, 'Climate', [16 10 6])
 % 5. How much air or water carries a 130 kW rack's heat away
 fprintf('A 130 kW rack: %.1f m3/s of air at 12 K, or %.0f L/min of water at 10 K\\n', dcHeatFlow(130e3, 12, 'air'), dcHeatFlow(130e3, 10, 'water'))
 ` },
+  { name: 'datacenter_grid.m', code: `% Data centres on the grid: voltage, hosting capacity, frequency, harmonics and ride-through
+% 1. A 300 MW campus on a 132 kV line (system base 1000 MVA): its load swings with training jobs
+t = 0:1:600;
+P = 0.3*(0.75 + 0.2*(mod(t, 120) < 90));       % pu: compute bursts and pauses
+Q = 0.06*ones(size(t));
+figure; dcGridVoltage(P, Q, 'Z', [0.02 0.15], 'Tap', true, 'Delay', 20)
+% 2. How much more could the connection host?
+h = dcHostingCapacity([0.02 0.15], 'PF', 0.98, 'Vmin', 0.95);
+fprintf('Hosting capacity %.0f MW (limited by %s); the nose at %.0f MW\\n', 1000*h.Capacity, h.LimitedBy, 1000*h.Nose)
+% 3. The campus trips off all at once (a fault it fails to ride through): frequency rises
+tt = 0:0.05:40;
+dP = -0.03*(tt >= 1);            % 3% of a 10 GW system lost in a second
+[df, s] = dcFrequency(tt, dP, 'H', 3.5, 'F0', 50);
+[dfb, sb] = dcFrequency(tt, dP, 'H', 3.5, 'F0', 50, 'Battery', [0.01 0.1]);
+figure; plot(tt, 50 + df, tt, 50 + dfb, 'LineWidth', 1.5); legend('Without storage', 'With a 100 MW battery'); grid on
+xlabel('Time (s)'); ylabel('Frequency (Hz)'); title(sprintf('Peak %.3f Hz, %.3f Hz with the battery', 50 + s.Nadir, 50 + sb.Nadir))
+% 4. Harmonics at the 34.5 kV bus: old 6-pulse rectifiers against active front ends, with a capacitor bank
+H6 = dcHarmonics(120, 34.5, 3000, 'Rectifier', '6pulse', 'Capacitor', 30);
+Ha = dcHarmonics(120, 34.5, 3000, 'Rectifier', 'afe', 'Capacitor', 30);
+fprintf('THDv: %.2f%% with 6-pulse (resonance at order %.1f), %.2f%% with active front ends\\n', H6.THDv, H6.Resonance, Ha.THDv)
+figure; dcHarmonics(120, 34.5, 3000, 'Rectifier', [0.3 0.2 0.3 0.2], 'Capacitor', 30)
+% 5. Last year's voltage sags at the bus: which did the servers ride through?
+V = [0.1 0.55 0.72 0.85 0.6 0.0];  dur = [0.01 0.05 0.3 2 0.8 0.03];
+figure; itic(V, dur)
+` },
 ];

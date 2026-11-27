@@ -13357,3 +13357,27 @@ linearly over `fill` months to `utilisation`, ±5% daily wave, every hour of eve
 8-accelerator server, fans faster in warm air, the training trace's levels and checkpoint, Carnot and free cooling, PUE
 1.05–1.6, the campus's capacity steps and gigawatt peak, heat flows. Not built: measured server power curves (SPECpower
 files), the network switches' power, a grid-tied UPS's battery, water-side economisers by hour of a real weather file.
+
+## M572 (27 Nov): Hyperion data centres: the grid
+
+The second of the owner's six data-centre pages ("Utility regulators and operators"), `dc-grid.ts`. **Voltage**: the
+exact two-bus solution V⁴ − (Vs² − 2(PR + QX))V² + (P² + Q²)(R² + X²) = 0, larger root, NaN past the nose;
+`voltageSeries` with a tap changer (0.625% a tap, ±16, a step after `delay` s continuously outside ±`band`, the timer
+reset after each step and whenever the voltage is back inside). **Hosting capacity**: the nose by doubling then
+bisecting on "the root exists", then bisection for V = vmin, capped by a thermal limit (`limitedBy` 'voltage',
+'thermal' or 'nose'). **Frequency**: the low-order system frequency response model, 2H dΔf/dt = ΔPm + ΔPb − ΔPL − DΔf,
+first-order governors with droop R (output capped by `reserve`) and an optional battery with 1% droop, a time constant
+and a power cap; RK4 with steps of at most 10 ms (and tb/4), the load held over each output interval; nadir, its time,
+the largest RoCoF between outputs, the settled value. **Harmonics**: typical spectra (`RECTIFIERS`: 6-pulse with a 3%
+reactor, 12-pulse, active front end, PFC server supplies; zero-weighted kinds leave their orders out), added in phase
+(the worst case) by the mix's shares, through the admittances of the source (R√h + jhX on the load's base, X = load/ssc,
+R = X/XR), the capacitor bank (jh/Xc) and the linear load's conductance (`linear`, default 0.3 of the load: without it a
+bank near a characteristic order gave ~45% THDv, real buses are damped by their other loads); IEEE 519-2014's TDD by
+Isc/IL and voltage limits by kV. **ITIC**: the lower edge 0 V to 20 ms, 0.7 to 0.5 s, 0.8 to 10 s, then 0.9; the upper
+2 to 1 ms, 1.4 to 3 ms, 1.2 to 0.5 s, then 1.1. Language: `dcGridVoltage`, `dcHostingCapacity`, `dcFrequency`,
+`dcHarmonics` (bars against the limit and an impedance scan), `itic` (events on the curve). Tests: the power-flow
+equation holds, the lossless nose Vs²/2X, voltage-limited capacity lands on 0.95, the tap changer ends inside its band,
+the settled Δf = ΔP/(D + 1/R), the first RoCoF ΔP/2H, a battery raising the nadir, the 5th harmonic's voltage by hand,
+resonance at √(ssc/cap) amplifying it more than fivefold, active front ends passing, ITIC points. Not built:
+unbalanced (per-phase) flows and negative sequence, flicker (Pst), a full network's harmonic load flow, EMT-level
+converter control during faults (the converters are M573's), UFLS relays.
