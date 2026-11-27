@@ -4,7 +4,7 @@ import { cmat, imOf, mat, num, str, toMat, type Value } from './values';
 import { fileBytes, fileText, hasFile, writeFileText } from './files';
 import * as ami from './ami';
 import { filterImpulse, readAnalog, throughFrontEnds, type Analog } from './ibis-analog';
-import { analogImpulse, idealEnd } from './ibis-sim';
+import { analogImpulse, arrivalResponse, convolve, idealEnd } from './ibis-sim';
 import { bytesToB64, hasNative } from './native';
 import * as si from './si';
 import { call, col, def, field, isText, lines, need, nums, options, optNum, optText, record, row, rows } from './sci-kit';
@@ -40,7 +40,9 @@ function modelOf(lab: Lab, v: Value | undefined, who: string): ami.Model | null 
 /** A model's analog buffer (M583) as a struct, and back (M585: with its I-V tables, supply and falling edge). */
 const ANALOG: [string, keyof Analog][] = [['Driver', 'rs'], ['Termination', 'rt'], ['Ccomp', 'cComp'], ['Rpkg', 'rPkg'], ['Lpkg', 'lPkg'], ['Cpkg', 'cPkg'], ['Rise', 'rise'], ['Fall', 'fall'], ['Vcc', 'vcc']];
 const TABLES: [string, 'pu' | 'pd' | 'gc' | 'pc'][] = [['PullUp', 'pu'], ['PullDown', 'pd'], ['GndClamp', 'gc'], ['PowerClamp', 'pc']];
-const analogRecord = (a: Analog) => record([['ModelType', a.type], ['Corner', a.corner], ...ANALOG.map(([k, f]) => [k, a[f] as number] as [string, number]), ...TABLES.map(([k, f]) => [k, a[f].length ? rows(a[f]) : mat(0, 0)] as [string, Value]), ['Notes', a.notes.join('; ')]]);
+/** M586: the edges' pull-up and pull-down weights from the waveform tables, rows [t ku kd]. */
+const EDGES: [string, 'kr' | 'kf'][] = [['RisingK', 'kr'], ['FallingK', 'kf']];
+const analogRecord = (a: Analog) => record([['ModelType', a.type], ['Corner', a.corner], ...ANALOG.map(([k, f]) => [k, a[f] as number] as [string, number]), ...TABLES.map(([k, f]) => [k, a[f].length ? rows(a[f]) : mat(0, 0)] as [string, Value]), ...EDGES.flatMap(([k, f]) => (a[f]?.length ? [[k, rows(a[f]!)]] as [string, Value][] : [])), ['Notes', a.notes.join('; ')]]);
 function analogOf(v: Value, who: string): Analog {
   const has = (k: string) => v.k === 'struct' && v.f.has(k);
   const a: Analog = { type: has('ModelType') ? textOf((v as { f: Map<string, Value> }).f.get('ModelType')!) : '', corner: has('Corner') ? textOf((v as { f: Map<string, Value> }).f.get('Corner')!) : 'typ', rs: 50, rt: 50, cComp: 0, rPkg: 0, lPkg: 0, cPkg: 0, rise: 0, fall: 0, vcc: 1, pu: [], pd: [], gc: [], pc: [], notes: [] };
@@ -50,29 +52,44 @@ function analogOf(v: Value, who: string): Analog {
     if (M.d.length && M.c !== 2) throw new LabError(`${who}: the model's Analog.${k} is a table of [V I] rows.`);
     a[f] = Array.from({ length: M.r }, (_, r) => [M.d[r], M.d[M.r + r]]);
   }
+  for (const [k, f] of EDGES) if (has(k)) {
+    const M = toMat((v as { f: Map<string, Value> }).f.get(k)!);
+    if (!M.d.length) continue;
+    if (M.c !== 3) throw new LabError(`${who}: the model's Analog.${k} is a table of [t ku kd] rows.`);
+    a[f] = Array.from({ length: M.r }, (_, r) => [M.d[r], M.d[M.r + r], M.d[2 * M.r + r]]);
+  }
   return a;
 }
 /** The channel through the chips' own buffers (M585): when either model brings its IBIS buffer, the channel's
- * scattering responses (a 4-port's differential ones, per leg) driven and received by them in time, an ideal end
- * standing in for the other; long enough for echoes to come and go (three times the matched response), any CTLE after
- * it. Otherwise the plain impulse response. */
+ * scattering responses driven and received by them in time, an ideal end standing in for the other; long enough for
+ * echoes to come and go (three times the matched response), any CTLE after it. A 4-port (M586): its sixteen
+ * single-ended responses, each leg of the pair its own buffer. The near-end crosstalk heard through the receiver as it
+ * is, echoes between the two ends included (M586). Otherwise the plain impulse response. */
 function analogChannel(S: ReturnType<typeof sOf>, rate: number, spu: number, h: number[], dt: number, ctle: [number, number, number, number] | null, tx: ami.Model | null, rx: ami.Model | null) {
   const ta = tx?.analog, ra = rx?.analog;
   if (!ta && !ra) return { h, messages: [] as string[] };
-  const four = S.n === 4, P = four ? [[0, 1], [2, 3]] : [[0], [1]];
-  const resp = (i: number, j: number) => si.sampled(S.f, S.s.map((m) => (four ? si.sddPair(m, P[i], P[j]) : m[i][j])), rate, spu);
-  const s21 = resp(1, 0), n = Math.min(s21.length, 3 * h.length);
-  const ports = { s11: resp(0, 0).slice(0, n), s12: resp(0, 1).slice(0, n), s21: s21.slice(0, n), s22: resp(1, 1).slice(0, n) };
-  const r = analogImpulse(ports, n, dt, S.zref, ta ?? idealEnd(S.zref, 'tx'), ra ?? idealEnd(S.zref, 'rx'));
+  const N = S.n === 4 ? 4 : 2, resp = (i: number, j: number) => si.sampled(S.f, S.s.map((m) => m[i][j]), rate, spu);
+  const s21 = resp(N / 2, 0), n = Math.min(s21.length, 3 * h.length);
+  const M = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => (i === N / 2 && j === 0 ? s21 : resp(i, j)).slice(0, n)));
+  const tA = ta ?? idealEnd(S.zref, 'tx'), rA = ra ?? idealEnd(S.zref, 'rx'), r = analogImpulse(M, n, dt, S.zref, tA, rA);
   const fe = (x: number[]) => (ctle ? filterImpulse(x, dt, (f) => si.ctle(f, ...ctle)) : x);
   const hh = fe(r.h), pk = Math.max(...hh.map(Math.abs));
   let last = hh.length; while (last > h.length && Math.abs(hh[last - 1]) < 1e-5 * pk) last--;
   const rise = fe(r.rise).slice(0, last), fall = fe(r.fall).slice(0, last), diff = Math.max(...rise.map((v, k) => Math.abs(v - fall[k]))) / (pk || 1);
-  const messages: string[] = [];
-  if (ta) messages.push(`${tx!.name} analog (${ta.corner}): driver ${ta.rs.toPrecision(3)} ohms near its rails, C_comp ${(ta.cComp * 1e12).toPrecision(3)} pF, edges ${(ta.rise * 1e12).toPrecision(3)} / ${(ta.fall * 1e12).toPrecision(3)} ps${ta.notes.length ? `; ${ta.notes.join('; ')}` : ''}`);
+  const messages: string[] = [], edges = (a: typeof ta) => (a!.kr || a!.kf ? 'edges from its waveform tables' : `edges ${(a!.rise * 1e12).toPrecision(3)} / ${(a!.fall * 1e12).toPrecision(3)} ps`);
+  if (ta) messages.push(`${tx!.name} analog (${ta.corner}): driver ${ta.rs.toPrecision(3)} ohms near its rails, C_comp ${(ta.cComp * 1e12).toPrecision(3)} pF, ${edges(ta)}${ta.notes.length ? `; ${ta.notes.join('; ')}` : ''}`);
   if (ra) messages.push(`${rx!.name} analog (${ra.corner}): termination ${ra.rt.toPrecision(3)} ohms at mid-supply, C_comp ${(ra.cComp * 1e12).toPrecision(3)} pF${ra.notes.length ? `; ${ra.notes.join('; ')}` : ''}`);
+  if (N === 4) messages.push('Each leg of the differential pair driven and received by its own buffer (the transmitter\'s legs switching opposite ways)');
   messages.push(`The buffers' rising and falling edges differ by ${(100 * diff).toFixed(1)}% of the response's peak (their average used)`);
-  return { h: hh.slice(0, last), rise, fall, messages, near: (x: number[]) => throughFrontEnds(x, dt, ta, ra, S.zref) };
+  // the near end's coupling arrives at the receiver's pin: heard through its buffer, bouncing between the ends (worked out once, when asked)
+  // (M587) each side a neighbour can sit on its own echo path: on a pair, one beside either leg or a pair beside it
+  const g = new Map<number, number[]>();
+  const near = (x: number[], side: 0 | 1 | -1 = 0) => {
+    const k = N === 4 ? side : 0;
+    if (!g.has(k)) g.set(k, fe(arrivalResponse(M, n, dt, S.zref, tA, rA, k)));
+    return convolve(throughFrontEnds(x, dt, ta, null, S.zref), g.get(k)!, x.length).map((v) => v * dt);
+  };
+  return { h: hh.slice(0, last), rise, fall, messages, near };
 }
 const ctleOf = (v: Value | undefined): [number, number, number, number] | null => {
   if (!v) return null;
@@ -129,8 +146,8 @@ def('eyeDiagram', (a, nout, lab) => {
   const tx = modelOf(lab, o.get('TxModel'), 'TxModel'), rx = modelOf(lab, o.get('RxModel'), 'RxModel'), models = !!(tx || rx), most = models ? 100000 : 20000;
   const mod = optText(o, 'Modulation', 'NRZ').toUpperCase(), spu = Math.round(optNum(o, 'SamplesPerUI', 16)), nsym = Math.round(optNum(o, 'Symbols', models ? 5000 : 2000));
   if ((mod !== 'NRZ' && mod !== 'PAM4') || !(rate > 0 && spu >= 4 && spu <= 64 && nsym >= 100 && nsym <= most)) throw new LabError(`${w}: 'Modulation' 'NRZ' or 'PAM4', 'SamplesPerUI' 4 to 64, 'Symbols' 100 to ${most.toLocaleString('en')}.`);
-  const H = through(S), rise = optNum(o, 'Rise', 0), xt = o.has('Crosstalk') ? nums(o.get('Crosstalk')) : [0, 0], mk = o.has('Mask') ? nums(o.get('Mask')) : null;
-  const base: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: Math.round(optNum(o, 'DFE', 0)), rj: optNum(o, 'RJ', 0), dj: optNum(o, 'DJ', 0), noise: optNum(o, 'Noise', 0), ber: optNum(o, 'BER', 1e-12), xtalk: [xt[0] ?? 0, xt[1] ?? 0], ...(mk ? { mask: [mk[0], mk[1]] as [number, number] } : {}), seed: Math.round(optNum(o, 'Seed', 1)) };
+  const H = through(S), rise = optNum(o, 'Rise', 0), xt = crosstalkOf(o.get('Crosstalk')), mk = o.has('Mask') ? nums(o.get('Mask')) : null;
+  const base: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: Math.round(optNum(o, 'DFE', 0)), rj: optNum(o, 'RJ', 0), dj: optNum(o, 'DJ', 0), noise: optNum(o, 'Noise', 0), ber: optNum(o, 'BER', 1e-12), xtalk: xt, ...(mk ? { mask: [mk[0], mk[1]] as [number, number] } : {}), seed: Math.round(optNum(o, 'Seed', 1)) };
   if (![7, 9, 11, 15, 23, 31].includes(base.order) || base.dfe < 0 || base.dfe > 20) throw new LabError(`${w}: 'PRBS' 7, 9, 11, 15, 23 or 31; 'DFE' 0 to 20 taps.`);
   const cv = o.get('CTLE'), auto = cv && isText(cv) && cv.v.toLowerCase() === 'auto';
   let ctle = auto ? null : ctleOf(cv);
@@ -160,19 +177,37 @@ def('eyeDiagram', (a, nout, lab) => {
 /** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) through the statistical or the
  * time-domain flow; statistical gives a pulse for the usual eye, time-domain a received waveform measured as it is
  * (the receiver's own equaliser replaces FFE and DFE), its first symbols left out while the models adapt. */
-/** The aggressors 'Crosstalk', [kNext kFext] makes, as impulse responses for the AMI flows: NEXT an edge (the near
- * end's coupling, unattenuated), FEXT the channel's own response differentiated (the far end's), each with its own
- * PRBS in the time-domain flow (the same scale and seeds as the eye without models). */
-function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSignals: boolean, near: (x: number[]) => number[] = (x) => x): ami.Aggressor[] {
+/** The aggressors 'Crosstalk' makes, one row [kNext kFext] (or [kNext kFext side]) per neighbouring line, as impulse
+ * responses for the AMI flows: NEXT an edge (the near end's coupling) heard through the receiver along its own echo
+ * path (`near`, by the side it sits on), FEXT the channel's own response differentiated (the far end's), each with
+ * its own PRBS in the time-domain flow (the same scale and seeds as the eye without models). */
+function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSignals: boolean, near: (x: number[], side: 0 | 1 | -1) => number[] = (x) => x): ami.Aggressor[] {
   const out: ami.Aggressor[] = [], sig = (i: number) => {
     if (!withSignals) return undefined;
     const a = si.symbols(si.prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed + 77 + 74 * i), e.pam4), x = new Array(a.length * spu);
     for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
     return x;
   };
-  if (e.xtalk[0]) { const hn = new Array(h.length).fill(0); hn[0] = (e.xtalk[0] * spu) / 4 / dt; hn[1] = -hn[0]; out.push({ h: near(hn), x: sig(out.length) }); }
-  if (e.xtalk[1]) out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * e.xtalk[1] * (spu / 4)), x: sig(out.length) });
+  for (const [kn, kf, side] of e.xtalk) {
+    if (kn) { const hn = new Array(h.length).fill(0); hn[0] = (kn * spu) / 4 / dt; hn[1] = -hn[0]; out.push({ h: near(hn, side ?? 0), x: sig(out.length) }); }
+    if (kf) out.push({ h: h.map((v, n) => (n ? v - h[n - 1] : 0) * kf * (spu / 4)), x: sig(out.length) });
+  }
   return out;
+}
+/** 'Crosstalk': [kNext kFext], or one row per neighbouring line [kNext kFext] / [kNext kFext side] (side 1 beside the
+ * pair's first leg, −1 its second, 0 a neighbouring pair; with several rows and no side given, they sit on alternate
+ * sides, M584's one on each side). */
+function crosstalkOf(v: Value | undefined): si.Eye['xtalk'] {
+  if (!v) return [];
+  const M = toMat(v);
+  if (M.r * M.c === 0) return [];
+  if (!(M.c === 2 || M.c === 3) && !(M.r === 1 && M.c <= 3)) throw new LabError("'Crosstalk' is [kNext kFext], or a row per neighbour [kNext kFext] or [kNext kFext side].");
+  return Array.from({ length: M.r }, (_, r) => {
+    const at = (c: number) => (c < M.c ? M.d[c * M.r + r] : undefined), sd = at(2);
+    if (sd !== undefined && ![0, 1, -1].includes(sd)) throw new LabError("'Crosstalk': a neighbour's side is 1 (beside the first leg), -1 (the second) or 0 (a neighbouring pair).");
+    const side = (sd ?? (M.r > 1 ? (r % 2 ? -1 : 1) : 0)) as 0 | 1 | -1;
+    return [at(0) ?? 0, at(1) ?? 0, side];
+  });
 }
 /** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) and the aggressors' through the
  * statistical or the time-domain flow; statistical gives pulses for the usual eye, time-domain a received waveform
@@ -258,8 +293,8 @@ def('amiSimulate', (a, _n, lab) => {
     const sw = optNum(o, 'Swing', 0.8); x = new Array(a2.length * spu);
     for (let k = 0; k < a2.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a2[k] * sw) / 2;
   }
-  const xt = o.has('Crosstalk') ? nums(o.get('Crosstalk')) : [0, 0];
-  const eLike: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: [xt[0] ?? 0, xt[1] ?? 0], seed: Math.round(optNum(o, 'Seed', 1)) };
+  const xt = crosstalkOf(o.get('Crosstalk'));
+  const eLike: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: xt, seed: Math.round(optNum(o, 'Seed', 1)) };
   const f = ami.flow(h, dt, ui, tx, rx, x, aggressorsOf(h, dt, spu, eLike, fl === 'timedomain', an.near)), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
   const aggM = f.aggRx.length ? rows(f.aggRx) : mat(0, 0);
   f.messages.unshift(...an.messages);

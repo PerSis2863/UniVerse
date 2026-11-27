@@ -1918,6 +1918,8 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M583 | Hyperion IBIS-AMI: the .ibs file's analog buffers | **Done** (on `claude/hyperion-sciences-industries`) | Driver resistance from I-V tables, [Ramp] edge, C_comp, [Package], termination from clamp tables, wrapped round the channel (`ibis-analog.ts`, `amiModel` 'Corner', 'Analog') |
 | M584 | Hyperion IBIS-AMI: neighbours hear the victim, each line its own folder | **Done** (on `claude/hyperion-sciences-industries`) | All transmitters run a block first; each neighbour's receiver hears the victim through its coupling; lines in folders a1, a2 … (no BCI_ID renaming) |
 | M585 | Hyperion IBIS-AMI: the buffers in time, non-linear, with echoes | **Done** (on `claude/hyperion-sciences-industries`) | The I-V curves switched over the ramp, the channel's s11/s12/s21/s22, rising and falling step responses averaged (`ibis-sim.ts`, `si.sampled`, `sddPair`) |
+| M586 | Hyperion IBIS-AMI: waveform tables, two-leg pairs, crosstalk echoes, faster | **Done** (on `claude/hyperion-sciences-industries`) | [Rising/Falling Waveform] → `switching`, a 4-port's legs each its own buffer, `arrivalResponse` for NEXT, block FFT sums (`ibis-sim.ts` `run`, `Past`) |
+| M587 | Hyperion IBIS-AMI: fixture and package de-embedded, legs solved together, each neighbour its own echoes | **Done** (on `claude/hyperion-sciences-industries`) | `fixtureCurrent`, `run`'s joint sweep, `arrivalResponse(…, side)`, `Crosstalk` rows (`crosstalkOf`, `Eye.xtalk` rows) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

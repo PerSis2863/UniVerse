@@ -1,4 +1,5 @@
 import { dft } from './fft';
+import { switching, type Wave } from './ibis-sim';
 
 // The IBIS file's analog buffer models for the IBIS-AMI flows (M583, the left-out of M578: "the .ibs file's other
 // electrical data isn't used"). An AMI model is only the equaliser; the chip's driver and receiver pads are the
@@ -11,8 +12,9 @@ import { dft } from './fft';
 // coupling edge; the channel itself goes through ibis-sim.ts (M585: the curves as they are, echoes included).
 
 /** pu, pd, gc, pc: the [Pull-up], [Pull-down], [GND Clamp], [POWER Clamp] tables at the corner, rows [V I] (I into the
- * pin; pull-up and power-clamp voltages measured from the supply); vcc the supply; rise, fall the 0–100% edges. */
-export interface Analog { type: string; corner: string; rs: number; rt: number; cComp: number; rPkg: number; lPkg: number; cPkg: number; rise: number; fall: number; vcc: number; pu: number[][]; pd: number[][]; gc: number[][]; pc: number[][]; notes: string[] }
+ * pin; pull-up and power-clamp voltages measured from the supply); vcc the supply; rise, fall the 0–100% edges; kr, kf
+ * the rising and falling edges' pull-up and pull-down weights over time from the waveform tables, rows [t ku kd] (M586). */
+export interface Analog { type: string; corner: string; rs: number; rt: number; cComp: number; rPkg: number; lPkg: number; cPkg: number; rise: number; fall: number; vcc: number; pu: number[][]; pd: number[][]; gc: number[][]; pc: number[][]; kr?: number[][]; kf?: number[][]; notes: string[] }
 
 const SCALE: Record<string, number> = { T: 1e12, G: 1e9, M: 1e6, k: 1e3, m: 1e-3, u: 1e-6, n: 1e-9, p: 1e-12, f: 1e-15 };
 /** An IBIS number: 1.2p, 3.3, 50m, 2e-12 (the scale letter after it; M is mega, m milli); NaN for NA. */
@@ -37,7 +39,8 @@ function slope(rows: number[][], v: number) {
 /** A model's analog data at a corner (typ, min or max), or null if the file has no such [Model]. */
 export function readAnalog(text: string, model: string, corner = 'typ'): Analog | null {
   let comment = '|', section = '', inModel = false, found = false, type = '', vcc = NaN, cComp = NaN, ramp = NaN, rampF = NaN;
-  const pkg = { r: NaN, l: NaN, c: NaN }, tables: Record<string, number[][]> = {};
+  const pkg = { r: NaN, l: NaN, c: NaN }, tables: Record<string, number[][]> = {}, waves: { rising: boolean; w: Wave }[] = [];
+  let wave: Wave | null = null;
   for (const raw of text.split(/\r?\n/)) {
     const cc = /^\s*\[comment char\]\s*(\S)_char/i.exec(raw);
     if (cc) { comment = cc[1]; continue; }
@@ -48,6 +51,7 @@ export function readAnalog(text: string, model: string, corner = 'typ'): Analog 
       section = kw[1].trim().toLowerCase().replace(/[\s_-]+/g, ' ');
       if (section === 'model') { inModel = kw[2].split(/\s+/)[0].toLowerCase() === model.toLowerCase(); found ||= inModel; }
       else if (inModel && /^(pull up|pull down|gnd clamp|power clamp)$/.test(section)) tables[section] = [];
+      else if (inModel && /^(rising|falling) waveform$/.test(section)) { wave = { r: NaN, v: NaN, rows: [], l: 0, c: 0, rd: 0, ld: 0, cd: 0 }; waves.push({ rising: section[0] === 'r', w: wave }); }
       else if (section === 'voltage range' && inModel) vcc = pick(kw[2].split(/\s+/), corner);
       continue;
     }
@@ -64,6 +68,13 @@ export function readAnalog(text: string, model: string, corner = 'typ'): Analog 
     } else if (section === 'ramp' && /^dv\/dt_[rf]$/i.test(w[0])) {
       const col = w[1 + (COL[corner] ?? 0)], [dv, dt] = (col && !/^na$/i.test(col) ? col : w[1]).split('/');
       if (ibisNum(dv) > 0 && ibisNum(dt) > 0) { if (/r$/i.test(w[0])) ramp = ibisNum(dt); else rampF = ibisNum(dt); }
+    } else if (/waveform$/.test(section) && wave) {
+      const k = w[0].toLowerCase();
+      const pf: Record<string, 'l' | 'c' | 'rd' | 'ld' | 'cd'> = { l_fixture: 'l', c_fixture: 'c', r_dut: 'rd', l_dut: 'ld', c_dut: 'cd' };
+      if (k === 'r_fixture') wave.r = ibisNum(w[1]);
+      else if (pf[k]) { const x = ibisNum(w[1]); if (Number.isFinite(x) && x > 0) wave[pf[k]] = x; }
+      else if (k === 'v_fixture' || k === `v_fixture_${corner}`) { if (k !== 'v_fixture' || !Number.isFinite(wave.v)) wave.v = ibisNum(w[1]); }
+      else if (Number.isFinite(ibisNum(w[0]))) { const v = pick(w.slice(1), corner); if (Number.isFinite(v)) wave.rows.push([ibisNum(w[0]), v]); }
     } else if (tables[section]) {
       const v = ibisNum(w[0]), i = pick(w.slice(1), corner);
       if (Number.isFinite(v) && Number.isFinite(i)) tables[section].push([v, i]);
@@ -79,7 +90,13 @@ export function readAnalog(text: string, model: string, corner = 'typ'): Analog 
   const g = [slope(tables['gnd clamp'] ?? [], vdd / 2), slope(tables['power clamp'] ?? [], vdd / 2)].filter((r) => Number.isFinite(r) && r > 0).reduce((a, r) => a + 1 / r, 0);
   let rt = g > 0 ? 1 / g : Infinity;
   if (!(rt < 1e4)) { rt = 50; if (/input|i\/o/i.test(type)) notes.push('no termination in the clamp tables: 50 ohms taken'); }
-  return { type, corner, rs, rt, cComp: Number.isFinite(cComp) ? cComp : 0, rPkg: Number.isFinite(pkg.r) ? pkg.r : 0, lPkg: Number.isFinite(pkg.l) ? pkg.l : 0, cPkg: Number.isFinite(pkg.c) ? pkg.c : 0, rise: Number.isFinite(ramp) ? ramp / 0.6 : 0, fall: Number.isFinite(rampF) ? rampF / 0.6 : Number.isFinite(ramp) ? ramp / 0.6 : 0, vcc: vdd, pu: tables['pull up'] ?? [], pd: tables['pull down'] ?? [], gc: tables['gnd clamp'] ?? [], pc: tables['power clamp'] ?? [], notes };
+  const a: Analog = { type, corner, rs, rt, cComp: Number.isFinite(cComp) ? cComp : 0, rPkg: Number.isFinite(pkg.r) ? pkg.r : 0, lPkg: Number.isFinite(pkg.l) ? pkg.l : 0, cPkg: Number.isFinite(pkg.c) ? pkg.c : 0, rise: Number.isFinite(ramp) ? ramp / 0.6 : 0, fall: Number.isFinite(rampF) ? rampF / 0.6 : Number.isFinite(ramp) ? ramp / 0.6 : 0, vcc: vdd, pu: tables['pull up'] ?? [], pd: tables['pull down'] ?? [], gc: tables['gnd clamp'] ?? [], pc: tables['power clamp'] ?? [], notes };
+  // the edges from the waveform tables (M586), where both of the driver's tables are there to weigh
+  for (const rising of [true, false]) {
+    const ws = waves.filter((x) => x.rising === rising).map((x) => x.w), k = a.pu.length && a.pd.length ? switching(a, ws) : null;
+    if (k) { if (rising) a.kr = k; else a.kf = k; notes.push(`${rising ? 'rising' : 'falling'} edge from ${Math.min(2, ws.length)} [${rising ? 'Rising' : 'Falling'} Waveform] table${ws.length > 1 ? 's' : ''}`); }
+  }
+  return a;
 }
 
 export type C = [number, number];

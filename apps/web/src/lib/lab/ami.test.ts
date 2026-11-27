@@ -6,7 +6,7 @@ import path from 'node:path';
 import * as ami from './ami';
 import * as si from './si';
 import { ibisNum, readAnalog, rxGain, throughFrontEnds, txGain, type Analog } from './ibis-analog';
-import { analogImpulse, idealEnd, iv } from './ibis-sim';
+import { analogImpulse, arrivalResponse, fixtureCurrent, idealEnd, iv, switching } from './ibis-sim';
 import { b64ToF64, f64ToB64, setNative, type Native } from './native';
 import { Lab } from './interp';
 import { Graphics } from './plot';
@@ -320,6 +320,23 @@ disp(r.Messages)`);
     expect(l1).toBe('1 0 1');
     expect(rest.join('\n')).toMatch(/tx analog \(typ\): driver 40\.0 ohms near its rails, C_comp 0\.600 pF, edges 20\.0 \/ 20\.0 ps[\s\S]*edges differ by/);
   });
+  it('M586: the waveform tables reach m.Analog; a 4-port runs each leg through its own buffer, crosstalk included', () => {
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    const files = (lab.host as { files: FileStore }).files, wave = (vf: number) => Array.from({ length: 21 }, (_, i) => { const ku = Math.min(1, i / 15), v = (vf / 50 + ku / 40) / (1 / 40 + 1 / 50); return `${i}p ${v.toFixed(6)} NA NA`; }).join('\n');
+    files.load('chip.ibs', { bytes: new TextEncoder().encode(IBS.replace('[Ramp]', `[Rising Waveform]\nR_fixture 50\nV_fixture 0\n${wave(0)}\n[Rising Waveform]\nR_fixture 50\nV_fixture 1\n${wave(1)}\n[Ramp]`)) });
+    files.load('tx.ami', { bytes: new TextEncoder().encode(AMI) });
+    const f = Array.from({ length: 400 }, (_, k) => (k + 1) * 1e8), l = si.lineS(f, { length: 0.1, z0: 50, dk: 3.7, df: 0.01, width: 127e-6, zref: 50 }), Z: si.C = [0, 0];
+    files.load('pair.s4p', { bytes: new TextEncoder().encode(si.writeTouchstone(f, f.map((_, k) => [[l.s11[k], Z, l.s21[k], Z], [Z, l.s11[k], Z, l.s21[k]], [l.s21[k], Z, l.s11[k], Z], [Z, l.s21[k], Z, l.s11[k]]]))) });
+    setNative(fake(tapOf));
+    lab.run(`m = amiModel('chip.ibs', 'serdes_tx', 'Folder', '/opt/models'); S = sparameters('pair.s4p');
+r = amiSimulate(S, 10e9, 'TxModel', m, 'Flow', 'statistical', 'Crosstalk', [0.05 0]);
+fprintf('%d %d %d\\n', size(m.Analog.RisingK, 2), isfield(m.Analog, 'FallingK'), size(r.AggressorsRx, 1))
+disp(r.Messages)`);
+    const [l1, ...rest] = out.trim().split('\n');
+    expect(l1).toBe('3 0 1');
+    expect(rest.join('\n')).toMatch(/edges from its waveform tables[\s\S]*Each leg of the differential pair/);
+  });
 });
 
 describe('the buffers in time: non-linear curves and echoes (M585)', () => {
@@ -357,5 +374,136 @@ describe('the buffers in time: non-linear curves and echoes (M585)', () => {
     const r = analogImpulse(ports(512, 4), 512, 1e-12, 50, tx, idealEnd(50, 'rx'));
     expect(Math.max(...r.h) * 1e-12).toBeLessThan(0.06);
     expect(r.h.reduce((a, b) => a + b, 0) * 1e-12).toBeCloseTo(1, 4);
+  });
+});
+
+describe('waveform tables, two-leg pairs, crosstalk echoes, block sums (M586)', () => {
+  const line = (r: number) => [[-10, -10 / r], [10, 10 / r]];
+  const end = (a: Partial<Analog>): Analog => ({ ...idealEnd(50, 'tx'), pu: [], pd: [], ...a });
+  const delayed = (n: number, d: number) => { const s = new Array(n).fill(0); s[d] = 1; return s; };
+  it('the block sums give what a plain recursion gives on long, dense responses with mismatched ends', () => {
+    // resistive ends: a 30-ohm driver stepping 0 → 1 V, an 80-ohm load; responses 700 samples long (past the blocks)
+    const n = 700, z = 50, rs = 30, rt = 80, gs = (rs - z) / (rs + z), gl = (rt - z) / (rt + z);
+    const s11 = Array.from({ length: n }, (_, k) => (k ? 0.05 * Math.exp(-k / 150) * Math.sin(k / 5) : 0));
+    const s22 = Array.from({ length: n }, (_, k) => (k ? -0.04 * Math.exp(-k / 120) * Math.cos(k / 9) : 0));
+    const s21 = Array.from({ length: n }, (_, k) => (k >= 7 ? (0.9 * Math.exp(-(k - 7) / 30)) / 30 : 0));
+    const a1 = new Array(n).fill(0), a2 = new Array(n).fill(0), v2 = new Array(n).fill(0);
+    for (let t = 0; t < n; t++) {
+      let b1 = 0, b2 = 0;
+      for (let k = 1; k <= t; k++) { b1 += s11[k] * a1[t - k] + s21[k] * a2[t - k]; b2 += s22[k] * a2[t - k] + s21[k] * a1[t - k]; }
+      a1[t] = z / (rs + z) + gs * b1; b2 += 0; a2[t] = gl * b2; v2[t] = (1 + gl) * b2;
+    }
+    const r = analogImpulse({ s11, s12: s21, s21, s22 }, n, 1e-12, z, end({ pu: line(-rs), pd: line(rs) }), end({ gc: line(rt) }));
+    r.rise.forEach((v, k) => expect(v * 1e-12 * 0.5).toBeCloseTo(v2[k] - (k ? v2[k - 1] : 0), 10));
+  });
+  it('the .ibs file\'s waveform tables give the driver\'s switching; the edge follows them', () => {
+    // a 40-ohm driver whose pull-up turns on along a 30 ps ramp, into 50 ohms to ground and to the supply
+    const r = 40, T = 30e-12, ku = (t: number) => Math.min(1, t / T);
+    const V = (t: number, vf: number) => (vf / 50 + ku(t) / r) / (1 / r + 1 / 50);
+    const rows = (vf: number) => Array.from({ length: 41 }, (_, i) => [i * 1e-12, V(i * 1e-12, vf)]);
+    const a = end({ pu: line(-r), pd: line(r) }), k = switching(a, [{ r: 50, v: 0, rows: rows(0) }, { r: 50, v: 1, rows: rows(1) }])!;
+    for (const row of k) { expect(row[1]).toBeCloseTo(ku(row[0]), 6); expect(row[2]).toBeCloseTo(1 - ku(row[0]), 6); }
+    const one = switching(a, [{ r: 50, v: 0, rows: rows(0) }])!;
+    expect(one[Math.floor(one.length / 2)][1]).toBeCloseTo(ku(one[Math.floor(one.length / 2)][0]), 6);
+    const table = (vf: number) => rows(vf).map(([t, v]) => `${(t * 1e12).toFixed(0)}p ${v.toFixed(6)} ${v.toFixed(6)} ${v.toFixed(6)}`).join('\n');
+    const ibs = `[Component] c\n[Model] d\nModel_type Output\n[Voltage Range] 1 1 1\n[Pull-down]\n-1 -25m -25m -25m\n1 25m 25m 25m\n[Pull-up]\n-1 25m 25m 25m\n1 -25m -25m -25m\n[Rising Waveform]\nR_fixture 50\nV_fixture 0\n${table(0)}\n[Rising Waveform]\nR_fixture 50\nV_fixture 1.0\n${table(1)}\n[End]\n`;
+    const an = readAnalog(ibs, 'd')!;
+    expect(an.kr!.length).toBeGreaterThan(40); expect(an.kf).toBeUndefined();
+    expect(an.notes.join()).toMatch(/rising edge from 2 \[Rising Waveform\] tables/);
+    expect(held(an.kr!, 15e-12)).toBeCloseTo(0.5, 5);
+    // the table's 30 ps ramp against no ramp at all: the edge spread, its area the same
+    const p = { s11: new Array(128).fill(0), s22: new Array(128).fill(0), s12: delayed(128, 3), s21: delayed(128, 3) };
+    const slow = analogImpulse(p, 128, 1e-12, 50, an, idealEnd(50, 'rx')).rise, fast = analogImpulse(p, 128, 1e-12, 50, { ...an, kr: undefined }, idealEnd(50, 'rx')).rise;
+    expect(Math.max(...slow)).toBeLessThan(0.1 * Math.max(...fast));
+    expect(slow.reduce((x, y) => x + y, 0) / fast.reduce((x, y) => x + y, 0)).toBeCloseTo(1, 5);
+  });
+  function held(k: number[][], t: number) { const i = k.findIndex((r) => r[0] >= t); const [a, b] = [k[i - 1], k[i]]; return a[1] + ((b[1] - a[1]) * (t - a[0])) / (b[0] - a[0]); }
+  it('a differential pair: each leg its own buffer, so an uneven driver\'s two edges come out alike', () => {
+    const n = 160, z = new Array(n).fill(0), d = delayed(n, 4);
+    // two uncoupled lines: port 1 → 3 and port 2 → 4
+    const S = [[z, z, d, z], [z, z, z, d], [d, z, z, z], [z, d, z, z]];
+    const ideal = analogImpulse(S, n, 1e-12, 50, idealEnd(50, 'tx'), idealEnd(50, 'rx'));
+    expect(ideal.h[4] * 1e-12).toBeCloseTo(1, 9);
+    const tx = end({ pu: line(-100), pd: line(25), rise: 40e-12, fall: 40e-12 });
+    const pair = analogImpulse(S, n, 1e-12, 50, tx, idealEnd(50, 'rx')), single = analogImpulse({ s11: z, s22: z, s12: d, s21: d }, n, 1e-12, 50, tx, idealEnd(50, 'rx'));
+    const gap = (r: { rise: number[]; fall: number[] }) => Math.max(...r.rise.map((v, k) => Math.abs(v - r.fall[k])));
+    expect(gap(single)).toBeGreaterThan(0.01 / 1e-12);
+    expect(gap(pair)).toBeLessThan(1e-9 / 1e-12);
+  });
+  it('a neighbour\'s near-end wave echoes between mismatched ends', () => {
+    const n = 64, z = new Array(n).fill(0), d = delayed(n, 6), p = { s11: z, s22: z, s12: d, s21: d };
+    expect(arrivalResponse(p, n, 1e-12, 50, idealEnd(50, 'tx'), idealEnd(50, 'rx')).map((v) => v * 1e-12).slice(0, 20)).toEqual(expect.arrayContaining([expect.closeTo(1, 9)]));
+    const g = arrivalResponse(p, n, 1e-12, 50, end({ pu: line(-25), pd: line(25) }), end({ gc: line(200), pc: line(-200) }));
+    expect(g[0] * 1e-12).toBeCloseTo(4 / 3, 6);                  // 1 + ΓL
+    expect(g[12] / g[0]).toBeCloseTo(-1 / 9, 6);                  // ΓL·Γs after one round trip
+    expect(Math.abs(g[6] * 1e-12)).toBeLessThan(1e-9);
+  });
+});
+
+describe('M587: the fixture and package taken out, the legs solved together, each neighbour its own echoes', () => {
+  const line = (r: number) => [[-10, -10 / r], [10, 10 / r]];
+  const end = (a: Partial<Analog>): Analog => ({ ...idealEnd(50, 'tx'), pu: [], pd: [], ...a });
+  const delayed = (n: number, d: number) => { const s = new Array(n).fill(0); s[d] = 1; return s; };
+  it('the fixture current: a resistor alone, a capacitor across it, a coil in series', () => {
+    const h = 1e-12, V = Array.from({ length: 50 }, (_, i) => 0.01 * i);
+    fixtureCurrent({ r: 50, v: 1, rows: [] }, V, h).forEach((i, n) => expect(i).toBeCloseTo((1 - V[n]) / 50, 9));
+    const c = fixtureCurrent({ r: 50, v: 1, rows: [], c: 1e-12 }, V, h);
+    for (let n = 2; n < 50; n++) expect(c[n]).toBeCloseTo((1 - V[n]) / 50 - 1e-12 * 0.01 / h, 6);
+    // with L_fixture: V_fixture − R·i − L·di/dt is the die's voltage (backward Euler's own difference)
+    const l = fixtureCurrent({ r: 50, v: 1, rows: [], l: 1e-9 }, V, h);
+    for (let n = 1; n < 50; n++) expect(1 - 50 * l[n] - (1e-9 * (l[n] - l[n - 1])) / h).toBeCloseTo(V[n], 6);
+  });
+  it('a driver measured through a fixture\'s coil and capacitor and a package: its switching recovered', () => {
+    // the "measurement": a 40-ohm driver whose pull-up turns on over 30 ps, its die through R_dut, L_dut, C_dut,
+    // L_fixture, C_fixture into 50 ohms to V_fixture, integrated finely (RK4 at 0.01 ps)
+    const r = 40, T = 30e-12, ku = (t: number) => Math.min(1, Math.max(0, t / T)), P = { rd: 0.5, ld: 0.4e-9, cd: 0.3e-12, l: 1e-9, c: 0.5e-12 };
+    const measure = (vf: number) => {
+      const f = (t: number, [i, vb, j, vc]: number[]) => [(ku(t) - (r + P.rd) * i - vb) / P.ld, (i - j) / P.cd, (vb - vc) / P.l, (j - (vc - vf) / 50) / P.c];
+      const i0 = -vf / (r + P.rd + 50);
+      let y = [i0, vf + 50 * i0, i0, vf + 50 * i0];
+      const k = 1e-14, rows: number[][] = [];
+      for (let s = 0; s <= 8000; s++) {
+        const t = s * k;
+        if (s % 50 === 0) rows.push([t, ku(t) - r * y[0]]);
+        const a = f(t, y), b = f(t + k / 2, y.map((v, q) => v + (k / 2) * a[q])), c = f(t + k / 2, y.map((v, q) => v + (k / 2) * b[q])), d = f(t + k, y.map((v, q) => v + k * c[q]));
+        y = y.map((v, q) => v + (k / 6) * (a[q] + 2 * b[q] + 2 * c[q] + d[q]));
+      }
+      return rows;
+    };
+    const a = end({ pu: line(-r), pd: line(r) }), w = [{ r: 50, v: 0, rows: measure(0), ...P }, { r: 50, v: 1, rows: measure(1), ...P }];
+    const err = (k: number[][]) => Math.max(...k.filter((x) => x[0] > 2e-12).map((x) => Math.abs(x[1] - ku(x[0]))));
+    expect(err(switching(a, w)!)).toBeLessThan(0.03);
+    expect(err(switching(a, w.map((x) => ({ r: x.r, v: x.v, rows: x.rows })))!)).toBeGreaterThan(0.15);   // what M586 did
+    const ibs = `[Model] d\nModel_type Output\n[Voltage Range] 1 1 1\n[Pull-down]\n-1 -25m -25m -25m\n1 25m 25m 25m\n[Pull-up]\n-1 25m 25m 25m\n1 -25m -25m -25m\n${w.map((x) => `[Rising Waveform]\nR_fixture 50\nV_fixture ${x.v}\nL_fixture 1nH\nC_fixture 0.5pF\nR_dut 0.5\nL_dut 0.4nH\nC_dut 0.3pF\n${x.rows.map(([t, v]) => `${(t * 1e12).toFixed(1)}p ${v.toFixed(7)} NA NA`).join('\n')}`).join('\n')}\n[End]\n`;
+    expect(err(readAnalog(ibs, 'd')!.kr!)).toBeLessThan(0.03);
+  });
+  it('the two legs coupled at the same end are solved together: the answer does not depend on which leg comes first', () => {
+    const n = 120, z = new Array(n).fill(0), d5 = delayed(n, 5), d6 = delayed(n, 6), k = [0.2, ...new Array(n - 1).fill(0)];
+    // legs 5 and 6 samples long, coupled at the driven end with no delay; the same network with the legs listed the other way
+    const S = [[z, k, d5, z], [k, z, z, d6], [d5, z, z, z], [z, d6, z, z]], W = [[z, k, d6, z], [k, z, z, d5], [d6, z, z, z], [z, d5, z, z]];
+    const tx = end({ pu: line(-30), pd: line(30), rise: 20e-12, fall: 20e-12 }), rx = end({ ...idealEnd(50, 'rx'), gc: line(140), pc: line(-140) });
+    const a = analogImpulse(S, n, 1e-12, 50, tx, rx).rise, b = analogImpulse(W, n, 1e-12, 50, tx, rx).rise;
+    expect(Math.max(...a.map((v, q) => Math.abs(v - b[q])))).toBeLessThan(1e-7 * Math.max(...a.map(Math.abs)));
+  });
+  it('a neighbour beside one leg echoes along that leg\'s own path; a neighbouring pair along both', () => {
+    const n = 64, z = new Array(n).fill(0), d6 = delayed(n, 6), d7 = delayed(n, 7);
+    const S = [[z, z, d6, z], [z, z, z, d7], [d6, z, z, z], [z, d7, z, z]];   // the legs 6 and 7 samples long
+    const ideal = [0, 1, -1].map((s) => arrivalResponse(S, n, 1e-12, 50, idealEnd(50, 'tx'), idealEnd(50, 'rx'), s as 0 | 1 | -1)[0] * 1e-12);
+    ideal.forEach((v) => expect(v).toBeCloseTo(1, 9));          // an ideal end hears the same, wherever it comes from
+    const tx = end({ pu: line(-25), pd: line(25) }), rx = end({ gc: line(200), pc: line(-200) });
+    const [p, q] = [1, -1].map((s) => arrivalResponse(S, n, 1e-12, 50, tx, rx, s as 1 | -1));
+    expect(Math.abs(p[12])).toBeGreaterThan(0.05 * Math.abs(p[0])); expect(Math.abs(p[14])).toBeLessThan(1e-9 * Math.abs(p[0]));
+    expect(Math.abs(q[14])).toBeGreaterThan(0.05 * Math.abs(q[0])); expect(Math.abs(q[12])).toBeLessThan(1e-9 * Math.abs(q[0]));
+  });
+  it('\'Crosstalk\' takes a row per neighbour; each closes the eye more', () => {
+    const pulse = { p: Array.from({ length: 400 }, (_, k) => Math.exp(-(((k - 100) / 12) ** 2))), cursor: 100 };
+    const e: si.Eye = { rate: 28e9, spu: 16, pam4: false, order: 7, nsym: 1200, swing: 0.8, ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: [], seed: 1 };
+    const h = [[], [[0.05, 0.05]], [[0.05, 0.05], [0.05, 0.05]]].map((x) => si.eye(pulse, { ...e, xtalk: x as si.Eye['xtalk'] }).heightBest);
+    expect(h[1]).toBeLessThan(h[0]); expect(h[2]).toBeLessThan(h[1]);
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    expect(() => lab.run("S = sparamLine((1:100)*1e8, 'Length', 0.05); e = eyeDiagram(S, 10e9, 'Crosstalk', [0.05 0 2]);")).toThrow(/side is 1/);
+    lab.run("S = sparamLine((1:100)*1e8, 'Length', 0.05); a = eyeDiagram(S, 10e9, 'Crosstalk', [0.05 0.1]); b = eyeDiagram(S, 10e9, 'Crosstalk', [0.05 0.1; 0.05 0.1]); fprintf('%d\\n', b.Height < a.Height)");
+    expect(out.trim()).toBe('1');
   });
 });

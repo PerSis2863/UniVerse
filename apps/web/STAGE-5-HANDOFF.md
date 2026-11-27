@@ -13708,3 +13708,56 @@ package spreading the response and keeping its area; `iv` past its ends; amiSimu
 Not built: [Rising/Falling Waveform] tables (the ramp switches the curves instead), the two legs of a differential
 pair as separate non-linear buffers (one leg's half-circuit, mirrored), crosstalk couplings' own echoes.
 
+
+## M586 (27 Nov): Hyperion IBIS-AMI: waveform tables, two-leg pairs, crosstalk echoes, faster
+
+M585's four left-outs (the owner pasted the list, 27 Nov). `ibis-sim.ts` is now one engine, `run(S, n, dt, z0, ends,
+drive, inject)`, for any number of ports (S[p][q] from q into p): ports solved in turn each step, a port's own s_pp[0]
+implicitly, a port solved before it this step exactly, one after it a sample late. **Faster:** the sums over what has
+travelled split as audio engines do (uniformly partitioned overlap-save): lags under B summed per step, the rest a
+block at a time by FFT (`Input` keeps a port's wave and its two-block window spectra, `Past` one response's partition
+spectra; B a power of two near √(2L), 16–256; `fftPow2` now exported from `fft.ts`): 8,000 samples 349 → 136 ms,
+32,000 about 0.5 s (was growing with n²); results equal to 1e-13. **Waveform tables:** `readAnalog` reads [Rising
+Waveform] / [Falling Waveform] (R_fixture, V_fixture, V_fixture_min/max, rows t V at the corner); `switching(a, waves)`
+solves ku·Ipu(Vcc−V) + kd·Ipd(V) = (Vfix−V)/Rfix − C_comp·dV/dt − clamps at each moment (two fixtures: both weights,
+the two most different fixtures if more; one: kd = 1 − ku), clamped to −0.2…1.2, rows [t ku kd] in `Analog.kr` /
+`kf`, `m.Analog.RisingK` / `FallingK`; the edge then follows them (`schedule`; before the edge the table's first row).
+Needs both driver tables. shortcut: the fixture's L/C and the package (R_dut…) are left out of the extraction.
+**Two legs:** a 4-port runs its sixteen single-ended responses with [tx, tx, rx, rx], the legs switching opposite ways,
+the receiver's pads differenced and scaled by the whole supply (`sddPair` no longer used here). **Crosstalk echoes:**
+`arrivalResponse` is the receiver's (differential) pad voltage per unit wave arriving at its pin (a step of 1 mV
+injected, the driver held low and high, averaged); `analogChannel`'s `near` (worked out on first use) is the aggressor's
+Tx front end, then that, then any CTLE (the near-end aggressor now goes through the CTLE too, as the channel does).
+FEXT already carried the victim's echoes (the channel's own response differentiated). `convolve` (FFT) added. Tests:
+block sums against a plain recursion on 700-sample dense responses with 30 Ω / 80 Ω ends; a 40 Ω driver's 30 ps ramp
+recovered from two and from one fixture, read from an .ibs and spreading the edge with the same area; an uneven driver
+on a 4-port gives equal rising and falling edges (single-ended it doesn't); the near-end wave's first arrival 1 + ΓL,
+then ΓL·Γs a round trip later; `RisingK` in a script and the 4-port's message. Not built: the fixture's L/C and
+package in the extraction, the legs' differential coupling at the same end solved together (it's a sample late, like
+s12[0]), several neighbours each their own echo path (one shared receiver response).
+
+## M587 (27 Nov): Hyperion IBIS-AMI: the fixture and package taken out, a pair's legs solved together, each neighbour its own echoes
+
+M586's three left-outs (the owner pasted the list, 27 Nov). **De-embedding:** IBIS measures the waveform tables at the
+die pad (the IBIS ATM's "How to measure VT curves", 2014: fixture and package de-embedded), so `readAnalog` now reads
+L_fixture, C_fixture, R_dut, L_dut, C_dut into `Wave` (`l`, `c`, `rd`, `ld`, `cd`), and `fixtureCurrent(wave, V, h)`
+solves die → R_dut + L_dut → node b (C_dut) → L_fixture → node c (C_fixture) → R_fixture → V_fixture, driven by the
+table's voltage, backward Euler on `switching`'s grid (a tridiagonal 3×3, Thomas), from its DC state at V(0); a missing
+L a 1 µΩ short, a missing C open; with no parasitics the exact (Vfix − V)/R as before. `switching` uses that current in
+place of (Vfix − V)/R. **Legs solved together:** `run` sums what has travelled once per port per step (`base`), then
+sweeps the ports until their waves agree (Gauss–Seidel on the instant couplings s_pq[0], at most 60 sweeps, 1e-13;
+one sweep when no s_pq[0] is non-zero), every port starting from the step's previous state (`nst`). **Neighbours:**
+`Eye.xtalk` is now rows `[kNext, kFext, side?]`, one per neighbouring line (`crosstalkOf` in `si-lab.ts`: [kNext kFext],
+or N×2 / N×3; with several rows and no side they alternate 1, −1); `si.eye` gives each row its own PRBS (row 0's seeds
+as before, later rows +1000·i); `aggressorsOf` loops the rows. `arrivalResponse(…, side)`: on a 4-port 0 = a
+neighbouring pair (±eps/2 on both legs, as M586), 1 = eps on the first receiver leg alone, −1 = −eps on the second
+(signed so an ideal end hears the same differential wave); `analogChannel`'s `near(x, side)` keeps one response per
+side (a 2-port's neighbours all reach the same pin: one response, physically right). Tests: the fixture current for R,
+R‖C and series L against their equations; a 40 Ω driver measured through R_dut, L_dut, C_dut, L_fixture, C_fixture (RK4
+at 0.01 ps) recovered within 0.03 of its ramp (M586's extraction off by more than 0.15), also from an .ibs; legs of 5
+and 6 samples coupled at the driven end give the same answer listed either way (the old one-sample lag fails it by
+far); legs of 6 and 7 samples: a neighbour beside the first echoes at 12 samples, beside the second at 14; 'Crosstalk'
+rows close the eye more, a bad side refused. Not built: a neighbour coupling partway along the line (all arrive at the
+pin), neighbours coupled to each other, the fixture network's own time step finer than the table's grid (backward
+Euler there damps a fixture's LC ringing slightly).
+

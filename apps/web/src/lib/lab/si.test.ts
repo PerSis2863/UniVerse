@@ -8,7 +8,7 @@ import './sciences';
 const run = (code: string) => { let out = ''; const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() }); lab.run(code); return out; };
 const f = Array.from({ length: 400 }, (_, i) => (i + 1) * 1e8);
 const ln: si.Line = { length: 0.0254, z0: 50, dk: 3.7, df: 0.01, width: 127e-6, zref: 50 };
-const base: si.Eye = { rate: 28e9, spu: 16, pam4: false, order: 7, nsym: 1200, swing: 0.8, ffe: [], ffePre: 0, dfe: 0, rj: 0.01, dj: 0.05, noise: 0.003, ber: 1e-12, xtalk: [0, 0], seed: 1 };
+const base: si.Eye = { rate: 28e9, spu: 16, pam4: false, order: 7, nsym: 1200, swing: 0.8, ffe: [], ffePre: 0, dfe: 0, rj: 0.01, dj: 0.05, noise: 0.003, ber: 1e-12, xtalk: [], seed: 1 };
 
 describe('signal and power integrity (M576)', () => {
   it('a trace loses ~0.9 dB an inch at 10 GHz on FR-4-class board; a matched line reflects nothing, a mismatched one does', () => {
@@ -55,7 +55,7 @@ describe('signal and power integrity (M576)', () => {
     const nrz = si.eye(p, { ...base, rj: 0, dj: 0 }), pam = si.eye(p, { ...base, pam4: true, rj: 0, dj: 0 });
     expect(pam.thresholds).toHaveLength(3);
     expect(pam.heightBest / nrz.heightBest).toBeLessThan(0.4); expect(pam.heightBest / nrz.heightBest).toBeGreaterThan(0.25);
-    const xt = si.eye(p, { ...base, xtalk: [0.05, 0.05] });
+    const xt = si.eye(p, { ...base, xtalk: [[0.05, 0.05]] });
     expect(xt.heightBest).toBeLessThan(nrz.heightBest);
   });
   it('PDN: series resonances dip, anti-resonances peak; a load step droops', () => {
