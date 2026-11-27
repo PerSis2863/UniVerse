@@ -19,3 +19,4 @@ import './dc-grid-lab';
 import './dc-convert-lab';
 import './dc-cool-lab';
 import './dc-gen-lab';
+import './si-lab';

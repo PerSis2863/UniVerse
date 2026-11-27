@@ -13457,3 +13457,36 @@ hydrogen; a bigger block dipping deeper, the classes and isochronous recovery; t
 turbines can't ramp to, the energy balance to 1e-9, the grid limit and SoC floor. Not built: an optimal (LP or MILP)
 dispatch with prices through the day, turbine start-up times and costs, battery ageing in dispatch (M433's
 `batteryAge` exists), fuel cell transients and stack heat, synchronous machine voltage control.
+
+## M576 (27 Nov): Hyperion data centres: signal and power integrity
+
+The sixth data-centre page ("High-speed digital interconnect developers"), `si.ts`. **Channels**: `gamma` must be
+causal or the pulse response grows false pre-cursors no DFE can cancel (the first version had loss with a linear phase:
+a 16 dB PAM4 channel stayed shut with CTLE + DFE; now DFE alone opens it): the skin effect R = √(πfμ0ρ)/w with its equal
+internal reactance, α_c(1 + j), α_c = R/2Z0; the dielectric as a constant loss tangent consistent with Kramers–Kronig,
+ε = Dk(jf/1 GHz)^(−2Df/π), γ_d = jk0√ε (loss ≈ πf√Dk·Df/c: 0.9 dB/inch at 10 GHz for Dk 3.7, Df 0.01, 127 µm).
+ABCD cascades (line, an open stub in shunt, line), S from ABCD with Z0 held constant (`shortcut:`-level: Z0's own
+frequency dependence left out). `touchstone`: v1 only (v2 keywords refused), MA/DB/RI, Hz–GHz, 2-ports in column order
+(S11 S21 S12 S22), larger row by row; the port count from the lines' shape (3, 9, 9 then 8s, 7 then 6s), else the
+largest n whose 1 + 2n² divides the numbers; `writeTouchstone` RI. `sdd21` = ½(S31 − S32 − S41 + S42). **Pulse**:
+2^⌈log2(spu·512)⌉ points, the channel resampled (linear magnitude, unwrapped linear phase, 0 phase at DC, an octave's
+roll-off past the data), a one-UI rectangle (optionally a Gaussian edge), cursor at the peak. **Eye**: PRBS from the
+standard polynomials (7, 9, 11, 15, 23, 31), NRZ ±1 or Gray PAM4; transmit FFE convolved into the pulse; the pulse cut
+8 UI before to 80 after; NEXT as a scaled edge derivative, FEXT as the derivative of the channel's pulse, separate
+seeded aggressors; DFE taps = the post cursors, subtracted over each UI with correct decisions; jitter per symbol (RJ
+Gaussian, DJ dual Dirac) as a trace shift; inner height per phase, BER by Q() of the distance to each neighbouring
+threshold with jitter as a phase shift and noise σ, per bit (÷2 for PAM4); width = open share − DJ − 2Q⁻¹(BER)·RJ; the
+bathtub's width at the target; a diamond mask. 'auto' CTLE sweeps DC gain 0 to −18 dB (zero at Nyquist·10^(dc/20),
+poles at Nyquist and 4× it) on 600 symbols; 'auto' FFE is zero-forcing least squares over the UI samples, normalised to
+Σ|c| = 1. **PDN**: parts in parallel (VRM R + jωL, groups (ESR + jωESL + 1/jωC)/count, plane and die), peaks, the band
+over target, the droop by IFFT of Z·I on 2^15 points (the step a long pulse so the window wraps; DC from the VRM's R).
+**IR drop**: square-cell resistor mesh (gx = σt·hy/hx), regulator cells fixed, loads spread over their cells, voids
+removed, conjugate gradients to 1e-12 relative; J from central differences. Language: `sparamLine`, `sparameters` (a
+file in the person's files or the text), `rfparam` (also 'sdd21'), `touchstoneWrite`, `ctleResponse`, `pulseResponse`,
+`eyeDiagram` (traces as one NaN-broken line and the bathtub), `pdnImpedance`, `irDrop`. Tests: dB/inch, matched and
+quarter-wave reflections, passivity, the stub's notch, Touchstone MA/DB round trip, PRBS7's period and balance, open
+short eye, DFE more than doubling a lossy eye, FFE widening it, PAM4's three eyes at ~⅓ height, crosstalk shrinking it,
+an MLCC group's series resonance = ESR/n, droop, the strip's ρL/(wt) and current density exactly, a void raising the
+drop. Not built: IBIS-AMI models (the vendors' compiled DLLs can't run in a browser), mixed-mode conversion of
+arbitrary port orders, COM (IEEE 802.3's channel operating margin), coupled-line crosstalk from geometry, plane cavity
+resonances, via field solving, AC current density.

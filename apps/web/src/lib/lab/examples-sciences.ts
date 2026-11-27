@@ -750,4 +750,31 @@ for k = days                           % a one-sided CUSUM, slack 0.5, limit 5 (
 end
 fprintf('Heat rate drifting up, flagged on day %d: wash the compressor\\n', alarm)
 ` },
+  { name: 'datacenter_interconnect.m', code: `% Data centres: signal and power integrity for AI accelerator links
+% 1. A 30 cm board trace between accelerators, and the same with a 3 mm via stub
+f = 1e8:1e8:5e10;
+S = sparamLine(f, 'Length', 0.3, 'Dk', 3.5, 'Df', 0.006, 'Width', 150e-6);
+Sv = sparamLine(f, 'Length', 0.3, 'Dk', 3.5, 'Df', 0.006, 'Width', 150e-6, 'Stub', [0.003 0.5 50]);
+figure; plot(f/1e9, 20*log10(abs(rfparam(S, 2, 1))), f/1e9, 20*log10(abs(rfparam(Sv, 2, 1))), 'LineWidth', 1.5); grid on
+xlabel('Frequency (GHz)'); ylabel('Insertion loss (dB)'); legend('Trace', 'With a via stub'); title('The channel')
+% 2. Its pulse response at 56 GBd: inter-symbol interference
+figure; pulseResponse(S, 56e9)
+% 3. PAM4 at 56 GBd (112 Gb/s): no equalisation, then CTLE + 6-tap DFE, with jitter and crosstalk
+figure; eyeDiagram(S, 56e9, 'Modulation', 'PAM4', 'Symbols', 1500, 'RJ', 0.01, 'DJ', 0.03)
+figure; eyeDiagram(S, 56e9, 'Modulation', 'PAM4', 'CTLE', 'auto', 'DFE', 6, 'Symbols', 1500, 'RJ', 0.01, 'DJ', 0.03, 'Noise', 0.002, 'Crosstalk', [0.01 0.02], 'Mask', [0.2 0.02])
+e = eyeDiagram(S, 56e9, 'Modulation', 'PAM4', 'CTLE', 'auto', 'DFE', 6, 'Symbols', 1500, 'RJ', 0.01, 'DJ', 0.03, 'Noise', 0.002);
+fprintf('Equalised PAM4 eye: %.0f mV x %.2f UI, BER %.1e; CTLE %.1f dB\\n', 1000*e.Height, e.Width, e.BER, e.CTLE(1))
+% 4. Transmit FFE chosen by zero forcing for 28 GBd NRZ
+n = eyeDiagram(S, 28e9, 'FFE', 'auto', 'FFETaps', [1 3], 'Symbols', 1000);
+fprintf('FFE taps: %s\\n', mat2str(n.FFETaps, 3))
+% 5. Power integrity: the accelerator's 0.8 V rail, 400 A, 3% ripple
+target = 0.8*0.03/200;                         % a 200 A load step
+fz = logspace(3, 9, 300);
+caps = [12 470e-6 4e-3 1.2e-9; 80 22e-6 3e-3 0.35e-9; 200 1e-6 6e-3 0.25e-9];
+figure; pdnImpedance(fz, 'VRM', [0.2e-3 5e-9], 'Caps', caps, 'Plane', [80e-9 0.2e-3 15e-12], 'Die', [400e-9 0.5e-3 1e-12], 'Target', target, 'Step', [200 2e-9 20e-6])
+% 6. DC drop across the 0.8 V planes (three 2-oz layers): regulators on the left, the package in the middle, a void for a connector
+figure; irDrop('Size', [0.08 0.06], 'Grid', [80 60], 'Copper', 6, 'VRM', [0 0.01 0.008 0.04 0.8], 'Loads', [0.045 0.02 0.02 0.02 200], 'Voids', [0.025 0.035 0.01 0.025], 'Limit', 2)
+r = irDrop('Size', [0.08 0.06], 'Grid', [80 60], 'Copper', 6, 'VRM', [0 0.01 0.008 0.04 0.8], 'Loads', [0.045 0.02 0.02 0.02 200], 'Voids', [0.025 0.035 0.01 0.025], 'Limit', 2);
+fprintf('The package sees %.3f V (%.1f mV lost); %d cells over 2%%\\n', r.LoadV, 1000*(0.8 - r.LoadV), r.CellsOverDrop)
+` },
 ];
