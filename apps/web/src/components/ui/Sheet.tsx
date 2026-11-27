@@ -26,7 +26,7 @@ export function Sheet({ title, onClose, children, footer, wide }: {
     if (reducedMotion() || p.style.transform) { close.current(); return; }
     leaving.current = true;
     const phone = window.innerWidth < 640, ms = phone ? 260 : 140;
-    // Larger screens: the search window's exit (M479, `pop.out`): quick, easing in, to 97% and a touch up.
+    // Larger screens: the search window's exit (M563, `pop.out`): quick, easing in, to 97% and a touch up.
     const pa = phone ? p.animate([{ transform: 'translate3d(0, 0, 0)' }, { transform: 'translate3d(0, 100%, 0)' }], { duration: ms, easing: EASE_IOS, fill: 'forwards' })
       : p.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px) scale(0.97)' }], { duration: ms, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' });
     const ba = b?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing: 'ease-out', fill: 'forwards' });

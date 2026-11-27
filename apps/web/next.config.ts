@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
-import { sandboxHeaders, securityHeaders } from './security-headers';
+import { isolationHeaders, netHeaders, sandboxHeaders, securityHeaders } from './security-headers';
 
 // Lets `next dev` read Cloudflare bindings from wrangler.jsonc (no effect on production builds). Nothing remote: the AI
 // binding (M430, Workers AI) would otherwise make it sign in to the real Cloudflare account; locally Ghidra uses Gemini.
@@ -153,7 +153,16 @@ const nextConfig: NextConfig = {
       { source: '/((?!sandbox/).*)', headers: rest },
       // Uploaded files and certificate pages send their own, stricter policy.
       { source: '/((?!api/files/|api/core/impact/certificates/|sandbox/).*)', headers: csp },
-      { source: '/sandbox/:path*', headers: sandboxHeaders },
+      { source: '/sandbox/run', headers: sandboxHeaders },
+      { source: '/sandbox/run.html', headers: sandboxHeaders },
+      // Its sealed web link (M560): its own policy in place of the runner's.
+      { source: '/sandbox/net', headers: netHeaders },
+      { source: '/sandbox/net.html', headers: netHeaders },
+      // Hyperion's pages: cross-origin isolated (M521; replaces the opener policy above).
+      { source: '/hyperion', headers: isolationHeaders },
+      { source: '/hyperion/:path*', headers: isolationHeaders },
+      // Its engine's workers start from the built scripts, which must say they take part too.
+      { source: '/_next/static/:path*', headers: [{ key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' }] },
     ];
   },
 };

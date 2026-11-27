@@ -1001,12 +1001,12 @@ html, body { overflow-x: clip; max-width: 100%; }
 /* Phones: the sheet slides all the way up from the bottom edge, like an iOS sheet. Larger screens:
    a soft pop. */
 @keyframes sheet-in { from { transform: translate3d(0, 100%, 0); } }
-/* M479 (the owner, 26 Nov: "make it like [the search window] where ever you can"): the search window's opening,
+/* M563 (the owner, 26 Nov: "make it like [the search window] where ever you can"): the search window's opening,
    Spotlight's (`pop` in motion.ts): from 94% and a touch above, settling on the glide spring. Larger screens' windows
    and alerts open this way; menus and pop-ups too (Popover, the motion layer). */
 @keyframes spot-in { from { opacity: 0; transform: translateY(-6px) scale(0.94); } }
 .spot-in { animation: spot-in 320ms var(--spring-glide, var(--ease-ios)); }
-/* M480: the same for a menu that opens upwards (above its button): it rises a touch instead. */
+/* M564: the same for a menu that opens upwards (above its button): it rises a touch instead. */
 @keyframes spot-up { from { opacity: 0; transform: translateY(6px) scale(0.94); } }
 .spot-up { animation: spot-up 320ms var(--spring-glide, var(--ease-ios)); }
 .backdrop-in { animation: backdrop-in 240ms ease-out; }
@@ -1342,7 +1342,7 @@ html[data-scrolled] .nav-edge {
 :is(a, button).ios-cell:active { background: var(--fill); scale: 1; }
 .ios-icon-tile { display: inline-flex; align-items: center; justify-content: center; width: 1.875rem; height: 1.875rem; border-radius: 0.5rem; color: #fff; flex-shrink: 0; }
 
-/* Alerts: the search window's opening too (M479; they came in from 112% before). */
+/* Alerts: the search window's opening too (M563; they came in from 112% before). */
 .alert-in { animation: spot-in 320ms var(--spring-glide, var(--ease-ios)); }
 .ios-alert {
   background: var(--material-thick);
@@ -3226,7 +3226,7 @@ html[data-scrolling] .lab-busy > span { animation-play-state: paused; }
   [data-uv-app="lab"] { display: none !important; }
 }
 
-/* M480 (the owner, 26 Nov: "check what else you can make smooth like that"): a fold-out section (<details>) opens and
+/* M564 (the owner, 26 Nov: "check what else you can make smooth like that"): a fold-out section (<details>) opens and
    closes smoothly instead of jumping: its content grows to its height and fades in on Apple's curve, and folds away
    quicker. Opening and closing a section is the one place height animates (§8). Browsers without ::details-content
    keep the instant open; none with Reduce Motion. */

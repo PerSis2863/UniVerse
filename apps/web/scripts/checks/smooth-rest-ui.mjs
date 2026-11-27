@@ -1,4 +1,4 @@
-// M482 and M483 in the browser (dev server with demo login): the parts that keep their own movement on the search window's
+// M566 and M567 in the browser (dev server with demo login): the parts that keep their own movement on the search window's
 // timing. Internships' Filters panel slides in from the end edge (transform only) with its backdrop fading; closing is
 // quicker than opening; no page errors.   node scripts/checks/smooth-rest-ui.mjs [http://localhost:3000]
 import { baseUrl, launch, signedIn } from '../browser-session.mjs';
@@ -27,7 +27,7 @@ try {
   const t0 = Date.now();
   await panel.waitFor({ state: 'detached', timeout: 3000 }).catch(() => fail.push('the panel did not close'));
   console.log('closed in', Date.now() - t0, 'ms');
-  // M483: the Planner's Settings section folds open (height, on the search window's timing) and folds away quicker.
+  // M567: the Planner's Settings section folds open (height, on the search window's timing) and folds away quicker.
   await page.goto(`${base}/student/planner`, { waitUntil: 'domcontentloaded', timeout: 180000 });
   const toggle = page.locator('button[aria-expanded]:has-text("Settings")').first();
   await toggle.waitFor({ timeout: 60000 });

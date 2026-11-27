@@ -1,7 +1,8 @@
 'use client';
 
-import { Download, FileCode2, Loader2, Play } from 'lucide-react';
+import { BookOpen, Download, FileCode2, Loader2, Play } from 'lucide-react';
 import { reportHtml, reportTex, textHtml, type Section } from '@/lib/lab/notebook';
+import { scriptToIpynb } from '@/lib/lab/ipynb';
 import { LabText, mathml, useKatex } from './LabText';
 import type { FigOut } from './lab.worker';
 
@@ -35,6 +36,7 @@ export function LabNotebook({ name, sections, outs, running, waiting, busy, dark
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy && running === null} onClick={onRunAll}><Play className="h-3.5 w-3.5" aria-hidden />Run all</button>
         <button type="button" className={btn} onClick={() => void report('html')} title="A page with the text, code, output and figures, to open, share or print as a PDF"><Download className="h-3.5 w-3.5" aria-hidden />Report</button>
         <button type="button" className={btn} onClick={() => void report('tex')} title="The same report as a LaTeX document"><FileCode2 className="h-3.5 w-3.5" aria-hidden />LaTeX report</button>
+        <button type="button" className={btn} onClick={() => onDownload(`${base}.ipynb`, scriptToIpynb(sections, outs), 'application/x-ipynb+json')} title="A Jupyter notebook: each part a cell, with its output and figures"><BookOpen className="h-3.5 w-3.5" aria-hidden />Jupyter notebook</button>
       </div>
       {!titled && (
         <p className="mt-3 rounded-lg bg-zinc-100/80 px-3 py-2 text-xs leading-relaxed text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200">

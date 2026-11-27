@@ -41,7 +41,8 @@
       "tinypool@<2.1.2": "2.2.0",
       "katex@>=0.11.0 <0.18.2": "0.18.9",
       "webpack@>=5.49.0 <5.104.1": "5.104.1",
-      "body-parser@>=2.0.0 <2.4.0": "2.4.0"
+      "body-parser@>=2.0.0 <2.4.0": "2.4.0",
+      "effect@<3.22.1": "3.22.4"
     },
     "patchedDependencies": {
       "@excalidraw/excalidraw@0.18.1": "patches/@excalidraw__excalidraw@0.18.1.patch",

@@ -74,6 +74,13 @@ const store = (lab: Lab): FileStore => {
   if (!(s instanceof FileStore)) throw new LabError('Files aren’t available here.');
   return s;
 };
+/** A file's text, and writing one, for the toolboxes' own readers and writers (M512: FASTA, GenBank). */
+export const fileText = (lab: Lab, name: string) => store(lab).text(name);
+export const writeFileText = (lab: Lab, name: string, text: string) => store(lab).putText(name, text);
+/** A file's bytes, and writing bytes (M557: the data-file formats in data-lab.ts). */
+export const fileBytes = (lab: Lab, name: string) => store(lab).get(name).bytes;
+export const writeFileBytes = (lab: Lab, name: string, bytes: Uint8Array) => store(lab).put(name, { bytes });
+export const hasFile = (lab: Lab, name: string) => store(lab).has(name);
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const ext = (name: string) => (/\.([^./]+)$/.exec(name)?.[1] ?? '').toLowerCase();
 /** Name–value options: opt(a, 'Sheet'). */
@@ -127,7 +134,7 @@ function xlsxRows(bytes: Uint8Array, sheet?: Value): string[][] {
   }
   return Array.from(rows, (row) => Array.from(row ?? [], (x) => x ?? ''));
 }
-function rowsOf(lab: Lab, name: string, a: Value[] = []): string[][] {
+export function rowsOf(lab: Lab, name: string, a: Value[] = []): string[][] {
   const fs = store(lab), f = fs.get(name);
   if (ext(name) === 'xlsx' || (f.bytes[0] === 0x50 && f.bytes[1] === 0x4b)) return xlsxRows(f.bytes, opt(a, 'Sheet'));
   if (ext(name) === 'xls' || (f.bytes[0] === 0xd0 && f.bytes[1] === 0xcf)) {

@@ -30,7 +30,7 @@ export const pop = {
   spring: { type: 'spring', stiffness: 520, damping: 38, mass: 0.8 } as Transition,
 };
 
-/** M480: `pop` as framer-motion props, for a hand-made menu or pop-up window: `<motion.div {...popIn}>`. */
+/** M564: `pop` as framer-motion props, for a hand-made menu or pop-up window: `<motion.div {...popIn}>`. */
 export const popIn = { initial: pop.from, animate: pop.to, exit: pop.out, transition: pop.spring };
 
 export const ease = {
@@ -38,7 +38,7 @@ export const ease = {
   out: [0.22, 1, 0.36, 1] as const,
 };
 
-/** M481: a window that is a bottom sheet on phones and centred on larger screens: it slides up from the edge on a
+/** M565: a window that is a bottom sheet on phones and centred on larger screens: it slides up from the edge on a
  *  phone (iOS's sheet) and opens as the search window does elsewhere (`popIn`). Read when it opens, not on the server. */
 export function sheetIn() {
   if (typeof window === 'undefined' || window.innerWidth >= 640) return popIn;
@@ -48,10 +48,10 @@ export function sheetIn() {
   };
 }
 
-/** M481: `popIn` for a menu that opens above its button (a list over a text box): it rises a touch instead. */
+/** M565: `popIn` for a menu that opens above its button (a list over a text box): it rises a touch instead. */
 export const popUp = { ...popIn, initial: { ...pop.from, transform: 'translateY(6px) scale(0.94)' }, exit: { ...pop.out, transform: 'translateY(4px) scale(0.97)' } };
 
-/** M482 (the owner, 27 Nov: "smooth them, keep their style"): the parts that keep their own movement, on the search
+/** M566 (the owner, 27 Nov: "smooth them, keep their style"): the parts that keep their own movement, on the search
  *  window's timing: in on a firm spring as one transform string (the compositor runs it), out quicker, easing in. */
 const outQuick = { duration: 0.16, ease: [0.4, 0, 1, 1] as const };
 /** The dark backdrop behind a window, panel or viewer: a fade, in 0.2 s, out 0.15 s. */
@@ -74,7 +74,7 @@ export const barPop = {
   initial: { opacity: 0, transform: 'translateY(16px) scale(0.96)' }, animate: { opacity: 1, transform: 'translateY(0px) scale(1)' },
   exit: { opacity: 0, transform: 'translateY(10px) scale(0.98)', transition: outQuick }, transition: pop.spring,
 };
-/** A section that folds open in place (a form, details under a row): the same as a `<details>` fold-out (M480),
+/** A section that folds open in place (a form, details under a row): the same as a `<details>` fold-out (M564),
  *  growing to its height on Apple's curve in 0.34 s and fading, folding away in 0.22 s. Give it `overflow-hidden`. */
 export const foldIn = {
   initial: { height: 0, opacity: 0 }, animate: { height: 'auto', opacity: 1 },

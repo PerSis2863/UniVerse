@@ -74,6 +74,7 @@ export async function eraseAccount(userId: string) {
     prisma.travelTripCheckin.deleteMany({ where: { userId } }),
     prisma.travelSaved.deleteMany({ where: { userId } }),
     prisma.travelDoc.deleteMany({ where: { userId } }),
+    prisma.iotChannel.deleteMany({ where: { userId } }), // M475: Hyperion IoT channels (their readings cascade)
     prisma.travelBoardPost.deleteMany({ where: { userId } }),
     prisma.travelBlock.deleteMany({ where: { OR: [{ userId }, { blockedId: userId }] } }),
     prisma.user.update({

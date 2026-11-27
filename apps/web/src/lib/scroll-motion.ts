@@ -377,7 +377,7 @@ function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Se
     .filter(({ el, r }) => r.height > 0 && r.top < fold && r.bottom > 0 && !out.some((o) => o !== el && o.contains(el)))
     .map((x) => ({ ...x, float: ['absolute', 'fixed'].includes(getComputedStyle(x.el).position) }))
     .filter((x) => since <= 800 || linked(x.el, x.float));
-  // M479: it leaves smoothly too, unless framer-motion moves it (its inline styles: it has an exit of its own).
+  // M563: it leaves smoothly too, unless framer-motion moves it (its inline styles: it has an exit of its own).
   for (const x of near) if (x.float && !x.el.style.opacity && !x.el.style.transform) floats.add(x.el);
   const shown = near.filter((x) => !moving(x.el)).slice(0, 6);
   for (const { el, r, float } of shown) {
@@ -394,7 +394,7 @@ function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Se
   }
 }
 
-/** M479 (the owner, 26 Nov, of the search window: "make it like that for the areas or where ever you can"): a floating
+/** M563 (the owner, 26 Nov, of the search window: "make it like that for the areas or where ever you can"): a floating
  *  part that opened after a press (a menu, a drop-down, a pop-up; `floats`) and is taken away soon after a press or a
  *  key (Escape) leaves as the search window does: a copy of it, inert and hidden from screen readers, stays where it
  *  was for 0.14 s, fading to 97% and a touch up (`pop.out`), then goes. Mutation callbacks run before the frame is

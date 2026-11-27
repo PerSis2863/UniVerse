@@ -5,7 +5,7 @@ import { solve } from './interp';
 import { dft } from './fft';
 
 // Hyperion's signals and statistics (M378): fft / ifft of any length (radix-2, Bluestein for the rest), filter,
-// conv2, xcorr, freqz, windows, movmean; cov, corrcoef, prctile / quantile, histcounts, zscore, skewness, kurtosis,
+// conv2, xcorr, windows (freqz moved to filters-lab.ts, M472), movmean; cov, corrcoef, prctile / quantile, histcounts, zscore, skewness, kurtosis,
 // the normal distribution and erf; cubic splines. Our own code from the documented definitions.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
@@ -69,14 +69,6 @@ def('xcorr', (a, nout) => {
   const lags: number[] = [], out: number[] = [];
   for (let l = -(n - 1); l <= n - 1; l++) { let s = 0; for (let k = 0; k < n; k++) { const j = k + l; if (j >= 0 && j < x.length && k < y.length) s += x[j] * y[k]; } lags.push(l); out.push(s); }
   return nout > 1 ? [row(out), row(lags)] : [row(out)];
-});
-def('freqz', (a, nout) => {
-  const b = [...R(a[0]).d], den = a[1] ? [...R(a[1]).d] : [1], n = S(a[2], 512);
-  const w = Array.from({ length: n }, (_, k) => (Math.PI * k) / n);
-  const ev = (p: number[], t: number): [number, number] => p.reduce<[number, number]>((acc, c, k) => [acc[0] + c * Math.cos(-k * t), acc[1] + c * Math.sin(-k * t)], [0, 0]);
-  const re: number[] = [], im: number[] = [];
-  for (const t of w) { const [nr, ni] = ev(b, t), [dr, di] = ev(den, t), d = dr * dr + di * di; re.push((nr * dr + ni * di) / d); im.push((ni * dr - nr * di) / d); }
-  return nout > 1 || nout < 0 ? [cmat(n, 1, re, im), mat(n, 1, w)] : [cmat(n, 1, re, im)];
 });
 const win = (names: string, fn: (k: number, n: number) => number) => def(names, (a) => { const n = scalar(a[0]); return [mat(n, 1, Array.from({ length: n }, (_, k) => (n === 1 ? 1 : fn(k, n))))]; });
 win('hann hanning', (k, n) => 0.5 - 0.5 * Math.cos((2 * Math.PI * k) / (n - 1)));

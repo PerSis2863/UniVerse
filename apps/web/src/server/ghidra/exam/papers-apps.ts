@@ -4,6 +4,7 @@ import { BILL_SCHEMA, BILL_SYSTEM } from '../../green-business';
 import { SYSTEM as HOME_SYSTEM, SCHEMA as HOME_SCHEMA } from '../../green-home';
 import { NARRATIVE_SCHEMA, NARRATIVE_SYSTEM } from '../../impact-rooms';
 import { hyperionRich } from '../own-model';
+import { simChoices } from '@/lib/sim/setup';
 import { cites, has, markdown, newNumbers, wordCount, type Ask, type CodeRun, type Paper, type Rand, type Rule } from './kit';
 import { BUYER_ASKS, CITIES, FIRST, PASSAGES, PRODUCTS, factsOf } from './material';
 
@@ -238,3 +239,67 @@ const impact: Paper = {
 };
 
 export const APP_PAPERS = { support, travel, research, social, booking, 'home-energy': homeEnergy, carbon, 'impact-rooms': impact };
+
+// ——— M549b: Aether's guide and Hyperion's sim set-up ———
+const SIGHTS = ['the Old Fort', 'the River Market', 'the Botanical Garden', 'St Anne’s Cathedral', 'the Clock Tower', 'the Glass Museum', 'the Lantern Temple', 'the Harbour Walls', 'the Salt Caves', 'the Painted Bridge'];
+const DISHES = ['river fish stew', 'honey pastries', 'spiced lentil soup', 'grilled corn with lime', 'lamb dumplings', 'saffron rice', 'walnut cake', 'chickpea flatbread', 'smoked cheese pies', 'mint tea'];
+const AREAS = ['the Old Town', 'the Riverside', 'the University Quarter', 'the Harbour', 'the Hill District', 'the New Town'];
+const WAYS = ['Trams run along the main avenue every few minutes.', 'Taxis wait at the station; agree the fare first.', 'Bikes can be hired at the harbour.', 'The old centre is best on foot.', 'Buses link the airport and the centre.'];
+const CUSTOMS = ['Cover shoulders and knees in temples.', 'Take shoes off before entering homes.', 'Tipping is not expected in cafés.', 'Ask before photographing people.'];
+const ABSENT = [['Is there a beach nearby?', 'beach'], ['Where can I go skiing?', 'ski'], ['Which nightclubs are best?', 'nightclub'], ['Is there a zoo?', 'zoo']] as const;
+const guide: Paper = {
+  n: 60,
+  ask(r) {
+    const city = r.pick(CITIES), see = r.some(SIGHTS, 3), eat = r.some(DISHES, 3), area = r.some(AREAS, 2), way = r.some(WAYS, 2), custom = r.some(CUSTOMS, 2);
+    const priced = r.chance(0.5) ? ` Price: ${r.int(2, 9)}–${r.int(10, 30)} in local money.` : '';
+    const text = [`${city} is a lively city on a river, known for its old centre and its food.`,
+      '## See', ...see.map((x, k) => `- ${x[0].toUpperCase()}${x.slice(1)}: ${k ? 'worth an hour' : 'the city’s best-known sight'}.`),
+      '## Eat', ...eat.map((d, k) => `- ${d[0].toUpperCase()}${d.slice(1)}: ${k ? 'sold at street stalls' : 'the local favourite'}.${k ? '' : priced}`),
+      '## Sleep', `Stay in ${area[0]} to walk to the sights; ${area[1]} is quieter.`,
+      '## Get around', ...way, '## Respect', ...custom].join('\n');
+    const kinds = [
+      ['What should I eat here?', eat], ['What are the must-see sights?', see.map((x) => x.replace(/^the /, ''))], ['Which area should I stay in?', area.map((x) => x.replace(/^the /, ''))],
+      ['How do I get around?', ['tram', 'taxi', 'bike', 'foot', 'bus', 'walk']], ['Any customs I should know?', ['shoulder', 'shoe', 'tip', 'photo']],
+    ] as const;
+    const absent = r.chance(0.2), [q, expect] = absent ? (() => { const a = r.pick(ABSENT); return [a[0], [a[1]]] as const; })() : r.pick(kinds);
+    const prompt = `Place: ${city}\nQuestion: ${q}\n\nThe guide:\n${text}`;
+    return agent('guide', prompt, [
+      ['under 150 words', (a: O) => wordCount(str(a.answer)) <= 150],
+      ['markdown', (a: O) => !markdown(str(a.answer))],
+      ['a number not in the guide', (a: O) => !newNumbers(str(a.answer), prompt).length],
+      ...(absent ? [['pretends the guide says it', (a: O) => a.answered === false || /doesn[’']t|does not|not (mention|say|cover|list)|no (mention|information)/i.test(str(a.answer))] as Rule]
+        : [['names nothing from the guide', (a: O) => has(str(a.answer), ...expect)] as Rule]),
+    ], 600);
+  },
+};
+
+const SHAPES_ASKED = [
+  { template: 'beam', say: (v: number[]) => `a cantilever ${v[0]} mm long and ${v[1]} mm tall`, keys: ['L', 'H'], sizes: [[150, 600], [10, 60]], hold: 'Left end', push: 'Right end', holdSay: 'fixed at the left end', pushSay: 'the free right end' },
+  { template: 'plate', say: (v: number[]) => `a plate ${v[0]} mm wide and ${v[1]} mm high with a hole in the middle`, keys: ['W', 'H'], sizes: [[100, 400], [50, 200]], hold: 'Left end', push: 'Right end', holdSay: 'held at its left end', pushSay: 'the right end' },
+  { template: 'bracket', say: (v: number[]) => `an L-shaped bracket ${v[0]} mm wide and ${v[1]} mm high`, keys: ['A', 'B'], sizes: [[60, 200], [60, 200]], hold: 'Top bolt hole', push: 'End bolt hole', holdSay: 'bolted through its top bolt hole', pushSay: 'the end bolt hole' },
+] as const;
+const MATS = [['steel', 'structural steel'], ['aluminium', 'aluminium'], ['titanium', 'titanium'], ['abs', 'ABS plastic']] as const;
+const DIRS = ['down', 'up', 'left', 'right'] as const;
+const ANALYSES = [['static', 'Check the stress'], ['modal', 'Find its natural frequencies'], ['buckling', 'Will it buckle?'], ['topology', 'Find the lightest shape for it']] as const;
+const simSetup: Paper = {
+  n: 60,
+  ask(r) {
+    const s = r.pick(SHAPES_ASKED), v = s.sizes.map(([lo, hi]) => 10 * r.int(lo / 10, hi / 10)), mat = r.pick(MATS), dir = r.pick(DIRS), an = r.pick(ANALYSES);
+    const kn = r.chance(0.5), amount = kn ? r.int(1, 20) : 100 * r.int(1, 50), N = kn ? amount * 1000 : amount;
+    const bolt = s.template === 'bracket';
+    const desc = `${an[1]}: ${s.say(v)} in ${mat[1]}, ${s.holdSay}, with ${amount} ${kn ? 'kN' : 'N'} pushing ${dir} on ${s.pushSay}.`;
+    const loadOf = (a: O) => list(a.loads)[0] as O | undefined;
+    return agent('sim-setup', `${simChoices()}\n\nThe person’s description: ${desc}`, [
+      ['the wrong shape', (a: O) => a.template === s.template],
+      ['the wrong material', (a: O) => a.material === mat[0]],
+      ['the wrong size', (a: O) => list(a.sizes).some((x) => (x as O).key === s.keys[0] && Number((x as O).value) === v[0])],
+      ['not held where asked', (a: O) => list(a.supports).some((x) => str((x as O).edge).toLowerCase() === s.hold.toLowerCase())],
+      ['the load on the wrong edge', (a: O) => str(loadOf(a)?.edge).toLowerCase() === s.push.toLowerCase()],
+      ['the load’s size in newtons', (a: O) => Math.abs(Number(loadOf(a)?.amount) - N) <= N * 0.01],
+      ['the load’s kind', (a: O) => loadOf(a)?.kind === (bolt ? 'bearing' : 'force')],
+      ['the direction', (a: O) => loadOf(a)?.direction === dir],
+      ['the analysis', (a: O) => a.analysis === an[0]],
+    ], 700);
+  },
+};
+export const AETHER_HYPERION_PAPERS = { guide, 'sim-setup': simSetup };
