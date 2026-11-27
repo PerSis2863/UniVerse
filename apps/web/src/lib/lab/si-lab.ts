@@ -1,7 +1,9 @@
 import { LabError } from './parse';
 import { textOf, type Lab } from './interp';
 import { cmat, imOf, mat, num, str, toMat, type Value } from './values';
-import { fileText, writeFileText } from './files';
+import { fileBytes, fileText, hasFile, writeFileText } from './files';
+import * as ami from './ami';
+import { bytesToB64, hasNative } from './native';
 import * as si from './si';
 import { call, col, def, field, isText, lines, need, nums, options, optNum, optText, record, row } from './sci-kit';
 
@@ -23,6 +25,15 @@ function sOf(v: Value | undefined, w: string) {
 }
 /** The through response: S21 of a 2-port, the differential SDD21 of a 4-port (ports 1, 2 in; 3, 4 out). */
 const through = (S: ReturnType<typeof sOf>) => S.s.map((m) => (S.n === 4 ? si.sdd21(m) : S.n === 2 ? m[1][0] : (() => { throw new LabError('The channel is a 2-port or a 4-port.'); })()));
+/** An IBIS-AMI model struct (from amiModel) back as the flows' model, its library from Hyperion's files or this
+ * computer (a full path, read by the computer app). */
+function modelOf(lab: Lab, v: Value | undefined, who: string): ami.Model | null {
+  if (v === undefined) return null;
+  if (v.k !== 'struct' || !v.f.has('Executable') || !v.f.has('Parameters')) throw new LabError(`'${who}' takes a model from amiModel.`);
+  const exe = textOf(v.f.get('Executable')!), name = exe.split(/[\\/]/).pop() || exe;
+  const file = hasFile(lab, exe) ? { name, bytes: bytesToB64(fileBytes(lab, exe)) } : { name, path: exe };
+  return { name: textOf(v.f.get('Name')!), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ' } };
+}
 const ctleOf = (v: Value | undefined): [number, number, number, number] | null => {
   if (!v) return null;
   const c = nums(v, "'CTLE'");
@@ -74,9 +85,10 @@ def('pulseResponse', (a, nout, lab) => {
 });
 def('eyeDiagram', (a, nout, lab) => {
   const S = sOf(a[0], 'eyeDiagram'), rate = need(a[1], 'eyeDiagram(S, symbol rate)');
-  const w = 'eyeDiagram', o = options(a, 2, ['Modulation', 'PRBS', 'Symbols', 'Swing', 'FFE', 'FFETaps', 'FFEPre', 'CTLE', 'DFE', 'RJ', 'DJ', 'Noise', 'BER', 'Crosstalk', 'Mask', 'SamplesPerUI', 'Rise', 'Seed'], w);
-  const mod = optText(o, 'Modulation', 'NRZ').toUpperCase(), spu = Math.round(optNum(o, 'SamplesPerUI', 16)), nsym = Math.round(optNum(o, 'Symbols', 2000));
-  if ((mod !== 'NRZ' && mod !== 'PAM4') || !(rate > 0 && spu >= 4 && spu <= 64 && nsym >= 100 && nsym <= 20000)) throw new LabError(`${w}: 'Modulation' 'NRZ' or 'PAM4', 'SamplesPerUI' 4 to 64, 'Symbols' 100 to 20,000.`);
+  const w = 'eyeDiagram', o = options(a, 2, ['Modulation', 'PRBS', 'Symbols', 'Swing', 'FFE', 'FFETaps', 'FFEPre', 'CTLE', 'DFE', 'RJ', 'DJ', 'Noise', 'BER', 'Crosstalk', 'Mask', 'SamplesPerUI', 'Rise', 'Seed', 'TxModel', 'RxModel', 'Flow'], w);
+  const tx = modelOf(lab, o.get('TxModel'), 'TxModel'), rx = modelOf(lab, o.get('RxModel'), 'RxModel'), models = !!(tx || rx), most = models ? 100000 : 20000;
+  const mod = optText(o, 'Modulation', 'NRZ').toUpperCase(), spu = Math.round(optNum(o, 'SamplesPerUI', 16)), nsym = Math.round(optNum(o, 'Symbols', models ? 5000 : 2000));
+  if ((mod !== 'NRZ' && mod !== 'PAM4') || !(rate > 0 && spu >= 4 && spu <= 64 && nsym >= 100 && nsym <= most)) throw new LabError(`${w}: 'Modulation' 'NRZ' or 'PAM4', 'SamplesPerUI' 4 to 64, 'Symbols' 100 to ${most.toLocaleString('en')}.`);
   const H = through(S), rise = optNum(o, 'Rise', 0), xt = o.has('Crosstalk') ? nums(o.get('Crosstalk')) : [0, 0], mk = o.has('Mask') ? nums(o.get('Mask')) : null;
   const base: si.Eye = { rate, spu, pam4: mod === 'PAM4', order: Math.round(optNum(o, 'PRBS', 7)), nsym, swing: optNum(o, 'Swing', 0.8), ffe: [], ffePre: 0, dfe: Math.round(optNum(o, 'DFE', 0)), rj: optNum(o, 'RJ', 0), dj: optNum(o, 'DJ', 0), noise: optNum(o, 'Noise', 0), ber: optNum(o, 'BER', 1e-12), xtalk: [xt[0] ?? 0, xt[1] ?? 0], ...(mk ? { mask: [mk[0], mk[1]] as [number, number] } : {}), seed: Math.round(optNum(o, 'Seed', 1)) };
   if (![7, 9, 11, 15, 23, 31].includes(base.order) || base.dfe < 0 || base.dfe > 20) throw new LabError(`${w}: 'PRBS' 7, 9, 11, 15, 23 or 31; 'DFE' 0 to 20 taps.`);
@@ -87,11 +99,12 @@ def('eyeDiagram', (a, nout, lab) => {
     let bestH = -Infinity;
     for (let dc = 0; dc >= -18; dc -= 1.5) { const c: [number, number, number, number] = [dc, nyq * 10 ** (dc / 20), nyq, 4 * nyq], h = si.eye(pulse(c), { ...base, nsym: Math.min(nsym, 600) }).heightBest; if (h > bestH) { bestH = h; ctle = c; } }
   }
-  const p = pulse(ctle), fv = o.get('FFE'), taps = o.has('FFETaps') ? nums(o.get('FFETaps')) : [1, 2];
+  const amiOut = models ? amiEye(S, H, rate, spu, base, tx, rx, optText(o, 'Flow', 'timedomain').toLowerCase(), ctle) : null;
+  const p = amiOut?.pulse ?? pulse(ctle), fv = o.get('FFE'), taps = o.has('FFETaps') ? nums(o.get('FFETaps')) : [1, 2];
   if (fv && isText(fv)) { if (fv.v.toLowerCase() !== 'auto') throw new LabError("'FFE' is the taps or 'auto'."); base.ffe = si.ffeZeroForcing(p.p, p.cursor, spu, taps[0], taps[1] ?? 2); base.ffePre = taps[0]; }
   else if (fv) { base.ffe = nums(fv); base.ffePre = Math.round(optNum(o, 'FFEPre', 1)); if (base.ffePre < 0 || base.ffePre >= base.ffe.length) throw new LabError("'FFEPre' counts the pre-cursor taps, fewer than the taps."); }
-  const e = si.eye(p, base);
-  if (nout > 0) return [record([['Height', e.heightBest], ['HeightAtBER', e.heightAtBer], ['Width', e.width], ['WidthAtBER', e.widthAtBer], ['BER', e.ber], ['BestPhase', e.best], ['Bathtub', row(e.bath)], ['DFETaps', row(e.dfeTaps)], ['FFETaps', row(base.ffe)], ['CTLE', ctle ? row(ctle) : mat(0, 0)], ['MaskPass', +e.maskPass], ['MainCursor', e.mainCursor]])];
+  const e = amiOut?.measured ? { ...amiOut.measured, dfeTaps: [] as number[], mainCursor: amiOut.main } : si.eye(p, base);
+  if (nout > 0) return [record([...(amiOut ? [['AMI', amiOut.record]] as [string, Value][] : []), ['Height', e.heightBest], ['HeightAtBER', e.heightAtBer], ['Width', e.width], ['WidthAtBER', e.widthAtBer], ['BER', e.ber], ['BestPhase', e.best], ['Bathtub', row(e.bath)], ['DFETaps', row(e.dfeTaps)], ['FFETaps', row(base.ffe)], ['CTLE', ctle ? row(ctle) : mat(0, 0)], ['MaskPass', +e.maskPass], ['MainCursor', e.mainCursor]])];
   const xs: number[] = [], ys: number[] = [];
   e.traces.forEach((tr, k) => { tr.forEach((v, j) => { xs.push((j - spu) / spu + e.jitter[k]); ys.push(v); }); xs.push(NaN); ys.push(NaN); });
   call(lab, 'subplot', num(1), num(2), num(1)); call(lab, 'plot', row(xs), row(ys), str('Color'), str('#2563eb'), str('LineWidth'), num(0.5));
@@ -103,6 +116,61 @@ def('eyeDiagram', (a, nout, lab) => {
   call(lab, 'xlabel', str('Sampling phase (UI)')); call(lab, 'ylabel', str('Bit error rate')); call(lab, 'grid', str('on'));
   call(lab, 'title', str(`Bathtub: BER ${e.ber.toExponential(1)} at the best phase, ${e.widthAtBer.toFixed(2)} UI open at ${base.ber.toExponential(0)}`));
   return [];
+});
+/** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) through the statistical or the
+ * time-domain flow; statistical gives a pulse for the usual eye, time-domain a received waveform measured as it is
+ * (the receiver's own equaliser replaces FFE and DFE), its first symbols left out while the models adapt. */
+function amiEye(S: ReturnType<typeof sOf>, H: si.C[], rate: number, spu: number, e: si.Eye, tx: ami.Model | null, rx: ami.Model | null, flowName: string, ctle: [number, number, number, number] | null) {
+  if (flowName !== 'timedomain' && flowName !== 'statistical') throw new LabError("'Flow' is 'timedomain' or 'statistical'.");
+  const { h, dt } = si.impulseResponse(S.f, H, rate, spu, 512, ctle ? (x) => si.ctle(x, ...ctle) : undefined), ui = 1 / rate;
+  if (flowName === 'statistical') {
+    const f = ami.flow(h, dt, ui, tx, rx, null), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
+    return { pulse, measured: null, main: pulse.p[pulse.cursor], record: record([['Flow', 'statistical'], ['Impulse', row(f.hRx)], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
+  }
+  const a = si.symbols(si.prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, e.seed), e.pam4), x = new Array(a.length * spu);
+  for (let k = 0; k < a.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a[k] * e.swing) / 2;
+  const f = ami.flow(h, dt, ui, tx, rx, x), z = f.z!, al = si.alignWave(z, a, spu, Math.min(z.length - spu, h.length + 64 * spu));
+  const ignore = Math.ceil(Math.max(tx?.info.ignoreBits ?? 0, rx?.info.ignoreBits ?? 0) / (e.pam4 ? 2 : 1));
+  if (a.length < ignore + 500) throw new LabError(`The models adapt over their first ${ignore} symbols (Ignore_Bits): give 'Symbols' at least ${ignore + 500}.`);
+  const y = z.slice(al.delay), measured = si.measure(y, a, al.main, { ...e, dfe: 0, ffe: [] }, Math.max(16, ignore + 8));
+  const clocks = f.clocks.length > 1 ? f.clocks : [];
+  return { pulse: null, measured, main: al.main, record: record([['Flow', 'timedomain'], ['Wave', row(z)], ['Delay', al.delay * dt], ['Clocks', row(clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
+}
+def('amiModel', (a, nout, lab) => {
+  const exe = a[0] ? textOf(a[0]) : '', src = a[1] ? textOf(a[1]) : '';
+  if (!/\.(dll|so|dylib)$/i.test(exe) || !src) throw new LabError("amiModel('model.dll', 'model.ami', 'name', value, …): the library (in your files, or its full path on this computer) and its .ami file (in your files, or its text).");
+  const info = ami.readAmi(src.includes('(') ? src : fileText(lab as Lab, src)), choices = new Map<string, string>();
+  for (let i = 2; i < a.length; i += 2) {
+    if (!isText(a[i]) || a[i + 1] === undefined) throw new LabError('amiModel: the settings come as name, value pairs.');
+    const v = a[i + 1];
+    choices.set((a[i] as { v: string }).v, isText(v) ? v.v : String(toMat(v).d[0]));
+  }
+  const params = ami.paramString(info, choices), inputs = info.params.filter((p) => /^(in|inout)$/i.test(p.usage));
+  const m = record([['Type', 'amiModel'], ['Name', info.root], ['Executable', exe], ['Parameters', params], ['InitReturnsImpulse', +info.initReturnsImpulse], ['GetWaveExists', +info.getWaveExists], ['IgnoreBits', info.ignoreBits], ['Modulation', info.modulation]]);
+  if (nout > 0) return [m];
+  const lines = [`IBIS-AMI model ${info.root} (${exe}): Init ${info.initReturnsImpulse ? 'returns the equalised impulse' : 'does not return an impulse'}, GetWave ${info.getWaveExists ? 'yes' : 'no'}${info.ignoreBits ? `, adapts over ${info.ignoreBits} bits` : ''}.`, 'Settings you can choose:'];
+  for (const p of inputs) lines.push(`  ${p.path.join('.')} = ${p.value ?? '(none)'}${p.list ? `  one of ${p.list.join(' ')}` : p.range ? `  ${p.range[1]} to ${p.range[2]}` : ''}${p.description ? `  ${p.description}` : ''}`);
+  lines.push(`Sent to AMI_Init: ${params}`);
+  (lab as Lab).host.out(lines.join('\n') + '\n');
+  return [];
+});
+def('amiAvailable', () => [num(hasNative() ? 1 : 0)]);
+def('amiSimulate', (a, _n, lab) => {
+  const S = sOf(a[0], 'amiSimulate'), rate = need(a[1], 'amiSimulate(S, symbol rate, …)'), w = 'amiSimulate';
+  const o = options(a, 2, ['TxModel', 'RxModel', 'Flow', 'Symbols', 'Modulation', 'PRBS', 'Swing', 'SamplesPerUI', 'Seed'], w);
+  const tx = modelOf(lab as Lab, o.get('TxModel'), 'TxModel'), rx = modelOf(lab as Lab, o.get('RxModel'), 'RxModel');
+  if (!tx && !rx) throw new LabError("amiSimulate needs a 'TxModel' or an 'RxModel' (from amiModel).");
+  const spu = Math.round(optNum(o, 'SamplesPerUI', 16)), nsym = Math.round(optNum(o, 'Symbols', 5000)), mod = optText(o, 'Modulation', 'NRZ').toUpperCase(), fl = optText(o, 'Flow', 'timedomain').toLowerCase();
+  if (!(spu >= 4 && spu <= 64 && nsym >= 100 && nsym <= 100000) || (mod !== 'NRZ' && mod !== 'PAM4') || (fl !== 'timedomain' && fl !== 'statistical')) throw new LabError(`${w}: 'SamplesPerUI' 4 to 64, 'Symbols' 100 to 100,000, 'Modulation' 'NRZ' or 'PAM4', 'Flow' 'timedomain' or 'statistical'.`);
+  const { h, dt } = si.impulseResponse(S.f, through(S), rate, spu), ui = 1 / rate;
+  let x: number[] | null = null, a2: number[] = [];
+  if (fl === 'timedomain') {
+    a2 = si.symbols(si.prbs(Math.round(optNum(o, 'PRBS', 7)), mod === 'PAM4' ? 2 * nsym : nsym, Math.round(optNum(o, 'Seed', 1))), mod === 'PAM4');
+    const sw = optNum(o, 'Swing', 0.8); x = new Array(a2.length * spu);
+    for (let k = 0; k < a2.length; k++) for (let j = 0; j < spu; j++) x[k * spu + j] = (a2[k] * sw) / 2;
+  }
+  const f = ami.flow(h, dt, ui, tx, rx, x), t = (n: number) => Array.from({ length: n }, (_, k) => k * dt);
+  return [record([['Flow', fl], ['dt', dt], ['Impulse', row(f.h)], ['ImpulseTx', row(f.hTx)], ['ImpulseRx', row(f.hRx)], ['t', row(t(f.z ? f.z.length : f.h.length))], ...(f.z ? [['Wave', row(f.z)], ['Stimulus', row(x!)], ['Symbols', row(a2)]] as [string, Value][] : []), ['Clocks', row(f.clocks)], ['UsedGetWave', row(f.usedGetWave.map(Number))], ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]])];
 });
 def('pdnImpedance', (a, nout, lab) => {
   const f = nums(a[0], 'The frequencies (Hz)'), o = options(a, 1, ['VRM', 'Caps', 'Plane', 'Die', 'Target', 'Step'], 'pdnImpedance'), parts: si.PdnPart[] = [];

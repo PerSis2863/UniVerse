@@ -13490,3 +13490,54 @@ an MLCC group's series resonance = ESR/n, droop, the strip's ρL/(wt) and curren
 drop. Not built: IBIS-AMI models (the vendors' compiled DLLs can't run in a browser), mixed-mode conversion of
 arbitrary port orders, COM (IEEE 802.3's channel operating margin), coupled-line crosstalk from geometry, plane cavity
 resonances, via field solving, AC current density.
+
+## M577 (27 Nov): Hyperion: IBIS-AMI models in the computer app
+
+The owner, 27 Nov, on M576's "left out on purpose: IBIS-AMI models (the vendors' compiled DLLs can't run in a
+browser)": "make the 1st one for the Hyperion download app which can do it". **How the engine reaches the app**: the
+language runs synchronously in a worker, which can neither await IPC nor block on the page without cross-origin
+isolation, so it makes a **synchronous XMLHttpRequest** (allowed in workers) to a private privileged scheme the app
+registers, `hyperion-native://app/ami?t=<token>` (`protocol.registerSchemesAsPrivileged` with corsEnabled and
+supportFetchAPI, `protocol.handle` on the default session). Trap: **Electron's `protocol.handle` gets no Origin header
+and an empty referrer** (checked in the real app), so the gate is a per-launch 24-byte token (timing-safe compare),
+handed out only by `ipcMain.handle('hyperion:native')` under M470's `trusted` (the window's main frame on Hyperion's
+origin); responses carry `Access-Control-Allow-Origin: ORIGIN`, so only the site reads them. The body is text/plain
+JSON (a simple request: no preflight). The site's CSP needs `hyperion-native:` in connect-src (`security-headers.ts`;
+measured: blocked without it). The page (`LabApp`) asks `hyperionDesktop.native()` when it starts the worker and posts
+`{ native: { url, token } }`; the worker (`lab.worker.ts`) sets `setNative(xhrNative(url, token))` (`native.ts`;
+`native()` throws "run only in Hyperion's computer app" without a bridge; `amiAvailable()` says which). **The app**:
+`ami.js` checks sizes (rows × (1 + aggressors) × 8 bytes, dt > 0, ui ≥ dt, ≤ 4 M samples, a library ≤ 200 MB named
+.dll/.so/.dylib), takes the library's bytes from Hyperion's files (≤ 50 MB, the file store's limit) or an absolute
+path, writes bytes to a private temp folder per sha256 (0700), and runs one session in `ami-host.js` in Electron's
+**utility process** (`utilityProcess.fork`; a Node `fork` outside Electron, for the tests), killed after 2 minutes; a
+crash returns "the model crashed" instead of taking the app down. `main.js` asks before loading (`mayLoad`: once per
+fingerprint, or every model until closing with the box ticked). `ami-host.js` uses **koffi 3.3.7** (MIT; no compiler;
+its native part is one `@koromix/koffi-<os>-<cpu>` package per system): `AMI_Init(double*, long, long, double, double,
+const char*, char**, void**, char**)` with `_Inout_`/`_Out_` (typed arrays are passed by pointer, a `subarray` at its
+offset; `long` is the platform's C long, 32-bit on Windows as the standard means), `AMI_GetWave` optional (missing
+export = GetWave_Exists False) in blocks of 128 UI with `clock_times` filled with −1 and read to the first negative,
+`AMI_Close`; a wrong-architecture library gets "built for another kind of computer". **The language** (`ami.ts`):
+`.ami` files parsed (parentheses, quoted strings, `|` comments), leaves are nodes with Usage/Type/Format children,
+Reserved_Parameters give Init_Returns_Impulse (or the old Use_Init_Output), GetWave_Exists, Ignore_Bits, Modulation;
+Model_Specific leaves (nested branches kept as paths) with Default > Value > Range typ > List first, the older `(Format
+Range typ min max)` / `(Format List …)` / `(Format Value …)` too; `paramString` writes `(root (name value) (branch
+(name value)))` for In/InOut leaves, strings quoted, choices by name or dotted path checked against List / Range /
+Integer, unknown names refused. Flows (`flow`): statistical h → Tx Init (used when it returns an impulse) → Rx Init;
+time-domain: the stimulus (±swing/2 rectangles) through Tx GetWave (or Tx Init's impulse as part of the channel), FFT
+convolution with the channel (× dt), Rx Init on what it receives then Rx GetWave (or its Init impulse convolved). The
+impulse response for AMI_Init is in V/s (`si.impulseResponse`: the IFFT ÷ dt, cut where it has died to 1e-5 of its
+peak, at least 32 UI). `si.eye` was split into the waveform builder and `measure` (reused for a received waveform);
+`alignWave` finds the delay by correlation with the symbols and the main cursor by least squares; the models' first
+Ignore_Bits symbols are left out. Language: `amiModel(lib, ami, name, value…)` (a struct, Type 'amiModel'; without an
+output it lists the settings), `amiSimulate`, `amiAvailable`, `eyeDiagram(…, 'TxModel', 'RxModel', 'Flow')` (up to
+100,000 symbols with models; e.AMI holds the flow, wave, delay, clocks, messages, output settings; time-domain leaves
+the person's FFE and DFE out: the receiver's own equaliser replaces them). App 1.2.0; the workflow runs `npm test` and
+on the Mac adds both processors' koffi packages for the universal app (`x64ArchFiles` covers them). Tests: the desktop
+runner with a tiny C model (`desktop/hyperion/test/ami-test-model.c`, a 2-tap FFE; `npm test` builds it with gcc):
+Init and GetWave across blocks exactly, bad requests, a non-AMI library, junk; the website side with a stand-in
+bridge and, on Linux with the desktop's koffi installed, the real runner end to end from a Hyperion script (the eye
+opened by the model, the receiver's clocks); and by hand the real Electron app under xvfb with Playwright: a page's
+blob worker posting synchronously, the model run in the utility process, asked once, a wrong token 403, and the CSP
+with and without the scheme. Not built: aggressor columns (crosstalk impulse responses into AMI_Init), IBIS file
+parsing ([Algorithmic Model] lines), AMI_Resolve / back-channel training (IBIS 7), Table-type parameters, DLL_Path and
+DLL_ID, PAM4 thresholds given by the model, 32-bit models (koffi in a 64-bit app can't load them).

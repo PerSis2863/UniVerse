@@ -777,4 +777,22 @@ figure; irDrop('Size', [0.08 0.06], 'Grid', [80 60], 'Copper', 6, 'VRM', [0 0.01
 r = irDrop('Size', [0.08 0.06], 'Grid', [80 60], 'Copper', 6, 'VRM', [0 0.01 0.008 0.04 0.8], 'Loads', [0.045 0.02 0.02 0.02 200], 'Voids', [0.025 0.035 0.01 0.025], 'Limit', 2);
 fprintf('The package sees %.3f V (%.1f mV lost); %d cells over 2%%\\n', r.LoadV, 1000*(0.8 - r.LoadV), r.CellsOverDrop)
 ` },
+  { name: 'ibis_ami.m', code: `% IBIS-AMI: a chip maker's own equaliser models on your channel (in Hyperion's computer app)
+% Put the maker's files in Files (or give the library's full path), then fill in their names below.
+S = sparamLine(1e8:1e8:4e10, 'Length', 0.3);
+if amiAvailable()
+  tx = amiModel('tx_model.dll', 'tx_model.ami');      % the transmitter's library and settings file
+  rx = amiModel('rx_model.dll', 'rx_model.ami');      % the receiver's
+  amiModel('rx_model.dll', 'rx_model.ami')            % lists the settings you can choose
+  figure; eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 20000, 'RJ', 0.01)
+  e = eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 20000);
+  fprintf('With the makers'' models: %.0f mV x %.2f UI, BER %.1e\\n', 1000*e.Height, e.Width, e.BER)
+  disp(e.AMI.Messages)
+else
+  disp('IBIS-AMI models are compiled programs: they run in Hyperion''s computer app (the Install button).')
+  disp('Here is the same channel with Hyperion''s own equalisers instead:')
+  e = eyeDiagram(S, 28e9, 'CTLE', 'auto', 'DFE', 6, 'Symbols', 1500);
+  fprintf('%.0f mV x %.2f UI\\n', 1000*e.Height, e.Width)
+end
+` },
 ];

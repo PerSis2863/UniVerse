@@ -22,12 +22,13 @@ import { Profiler, type Profile } from '@/lib/lab/profile';
 import { Recorder, type TraceStep } from '@/lib/lab/trace';
 import type { Figure } from '@/lib/lab/plot';
 import type { SweepFrame } from '@/lib/lab/sweep';
+import { setNative, xhrNative } from '@/lib/lab/native';
 
 // M376: Hyperion's engine runs here, off the page's thread, so a long loop never freezes the window (Stop ends
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { run: string; id: number; animate?: boolean } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
+export type ToLab = { run: string; id: number; animate?: boolean } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number } | { native: { url: string; token: string } };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -122,6 +123,7 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
     postMessage({ done: m.id, vars: varRows(), figs: null, current: graphics.current?.id ?? null, files: written, drawn: [] } satisfies FromLab);
     return;
   }
+  if ('native' in m) { if (/^hyperion-native:\/\//.test(m.native.url)) setNative(xhrNative(m.native.url, m.native.token)); return; }
   if ('upload' in m) { for (const f of m.upload) files.load(f.name, { bytes: f.bytes, pixels: f.pixels }); return; }
   if ('remove' in m) { files.files.delete(m.remove); return; }
   if ('inspect' in m) {

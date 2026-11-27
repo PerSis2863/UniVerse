@@ -33,6 +33,12 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --no-audit --no-fund
+      - run: npm test
+      # IBIS-AMI (M577): koffi's native part comes as one package per system; the Mac app is universal (Apple chips and
+      # Intel), so it carries both Mac parts.
+      - name: Both Mac processors' koffi
+        if: runner.os == 'macOS'
+        run: npm install --no-save --force --no-audit --no-fund @koromix/koffi-darwin-arm64@3.3.7 @koromix/koffi-darwin-x64@3.3.7
       - name: Build (signed when the certificates are set)
         env:
           WIN_CERT: ${{ secrets.HYPERION_WIN_CERT }}

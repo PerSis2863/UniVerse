@@ -17,6 +17,19 @@ and the person is asked before each new program runs (or ticks "Don't ask again 
 When a tool is missing, Hyperion says how to install it for that system. Python and R need nothing installed: they run
 inside Hyperion itself, sealed off from the site (`public/sandbox/run.html` in the website).
 
+## IBIS-AMI models (M577)
+
+Chip makers ship their SerDes equalisers as IBIS-AMI models: a compiled library (`.dll`, `.so`, `.dylib`) and an `.ami`
+settings file. A browser can't run them; the app can. In a script, `amiModel('rx.dll', 'rx.ami')` and
+`eyeDiagram(S, rate, 'TxModel', tx, 'RxModel', rx)` (or `amiSimulate`). How it works: the engine's worker asks the app
+synchronously at its private address `hyperion-native://` with this launch's secret token (given only to Hyperion's
+own site in the main frame); `ami.js` checks the request and asks the person before a model loads (once per model,
+by its fingerprint); `ami-host.js` loads it with koffi (a foreign-function library, no compiler needed) in Electron's
+utility process, so a crashing or hanging model (stopped after 2 minutes) never takes the app down. The model must be
+built for the computer's processor (64-bit; on Apple chips an ARM build). Tests: `npm test` (builds the tiny model in
+`test/` with gcc). When the Mac app is signed, its entitlements need `com.apple.security.cs.disable-library-validation`
+so it may load makers' libraries signed by someone else.
+
 ## Build the installers
 
 GitHub → Actions → **Hyperion desktop** → Run workflow. Tick **publish** to put them online as the release

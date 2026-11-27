@@ -1,7 +1,7 @@
 {
   "name": "hyperion-desktop",
   "productName": "Hyperion",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Hyperion by UniVerse: maths, code and engineering simulation, as a computer app.",
   "private": true,
   "main": "main.js",
@@ -9,6 +9,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "start": "electron .",
+    "test": "node --test \"test/*.test.js\"",
     "build": "electron-builder --publish never"
   },
   "devDependencies": {
@@ -27,6 +28,8 @@
       "main.js",
       "preload.js",
       "runner.js",
+      "ami.js",
+      "ami-host.js",
       "offline.html",
       "assets/icon.png"
     ],
@@ -41,6 +44,7 @@
       ],
       "category": "public.app-category.education",
       "hardenedRuntime": true,
+      "x64ArchFiles": "**/node_modules/@koromix/**",
       "artifactName": "Hyperion-mac.${ext}"
     },
     "win": {
@@ -73,5 +77,8 @@
     ]
   },
   "repository": "github:PerSis2863/UniVerse",
-  "desktopName": "hyperion.desktop"
+  "desktopName": "hyperion.desktop",
+  "dependencies": {
+    "koffi": "3.3.7"
+  }
 }

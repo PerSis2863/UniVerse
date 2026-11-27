@@ -148,6 +148,49 @@ export function pulseResponse(f: number[], H: C[], rate: number, spu: number, sp
   return { p: pr, cursor: cur, dt: 1 / fs, N };
 }
 
+/** The channel's impulse response h(t) (V/s, as IBIS-AMI's AMI_Init takes it) sampled every UI/spu: the IFFT of the
+ * channel (times a CTLE if given), divided by the sample interval, cut where it has died away (at least 32 UI). */
+export function impulseResponse(f: number[], H: C[], rate: number, spu: number, span = 512, extra?: (f: number) => C) {
+  const N = 2 ** Math.ceil(Math.log2(spu * span)), fs = rate * spu, dt = 1 / fs, bins = Array.from({ length: N / 2 + 1 }, (_, k) => (k * fs) / N);
+  const Hc = resample(f, H, bins), re = new Array(N).fill(0), im = new Array(N).fill(0);
+  for (let k = 0; k <= N / 2; k++) { const h = extra ? mul(Hc[k], extra(bins[k])) : Hc[k]; re[k] = h[0]; im[k] = h[1]; if (k > 0 && k < N / 2) { re[N - k] = h[0]; im[N - k] = -h[1]; } }
+  im[N / 2] = 0;
+  const [h] = dft(re, im, true), peak = Math.max(...Array.from(h, Math.abs));
+  let last = N - 1; while (last > 32 * spu && Math.abs(h[last]) < 1e-5 * peak) last--;
+  return { h: Array.from(h.subarray(0, Math.min(N, last + 8 * spu)), (v) => v / dt), dt };
+}
+/** The response to a one-UI rectangle from an impulse response (V/s): the running sum of spu samples times dt, and
+ * its peak (the main cursor). */
+export function pulseFromImpulse(h: ArrayLike<number>, dt: number, spu: number) {
+  const p: number[] = new Array(h.length).fill(0);
+  let acc = 0;
+  for (let n = 0; n < h.length; n++) { acc += h[n] * dt; if (n >= spu) acc -= h[n - spu] * dt; p[n] = acc; }
+  let cursor = 0; for (let n = 1; n < p.length; n++) if (p[n] > p[cursor]) cursor = n;
+  return { p, cursor };
+}
+/** Linear convolution by FFT (zero-padded to a power of two), the first `len` samples. */
+export function fftConvolve(a: ArrayLike<number>, b: ArrayLike<number>, len = a.length) {
+  let N = 1; while (N < a.length + b.length) N <<= 1;
+  const ar = new Array(N).fill(0), br = new Array(N).fill(0);
+  for (let i = 0; i < a.length; i++) ar[i] = a[i];
+  for (let i = 0; i < b.length; i++) br[i] = b[i];
+  const [Ar, Ai] = dft(ar, new Array(N).fill(0)), [Br, Bi] = dft(br, new Array(N).fill(0)), re = new Array(N), im = new Array(N);
+  for (let k = 0; k < N; k++) { re[k] = Ar[k] * Br[k] - Ai[k] * Bi[k]; im[k] = Ar[k] * Bi[k] + Ai[k] * Br[k]; }
+  return Array.from(dft(re, im, true)[0].subarray(0, len));
+}
+/** Where a received waveform's symbols sit: the delay (samples, under maxDelay) whose samples correlate best with the
+ * symbols, and the main cursor's level there (least squares). */
+export function alignWave(z: ArrayLike<number>, a: number[], spu: number, maxDelay: number) {
+  let best = 0, bestC = -Infinity;
+  const n = Math.floor(z.length / spu);
+  for (let d = 0; d < maxDelay; d++) {
+    let c = 0; for (let k = 0; k * spu + d < z.length && k < n; k++) c += z[k * spu + d] * a[k];
+    if (c > bestC) { bestC = c; best = d; }
+  }
+  let num = 0, den = 0; for (let k = 0; k * spu + best < z.length && k < n; k++) { num += z[k * spu + best] * a[k]; den += a[k] * a[k]; }
+  return { delay: best, main: den ? num / den : 0 };
+}
+
 /** PRBS bits from the standard polynomials (7, 9, 11, 15, 23, 31), all-ones seed. */
 export function prbs(order: number, count: number, seed = 0) {
   const taps: Record<number, number> = { 7: 6, 9: 5, 11: 9, 15: 14, 23: 18, 31: 28 };
@@ -201,14 +244,23 @@ export function eye(pulse: { p: number[]; cursor: number }, e: Eye) {
   sup(a, P); if (nextP) sup(agg1, nextP); if (fextP) sup(agg2, fextP);
   const taps = Array.from({ length: e.dfe }, (_, k) => P[pre * spu + (k + 1) * spu]);
   if (e.dfe) for (let k = 0; k < n; k++) { let fb = 0; for (let q = 0; q < e.dfe; q++) if (k - q - 1 >= 0) fb += taps[q] * a[k - q - 1]; for (let j = 0; j < spu; j++) { const idx = k * spu + j - (spu >> 1); if (idx >= 0 && idx < L) y[idx] -= fb; } }
+  return { ...measure(y, a, P[pre * spu], e, pre + 4), dfeTaps: taps, mainCursor: P[pre * spu] };
+}
+
+/** The eye's measures from a received waveform y whose symbol k is centred at sample k·spu: the main cursor's level
+ * `main`, symbols before `skip` left out (start-up, adaptation). Jitter per symbol (RJ σ and dual-Dirac DJ in UI) as a
+ * shift of each trace, Gaussian noise σ (V): height and width at the best phase, the BER there (per bit), the bathtub,
+ * the width at the target BER, the traces for drawing and the mask's verdict. */
+export function measure(y: ArrayLike<number>, a: number[], main: number, e: Eye, skip: number) {
+  const { spu } = e, n = a.length;
   // jitter per symbol, a seeded generator
   let s = (e.seed * 2654435761) >>> 0 || 1;
   const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
   const gauss = () => { let u = 0; while (!u) u = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd()); };
   const tau = Array.from({ length: n }, () => e.rj * gauss() + (e.dj / 2) * (rnd() < 0.5 ? -1 : 1));
-  const levels = (e.pam4 ? [-1, -1 / 3, 1 / 3, 1] : [-1, 1]).map((v) => v * P[pre * spu]), phase = (j: number) => j - (spu >> 1);
+  const levels = (e.pam4 ? [-1, -1 / 3, 1 / 3, 1] : [-1, 1]).map((v) => v * main), phase = (j: number) => j - (spu >> 1);
   const thr = levels.slice(1).map((v, i) => (v + levels[i]) / 2);
-  const skip = pre + 4, valid = (k: number) => k >= skip && k < n - 4;
+  const valid = (k: number) => k >= skip && k < n - 4;
   const at = (k: number, ph: number) => { const x = k * spu + ph, i0 = Math.floor(x), w = x - i0; return (y[i0] ?? 0) * (1 - w) + (y[i0 + 1] ?? 0) * w; };
   const lvl = (v: number) => (e.pam4 ? [-1, -1 / 3, 1 / 3, 1].indexOf(v) : v > 0 ? 1 : 0);
   // inner height at each phase (no jitter), and the statistical BER (jitter as the phase shift, noise as Gaussian)
@@ -240,7 +292,7 @@ export function eye(pulse: { p: number[]; cursor: number }, e: Eye) {
     const [mw, mh] = e.mask;
     for (let k = 0; k < n && maskPass; k++) { if (!valid(k)) continue; for (let j = -spu / 2; j <= spu / 2; j++) { const ph = j / spu + tau[k]; if (Math.abs(ph) > mw / 2) continue; const v = at(k, phase(best) + j); for (const t of thr) if (Math.abs(v - t) < mh / 2 * (1 - Math.abs(ph) / (mw / 2))) { maskPass = false; break; } if (!maskPass) break; } }
   }
-  return { height, bath, best: phase(best) / spu, heightBest: height[best], heightAtBer: hBer, width: widthJit, widthAtBer: below, ber: bath[best], traces, jitter: xs, levels, thresholds: thr, dfeTaps: taps, maskPass, mainCursor: P[pre * spu] };
+  return { height, bath, best: phase(best) / spu, heightBest: height[best], heightAtBer: hBer, width: widthJit, widthAtBer: below, ber: bath[best], traces, jitter: xs, levels, thresholds: thr, maskPass };
 }
 
 export interface PdnPart { kind: 'vrm' | 'cap' | 'plane' | 'die'; count: number; c: number; esr: number; esl: number }
