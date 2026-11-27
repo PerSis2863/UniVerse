@@ -16,6 +16,7 @@ export function askOnDevice(question: string, timeoutMs = 20_000): Promise<strin
       if (e.data.error) end(null);
       else if (e.data.done) end(guarded || text.trim().length < 2 ? null : text.trim());
     };
+    w.onerror = (e) => { e.preventDefault(); end(null); }; // M578: a model that can't load answers null at once, not after the timeout
     w.postMessage({ prompt: question, ask: true });
   });
 }

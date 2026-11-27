@@ -15982,3 +15982,17 @@ why). As in M576, a worker that didn't load reloads the page once to the new ver
 - Not guarded on purpose: the decorative workers (`AppBackdrop`, `EarthGlobe`, `Planet`, Trace's map engine), Ghidra's
   on-device model (it already falls back) and `lab.worker.ts`'s own `par.worker.ts` helpers (inside a worker).
 - A new page that waits on a worker: call `watchWorker(w, name, failed)` right after `new Worker(...)`.
+
+## M578 (27 Nov): fix, M577's left-outs (the last workers that could wait for ever)
+
+- **Hyperion's parallel helpers** (`lab.worker.ts`, `WorkerPool`): a `par.worker.ts` that doesn't start or crashes ends
+  its task with `{ error }` (`fail`, the worker tracked in `on`), so parfor / parfeval stop with "In a parfor
+  iteration: …" in place of "running…" for ever; `warm()` keeps the waiting set only if every helper answered (else
+  `canWait` is false and the run hands out its iterations the other way). No unit test: the pool lives in the worker
+  file (Worker isn't in Vitest).
+- **The console's Ghidra try-out** (`console/ghidra.tsx`): `watchWorker`, the error shown, the worker dropped so the
+  next press starts a new one. **The on-device Ghidra** (`ghidra-device.ts`): `onerror` answers null at once.
+- Already handled, left alone: `AppBackdrop` and `Planet` draw on the page instead (M137), Trace's map engine projects
+  on the page. The landing's `EarthGlobe` has no fallback once its canvas is handed over: it just stays invisible
+  (it fades in only on `ready`), which is acceptable for a decoration.
+- Every `new Worker(new URL(…))` in `src` now has an error path.
