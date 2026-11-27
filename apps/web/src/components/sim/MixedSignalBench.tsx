@@ -7,6 +7,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import * as M from '@/lib/lab/mixsig';
+import { readTouchstone, sdd, type SParams } from '@/lib/lab/touchstone';
 import { adcMetrics, inlDnl } from '@/lib/lab/convert';
 import { shareFragment } from '@/lib/lab/share';
 import { NumField, ui } from './bench-ui';
@@ -204,14 +205,29 @@ function SerdesPane() {
   const dark = useDarkMode(), open = useOpenInCode(), c = dark ? ['#a78bfa', '#fb923c', '#4ade80'] : ['#7c3aed', '#ea580c', '#16a34a'];
   const [s, setS] = useState({ rate: 25, loss: 20, pam4: false, pre: -0.1, main: 0.8, post: -0.1, ctle: 8, dfe: 3, noise: 0.01, jitter: 0.01 });
   const set = <K extends keyof typeof s>(k: K) => (v: (typeof s)[K]) => setS((o) => ({ ...o, [k]: v }));
-  const q = useDeferredValue(s);
+  // M571: a measured channel, read here in the browser (nothing is uploaded)
+  const [file, setFile] = useState<{ name: string; sp: SParams; note: string } | null>(null);
+  const [fileError, setFileError] = useState('');
+  const pickFile = async (f: File | undefined) => {
+    setFileError('');
+    if (!f) return;
+    try {
+      if (f.size > 20_000_000) throw new Error('That file is over 20 MB.');
+      const m = /\.s(\d+)p$/i.exec(f.name), sp = readTouchstone(await f.text(), m ? +m[1] : undefined);
+      if (sp.n !== 2 && sp.n !== 4) throw new Error(`A channel is a 2-port or a 4-port file (this one has ${sp.n} ports).`);
+      const thru = sp.n === 4 ? sdd(sp) : sp, top = thru.f[thru.f.length - 1];
+      setFile({ name: f.name, sp, note: `${sp.n === 4 ? 'differential (SDD21)' : 'S21'}, ${thru.f.length} points to ${eng(top, 'Hz')}` });
+    } catch (e) { setFile(null); setFileError((e as Error).message); }
+  };
+  const q = useDeferredValue(s), qf = useDeferredValue(file);
   const r = useMemo(() => {
-    try { return { run: M.linkRun({ rate: q.rate * 1e9, loss: q.loss, pam4: q.pam4, ffe: [q.pre, q.main, q.post], ctle: q.ctle || undefined, dfe: Math.round(q.dfe), noise: q.noise, jitter: q.jitter, bits: 2000 }), error: '' }; }
+    try { return { run: M.linkRun({ rate: q.rate * 1e9, loss: qf ? 0 : q.loss, channel: qf?.sp, pam4: q.pam4, ffe: [q.pre, q.main, q.post], ctle: q.ctle || undefined, dfe: Math.round(q.dfe), noise: q.noise, jitter: q.jitter, bits: 2000 }), error: '' }; }
     catch (e) { return { error: (e as Error).message }; }
-  }, [q]);
-  const code = `% Made in Simulate → Mixed-signal → SerDes links
-k = serdes('Rate', ${s.rate}e9, 'Loss', ${s.loss}, 'PAM4', ${s.pam4}, 'FFE', [${s.pre} ${s.main} ${s.post}], 'CTLE', ${s.ctle}, 'DFE', ${s.dfe}, 'Noise', ${s.noise}, 'Jitter', ${s.jitter})
-figure; serdes('Rate', ${s.rate}e9, 'Loss', ${s.loss}, 'PAM4', ${s.pam4}, 'FFE', [${s.pre} ${s.main} ${s.post}], 'CTLE', ${s.ctle}, 'DFE', ${s.dfe}, 'Noise', ${s.noise}, 'Jitter', ${s.jitter})
+  }, [q, qf]);
+  const chan = file ? `'Channel', '${file.name}'` : `'Loss', ${s.loss}`;
+  const code = `% Made in Simulate → Mixed-signal → SerDes links${file ? `\n% Upload ${file.name} in Files first (the channel's S-parameters)` : ''}
+k = serdes('Rate', ${s.rate}e9, ${chan}, 'PAM4', ${s.pam4}, 'FFE', [${s.pre} ${s.main} ${s.post}], 'CTLE', ${s.ctle}, 'DFE', ${s.dfe}, 'Noise', ${s.noise}, 'Jitter', ${s.jitter})
+figure; serdes('Rate', ${s.rate}e9, ${chan}, 'PAM4', ${s.pam4}, 'FFE', [${s.pre} ${s.main} ${s.post}], 'CTLE', ${s.ctle}, 'DFE', ${s.dfe}, 'Noise', ${s.noise}, 'Jitter', ${s.jitter})
 % The equalisers as IBIS-AMI models for a channel simulator:
 amigen('hyper_tx', 'Tx', 'FFE', [${s.pre} ${s.main} ${s.post}], 'Rate', ${s.rate}e9)
 amigen('hyper_rx', 'Rx', 'CTLE', ${s.ctle}, 'DFE', ${s.dfe}, 'Rate', ${s.rate}e9)`;
@@ -227,8 +243,16 @@ amigen('hyper_rx', 'Rx', 'CTLE', ${s.ctle}, 'DFE', ${s.dfe}, 'Rate', ${s.rate}e9
       <p className="text-xs text-zinc-600 dark:text-zinc-300">A serial link: PRBS data through a lossy channel, shaped by the transmitter’s FFE, the receiver’s CTLE and DFE.</p>
       <div className="grid grid-cols-2 gap-2">
         <NumField label="Data rate" unit="Gb/s" value={s.rate} onChange={set('rate')} min={0} />
-        <NumField label="Channel loss" unit="dB at Nyquist" value={s.loss} onChange={set('loss')} min={0} />
+        {file ? <div className="text-xs text-zinc-600 dark:text-zinc-300"><span className={ui.label}>Channel</span><p className="mt-1 break-all font-mono" translate="no">{file.name}</p><p>{file.note}</p></div> : <NumField label="Channel loss" unit="dB at Nyquist" value={s.loss} onChange={set('loss')} min={0} />}
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className={cn(ui.small, 'cursor-pointer border border-zinc-200 dark:border-white/15')}>
+          {file ? 'Another Touchstone file' : 'Measured channel (.s2p, .s4p)'}
+          <input type="file" accept=".s2p,.s4p,.S2P,.S4P,.snp" className="sr-only" onChange={(e) => { void pickFile(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+        {file && <button type="button" className={ui.small} onClick={() => setFile(null)}>Use the loss model</button>}
+      </div>
+      {fileError && <Problem text={fileError} />}
       <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={s.pam4} onChange={(e) => set('pam4')(e.target.checked)} className="accent-violet-600" />PAM4 (two bits a symbol)</label>
       <fieldset className="space-y-2 border-t border-zinc-200/80 pt-3 dark:border-white/10">
         <legend className={ui.label}>TX FFE taps</legend>

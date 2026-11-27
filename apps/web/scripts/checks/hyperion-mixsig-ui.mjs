@@ -1,6 +1,7 @@
 // M568 Hyperion Simulate → Mixed-signal: each tab (PLL, converters, SerDes, verification) opens and draws its charts
 // with numbers (the PLL locks, the ADC's ENOB, the eye open with equalisers), axe is clean (serious/critical) at 1280 in
-// light and dark, no sideways scroll, no page errors. Computers only (M405).
+// light and dark, no sideways scroll, no page errors. Computers only (M405). M571: a 4-port Touchstone file (two lossy
+// lines, as a differential pair) loaded into SerDes links draws its eye.
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/hyperion-mixsig-ui.mjs
 import { createRequire } from 'node:module';
 import { launch, signedIn } from '../browser-session.mjs';
@@ -8,6 +9,18 @@ const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
 const TABS = [['pll', 'Phase-locked loop', 'Lock time', 4], ['conv', 'Data converters', 'ENOB', 4], ['serdes', 'SerDes links', 'Eye height', 4], ['verify', 'Verification', 'SystemVerilog DPI-C', 0]];
+// two uncoupled lossy lines (ports 1-2 and 3-4), 18 dB at 12.5 GHz, 2 ns: a 4-port .s4p, version 1, RI
+function s4p() {
+  const out = ['! two lines', '# Hz S RI R 50'];
+  for (let k = 1; k <= 2000; k++) {
+    const f = k * 25e6, x = f / 12.5e9, a = (18 / 20) * Math.LN10 * (0.5 * Math.sqrt(x) + 0.5 * x), m = Math.exp(-a), ph = -2 * Math.PI * f * 2e-9 - a * 0.5;
+    const t = [m * Math.cos(ph), m * Math.sin(ph)], z = [0, 0];
+    // rows: port 1 [S11 S12 S13 S14] …; ports 1-3 at one end and 2-4 at the other (Hyperion's default pairs)
+    const S = (i, j) => ((i === 0 && j === 1) || (i === 1 && j === 0) || (i === 2 && j === 3) || (i === 3 && j === 2) ? t : z);
+    for (let i = 0; i < 4; i++) out.push(`${i === 0 ? f.toExponential(6) : ' '.repeat(12)} ${[0, 1, 2, 3].flatMap((j) => S(i, j)).map((v) => v.toExponential(6)).join(' ')}`);
+  }
+  return Buffer.from(`${out.join('\n')}\n`);
+}
 const browser = await launch();
 const out = {}, errors = [], fail = [];
 try {
@@ -35,6 +48,14 @@ try {
       if (r.axe.length) fail.push(`${theme} ${key} axe: ${r.axe.join('; ')}`);
       r.sideways = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
       if (r.sideways) fail.push(`${theme} ${key}: sideways scroll`);
+      if (key === 'serdes' && theme === 'light') {
+        await page.locator('input[type="file"][accept*="s4p"]').setInputFiles({ name: 'pair.s4p', mimeType: 'text/plain', buffer: s4p() });
+        await page.getByText('differential (SDD21)').first().waitFor({ timeout: 30_000 });
+        await page.waitForTimeout(1500);
+        r.file = (await page.locator('section[aria-label="Results"] .font-mono').allInnerTexts()).slice(0, 3).join(' | ');
+        if (!/UI/.test(r.file)) fail.push(`serdes file: ${r.file}`);
+        if (shots) await page.screenshot({ path: `${shots}/mixsig-serdes-file.png`, fullPage: true });
+      }
     }
     await ctx.close();
   }

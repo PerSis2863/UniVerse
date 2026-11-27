@@ -15793,3 +15793,26 @@ now the complete model pointing at its .ami (`bufferOf` reads the same options).
   tools can load it).
 - Not done: the official IBIS syntax checker (ibischk) couldn't be fetched here (ibis.org is blocked), and installing
   PyBERT's parser wasn't allowed; the tests check every section is present and the corners ordered.
+
+
+## M571 (27 Nov): mixed-signal left-outs 3: S-parameter (Touchstone) channels
+
+The third of M568's left-outs: a measured channel in place of the loss model. **`src/lib/lab/touchstone.ts`**:
+`readTouchstone` (versions 1.x and 2.0: Hz…GHz, RI / MA / DB, S only, comments and wrapped lines, version 1's 2-port
+column order S11 S21 S12 S22 and 2.0's [Two-Port Data Order]), `writeTouchstone` (1.1, Hz, RI; larger files a matrix
+row per line, four values a line), `sdd` (a 4-port's differential 2-port; pairs [plus minus] at each end, ports 1 & 3
+and 2 & 4 by default; Z0 doubles), `throughAt` (S21 or SDD21 on the link's grid: dB and unwrapped phase interpolated,
+the lowest point held to DC, the loss carried on along its last slope past the file's top, the bulk delay taken out but
+8 symbols), `lossyLine` (a line as S-parameters to try things with). `linkPulse` takes `channel` and multiplies it by
+the CTLE as its own complex poles and zero.
+- **Trap:** a file whose points are too far apart for the channel's delay (the phase turning over half a turn between
+  points) can't be unwrapped; it shows as a phase running ahead (a negative delay, impossible for a passive channel),
+  so `throughAt` refuses it ("use a file with finer steps") rather than give a wrong eye. `lossyLine` and
+  sparameters('model') use 2,000 points for this reason.
+- In the language: `sparameters('x.s4p')` (Parameters ports × ports × frequencies, complex; Frequencies; NumPorts;
+  Impedance), `sparameters('model', …)`, `rfwrite`, `s2sdd`, `rfparam`, `serdes('Channel', s or 'file.s2p')`.
+- **Simulate → Mixed-signal → SerDes links**: "Measured channel (.s2p, .s4p)" reads the file in the browser (nothing
+  uploaded), says S21 or SDD21, the points and the top frequency; "Use the loss model" goes back.
+- Checked: `touchstone.test.ts` (both versions and the column-order quirk, a 4-port round trip, SDD of two lines, a
+  channel through a file giving the same eye as the same channel modelled, a lossless line, the refusal), the browser
+  check loads a 4-port into SerDes links (eye 0.187, 81% wide).

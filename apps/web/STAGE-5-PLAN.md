@@ -2112,6 +2112,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M568 | Hyperion mixed-signal design: PLLs, data converters, SerDes, verification | **Done** | The owner, 27 Nov: "can you please build this in hyperion" (MathWorks' mixed-signal page). `mixsig.ts`, `mixsig-lab.ts` (plldesign, pllsim, pllnoise, adcarch, dacarch, prbs, serdes, eyediagram, dpigen, amigen), Simulate → Mixed-signal (`MixedSignalBench.tsx`). |
 | M569 | Mixed-signal left-outs 1: the SystemVerilog testbench run in real simulators | **Done** | The owner, 27 Nov: "do all these, just forget about the 5 december pauses". The computer app runs Verilator, Xcelium, VCS, Questa, ngspice, Xyce, Spectre or HSPICE where installed (`desktop/hyperion/simulators.js`, 1.3.0); `cosim`, `rawread`; generated C headers get C linkage (Verilator links them as C++). |
 | M570 | Mixed-signal left-outs 2: IBIS buffer I-V and V-t tables | **Done** | `ibis.ts`, `ibisbuffer`; amigen's .ibs now carries the tables. Checked against ngspice on the same transistors (to 0.1 µA; edges within 10 ps). |
+| M571 | Mixed-signal left-outs 3: S-parameter (Touchstone) channels | **Done** | `touchstone.ts`; `sparameters`, `rfwrite`, `s2sdd`, `rfparam`, serdes `'Channel'`; Simulate → Mixed-signal → SerDes links takes a .s2p / .s4p, read in the browser. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

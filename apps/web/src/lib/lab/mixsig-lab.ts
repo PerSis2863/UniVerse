@@ -8,6 +8,7 @@ import { CodegenError, generate, type Cls, type Ty } from './codegen';
 import { askPage, waits } from './wait';
 import { parseRaw as rawPlots } from './spice-raw';
 import { BUFFER0, corner, ibisFile, ivTables, ramp, transient, type BufferSpec } from './ibis';
+import * as TS from './touchstone';
 
 // Hyperion's mixed-signal design in the language (M568): plldesign, pllsim, pllnoise (a charge-pump PLL from its
 // specification to lock and jitter), adcarch and dacarch (converter architectures with their mismatch; adcmetrics and
@@ -129,18 +130,19 @@ def('prbs', (a) => {
   if (!(n >= 1 && n <= 10_000_000)) throw new LabError('prbs(order, n): up to 10,000,000 bits.');
   return [col(wrap(() => M.prbs(order, n, a[2] ? toMat(a[2]).d[0] : 1)))];
 });
-const SERDES = ['rate', 'loss', 'skin', 'pam4', 'ffe', 'ctle', 'ctlefrequency', 'dfe', 'noise', 'jitter', 'bits', 'order', 'seed', 'samplesperui'];
-const linkOf = (a: Value[], from: number, what: string) => {
+const SERDES = ['rate', 'loss', 'skin', 'pam4', 'ffe', 'ctle', 'ctlefrequency', 'dfe', 'noise', 'jitter', 'bits', 'order', 'seed', 'samplesperui', 'channel'];
+const linkOf = (a: Value[], from: number, what: string, lab: Lab) => {
   const o = opts(a, from, SERDES, what);
+  const ch = o.raw('channel'), channel = ch ? (ch.k === 'struct' ? spOf(ch, what) : spFile(lab, textOf(ch))) : undefined;
   const rate = o.n('rate') ?? 10e9, bits = Math.round(o.n('bits') ?? 2000), sps = Math.round(o.n('samplesperui') ?? 32);
   if (!(rate > 0)) throw new LabError(`${what}: 'Rate' is the bit rate (bits a second).`);
   if (!(bits >= 200 && bits <= 100_000)) throw new LabError(`${what}: 200 to 100,000 bits.`);
   if (!(sps >= 8 && sps <= 128)) throw new LabError(`${what}: 8 to 128 samples a symbol.`);
   const dfe = Math.round(o.n('dfe') ?? 0); if (!(dfe >= 0 && dfe <= 8)) throw new LabError(`${what}: 0 to 8 DFE taps.`);
-  return { rate, loss: o.n('loss') ?? 10, skin: o.n('skin'), pam4: o.b('pam4') ?? false, ffe: o.v('ffe'), ctle: o.n('ctle'), ctleAt: o.n('ctlefrequency'), dfe, noise: o.n('noise') ?? 0.01, jitter: o.n('jitter') ?? 0.01, bits, order: o.n('order'), seed: o.n('seed'), sps };
+  return { rate, channel, loss: o.n('loss') ?? (channel ? 0 : 10), skin: o.n('skin'), pam4: o.b('pam4') ?? false, ffe: o.v('ffe'), ctle: o.n('ctle'), ctleAt: o.n('ctlefrequency'), dfe, noise: o.n('noise') ?? 0.01, jitter: o.n('jitter') ?? 0.01, bits, order: o.n('order'), seed: o.n('seed'), sps };
 };
 def('serdes', (a, nout, lab) => {
-  const s = linkOf(a, 0, 'serdes'), r = wrap(() => M.linkRun(s)), sps = r.pulse.sps;
+  const s = linkOf(a, 0, 'serdes', lab), r = wrap(() => M.linkRun(s)), sps = r.pulse.sps;
   if (nout > 0) return [struct([['EyeHeight', num(r.eyeHeight)], ['EyeWidth', num(r.eyeWidth)], ['WidthAtBER', num(r.widthAt)], ['BestPhase', num(r.bestPhase / sps)], ['Main', num(r.pulse.main)], ['Pre', row(r.pulse.pre)], ['Post', row(r.pulse.post)], ['DFETaps', row(r.dfeTaps)], ['Pulse', col(r.pulse.p.slice(0, Math.min(r.pulse.p.length, r.pulse.peak + 16 * sps)))], ['Wave', col(r.wave)], ['Symbols', col(r.symbols)], ['BER', col(r.bathtub.ber)], ['CDRPhase', col(r.cdr.map((p) => p / sps))]])];
   const ui = 1 / (s.pam4 ? s.rate / 2 : s.rate);
   // the pulse response, in symbols
@@ -453,4 +455,59 @@ def('rawread', (a, _nout, lab) => {
   const fs = files(lab);
   if (!fs) throw new LabError('rawread: Hyperion’s files aren’t here.');
   return [rawStruct(fs.get(name).bytes, a[1] ? Math.round(toMat(a[1]).d[0]) - 1 : 0)];
+});
+
+// ——— S-parameters (M571): Touchstone files, mixed-mode, a measured channel for serdes ———
+/** S-parameters as Hyperion shows them: Parameters n × n × frequencies (complex), Frequencies, NumPorts, Impedance. */
+function spStruct(sp: TS.SParams): Struct {
+  const n = sp.n, F = sp.f.length, re = new Float64Array(n * n * F), im = new Float64Array(n * n * F);
+  for (let k = 0; k < F; k++) for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const o = TS.at(sp, i, j, k), q = i + j * n + k * n * n; re[q] = sp.re[o]; im[q] = sp.im[o]; }
+  const P: Mat = { k: 'mat', r: n, c: n, ...(F > 1 ? { p: F } : {}), d: re, im };
+  return struct([['Parameters', P], ['Frequencies', col(sp.f)], ['NumPorts', num(n)], ['Impedance', num(sp.z0)]]);
+}
+function spOf(v: Value, what: string): TS.SParams {
+  if (v.k !== 'struct' || !v.f.has('Parameters') || !v.f.has('Frequencies')) throw new LabError(`${what}: S-parameters from sparameters.`);
+  const P = toMat(v.f.get('Parameters')!), f = [...toMat(v.f.get('Frequencies')!).d], n = P.r, F = f.length;
+  if (P.c !== n || P.d.length !== n * n * F) throw new LabError(`${what}: the parameters are n × n × (one page a frequency).`);
+  const re = new Float64Array(n * n * F), im = new Float64Array(n * n * F);
+  for (let k = 0; k < F; k++) for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const q = i + j * n + k * n * n, o = TS.at({ n } as TS.SParams, i, j, k); re[o] = P.d[q]; im[o] = P.im ? P.im[q] : 0; }
+  return { f, n, re, im, z0: v.f.has('Impedance') ? toMat(v.f.get('Impedance')!).d[0] : 50 };
+}
+function spFile(lab: Lab, name: string): TS.SParams {
+  const fs = files(lab);
+  if (!fs) throw new LabError('sparameters: Hyperion’s files aren’t here.');
+  const m = /\.s(\d+)p$/i.exec(name);
+  return wrap(() => TS.readTouchstone(dec.decode(fs.get(name).bytes), m ? +m[1] : undefined));
+}
+def('sparameters', (a, _nout, lab) => {
+  const what = a[0] ? textOf(a[0]) : '';
+  if (!what) throw new LabError("sparameters('channel.s4p') reads a Touchstone file from Hyperion's files; sparameters('model', 'Loss', 20, 'Rate', 25e9, 'Delay', 2e-9) makes a lossy line.");
+  if (what.toLowerCase() === 'model') {
+    const o = opts(a, 1, ['loss', 'rate', 'delay', 'fmax', 'points'], 'sparameters');
+    const rate = o.n('rate') ?? 25e9, loss = o.n('loss') ?? 20, pts = Math.round(o.n('points') ?? 2000);
+    if (!(rate > 0 && loss >= 0 && loss <= 80 && pts >= 10 && pts <= 20000)) throw new LabError('sparameters model: a positive rate, loss 0 to 80 dB, 10 to 20,000 points.');
+    return [spStruct(TS.lossyLine(loss, rate / 2, o.n('fmax') ?? 2 * rate, o.n('delay') ?? 2e-9, pts))];
+  }
+  return [spStruct(spFile(lab, what))];
+});
+def('rfwrite', (a, _nout, lab) => {
+  const sp = spOf(a[0] ?? num(NaN), 'rfwrite'), name = a[1] ? textOf(a[1]) : '';
+  if (!new RegExp(`^[\\w.-]+\\.s${sp.n}p$`, 'i').test(name)) throw new LabError(`rfwrite(s, 'name.s${sp.n}p'): a Touchstone file name ending in .s${sp.n}p.`);
+  const fs = files(lab);
+  if (!fs) throw new LabError('rfwrite: Hyperion’s files aren’t here.');
+  fs.putText(name, TS.writeTouchstone(sp, 'Hyperion rfwrite'));
+  return [];
+});
+def('s2sdd', (a) => {
+  const sp = spOf(a[0] ?? num(NaN), 's2sdd');
+  const pr = a[1] ? toMat(a[1]).d : [1, 3, 2, 4];
+  if (pr.length !== 4 || new Set(pr).size !== 4 || ![...pr].every((x) => x >= 1 && x <= 4)) throw new LabError('s2sdd(s, [p1 n1 p2 n2]): the four ports as the two pairs (1 3 2 4 by default).');
+  return [spStruct(wrap(() => TS.sdd(sp, [[pr[0] - 1, pr[1] - 1], [pr[2] - 1, pr[3] - 1]])))];
+});
+def('rfparam', (a) => {
+  const sp = spOf(a[0] ?? num(NaN), 'rfparam'), i = Math.round(toMat(a[1] ?? num(NaN)).d[0]) - 1, j = Math.round(toMat(a[2] ?? num(NaN)).d[0]) - 1;
+  if (!(i >= 0 && j >= 0 && i < sp.n && j < sp.n)) throw new LabError(`rfparam(s, i, j): ports 1 to ${sp.n}.`);
+  const F = sp.f.length, m = mat(F, 1, Array.from({ length: F }, (_, k) => sp.re[TS.at(sp, i, j, k)]));
+  m.im = Float64Array.from({ length: F }, (_, k) => sp.im[TS.at(sp, i, j, k)]);
+  return [m];
 });

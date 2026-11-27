@@ -8,6 +8,7 @@
 
 import { dft } from './fft';
 import { erfc } from './comms';
+import { throughAt, type SParams } from './touchstone';
 
 export type Rand = () => number;
 /** A repeatable source of random numbers (mulberry32). */
@@ -230,13 +231,14 @@ export function prbs(order: number, n: number, seed = 1) {
   return out;
 }
 export interface LinkSpec {
-  rate: number; loss: number; sps?: number; skin?: number; pam4?: boolean;
+  rate: number; loss: number; sps?: number; skin?: number; pam4?: boolean; channel?: SParams;
   ffe?: number[]; ctle?: number; ctleAt?: number; dfe?: number; noise?: number; jitter?: number;
 }
 /** A lossy channel as a minimum-phase filter: loss (dB at Nyquist, rate/2 for NRZ, rate/4 a symbol rate for PAM4)
  *  shared between skin effect (∝ √f, share `skin`, 0.5 by default) and dielectric loss (∝ f), its phase from the
  *  magnitude (the real-cepstrum method), with a CTLE (`ctle` dB of peaking at `ctleAt`, the Nyquist frequency by
- *  default: a zero, a pole there and one at 4× it, DC gain 1/peaking). The pulse response of one symbol (`sps`
+ *  default: a zero, a pole there and one at 4× it, DC gain 1/peaking), or a measured `channel` (Touchstone, M571) in
+ *  place of the loss model. The pulse response of one symbol (`sps`
  *  samples a symbol), with TX FFE taps [pre main post…] (main the largest) applied. */
 export function linkPulse(s: LinkSpec) {
   const sps = s.sps ?? 32, nui = 128, n = sps * nui, baud = s.pam4 ? s.rate / 2 : s.rate, fs = baud * sps, fN = baud / 2;
@@ -261,6 +263,24 @@ export function linkPulse(s: LinkSpec) {
   const [lr, li] = dft(fr, fi, false);
   const hr = new Array(n), hi = new Array(n);
   for (let k = 0; k < n; k++) { const m = Math.exp(lr[k]); hr[k] = m * Math.cos(li[k]); hi[k] = m * Math.sin(li[k]); }
+  if (s.channel) {
+    // M571: a measured channel (Touchstone S21, or SDD21 of a 4-port) in place of the loss model, keeping 8 symbols of
+    // its delay, times the CTLE as its own poles and zero; the negative frequencies its mirror
+    const fq = Array.from({ length: n / 2 + 1 }, (_, k) => k * fs / n), ch = throughAt(s.channel, fq, 8 / baud);
+    const pk = 10 ** ((s.ctle ?? 0) / 20), fp = s.ctleAt ?? fN, fz = fp / pk, fp2 = 4 * fp;
+    for (let k = 0; k <= n / 2; k++) {
+      let r = ch.re[k], i = ch.im[k];
+      if (s.ctle) {
+        // (1 + jf/fz) / ((1 + jf/fp)(1 + jf/fp2)) / pk
+        const f = fq[k], nr = 1, ni = f / fz, dr = 1 - (f * f) / (fp * fp2), di = f / fp + f / fp2, m = dr * dr + di * di;
+        const cr2 = ((nr * dr + ni * di) / m) / pk, ci2 = ((ni * dr - nr * di) / m) / pk;
+        [r, i] = [r * cr2 - i * ci2, r * ci2 + i * cr2];
+      }
+      hr[k] = r; hi[k] = i;
+      if (k > 0 && k < n / 2) { hr[n - k] = r; hi[n - k] = -i; }
+    }
+    hi[n / 2] = 0;
+  }
   // times a one-symbol rectangle: its DFT, then back to time
   const rect = new Array(n).fill(0); for (let i = 0; i < sps; i++) rect[i] = 1;
   const [rr, ri] = dft(rect, new Array(n).fill(0), false);
