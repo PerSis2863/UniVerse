@@ -175,4 +175,9 @@ rosTimeseries | [t, v] = rosTimeseries(bag, '/odom', 'pose.pose.position.x') | O
 rosReadImage | img = rosReadImage(msg) | A sensor_msgs/Image message as a picture: rows × columns × 3 (rgb8, bgr8, rgba8, bgra8) or rows × columns (mono8, mono16), uint8 or uint16; a sensor_msgs/CompressedImage (JPEG or PNG) too.
 rosReadXYZ | xyz = rosReadXYZ(msg) | A sensor_msgs/PointCloud2 message's points as an N × 3 matrix (points with NaN left out); pointCloud(xyz) takes it.
 rosReadField | v = rosReadField(msg, 'intensity') | One field of a PointCloud2 message's points, as a column.
+scenarioMetrics | m = scenarioMetrics(s) | What a run of the scenario measured about the ego vehicle: Collided and CollisionTime, MinGap (m, bumper to bumper with what is ahead in its path), MinTTC (time to collision, s) and TimeOfMinTTC, MinHeadway (s), MaxDecel, MaxAccel (m/s²), MaxJerk (m/s³), MaxSpeed, OffRoadSeconds and Duration.
+requirements | R = requirements() | An empty set of requirements, for addRequirement and verifyScenarios.
+addRequirement | R = addRequirement(R, 'R2', 'Keeps 1.5 s to collision', @(m) m.MinTTC >= 1.5) | Adds a requirement: its ID, what it asks, and a check on the measurements m (scenarioMetrics) that gives true or false.
+verifyScenarios | res = verifyScenarios(R, {s1, s2}, 'Names', {'cut-in', 'braking'}) | Every requirement against every scenario, or verifyScenarios(R, @(p) myScenario(p(1), p(2)), [10 20; 15 30]) against a scenario built from each row of parameters. AllPassed, Passed, Failed, Results (a table: Scenario, Requirement, Passed, Detail with the measurements the check used) and Metrics.
+testReport | testReport(res, 'report.html', 'Title', 'ACC tests') | The results as an HTML report in Hyperion's files: the summary, the requirements, which scenario met which, the failures and every scenario's measurements.
 `;

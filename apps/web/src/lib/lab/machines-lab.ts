@@ -14,3 +14,4 @@ import './pointcloud-lab';
 import './fusion-lab';
 import './can-lab';
 import './rosbag-lab';
+import './drivetest-lab';

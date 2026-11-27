@@ -348,4 +348,22 @@ function [accel, brake] = speedcontrol(speed, target, gap)
   brake = accel < -3;
 end
 ` },
+  { name: 'drivetests.m', code: `% Testing against requirements (M581): following a slower car, at several speeds and starting gaps
+R = requirements();
+R = addRequirement(R, 'R1', 'Never collides', @(m) ~m.Collided);
+R = addRequirement(R, 'R2', 'Keeps at least 2 s to collision', @(m) m.MinTTC >= 2);
+R = addRequirement(R, 'R3', 'Keeps at least 1 s of headway', @(m) m.MinHeadway >= 1);
+[v, g] = meshgrid([12 16 20], [40 60 80]);
+res = verifyScenarios(R, @(p) follow(p(1), p(2)), [v(:) g(:)]);
+fprintf('%d of %d checks passed\\n', res.Passed, res.Passed + res.Failed)
+disp(res.Results(~res.Results.Passed, :))
+testReport(res, 'following.html', 'Title', 'Following a slower car')
+
+function s = follow(speed, gap)
+  s = drivingScenario('StopTime', 6);
+  s = road(s, [0 0; 600 0], 'Lanes', 2);
+  [s, e] = vehicle(s, 'Position', [0 -1.8]); s = trajectory(s, e, [0 -1.8; 600 -1.8], speed);
+  [s, l] = vehicle(s, 'Position', [gap -1.8]); s = trajectory(s, l, [gap -1.8; 600 -1.8], 10);
+end
+` },
 ];

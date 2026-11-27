@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import * as S from '@/lib/lab/scenario';
 import * as PC from '@/lib/lab/pointcloud';
 import { scenarioTracks } from '@/lib/lab/scenario-track';
+import { scenarioMetrics } from '@/lib/lab/scenario-test';
 import { readOSM } from '@/lib/lab/osm';
 import { shareFragment } from '@/lib/lab/share';
 import { NumField, ui } from './bench-ui';
@@ -49,6 +50,8 @@ export function ScenarioBench() {
     catch (e) { return { run: null, error: (e as Error).message }; }
   }, [design]);
   const run = result.run, n = run?.t.length ?? 0;
+  // M581: what the run measured about the ego car (not for the still placeholder before any car is placed)
+  const metrics = useMemo(() => (run && run.actors[0]?.L > 0.1 ? scenarioMetrics(run) : null), [run]);
   // M575: the camera and radar fused into tracks, scored with GOSPA
   const tracks = useMemo(() => { if (!run || (!design.vision && !design.radar)) return null; try { return scenarioTracks(specOf(design), run); } catch { return null; } }, [run, design]);
   const kk = Math.min(k, Math.max(0, n - 1));
@@ -266,6 +269,11 @@ export function ScenarioBench() {
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
           {[['Actors', String(run?.actors.length ?? 0)], ['Detections', String(D.length)], ['Actors ever seen', String(seen)], ['Tracks now (mean GOSPA)', tracks ? `${tracks.steps[kk]?.tracks.filter((x) => x.confirmed).length ?? 0} (${tracks.mean.toFixed(2)} m)` : '–'], ['Collisions', run ? (run.collisions.length ? run.collisions.map((x) => `${x.t.toFixed(1)} s`).join(', ') : 'none') : '–']].map(([a, b]) => <div key={a} className="rounded-xl bg-zinc-50 px-3 py-2 dark:bg-white/[0.04]"><p className="text-xs text-zinc-500 dark:text-zinc-400">{a}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{b}</p></div>)}
         </div>
+        {metrics && (
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5" role="group" aria-label="What the run measured about the ego car">
+            {[['Closest gap ahead', Number.isFinite(metrics.MinGap) ? `${metrics.MinGap.toFixed(1)} m` : 'nothing ahead'], ['Least time to collision', Number.isFinite(metrics.MinTTC) ? `${metrics.MinTTC.toFixed(2)} s` : 'never closing'], ['Least headway', Number.isFinite(metrics.MinHeadway) ? `${metrics.MinHeadway.toFixed(2)} s` : '–'], ['Hardest braking', `${metrics.MaxDecel.toFixed(1)} m/s²`], ['Off the road', `${metrics.OffRoadSeconds.toFixed(1)} s`]].map(([a, b]) => <div key={a} className="rounded-xl bg-zinc-50 px-3 py-2 dark:bg-white/[0.04]"><p className="text-xs text-zinc-500 dark:text-zinc-400">{a}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{b}</p></div>)}
+          </div>
+        )}
       </section>
     </div>
   );

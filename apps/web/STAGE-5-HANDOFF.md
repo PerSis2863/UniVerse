@@ -16041,3 +16041,29 @@ The owner's automated-driving page, "deploy": the C that `codegen` writes (M480)
 - **Not checked** with a real ROS 2 install or an AUTOSAR tool's schema validator (neither is on this machine, and the
   AUTOSAR schema needs an account). Not yet: AUTOSAR Adaptive (C++ ara::com), client-server ports, custom ROS messages.
 
+## M581: automated driving 8: requirements, scenario test suites and reports (27 Nov)
+
+The owner's automated-driving page, "integrate and test": the last part of the page (M573–M581 cover it all).
+- **`scenario-test.ts`**: `scenarioMetrics(run, ego)`: Collided and CollisionTime (collisions involving the ego),
+  MinGap (bumper to bumper along the ego's heading, for anything ahead overlapping its width + 0.3 m), MinTTC (gap over
+  closing speed while closing above 0.1 m/s) and TimeOfMinTTC, MinHeadway (gap over speed above 1 m/s), MaxDecel,
+  MaxAccel, MaxJerk (from the speed's differences), MaxSpeed, OffRoadSeconds (farther from every road's centre line
+  than half its width, by the nearest sample) and Duration. `reportHtml` writes a self-contained report (summary,
+  requirements with their checks, a scenario × requirement grid, failures with the measurements, every scenario's
+  measurements); everything put in it is escaped.
+- In the language (`drivetest-lab.ts`, loaded by `machines-lab.ts`): `scenarioMetrics(s)`, `requirements()`,
+  `addRequirement(R, id, text, @(m) check)` (IDs unique), `verifyScenarios(R, {s1, s2}, 'Names', {…})` or
+  `verifyScenarios(R, @(p) build(p), P)` (a scenario a row of P, up to 500): AllPassed, Passed, Failed, Results (a table:
+  Scenario, Requirement, Passed, Detail naming the measurements the check read, found from its source `m.Name`),
+  Metrics, Scenarios, Requirements. A check that errors counts as failed with the error in Detail. `testReport(res,
+  'file.html', 'Title', t)` writes the report to Hyperion's files.
+- The Scenario designer shows a second row: closest gap, least time to collision, least headway, hardest braking,
+  time off the road (not for the still placeholder before a car is placed).
+- Examples `drivetests.m` (nine following scenarios, three requirements, a report) and `deploy.m` (M580).
+  `machines.test.ts` now gives its Lab a FileStore and loads `codegen-lab` (the examples write files).
+- Checked (`scenario-test.test.ts`): hand-worked numbers (45.3 m closing at 10 m/s for 2 s: 2.53 s, 1.265 s of
+  headway), a crash, the next lane ignored, time off the road, the report escaped, and the language over a family of
+  scenarios with one of each outcome; the browser check of the Scenario designer stays clean.
+- Not yet: requirements kept in a file of their own (ReqIF), coverage of the code, tests that drive a controller in the
+  loop (the scenarios' actors follow set paths; a controller would need the closed loop).
+
