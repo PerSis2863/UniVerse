@@ -2119,6 +2119,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M575 | Automated driving 3: sensor fusion and tracking, GOSPA, IMU orientation, detection scores | **Done** | `fusion.ts`, `scenario-track.ts`, `fusion-lab.ts` (trackScenario, gospa, ospa, imufilter, ahrsfilter, imuReadings, bboxOverlapRatio, evaluateDetectionPrecision); the Scenario designer draws the fused tracks and their GOSPA. |
 | M576 | Automated driving 4: CAN data (DBC, logs) and OpenStreetMap roads | **Done** | `can.ts`, `osm.ts`, `can-lab.ts` (canDatabase, readCANLog, writeCANLog, canSignalTimetable, canFrame, roadNetwork); the Scenario designer loads .osm and .xodr maps. |
 | M577 | Automated driving 5: camera pictures and the Labeller | **Done** | `render.ts` (a pinhole camera's picture of a scenario, true boxes and how much of each shows), `can-lab.ts` (cameraImage, scenarioGroundTruth), Simulate → Machines → Labeller (`LabelBench.tsx`: draw boxes, labels from the truth, fill between keyframes, .json, Open in Code). |
+| M578 | Automated driving 6: ROS bags (ROS 1 .bag and MCAP) | **Done** | `rosbag.ts` (ROS 1 bag 2.0, MCAP, LZ4, messages from the bag's own definitions: ROS 1, CDR, JSON; images and point clouds), `rosbag-lab.ts` (rosbagreader, ros2bagreader, readMessages, rosTimeseries, rosReadImage, rosReadXYZ, rosReadField); the Labeller opens a bag's camera topic. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

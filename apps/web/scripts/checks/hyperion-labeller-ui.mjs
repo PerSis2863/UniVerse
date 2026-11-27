@@ -1,5 +1,5 @@
 // M577 Simulate → Machines → Labeller: a scenario's camera frames draw, "Label every frame from the scenario's truth"
-// boxes the cars on every frame, a drag draws a box of its own, the arrow buttons change frames, axe is clean
+// boxes the cars on every frame, a drag draws a box of its own, a ROS bag's camera topic opens as frames (M578), the arrow buttons change frames, axe is clean
 // (serious/critical) at 1280 in light and dark, no sideways scroll, no page errors. Computers only (M405).
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/hyperion-labeller-ui.mjs
 import { createRequire } from 'node:module';
@@ -9,6 +9,16 @@ const AXE = require.resolve('axe-core/axe.min.js');
 const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
 const browser = await launch();
 const out = {}, errors = [], fail = [];
+// M578: a ROS 1 bag holding two 64×48 rgb8 pictures on /camera (built from the rosbag 2.0 layout)
+const n32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
+const fld = (k, v) => { const f = Buffer.concat([Buffer.from(`${k}=`), Buffer.from(v)]); return Buffer.concat([n32(f.length), f]); };
+const rec = (h, d) => { const hd = Buffer.concat(h.map(([k, v]) => fld(k, v))); return Buffer.concat([n32(hd.length), hd, n32(d.length), d]); };
+const DEF = 'Header header\nuint32 height\nuint32 width\nstring encoding\nuint8 is_bigendian\nuint32 step\nuint8[] data\n====\nMSG: std_msgs/Header\nuint32 seq\ntime stamp\nstring frame_id\n';
+const conn = rec([['op', [7]], ['conn', n32(0)], ['topic', '/camera']], Buffer.concat([fld('topic', '/camera'), fld('type', 'sensor_msgs/Image'), fld('md5sum', '*'), fld('message_definition', DEF)]));
+const pic = (s) => { const px = Buffer.alloc(64 * 48 * 3); for (let i = 0; i < 64 * 48; i++) px.set([s, 120, 255 - s], 3 * i); const str = (x) => Buffer.concat([n32(x.length), Buffer.from(x)]); return Buffer.concat([n32(0), n32(s), n32(0), str('cam'), n32(48), n32(64), str('rgb8'), Buffer.from([0]), n32(192), n32(px.length), px]); };
+const msg = (s) => rec([['op', [2]], ['conn', n32(0)], ['time', Buffer.concat([n32(s), n32(0)])]], pic(s));
+const inner = Buffer.concat([conn, msg(10), msg(11)]);
+const BAG = Buffer.concat([Buffer.from('#ROSBAG V2.0\n'), rec([['op', [5]], ['compression', 'none'], ['size', n32(inner.length)]], inner), conn]);
 const boxesOf = async (page) => Number(/: (\d+) boxes/.exec(await page.locator('section[aria-label="The frame"] canvas').getAttribute('aria-label'))?.[1] ?? -1);
 try {
   for (const theme of ['light', 'dark']) {
@@ -40,6 +50,13 @@ try {
     r.drawn = await boxesOf(page);
     if (r.drawn !== before + 1) fail.push(`${theme}: drawing a box went ${before} → ${r.drawn}`);
     if (shots) await page.screenshot({ path: `${shots}/labeller-${theme}.png` });
+    await page.locator('input[type="file"][accept*=".bag"]').setInputFiles({ name: 'drive.bag', mimeType: 'application/octet-stream', buffer: BAG });
+    await page.waitForTimeout(800);
+    r.bag = await page.getByRole('slider', { name: 'Frame' }).getAttribute('max');
+    r.bagNote = await page.locator('p.bg-amber-50').allInnerTexts();
+    if (r.bag !== '1' || r.bagNote.length) fail.push(`${theme}: the bag gave ${r.bag} (${r.bagNote.join(' ')})`);
+    r.bagPx = await cv.evaluate((c) => [...c.getContext('2d').getImageData(Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data].slice(0, 3).join(','));
+    if (r.bagPx !== '10,120,245') fail.push(`${theme}: the bag's picture drew ${r.bagPx}`);
     await page.addScriptTag({ path: AXE });
     const axe = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(', ')}`));
     if (axe.length) fail.push(`${theme} axe: ${axe.join('; ')}`);

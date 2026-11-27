@@ -7,6 +7,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import * as S from '@/lib/lab/scenario';
 import * as RN from '@/lib/lab/render';
+import * as RB from '@/lib/lab/rosbag';
 import { shareFragment } from '@/lib/lab/share';
 import { ui } from './bench-ui';
 import { PRESETS, specOf } from './scenario-presets';
@@ -28,6 +29,7 @@ export function LabelBench() {
   const [labels, setLabels] = useState(LABELS0);
   const [label, setLabel] = useState('car');
   const [boxes, setBoxes] = useState<Record<number, Box[]>>({});
+  const [note, setNote] = useState('');
   const [k, setK] = useState(0);
   const [sel, setSel] = useState(-1);
   const [newLabel, setNewLabel] = useState('');
@@ -109,7 +111,25 @@ export function LabelBench() {
   const openPictures = async (files: FileList | null) => {
     if (!files?.length) return;
     const list: Frame[] = [];
-    for (const f of [...files].slice(0, 500)) { if (!f.type.startsWith('image/')) continue; const bmp = await createImageBitmap(f); list.push({ name: f.name, src: bmp, w: bmp.width, h: bmp.height }); }
+    setNote('');
+    for (const f of [...files].slice(0, 500)) {
+      // M578: a ROS bag or MCAP file gives its first camera topic's pictures
+      if (/\.(bag|mcap)$/i.test(f.name)) {
+        try {
+          const bag = RB.readBag(new Uint8Array(await f.arrayBuffer())), k = bag.topics.findIndex((t) => /(^|\/)Image$/.test(t.type));
+          if (k < 0) { setNote(`${f.name} has no camera (sensor_msgs/Image) topic.`); continue; }
+          for (const m of bag.messages.filter((x) => x.topic === k).slice(0, 500 - list.length)) {
+            const im = RB.readImage(RB.decodeMessage(bag, m) as Record<string, unknown>), px = new ImageData(im.w, im.h), n = im.w * im.h;
+            for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) { const o = 4 * (y * im.w + x), q = y + x * im.h, sc = im.sixteen ? 1 / 257 : 1; for (let c = 0; c < 3; c++) px.data[o + c] = im.data[q + (im.ch > 1 ? c * n : 0)] * sc; px.data[o + 3] = 255; }
+            list.push({ name: `${bag.topics[k].topic} ${(m.t - bag.start).toFixed(2)} s`, src: px, w: im.w, h: im.h, t: m.t - bag.start });
+          }
+        } catch (e) { setNote(`${f.name}: ${(e as Error).message}`); }
+        continue;
+      }
+      if (!f.type.startsWith('image/')) continue;
+      const bmp = await createImageBitmap(f); list.push({ name: f.name, src: bmp, w: bmp.width, h: bmp.height });
+    }
+    if (!list.length) return;
     setSource(-1); setMine(list); setBoxes({}); setK(0); setSel(-1);
   };
   const exportJson = () => {
@@ -133,7 +153,7 @@ export function LabelBench() {
             {mine.length > 0 && <option value={-1}>Your pictures ({mine.length})</option>}
           </select>
         </label>
-        <label className={cn(small, 'cursor-pointer self-start border border-zinc-200 dark:border-white/15')}>Open your pictures…<input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => { void openPictures(e.target.files); e.target.value = ''; }} /></label>
+        <label className={cn(small, 'cursor-pointer self-start border border-zinc-200 dark:border-white/15')}>Open pictures or a ROS bag…<input type="file" accept="image/*,.bag,.mcap" multiple className="sr-only" onChange={(e) => { void openPictures(e.target.files); e.target.value = ''; }} /></label>
         <fieldset className="space-y-1.5 border-t border-zinc-200/80 pt-3 dark:border-white/10">
           <legend className={lab}>Drag on the picture to draw a</legend>
           <div className="flex flex-wrap gap-1.5">{labels.map((l) => <button key={l.name} type="button" aria-pressed={label === l.name} onClick={() => setLabel(l.name)} className={cn(small, 'border border-zinc-200 dark:border-white/15', label === l.name && ui.on)}><span className="h-2.5 w-2.5 rounded-sm" style={{ background: l.colour }} aria-hidden />{l.name}</button>)}</div>
@@ -159,7 +179,8 @@ export function LabelBench() {
           <button type="button" className={small} disabled={sel < 0} onClick={remove}><Trash2 className="h-3.5 w-3.5" aria-hidden />Remove box</button>
         </div>
         <canvas ref={canvas} tabIndex={0} onPointerDown={down} onPointerMove={move} onPointerUp={up} className="cursor-crosshair touch-none rounded-xl" role="img" aria-label={`${frame?.name ?? 'No frame'}: ${here.length} boxes (${here.map((b) => b.label).join(', ') || 'none'}). Drag to draw a box; Delete removes the selected one; the arrow keys change frames.`} />
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">Dashed boxes were made automatically; solid ones you drew. Your pictures stay on this computer.</p>
+        {note && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">{note}</p>}
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Dashed boxes were made automatically; solid ones you drew. Your pictures and bags stay on this computer.</p>
       </section>
     </div>
   );

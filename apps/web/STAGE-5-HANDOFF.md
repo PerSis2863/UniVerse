@@ -15961,3 +15961,30 @@ The owner's automated-driving page, "visualize and label data" (its Ground Truth
 - **Trap:** a truck 15 m ahead hides a car 40 m ahead completely unless it sits more than ~4.5 m to the side.
 - Not yet: ROS bags, deployment (ROS 2 / AUTOSAR around the generated C), requirements and test benches (next).
 
+## M578: automated driving 6: ROS bags (27 Nov)
+
+The owner's automated-driving page, "access live and recorded driving data… ROS".
+- **`rosbag.ts`**: `readBag(bytes)` tells the two kinds apart by their first bytes. **ROS 1** (format 2.0): records of a
+  header (`name=value` fields) and data; chunks (op 5) stored plainly or with LZ4 (bz2 refused with the command to
+  convert), connections (op 7, read inside chunks and again at the end, deduplicated), messages (op 2, time = sec +
+  nsec). **MCAP**: schemas, channels, messages, chunks (plain or LZ4; zstd refused with the command to convert), stops at
+  the footer. A ROS 2 `.db3` (SQLite) is refused with "convert it to MCAP". `lz4` decodes LZ4 frames (linked or
+  independent blocks, into one buffer). `parseDefinition` reads the definition text a bag carries (the top type, then
+  `MSG:` sections; constants and defaults skipped; bounded strings and arrays; `Header`, `builtin_interfaces/Time`
+  filled in when missing); `decodeMessage` unpacks ROS 1 (packed, little-endian) or CDR (aligned to each size from after
+  the 4-byte header, either byte order; XCDR2 refused) or JSON. `readImage` (rgb8, bgr8, rgba8, bgra8, mono8, mono16)
+  and `readCloud` (a PointCloud2's named fields, NaN points left out).
+- In the language (`rosbag-lab.ts`, loaded by `machines-lab.ts`): `rosbagreader` / `ros2bagreader` (FilePath, Format,
+  StartTime, EndTime, NumMessages, AvailableTopics as a table), `readMessages(bag, 'Topic', 'Time', 'Max')` (a column cell
+  of structs with the definition's own field names; at most 20,000 unless 'Max'), `rosTimeseries(bag, topic, 'a.b.c')`,
+  `rosReadImage`, `rosReadXYZ` (into `pointCloud`), `rosReadField`. A parsed bag is cached by its bytes (WeakMap).
+- The Labeller: "Open pictures or a ROS bag…" takes .bag and .mcap; the first `sensor_msgs/Image` topic's pictures
+  become frames (up to 500); problems shown in an amber note.
+- Checked: `rosbag.test.ts` builds ROS 1 bags (plain and LZ4) and MCAP files (plain and LZ4) byte by byte from the
+  published layouts, with nested types, fixed and variable arrays, CDR's alignment after a 5-byte string, an image and a
+  point cloud; an LZ4 match; the refusals; the language. The browser check opens a bag in the Labeller and checks a pixel.
+- **Not checked against bags from real ROS tools**: installing the `rosbags` Python package to write some was refused
+  (nothing installed without the owner's yes). Real bags differ mostly in compression (bz2, zstd: refused with a hint).
+- Not yet: bz2 and zstd, `.db3` directly, CompressedImage (JPEG/PNG), writing bags, live ROS topics (a browser can't
+  join a ROS network; the computer app could later).
+
