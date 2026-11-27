@@ -16014,3 +16014,30 @@ owner's own yes), so everything here is our own code, checked against real encod
 - The Labeller opens .bag, .mcap and .db3, and CompressedImage topics.
 - Not yet: bags from real ROS tools (the owner can upload one), dictionaries in zstd, progressive JPEG, writing bags.
 
+## M580: automated driving 7: deploying to ROS 2 and AUTOSAR (27 Nov)
+
+The owner's automated-driving page, "deploy": the C that `codegen` writes (M480), wrapped to run inside a car's software.
+- **`codegen.ts`**: `generate` also returns `io` (the C function's name, its inputs and outputs with type and C type);
+  ports carry the **script's** names (the C may rename one, `k` → `k_`). **Bug fixed**: a whole number JavaScript prints
+  with an exponent (`-1e300`, `1e21`) came out as `1e+300.0`, which C refuses; `lit` adds `.0` only without an exponent.
+- **`deploy.ts`**: `ros2Package` writes `<name>_ros/` (package.xml format 3, CMakeLists with ament_cmake and
+  `rclcpp::rclcpp` / `${std_msgs_TARGETS}`, `src/<name>_node.cpp`, the C, a launch file, a README): one subscription
+  per input on `~/<input>` (std_msgs numbers, MultiArrays for arrays, checked for size with a throttled warning), a
+  wall timer at `rate_hz` (a parameter) that runs only once every input has arrived, one publisher per output (arrays'
+  layout: columns then rows, so column-major data is described truthfully). `autosarSwc` writes `<Name>Swc/`: the
+  runnables (`_Init`, `_Step` reading through `Rte_Read_In_<x>_Value`, writing `Rte_Write_Out_<y>_Value`), the ARXML
+  (release 4, schema AUTOSAR_00049: array implementation types on /AUTOSAR_Platform's types, one sender-receiver
+  interface and port per input/output, a timing event, the runnables' read and write accesses, the implementation), and
+  a stand-in RTE (`Rte_<Name>Swc.h` and `.c`, values in `Rte_Test_<port>`) so it builds and runs on a computer.
+  Wrapper variables are prefixed (`in_`, `out_`, `msg`) so no script name can clash. Fixed point travels as the stored
+  whole number (noted in the README); wider than 64 bits is refused.
+- In the language: `codegen(name, {examples}, 'Target', 'ROS 2' | 'AUTOSAR', 'Rate', hz, 'Name', n)` writes
+  `<folder>.zip` beside the .c/.h (a struct output also gives Files and Texts). Example `deploy.m` (Machines).
+- Checked (`deploy.test.ts`): the files and every ARXML reference resolve (a small tag-balance and SHORT-NAME path
+  check); the AUTOSAR component built with `cc -Wall -Werror` and run through its RTE gives Hyperion's answers (doubles
+  and int16); the ROS 2 node built with `c++ -Wall -Werror` against small stand-ins for rclcpp and std_msgs that record
+  subscriptions, the timer and publications: nothing before both inputs, a wrong-sized array warned and refused, then
+  Hyperion's answers at 25 a second.
+- **Not checked** with a real ROS 2 install or an AUTOSAR tool's schema validator (neither is on this machine, and the
+  AUTOSAR schema needs an account). Not yet: AUTOSAR Adaptive (C++ ara::com), client-server ports, custom ROS messages.
+

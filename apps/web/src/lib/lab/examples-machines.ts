@@ -333,4 +333,19 @@ for s = {'ac25', 'ac25at'}
   fprintf('%s: lowest %.1f kV, %.0f kWh from the grid, %.0f s coasting through neutral sections\\n', s{1}, ac.MinVoltage/1000, ac.FromSubstationsKWh, ac.NeutralSeconds)
 end
 ` },
+  { name: 'deploy.m', code: `% Deploying to a car (M580): a speed controller as plain C, then as a ROS 2 node and an AUTOSAR component.
+% The example inputs fix the sizes and types; the .zip files appear in Hyperion's files.
+codegen('speedcontrol', {0, 0, 0}, 'Target', 'ROS 2', 'Rate', 50)
+codegen('speedcontrol', {0, 0, 0}, 'Target', 'AUTOSAR', 'Rate', 100)
+[a, b] = speedcontrol(20, 25, 30)
+
+function [accel, brake] = speedcontrol(speed, target, gap)
+  accel = 0.5 * (target - speed);
+  if gap < 2 * speed
+    accel = min(accel, -1.5);
+  end
+  accel = max(min(accel, 2), -6);
+  brake = accel < -3;
+end
+` },
 ];

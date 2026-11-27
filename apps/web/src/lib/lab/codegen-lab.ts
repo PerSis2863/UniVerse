@@ -5,6 +5,8 @@ import { FileStore } from './files';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import { CodegenError, generate, quotientType, tolParts, type Cls, type Ty } from './codegen';
 import * as X from './fixed';
+import { autosarSwc, ros2Package } from './deploy';
+import { strToU8, zipSync } from 'fflate';
 import { svd } from './dsp';
 
 // Hyperion's embedded code in the language (M480): codegen turns a function of the script into C (name.c and name.h
@@ -28,11 +30,30 @@ def('codegen', (a, nout, lab) => {
   if (!name) throw new LabError("codegen('name', {example inputs}): the function to turn into C.");
   const ex = a[1];
   const args = !ex ? [] : ex.k === 'cell' ? ex.d.map(tyOf) : [tyOf(ex, 1)];
-  let out: { c: string; h: string };
+  // M580: 'Target', 'ROS 2' or 'AUTOSAR' wraps the C for a car's software; 'Rate' (runs a second) and 'Name'
+  const o = new Map<string, Value>();
+  for (let i = 2; i < a.length; i += 2) {
+    const k = textOf(a[i]).toLowerCase();
+    if (!['target', 'rate', 'name'].includes(k) || !a[i + 1]) throw new LabError("codegen: options are 'Target' ('C', 'ROS 2' or 'AUTOSAR'), 'Rate' (runs a second) and 'Name' (the package or component).");
+    o.set(k, a[i + 1]);
+  }
+  const target = o.has('target') ? textOf(o.get('target')!).toLowerCase().replace(/[\s_-]/g, '') : 'c';
+  if (!['c', 'ros2', 'autosar'].includes(target)) throw new LabError("codegen: 'Target' is 'C', 'ROS 2' or 'AUTOSAR'.");
+  const rate = o.has('rate') ? toMat(o.get('rate')!).d[0] : undefined;
+  if (rate !== undefined && !(rate > 0 && rate <= 100000)) throw new LabError("codegen: 'Rate' is runs a second, above 0 (up to 100,000).");
+  let out: ReturnType<typeof generate>;
   try { out = generate(lab.fns, name, args); } catch (e) { if (e instanceof CodegenError) throw new LabError(`codegen: ${e.message}`); throw e; }
   const fs = files(lab);
   if (fs) { fs.putText(`${name}.c`, out.c); fs.putText(`${name}.h`, out.h); }
-  if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['C', str(out.c)], ['H', str(out.h)]]) } satisfies Struct];
+  let pack: Record<string, string> | null = null;
+  if (target !== 'c') {
+    const opts = { rate, name: o.has('name') ? textOf(o.get('name')!) : undefined };
+    try { pack = target === 'ros2' ? ros2Package(name, out.c, out.h, out.io, opts) : autosarSwc(name, out.c, out.h, out.io, opts); } catch (e) { throw new LabError(`codegen: ${(e as Error).message}`); }
+  }
+  const folder = pack ? Object.keys(pack)[0].split('/')[0] : '';
+  if (fs && pack) fs.put(`${folder}.zip`, { bytes: zipSync(Object.fromEntries(Object.entries(pack).map(([k, v]) => [k, strToU8(v)])), { level: 6 }) });
+  if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['C', str(out.c)], ['H', str(out.h)], ...(pack ? [['Files', { k: 'cell', r: Object.keys(pack).length, c: 1, d: Object.keys(pack).map((x) => str(x)) }], ['Texts', { k: 'cell', r: Object.keys(pack).length, c: 1, d: Object.values(pack).map((x) => str(x)) }]] as [string, Value][] : [])]) } satisfies Struct];
+  if (pack) { lab.host.out(`Wrote ${name}.c, ${name}.h and ${folder}.zip${fs ? ' to Hyperion’s files' : ''} (${target === 'ros2' ? 'a ROS 2 package' : 'an AUTOSAR software component'}):\n${Object.keys(pack).map((x) => `  ${x}`).join('\n')}\n\n${pack[`${folder}/README.md`]}`); return []; }
   lab.host.out(`Wrote ${name}.c and ${name}.h${fs ? ' to Hyperion’s files' : ''}:\n\n${out.c}\n`);
   return [];
 });
