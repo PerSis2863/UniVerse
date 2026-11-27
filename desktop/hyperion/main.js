@@ -5,6 +5,7 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell, session } = require('electron');
 const crypto = require('node:crypto');
 const runner = require('./runner');
+const sims = require('./simulators');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -70,16 +71,16 @@ function open() {
 // Julia, C++ and Rust (M470): only Hyperion's own site, in the window's main frame (never a frame inside it), may ask,
 // and the person says yes before a program runs: once per program text, or for the rest of this visit when they tick
 // the box. A program run this way can do anything the person can, like any program they start themselves.
-const NAMES = { julia: 'Julia', cpp: 'C++', rust: 'Rust' };
+const NAMES = { julia: 'Julia', cpp: 'C++', rust: 'Rust', ...Object.fromEntries(Object.entries(sims.SIMS).map(([k, v]) => [`sim:${k}`, v.name])) };
 const trusted = (e) => !!win && e.sender === win.webContents && e.senderFrame === win.webContents.mainFrame && ours(e.senderFrame.url);
 const allowed = { all: new Set(), once: new Set() };
 async function mayRun(lang, code) {
   const hash = crypto.createHash('sha256').update(`${lang}\0${code}`).digest('hex');
   if (allowed.all.has(lang) || allowed.once.has(hash)) return true;
   const { response, checkboxChecked } = await dialog.showMessageBox(win, {
-    type: 'warning', buttons: [`Run the ${NAMES[lang]} program`, 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
+    type: 'warning', buttons: [lang.startsWith('sim:') ? `Run ${NAMES[lang]}` : `Run the ${NAMES[lang]} program`, 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
     title: 'Run a program on this computer?',
-    message: `Run this ${NAMES[lang]} program on your computer?`,
+    message: lang.startsWith('sim:') ? `Run ${NAMES[lang]} on Hyperion's files on your computer?` : `Run this ${NAMES[lang]} program on your computer?`,
     detail: 'It runs with the same permissions as you, like any program you start yourself. Only run code you wrote or trust.',
     checkboxLabel: `Don't ask again for ${NAMES[lang]} until Hyperion is closed`,
   });
@@ -102,6 +103,17 @@ ipcMain.handle('hyperion:run', async (e, lang, code) => {
   return runner.run(lang, code, (text, isError) => { if (!to.isDestroyed()) to.send('hyperion:out', text, isError); });
 });
 ipcMain.handle('hyperion:stop', (e) => { if (trusted(e)) runner.stop(); });
+// M569: chip and circuit simulators installed here (simulators.js), asked about like a program: once per set of files,
+// or for the rest of this visit.
+ipcMain.handle('hyperion:simulators', (e) => { if (!trusted(e)) throw new Error('Not allowed.'); return sims.simulators(); });
+ipcMain.handle('hyperion:simulate', async (e, id, files, top) => {
+  if (!trusted(e)) throw new Error('Not allowed.');
+  if (!sims.SIMS[id]) return { ok: false, error: 'Unknown simulator.' };
+  if (!sims.simulators()[id]) return { ok: false, missing: true, error: `${sims.SIMS[id].name} isn't installed on this computer (or isn't on its PATH).` };
+  if (!(await mayRun(`sim:${id}`, JSON.stringify([files, top])))) return { ok: false, cancelled: true, error: 'Not run: you chose Cancel.' };
+  const to = e.sender;
+  return sims.simulate(id, files, String(top), (text, isError) => { if (!to.isDestroyed()) to.send('hyperion:out', text, isError); });
+});
 
 // The File menu: within the page when it can (preload.js), so moving between Code, Simulate and Learn doesn't reload.
 const goTo = (p) => { if (!win) return; if (ours(win.webContents.getURL())) win.webContents.send('hyperion:go', p); else void win.loadURL(`${ORIGIN}${p}`); };

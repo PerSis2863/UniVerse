@@ -5,6 +5,7 @@ import { FileStore } from './files';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import * as M from './mixsig';
 import { CodegenError, generate, type Cls, type Ty } from './codegen';
+import { askPage, waits } from './wait';
 
 // Hyperion's mixed-signal design in the language (M568): plldesign, pllsim, pllnoise (a charge-pump PLL from its
 // specification to lock and jitter), adcarch and dacarch (converter architectures with their mismatch; adcmetrics and
@@ -34,7 +35,7 @@ function opts(a: Value[], from: number, names: string[], what: string) {
   const v = (k: string) => (o.has(k) ? [...toMat(o.get(k)!).d] : undefined);
   const t = (k: string) => (o.has(k) ? textOf(o.get(k)!) : undefined);
   const b = (k: string) => (o.has(k) ? !!toMat(o.get(k)!).d[0] : undefined);
-  return { n, v, t, b };
+  return { n, v, t, b, has: (k: string) => o.has(k), raw: (k: string) => o.get(k) };
 }
 const field = (s: Value | undefined, name: string, what: string) => {
   if (s?.k !== 'struct') throw new LabError(`${what}: the design from plldesign.`);
@@ -371,4 +372,105 @@ AMI_EXPORT long AMI_Close(void *AMI_memory_handle) { free(AMI_memory_handle); re
   if (nout > 0) return [struct([['AMI', str(ami)], ['IBIS', str(ibs)], ['C', str(c)]])];
   lab.host.out(`Wrote ${name}.ami, ${name.toLowerCase()}.ibs and ${name}_ami.c${fs ? ' to Hyperion’s files' : ''}:\n\n${ami}\n`);
   return [];
+});
+
+// ——— Running real simulators (M569): cosim through Hyperion's computer app, rawread for their results ———
+const SIM_IDS: Record<string, 'sv' | 'spice'> = { verilator: 'sv', xrun: 'sv', vcs: 'sv', qrun: 'sv', ngspice: 'spice', xyce: 'spice', spectre: 'spice', hspice: 'spice' };
+const SIM_EXT = /\.(sv|svh|v|vh|c|h|cir|sp|spi|scs|net|va|inc|lib)$/i;
+const dec = new TextDecoder();
+/** The files to send: those named, or for a testbench every file of its block (name.c, name.h, name_dpi.sv, name_tb.sv),
+ *  for a netlist the netlist and the model files beside it (.va, .inc, .lib). */
+function simFiles(lab: Lab, kind: 'sv' | 'spice', top: string, named?: string[]) {
+  const fs = files(lab);
+  if (!fs) throw new LabError('cosim: Hyperion’s files aren’t here.');
+  const all = [...fs.files.keys()];
+  const pick = named ?? (kind === 'sv'
+    ? all.filter((n) => SIM_EXT.test(n) && (n.startsWith(`${top.replace(/_tb$/, '')}.`) || n.startsWith(`${top.replace(/_tb$/, '')}_`)))
+    : all.filter((n) => n === top || /\.(va|inc|lib)$/i.test(n)));
+  if (!pick.length) throw new LabError(`cosim: no files for ${top} in Hyperion’s files (make them with dpigen or spicegen, or name them with 'Files').`);
+  const out: Record<string, string> = {};
+  for (const n of pick) { if (!SIM_EXT.test(n)) throw new LabError(`cosim: “${n}” isn’t a SystemVerilog, C or netlist file.`); out[n] = dec.decode(fs.get(n).bytes); }
+  return out;
+}
+interface SimAnswer { ok: boolean; exitCode?: number; error?: string; missing?: boolean; cancelled?: boolean; ms?: number; raw?: string | null; out?: string }
+def('cosim', (a, nout, lab) => {
+  if (!waits.page) throw new LabError('cosim needs the Code window open in Hyperion’s computer app, which runs the simulators installed on your computer.');
+  if (!a.length) {
+    const t = askPage<Record<string, { name: string; kind: string }>>('cosimtools', {}, 15_000) ?? {};
+    const ids = Object.keys(t);
+    if (nout > 0) return [struct(ids.map((id) => [id, str(t[id].name)]))];
+    lab.host.out(ids.length ? `Simulators on this computer:\n${ids.map((id) => `  ${id.padEnd(10)} ${t[id].name} (${t[id].kind === 'sv' ? 'SystemVerilog' : 'circuits'})`).join('\n')}\n` : 'No simulators found on this computer’s PATH (Verilator, ngspice and Xyce are free; Xcelium, VCS, Questa, Spectre and HSPICE are licensed).\n');
+    return [];
+  }
+  const id0 = textOf(a[0]), id = id0.toLowerCase(), kind = SIM_IDS[id];
+  if (!kind) throw new LabError(`cosim: the simulator is one of ${Object.keys(SIM_IDS).join(', ')}.`);
+  const top = a[1] ? textOf(a[1]) : '';
+  if (!top) throw new LabError(kind === 'sv' ? "cosim('verilator', 'name_tb'): the testbench's top module." : "cosim('ngspice', 'deck.cir'): the netlist in Hyperion's files.");
+  const o = opts(a, 2, ['files', 'timeout'], 'cosim');
+  const named = o.has('files') ? (() => { const v = o.raw('files')!; return v.k === 'cell' ? v.d.map((x) => textOf(x)) : [textOf(v)]; })() : undefined;
+  const secs = o.n('timeout') ?? 600;
+  if (!(secs >= 5 && secs <= 1200)) throw new LabError("cosim: 'Timeout' is 5 to 1200 seconds.");
+  const r = askPage<SimAnswer>('cosim', { id: id === 'xyce' ? 'Xyce' : id, files: simFiles(lab, kind, top, named), top }, secs * 1000);
+  if (!r) throw new LabError(`cosim: no answer within ${secs} seconds (the simulator may still be running: try a longer 'Timeout').`);
+  if (r.missing || r.cancelled) throw new LabError(r.error ?? 'Not run.');
+  const out = r.out ?? '', passed = r.ok && (kind === 'spice' || (!/\b(FAIL|MISMATCH)\b/.test(out) && /\bPASS\b/.test(out)));
+  const fields: [string, Value][] = [['Passed', yes(passed)], ['Output', str(out)], ['ExitCode', num(r.exitCode ?? (r.ok ? 0 : NaN))], ['Seconds', num((r.ms ?? 0) / 1000)]];
+  if (r.raw) fields.push(['Results', rawStruct(Uint8Array.from(atob(r.raw), (c) => c.charCodeAt(0)))]);
+  if (nout > 0) return [struct(fields)];
+  lab.host.out(`${out}${out.endsWith('\n') ? '' : '\n'}${passed ? '✓' : '✗'} ${id0}${r.error ? `: ${r.error}` : ''} (${((r.ms ?? 0) / 1000).toFixed(1)} s)\n`);
+  return [];
+});
+/** A SPICE raw file (ngspice, Xyce, Spectre's nutascii; text or binary) as its plots: variables, real or complex. */
+export function parseRaw(bytes: Uint8Array) {
+  const plots: { name: string; vars: string[]; complex: boolean; data: { re: number[]; im?: number[] }[] }[] = [];
+  let at = 0;
+  const line = () => { const e = bytes.indexOf(10, at); const s = dec.decode(bytes.subarray(at, e < 0 ? bytes.length : e)).replace(/\r$/, ''); at = e < 0 ? bytes.length : e + 1; return s; };
+  while (at < bytes.length) {
+    let name = '', flags = '', nv = 0, np = 0; const vars: string[] = [];
+    let mode: 'binary' | 'values' | '' = '';
+    while (at < bytes.length) {
+      const l = line(), m = /^([A-Za-z. ]+):\s*(.*)$/.exec(l);
+      if (!m) continue;
+      const k = m[1].trim().toLowerCase();
+      if (k === 'plotname') name = m[2].trim();
+      else if (k === 'flags') flags = m[2].toLowerCase();
+      else if (k === 'no. variables') nv = +m[2];
+      else if (k === 'no. points') np = +m[2];
+      else if (k === 'variables') { const first = m[2].trim(); const rows = first ? [first] : []; while (rows.length < nv) rows.push(line()); for (const r of rows) vars.push(r.trim().split(/\s+/)[1] ?? `v${vars.length}`); }
+      else if (k === 'binary') { mode = 'binary'; break; }
+      else if (k === 'values') { mode = 'values'; break; }
+    }
+    if (!mode) break;
+    if (!(nv > 0 && np >= 0 && nv <= 10_000 && np <= 50_000_000)) throw new LabError('rawread: this isn’t a SPICE raw file Hyperion understands.');
+    const complex = flags.includes('complex'), data = vars.map(() => ({ re: new Array<number>(np), ...(complex ? { im: new Array<number>(np) } : {}) }));
+    if (mode === 'binary') {
+      const w = complex ? 16 : 8, need = np * nv * w;
+      if (at + need > bytes.length) throw new LabError('rawread: the file ends early.');
+      const dv = new DataView(bytes.buffer, bytes.byteOffset + at, need);
+      for (let p = 0; p < np; p++) for (let v = 0; v < nv; v++) { const o2 = (p * nv + v) * w; data[v].re[p] = dv.getFloat64(o2, true); if (complex) data[v].im![p] = dv.getFloat64(o2 + 8, true); }
+      at += need;
+    } else {
+      // "point\tvalue" then a value a line; complex values as re,im
+      const nums: string[] = [];
+      while (nums.length < np * nv && at < bytes.length) { const t = line().trim(); if (!t) continue; const parts = t.split(/\s+/); nums.push(parts.length > 1 && nums.length % nv === 0 ? parts[1] : parts[parts.length - 1]); }
+      nums.forEach((t, i) => { const p = Math.floor(i / nv), v = i % nv, [re, im] = t.split(','); data[v].re[p] = +re; if (complex) data[v].im![p] = +(im ?? 0); });
+    }
+    plots.push({ name, vars, complex, data });
+  }
+  if (!plots.length) throw new LabError('rawread: no plots in this raw file.');
+  return plots;
+}
+const fieldName = (v: string, used: Set<string>) => { let n = v.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'v'; if (!/^[A-Za-z]/.test(n)) n = `v_${n}`; let k = n, i = 2; while (used.has(k)) k = `${n}_${i++}`; used.add(k); return k; };
+function rawStruct(bytes: Uint8Array, which = 0): Struct {
+  const plots = parseRaw(bytes), p = plots[Math.min(plots.length - 1, Math.max(0, which))], used = new Set<string>();
+  const f: [string, Value][] = [['Plot', str(p.name)]];
+  p.vars.forEach((v, i) => { const m = mat(p.data[i].re.length, 1, p.data[i].re); if (p.complex && p.data[i].im!.some((x) => x !== 0)) m.im = Float64Array.from(p.data[i].im!); f.push([fieldName(v, used), m]); });
+  return struct(f);
+}
+def('rawread', (a, _nout, lab) => {
+  const name = a[0] ? textOf(a[0]) : '';
+  if (!name) throw new LabError("rawread('out.raw', k): a SPICE raw file in Hyperion's files (ngspice, Xyce, Spectre), its k-th plot (1 by default).");
+  const fs = files(lab);
+  if (!fs) throw new LabError('rawread: Hyperion’s files aren’t here.');
+  return [rawStruct(fs.get(name).bytes, a[1] ? Math.round(toMat(a[1]).d[0]) - 1 : 0)];
 });

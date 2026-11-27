@@ -112,4 +112,4 @@ function finish(r, t0, who) {
 /** Stop whatever is building or running. */
 function stop() { if (running) { try { running.kill(); } catch { /* gone */ } } }
 
-module.exports = { tools, run, stop, howTo };
+module.exports = { tools, run, stop, howTo, step, env };

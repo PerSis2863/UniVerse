@@ -7,6 +7,14 @@ the app the moment it is on the website.
 
 This folder is not part of the website's build (it is outside the pnpm workspace).
 
+## Chip and circuit simulators (M569)
+
+`simulators.js` runs a simulator already installed on the computer on files Hyperion wrote: Verilator, Cadence Xcelium
+(`xrun`), Synopsys VCS or Siemens Questa (`qrun`) on a `dpigen` testbench; ngspice, Xyce, Cadence Spectre or Synopsys
+HSPICE on a netlist (its raw results file comes back to Hyperion). Found on the PATH only (no licence is checked out to
+look); the person is asked before each run, as for a program. In a script: `cosim` lists them, `cosim('verilator',
+'name_tb')` runs one.
+
 ## Julia, C++ and Rust (M470)
 
 In the app, Hyperion's Code window also runs `.jl`, `.cpp` and `.rs` scripts with the tools installed on the computer

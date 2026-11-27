@@ -15747,3 +15747,29 @@ textbook methods:
   the channel (the loss model stands in), and co-simulation with Cadence or Synopsys tools (they're paid).
 - **Rules:** a new converter or link measure goes in `mixsig.ts` with its test; the bench recomputes in `useMemo` on a
   deferred copy of its settings; the eye plots at most 160 traces.
+
+
+## M569 (27 Nov): mixed-signal left-outs 1: the SystemVerilog testbench run in real simulators
+
+The owner, 27 Nov, on M568's left-outs: "do all these, just forget about the 5 december pauses" (the four: running
+the testbench, IBIS buffer tables, S-parameter files, links to Cadence and Synopsys tools; this is the first and the
+base of the fourth).
+- **Tried for real:** Verilator 5.020 (installed in the session's container) built `dpigen`'s files and ran the
+  testbench: it found a bug first. Verilator compiles `.c` as C++, so the function's name was mangled and didn't link:
+  `codegen`'s headers now wrap the prototype in `extern "C"` under `__cplusplus` (also right for anyone including them
+  from C++). Then `PASS: quant matches Hyperion`; with `round` changed to `floor` in the C it prints `MISMATCH … FAIL`.
+- **The computer app runs simulators** (`desktop/hyperion/simulators.js`, version 1.3.0): Verilator, Cadence Xcelium
+  (`xrun`), Synopsys VCS, Siemens Questa (`qrun`) on SystemVerilog + DPI-C; ngspice, Xyce, Cadence Spectre (nutascii)
+  and Synopsys HSPICE (its listing) on a netlist, the raw results file sent back as base64. Found on the PATH only (no
+  licence checked out to look), plain file names with known endings, 4 MB and 64 files at most, 10-minute limits, a
+  fresh folder removed afterwards, the person asked first (`mayRun` with `sim:<id>`). `hyperion:simulators` and
+  `hyperion:simulate` in `main.js`, `simulators()` / `simulate()` in `preload.js`.
+- **In a script** (`mixsig-lab.ts`): `cosim` (lists what's installed), `cosim('verilator', 'name_tb')` (sends the
+  block's files from Hyperion's files: name.*, name_*; or 'Files'), `cosim('ngspice', 'deck.cir')` (the netlist and any
+  .va/.inc/.lib beside it); it waits through M521's `askPage` ('cosim', 'cosimtools'), answered in `page-answers.ts`
+  through `window.hyperionDesktop`. Passed = ran cleanly and, for a testbench, printed PASS and no FAIL/MISMATCH.
+  `rawread` (and `cosim`'s Results) read SPICE raw files, text or binary, real or complex.
+- Checked: `cosim.test.ts` (Verilator passes the real testbench and fails a sabotaged block, where Verilator is
+  installed; cosim's files and answers with a stand-in app), the codegen tests with the new header.
+- **[owner]:** after merging, publish the computer app again (GitHub → Actions → "Hyperion desktop" → Run workflow, with
+  "publish" ticked) so it has the simulators; in a browser cosim says it needs the app.
