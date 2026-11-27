@@ -13614,3 +13614,55 @@ gitignored. App 1.3.0. Tests (`npm test`): a 32-bit build of the test model thro
 across blocks exactly as the 64-bit path, 10 clocks, `bits` 32) and a 32-bit library without AMI_Init refused; the
 helper's Windows build cross-compiled here but not run (no Windows machine or Wine). Not built: a 32-bit Mac path
 (impossible), 32-bit back-channel links, ARM Windows (a 64-bit x86 model there would need Windows' own emulation).
+
+## M581 (27 Nov): Hyperion IBIS-AMI: back-channel training with 32-bit models
+
+M580's left-out (the owner, 27 Nov: the list of left-outs pasted back). A link's two ends no longer need one process:
+the driver in `ami-host.js` calls each end in turns through one small interface (`init`, `wave(block)`, `close`), a
+64-bit end loaded with koffi there (`local`), a 32-bit end in the 32-bit helper's new **stepping mode** (`remote`):
+"AMS1", path, parameters, rows, aggressors, dt, ui, the impulse → "AMR2", status, error, Init's return, its parameters
+and message, GetWave there or not, the impulse; then 'W' + u32 n + samples → status, the samples, the clocks, GetWave's
+parameters; 'C' or the input closing → AMI_Close. The helper runs with its working folder set to the link's shared
+folder (`spawn` `cwd`), as `process.chdir` does for the 64-bit ends, so files named by BCI_ID meet. `ami.js`: `need32()`
+(the helper and Linux's 32-bit libraries, the old messages), `link` marks a 32-bit side with `helper`. `link` and
+`session` in ami-host.js now return promises (`answer` is async; the tests' scripts `.then` them). If the app is
+stopped after 2 minutes, the helpers see their input close and end. App 1.4.0 (`package.json`; the lock file's own
+version line was already stale, left alone). Tests: the BCI pair as 32+32, 32+64 and 64+32, each giving exactly the
+all-64-bit wave, the tap -0.1 then -0.35, one file, 400 clocks; a 32-bit receiver's refusing Init reported.
+
+## M582 (27 Nov): Hyperion IBIS-AMI: the neighbouring lines' own transmitters trained
+
+M579's left-out. In a back-channel link, each crosstalk line (`aggressorsOf`: 'Crosstalk', [next fext]) is now a link of
+its own: its own Tx and Rx instances of the same models, Init on the same channel, BCI_ID renamed `<id>_a1`, `_a2` …
+(`laneId`, a regex on `(BCI_ID "…")` in both parameter strings) so their files never mix, trained over the through
+channel by their own receiver; each block its transmitter's output goes through its coupling (overlap-add, as the
+channel) into the victim's pins before the victim's receiver runs. The engine sends `aggs: [{ wave, h }]` (signal and
+coupling as they are) in place of M579's pre-summed `extra`; `ami.js` checks sizes (at most 16, waves as long as the
+victim's, couplings `rows` long). The answer's `lanes` (each neighbour's last Tx and Rx parameters) → `e.AMI.BCI.
+AggressorTxParams`. Without a back-channel, in the time-domain flow with a Tx that has GetWave, each neighbour's signal
+now goes through a session of its own of that Tx (one app call per neighbour); with Init only, its column was already
+equalised by the Tx's Init. Not built: crosstalk from the victim into the neighbours' receivers (their links hear only
+themselves), lanes when the model has no BCI_ID parameter (they would share files; the test model refuses then).
+Tests: a coupled neighbour trained to tap -0.35 with its own file `link1_a1.rx2tx` and changing the victim's wave by its
+tenth; bad sizes refused; in a Hyperion script `e.AMI.BCI.Files` lists `hyperion_link_a1.rx2tx`; the fake flow's
+neighbour through the FFE.
+
+## M583 (27 Nov): Hyperion IBIS-AMI: the .ibs file's analog buffers
+
+M578's left-out. `ibis-analog.ts`: `readAnalog(text, model, corner)` reads the [Model]'s Model_type, C_comp,
+[Voltage Range], [Ramp] dV/dt_r (the 20–80% time, ÷ 0.6 for a linear edge), [Pull-up] / [Pull-down] (the driver's
+resistance: the I-V slope near 0 V, the two averaged), [GND Clamp] / [POWER Clamp] (the termination: their conductance
+at mid-supply; over 10 kΩ or missing → 50 Ω with a note) and the component's [Package] R_pkg L_pkg C_pkg; corners as
+typ/min/max columns, NA → typ; `ibisNum` (scale letters, M mega, m milli). Section names fold spaces, hyphens and
+underscores. `txGain` / `rxGain`: the ends as small networks around the 50 Ω reference (Tx: source R, C_comp, package
+R+L, C_pkg at the pin, a ramp as a sinc delayed by half itself so it stays causal; Rx: C_pkg, R+L, C_comp beside the
+termination, the line's wave doubled), each 1 for an ideal matched end. `throughFrontEnds` applies them to an impulse by
+FFT (zero-padded ×2). `amiModel` from an .ibs reads it ('Corner', 'Analog', 0 to leave it out) into `m.Analog`
+(Driver, Termination, Ccomp, Rpkg, Lpkg, Cpkg, Rise, ModelType, Corner, Notes); `modelOf` reads it back as
+`Model.analog`; `ami.flow` wraps h and the aggressors' couplings in the Tx's and Rx's buffers first (both flows, links
+too) and says so in the messages. shortcut: linear around the operating point, and the reflections between two
+mismatched ends aren't bounced along the line (the channel stays a matched two-port). Tests: the numbers per corner, an
+ideal end = 1, the DC gains (40 Ω + 0.2 into 50; 25 Ω behind 0.2), a slow edge spreading the impulse, `m.Analog` and the
+flow's message. Not built: the I-V curves' non-linear behaviour, [Rising/Falling Waveform] tables, the line's
+multiple reflections.
+

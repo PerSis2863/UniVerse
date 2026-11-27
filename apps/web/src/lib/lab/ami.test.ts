@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as ami from './ami';
 import * as si from './si';
+import { ibisNum, readAnalog, rxGain, throughFrontEnds, txGain } from './ibis-analog';
 import { b64ToF64, f64ToB64, setNative, type Native } from './native';
 import { Lab } from './interp';
 import { Graphics } from './plot';
@@ -111,7 +112,7 @@ if (process.argv[1] === 'link') {
   const t = a.prepare(req.tx.executable), r = a.prepare(req.rx.executable), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bci-'));
   out = h.link({ ...req, op: 'link', tx: { file: t.file, params: req.tx.params }, rx: { file: r.file, params: req.rx.params }, dir });
 } else { const p = a.prepare(req.executable); out = p.error ? { ok: false, error: p.error } : h.session({ ...req, file: p.file }); }
-process.stdout.write(JSON.stringify(out));`;
+Promise.resolve(out).then((o) => process.stdout.write(JSON.stringify(o)));`;
       const r = spawnSync(process.execPath, ['-e', script, _op], { input: JSON.stringify(body), maxBuffer: 1e9 });
       return JSON.parse(String(r.stdout));
     });
@@ -193,6 +194,25 @@ describe('back-channel links (M579)', () => {
     ami.flow([1e12, 0, 0, 0], 1e-12, 8e-12, tx, { ...tx, info: { ...info, bci: { ...info.bci!, protocol: 'other' } } }, new Array(64).fill(0.4));
     expect(ops.slice(1)).toEqual(['ami', 'ami']);
   });
+  it('sends each neighbouring line to the link as it is, to be trained on its own (M582)', () => {
+    let sent: { aggs?: { wave: string; h: string }[] } = {};
+    setNative((op, body) => { sent = body as typeof sent; const b = body as { wave: string }; return { ok: true, wave: b.wave, clocks: f64ToB64([]), history: [], files: [], paramsOut: ['', ''], messages: ['', ''], lanes: [{ tx: '(t)', rx: '' }] }; });
+    const info = ami.readAmi(BCI), tx: ami.Model = { name: 'tx', file: { name: 'b.so', path: '/b.so' }, params: ami.paramString(info, new Map()), info };
+    const f = ami.flow([1e12, 0, 0, 0], 1e-12, 8e-12, tx, { ...tx, name: 'rx' }, new Array(64).fill(0.4), [{ h: [1e11, 0, 0, 0], x: new Array(64).fill(-0.4) }, { h: [1, 0, 0, 0] }]);
+    expect(sent.aggs).toHaveLength(1);
+    expect(b64ToF64(sent.aggs![0].h)).toEqual([1e11, 0, 0, 0]); expect(b64ToF64(sent.aggs![0].wave)[0]).toBe(-0.4);
+    expect(f.bci?.lanes).toEqual([{ tx: '(t)', rx: '' }]);
+  });
+  it("without a back-channel, the neighbouring lines' signals go through the transmitter's own GetWave too (M582)", () => {
+    const waves: number[] = [];
+    setNative((op, body) => { const b = body as { wave?: string }; if (b.wave) waves.push(b64ToF64(b.wave)[0]); return fake(tapOf)(op, body); });
+    const info = ami.readAmi(AMI), tx: ami.Model = { name: 'tx', file: { name: 't.so', path: '/t.so' }, params: ami.paramString(info, new Map([['tap', '-0.25']])), info };
+    const h = [1e12, ...new Array(63).fill(0)], x = new Array(80).fill(0.4), g = new Array(80).fill(-0.4);
+    const f = ami.flow(h, 1e-12, 8e-12, tx, null, x, [{ h: h.map((v) => v / 10), x: g }]);
+    expect(waves).toEqual([0.4, -0.4]);                     // the victim's session, then the neighbour's
+    // the neighbour reaches the pins through its FFE: -0.4 × 0.5 (the first UI's main tap) / 10
+    expect(f.z![0]).toBeCloseTo(0.4 * 0.5 - 0.02, 9);
+  });
   const desk = path.resolve(__dirname, '../../../../../desktop/hyperion');
   const lib = path.join(os.tmpdir(), 'hyperion-bci-vitest.so');
   let real = process.platform === 'linux' && fs.existsSync(path.join(desk, 'node_modules', 'koffi'));
@@ -202,7 +222,7 @@ describe('back-channel links (M579)', () => {
       const script = `const h = require(${JSON.stringify(path.join(desk, 'ami-host.js'))}), a = require(${JSON.stringify(path.join(desk, 'ami.js'))});
 const fs = require('fs'), os = require('os'), path = require('path'), req = JSON.parse(fs.readFileSync(0, 'utf8'));
 const t = a.prepare(req.tx.executable), r = a.prepare(req.rx.executable), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bci-'));
-process.stdout.write(JSON.stringify(h.link({ ...req, op: 'link', tx: { file: t.file, params: req.tx.params }, rx: { file: r.file, params: req.rx.params }, dir })));`;
+h.link({ ...req, op: 'link', tx: { file: t.file, params: req.tx.params }, rx: { file: r.file, params: req.rx.params }, dir }).then((o) => process.stdout.write(JSON.stringify(o)));`;
       expect(op).toBe('link');
       return JSON.parse(String(spawnSync(process.execPath, ['-e', script], { input: JSON.stringify(body), maxBuffer: 1e9 }).stdout));
     });
@@ -215,7 +235,85 @@ process.stdout.write(JSON.stringify(h.link({ ...req, op: 'link', tx: { file: t.f
 tx = amiModel('bci.so', 'bci.ami', 'role', 'tx'); rx = amiModel('bci.so', 'bci.ami', 'role', 'rx');
 e = eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 2000);
 t = strsplit(e.AMI.BCI.TxParams, char(10));
-fprintf('%s|%s|%s|%d\\n', t{1}, t{end}, e.AMI.BCI.Files, numel(e.AMI.Clocks) > 1500)`);
-    expect(out.trim()).toBe('(test_bci (tap -0.1))|(test_bci (tap -0.35))|hyperion_link.rx2tx|1');
+fprintf('%s|%s|%s|%d\\n', t{1}, t{end}, e.AMI.BCI.Files, numel(e.AMI.Clocks) > 1500)
+x = eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 2000, 'Crosstalk', [0 0.1]);
+fprintf('%s|%s|%d\\n', x.AMI.BCI.Files, x.AMI.BCI.AggressorTxParams, max(abs(x.AMI.Wave - e.AMI.Wave)) > 1e-3)`);
+    expect(out.trim()).toBe('(test_bci (tap -0.1))|(test_bci (tap -0.35))|hyperion_link.rx2tx|1\nhyperion_link.rx2tx, hyperion_link_a1.rx2tx|(test_bci (tap -0.35))|1');
   }, 60000);
+});
+
+describe("the IBIS file's analog buffers (M583)", () => {
+  const IBS = `[IBIS Ver] 7.1
+[Component] chip
+[Package]
+| typ min max
+R_pkg 0.2 0.1 0.3
+L_pkg 1n 0.8n 1.2n
+C_pkg 0.3p 0.2p 0.4p
+[Model] serdes_tx
+Model_type Output
+C_comp 0.6p 0.5p 0.7p
+[Voltage Range] 1.0 0.95 1.05
+[Pull-down]
+| V I(typ) I(min) I(max)
+-1.0 -25m -20m -30m
+0.0 0 0 0
+1.0 25m 20m 30m
+[Pull-up]
+-1.0 25m 20m 30m
+0.0 0 0 0
+1.0 -25m -20m -30m
+[Ramp]
+dV/dt_r 0.36/12p 0.36/15p 0.36/9p
+[Algorithmic Model]
+Executable Linux_gcc_64 libtx64.so tx.ami
+[End Algorithmic Model]
+[Model] serdes_rx
+Model_type Input
+C_comp 0.4p NA NA
+[Voltage Range] 1.0 0.95 1.05
+[GND Clamp]
+0.0 0 0 0
+1.0 20m 20m 20m
+[POWER Clamp]
+0.0 0 0 0
+1.0 20m 20m 20m
+[End]
+`;
+  it('reads a driver, a receiver and the package at each corner', () => {
+    const tx = readAnalog(IBS, 'serdes_tx')!, rx = readAnalog(IBS, 'serdes_rx', 'min')!;
+    expect(tx.rs).toBeCloseTo(40, 9); expect(tx.cComp).toBeCloseTo(0.6e-12, 20); expect(tx.rise).toBeCloseTo(20e-12, 20);
+    expect([tx.rPkg, tx.lPkg, tx.cPkg]).toEqual([0.2, 1e-9, 0.3e-12]);
+    expect(readAnalog(IBS, 'serdes_tx', 'max')!.rs).toBeCloseTo(100 / 3, 9);
+    expect(rx.rt).toBeCloseTo(25, 9); expect(rx.cComp).toBeCloseTo(0.4e-12, 20);   // NA at min falls back to typ
+    expect(readAnalog(IBS, 'nothing')).toBeNull();
+    expect(ibisNum('3.3M')).toBe(3.3e6); expect(ibisNum('50m')).toBeCloseTo(0.05, 12); expect(ibisNum('NA')).toBeNaN();
+  });
+  it('an ideal end changes nothing; pads, packages and slow edges cut the high frequencies', () => {
+    const ideal = { type: '', corner: 'typ', rs: 50, rt: 50, cComp: 0, rPkg: 0, lPkg: 0, cPkg: 0, rise: 0, notes: [] };
+    for (const f of [0, 1e9, 2e10]) { expect(txGain(ideal, f)[0]).toBeCloseTo(1, 9); expect(rxGain(ideal, f)[0]).toBeCloseTo(1, 9); }
+    const tx = readAnalog(IBS, 'serdes_tx')!, rx = readAnalog(IBS, 'serdes_rx')!, mag = (z: number[]) => Math.hypot(z[0], z[1]);
+    expect(txGain(tx, 0)[0]).toBeCloseTo(100 / 90.2, 9);         // 40 ohms and the package's 0.2 into 50
+    expect(rxGain(rx, 0)[0]).toBeCloseTo((2 * 25.2 / 75.2) * (25 / 25.2), 9);   // 25 ohms (behind 0.2) at the end of a 50-ohm line
+    expect(mag(txGain(tx, 2e10))).toBeLessThan(0.8 * mag(txGain(tx, 1e9)));
+    const h = [1e12, ...new Array(2047).fill(0)], y = throughFrontEnds(h, 1e-12, tx, rx);
+    expect(y.reduce((a, b) => a + b, 0) / (1e12 * (100 / 90.2) * (2 * 25 / 75.2))).toBeCloseTo(1, 6);   // the DC gain kept (the package's ringing settled)
+    expect(Math.max(...y)).toBeLessThan(0.2e12);                  // the edge spread over ~20 ps
+  });
+  it('amiModel from an .ibs file carries the buffer and the flows use it', () => {
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    const files = (lab.host as { files: FileStore }).files;
+    files.load('chip.ibs', { bytes: new TextEncoder().encode(IBS) });
+    files.load('tx.ami', { bytes: new TextEncoder().encode(AMI) });
+    lab.run(`m = amiModel('chip.ibs', 'serdes_tx', 'Folder', '/opt/models', 'Corner', 'max'); n = amiModel('chip.ibs', 'serdes_tx', 'Folder', '/opt/models', 'Analog', 0);
+fprintf('%.4f %.0f %d\\n', m.Analog.Driver, m.Analog.Rise * 1e12, isfield(n, 'Analog'))`);
+    expect(out.trim()).toBe('33.3333 15 0');
+    expect(() => lab.run("amiModel('chip.ibs', 'serdes_tx', 'Folder', '/x', 'Corner', 'fast')")).toThrow(/typ/);
+    setNative(fake(tapOf));
+    const info = ami.readAmi(AMI), tx: ami.Model = { name: 'tx', file: { name: 't.so', path: '/t.so' }, params: ami.paramString(info, new Map()), info, analog: readAnalog(IBS, 'serdes_tx')! };
+    const h = [1e12, ...new Array(2047).fill(0)], f = ami.flow(h, 1e-12, 8e-12, tx, null, null);
+    expect(f.h.reduce((a, b) => a + b, 0) / (1e12 * 100 / 90.2)).toBeCloseTo(1, 6);
+    expect(f.messages[0]).toMatch(/tx analog \(typ\): driver 40\.0 ohms, C_comp 0\.600 pF, edge 20\.0 ps/);
+  });
 });

@@ -1,6 +1,7 @@
 import { LabError } from './parse';
 import { b64ToF64, f64ToB64, native, nativePlatform } from './native';
 import { fftConvolve } from './si';
+import { throughFrontEnds, type Analog } from './ibis-analog';
 
 // IBIS-AMI models in Hyperion (M577, the owner, 27 Nov: IBIS-AMI "for the Hyperion download app which can do it"). A chip
 // maker ships an equaliser as a compiled library plus an .ami text file describing its settings (IBIS 7.2, chapter
@@ -102,7 +103,7 @@ export function paramString(m: AmiInfo, choices: Map<string, string>): string {
   return `(${m.root}${tree.size ? ' ' + write(tree) : ''})`;
 }
 
-export interface Model { name: string; file: { name: string; bytes?: string; path?: string }; params: string; info: AmiInfo }
+export interface Model { name: string; file: { name: string; bytes?: string; path?: string }; params: string; info: AmiInfo; analog?: Analog }
 export interface Session { impulse: number[]; columns: number[][]; wave?: number[]; clocks: number[]; paramsOut: string; message: string; hasGetWave: boolean }
 /** One model session in the computer app: AMI_Init on the impulse matrix (the victim's response then each aggressor's,
  * V/s; at most the model's Max_Init_Aggressors), then AMI_GetWave on the waveform in blocks of 128 UI if one is given
@@ -117,7 +118,7 @@ export function session(m: Model, cols: number[][], dt: number, ui: number, wave
 
 /** A neighbouring line's coupling into the victim: its impulse response (V/s) and, in the time-domain flow, its signal. */
 export interface Aggressor { h: number[]; x?: number[] }
-export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: number[][]; z?: number[]; clocks: number[]; messages: string[]; paramsOut: string[]; usedGetWave: [boolean, boolean]; bci?: { protocol: string; history: { ui: number; tx: string; rx: string }[]; files: string[] } }
+export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: number[][]; z?: number[]; clocks: number[]; messages: string[]; paramsOut: string[]; usedGetWave: [boolean, boolean]; bci?: { protocol: string; history: { ui: number; tx: string; rx: string }[]; files: string[]; lanes: { tx: string; rx: string }[] } }
 /**
  * The IBIS flows. Statistical: the impulse matrix (h and the aggressors') → the transmitter's AMI_Init (its output used
  * when Init_Returns_Impulse) → the receiver's AMI_Init: the equalised responses. Time-domain: the transmitter's
@@ -125,19 +126,24 @@ export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: num
  * channel, the aggressors' signals through their coupling added, then the receiver's AMI_GetWave (or, without it, its
  * Init output convolved), and the receiver's clock times. h in V/s every dt.
  */
-export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: Model | null, x: number[] | null, aggs: Aggressor[] = []): FlowOut {
+export function flow(h0: number[], dt: number, ui: number, tx: Model | null, rx: Model | null, x: number[] | null, aggs0: Aggressor[] = []): FlowOut {
   const messages: string[] = [], paramsOut: string[] = [];
+  // The IBIS file's analog buffers (M583): the channel from pin to pin wrapped in the driver's and the receiver's pads
+  // and packages (the aggressors driven and received by the same kinds of buffer).
+  const ta = tx?.analog, ra = rx?.analog, h = throughFrontEnds(h0, dt, ta, ra), aggs = ta || ra ? aggs0.map((g) => ({ ...g, h: throughFrontEnds(g.h, dt, ta, ra) })) : aggs0;
+  if (ta) messages.push(`${tx!.name} analog (${ta.corner}): driver ${ta.rs.toPrecision(3)} ohms, C_comp ${(ta.cComp * 1e12).toPrecision(3)} pF, edge ${(ta.rise * 1e12).toPrecision(3)} ps${ta.notes.length ? `; ${ta.notes.join('; ')}` : ''}`);
+  if (ra) messages.push(`${rx!.name} analog (${ra.corner}): termination ${ra.rt.toPrecision(3)} ohms, C_comp ${(ra.cComp * 1e12).toPrecision(3)} pF${ra.notes.length ? `; ${ra.notes.join('; ')}` : ''}`);
   const note = (who: string, s: Session) => { if (s.message) messages.push(`${who}: ${s.message}`); if (s.paramsOut) paramsOut.push(`${who}: ${s.paramsOut}`); };
   const cols = [h, ...aggs.map((g) => g.h)], conv = (a: number[], b: number[]) => fftConvolve(a, b).map((v) => v * dt);
   // A back-channel link (M579): both ends speak the same BCI_Protocol and have GetWave: the app runs them in turns.
   if (x && tx && rx && tx.info.bci && rx.info.bci && tx.info.bci.protocol.toLowerCase() === rx.info.bci.protocol.toLowerCase() && tx.info.getWaveExists && rx.info.getWaveExists) {
-    let extra: number[] | undefined;
-    aggs.forEach((g) => { if (g.x) { const c = conv(g.x, g.h); extra ??= new Array(x.length).fill(0); for (let k = 0; k < x.length; k++) extra[k] += c[k] ?? 0; } });
-    const r = native('link', { tx: { executable: tx.file, params: tx.params }, rx: { executable: rx.file, params: rx.params }, impulse: f64ToB64(h), rows: h.length, dt, ui, wave: f64ToB64(x), ...(extra ? { extra: f64ToB64(extra) } : {}), interval: Math.max(tx.info.bci.interval, rx.info.bci.interval), training: Math.max(tx.info.bci.training, rx.info.bci.training) });
+    // each neighbouring line a trained link of its own (M582): its signal and its coupling go to the app as they are
+    const lanes = aggs.filter((g) => g.x).map((g) => ({ wave: f64ToB64(Array.from({ length: x.length }, (_, k) => g.x![k] ?? 0)), h: f64ToB64(Array.from({ length: h.length }, (_, k) => g.h[k] ?? 0)) }));
+    const r = native('link', { tx: { executable: tx.file, params: tx.params }, rx: { executable: rx.file, params: rx.params }, impulse: f64ToB64(h), rows: h.length, dt, ui, wave: f64ToB64(x), aggs: lanes, interval: Math.max(tx.info.bci.interval, rx.info.bci.interval), training: Math.max(tx.info.bci.training, rx.info.bci.training) });
     const hist = (r.history as { ui: number; tx: string; rx: string }[]) ?? [], said = (r.messages as string[]) ?? [];
     said.forEach((t, i) => { if (t) messages.push(`${[tx.name, rx.name][i]}: ${t}`); });
     ((r.paramsOut as string[]) ?? []).forEach((t, i) => { if (t) paramsOut.push(`${[tx.name, rx.name][i]}: ${t}`); });
-    return { h, hTx: h, hRx: h, aggRx: aggs.map((g) => g.h), z: b64ToF64(String(r.wave)), clocks: b64ToF64(String(r.clocks)), messages, paramsOut, usedGetWave: [true, true], bci: { protocol: tx.info.bci.protocol, history: hist, files: (r.files as string[]) ?? [] } };
+    return { h, hTx: h, hRx: h, aggRx: aggs.map((g) => g.h), z: b64ToF64(String(r.wave)), clocks: b64ToF64(String(r.clocks)), messages, paramsOut, usedGetWave: [true, true], bci: { protocol: tx.info.bci.protocol, history: hist, files: (r.files as string[]) ?? [], lanes: (r.lanes as { tx: string; rx: string }[]) ?? [] } };
   }
   const useTxWave = !!(x && tx?.info.getWaveExists);
   const txs = tx ? session(tx, cols, dt, ui, useTxWave ? x! : undefined) : null;
@@ -149,10 +155,12 @@ export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: 
     const out = rxs && rx!.info.initReturnsImpulse ? rxs.columns : txCols;
     return { h, hTx: txCols[0], hRx: out[0], aggRx: out.slice(1), clocks: [], messages, paramsOut, usedGetWave: [false, false] };
   }
-  // time domain: what reaches the receiver's pins (the aggressors' transmitters are taken as plain drivers)
+  // time domain: what reaches the receiver's pins; the neighbouring lines driven by the same transmitter model, each
+  // its own session (M582: its own AMI_GetWave, or its Init-equalised column when the model has no GetWave)
   const sent = useTxWave && txs?.wave ? txs.wave : x, chanCols = useTxWave ? cols : txCols;
+  const aggSent = aggs.map((g) => (g.x && useTxWave ? session(tx!, [h], dt, ui, g.x).wave ?? g.x : g.x));
   const atPins = conv(sent, chanCols[0]);
-  aggs.forEach((g, i) => { if (g.x) conv(g.x, chanCols[i + 1]).forEach((v, k) => { if (k < atPins.length) atPins[k] += v; }); });
+  aggs.forEach((g, i) => { const xs = aggSent[i]; if (xs) conv(xs, chanCols[i + 1]).forEach((v, k) => { if (k < atPins.length) atPins[k] += v; }); });
   const useRxWave = !!rx?.info.getWaveExists;
   const rxs = rx ? session(rx, chanCols, dt, ui, useRxWave ? atPins : undefined) : null;
   if (rxs) note(rx!.name, rxs);
@@ -160,7 +168,7 @@ export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: 
   if (rxs && useRxWave && rxs.wave) z = rxs.wave;
   else if (rxs && rx!.info.initReturnsImpulse) {
     z = conv(sent, rxs.columns[0]);
-    aggs.forEach((g, i) => { if (g.x) conv(g.x, rxs.columns[i + 1]).forEach((v, k) => { if (k < z.length) z[k] += v; }); });
+    aggs.forEach((g, i) => { const xs = aggSent[i]; if (xs) conv(xs, rxs.columns[i + 1]).forEach((v, k) => { if (k < z.length) z[k] += v; }); });
   }
   const out = rxs && rx!.info.initReturnsImpulse ? rxs.columns : chanCols;
   return { h, hTx: txCols[0], hRx: out[0], aggRx: out.slice(1), z, clocks: rxs?.clocks ?? [], messages, paramsOut, usedGetWave: [useTxWave, useRxWave] };

@@ -1913,6 +1913,9 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M578 | Hyperion IBIS-AMI: crosstalk into the models, IBIS files | **Done** (on `claude/hyperion-sciences-industries`) | Aggressor columns into AMI_Init (Max_Init_Aggressors) in both flows; .ibs files' [Algorithmic Model] picking the library for the computer (`readIbis`, `pickExecutable`, `ibisModels`) |
 | M579 | Hyperion IBIS-AMI: back-channel link training | **Done** (on `claude/hyperion-sciences-industries`) | Tx and Rx models that speak the same BCI_Protocol run in turns in a shared folder, so the receiver trains the transmitter (`ami-host.js` link, `ami.flow`, e.AMI.BCI) |
 | M580 | Hyperion IBIS-AMI: 32-bit models | **Done** (on `claude/hyperion-sciences-industries`) | Older 32-bit model libraries run through a small 32-bit helper program shipped with the computer app (Windows and Linux; `host32/ami-host32.c`, `ami.js` `bitsOf`/`run32`, app 1.3.0) |
+| M581 | Hyperion IBIS-AMI: back-channel training with 32-bit models | **Done** (on `claude/hyperion-sciences-industries`) | The 32-bit helper's stepping mode: a link's ends run in turns whether each is 32- or 64-bit (`ami-host32.c` AMS1, `ami-host.js` `local`/`remote`, app 1.4.0) |
+| M582 | Hyperion IBIS-AMI: neighbouring lines' transmitters trained | **Done** (on `claude/hyperion-sciences-industries`) | Each crosstalk line a trained link of its own (BCI_ID `_a1`…), its transmitter's output coupled in; without a back-channel, its signal through the transmitter's GetWave |
+| M583 | Hyperion IBIS-AMI: the .ibs file's analog buffers | **Done** (on `claude/hyperion-sciences-industries`) | Driver resistance from I-V tables, [Ramp] edge, C_comp, [Package], termination from clamp tables, wrapped round the channel (`ibis-analog.ts`, `amiModel` 'Corner', 'Analog') |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

@@ -6,6 +6,11 @@
  * and writes "AMR1", status (i32: 0 ok, 1 failed), error text, AMI_Init's return (i32), its output parameters and
  * message, whether GetWave exists (i32), the impulse back, the wave back, the clock times, GetWave's last parameters
  * (texts as u32 length + bytes, numbers little-endian, as both Windows and Linux on Intel are).
+ * Stepping mode (M581, for back-channel links, where the app calls each model's AMI_GetWave in turns): "AMS1", path,
+ * parameters, rows, aggressors, dt, ui, the impulse; it answers "AMR2", status, error, Init's return, its parameters
+ * and message, whether GetWave exists, the impulse back; then for each 'W' + u32 n + n f64 it answers status (i32), the
+ * n samples back, the clock times (u32 count + f64) and GetWave's parameters; 'C' (or the input closing) calls
+ * AMI_Close and ends.
  * Build (desktop/hyperion/host32/build.sh): Linux gcc -m32 …; Windows i686-w64-mingw32-gcc … -static. */
 #include <stdint.h>
 #include <stdio.h>
@@ -30,16 +35,72 @@ static void put(const void *p, size_t n) { fwrite(p, 1, n, stdout); }
 static void pu32(uint32_t v) { put(&v, 4); }
 static void pi32(int32_t v) { put(&v, 4); }
 static void ptext(const char *s) { uint32_t n = s ? (uint32_t)strlen(s) : 0; pu32(n); if (n) put(s, n); }
+static int stream = 0;
 static void fail(const char *why) {
+  if (stream) { put("AMR2", 4); pi32(1); ptext(why); pi32(0); ptext(""); ptext(""); pi32(0); pu32(0); fflush(stdout); exit(0); }
   put("AMR1", 4); pi32(1); ptext(why); pi32(0); ptext(""); ptext(""); pi32(0); pu32(0); pu32(0); pu32(0); ptext("");
   fflush(stdout); exit(0);
+}
+
+static init_fn init; static wave_fn getwave; static close_fn closef;
+/* Loads the model's library and its three functions (UTF-8 path; wide on Windows). */
+static void load(const char *path) {
+#ifdef _WIN32
+  int wn = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
+  wchar_t *wpath = malloc(sizeof(wchar_t) * wn); MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, wn);
+  HMODULE lib = LoadLibraryW(wpath);
+  if (!lib) { char m[160]; snprintf(m, sizeof m, "The 32-bit model's library could not be loaded (Windows error %lu).", (unsigned long)GetLastError()); fail(m); }
+  init = (init_fn)(void *)GetProcAddress(lib, "AMI_Init");
+  getwave = (wave_fn)(void *)GetProcAddress(lib, "AMI_GetWave");
+  closef = (close_fn)(void *)GetProcAddress(lib, "AMI_Close");
+#else
+  void *lib = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+  if (!lib) { char m[512]; snprintf(m, sizeof m, "The 32-bit model's library could not be loaded: %s", dlerror()); fail(m); }
+  init = (init_fn)dlsym(lib, "AMI_Init");
+  getwave = (wave_fn)dlsym(lib, "AMI_GetWave");
+  closef = (close_fn)dlsym(lib, "AMI_Close");
+#endif
+  if (!init) fail("This library has no AMI_Init function: it is not an IBIS-AMI model.");
+}
+
+/* The stepping mode (M581): Init, then GetWave block by block as the app asks, then Close. */
+static int step(void) {
+  stream = 1;
+  char *path = text(), *params = text();
+  int32_t rows, agg; get(&rows, 4); get(&agg, 4);
+  double dt, ui; get(&dt, 8); get(&ui, 8);
+  if (rows < 1 || agg < 0 || agg > 16 || rows > 4000000) exit(3);
+  size_t ni = (size_t)rows * (size_t)(1 + agg);
+  double *imp = malloc(sizeof(double) * ni); get(imp, sizeof(double) * ni);
+  load(path);
+  char *pout = NULL, *msg = NULL; void *mem = NULL;
+  long ret = init(imp, rows, agg, dt, ui, params, &pout, &mem, &msg);
+  char err[160] = "";
+  if (ret == 0) snprintf(err, sizeof err, "The model's AMI_Init refused%s%s.", msg && msg[0] ? ": " : "", msg ? msg : "");
+  put("AMR2", 4); pi32(ret != 0 ? 0 : 1); ptext(err); pi32((int32_t)ret); ptext(pout); ptext(msg); pi32(getwave ? 1 : 0);
+  pu32((uint32_t)ni); put(imp, sizeof(double) * ni); fflush(stdout);
+  if (ret == 0) return 0;
+  for (;;) {
+    char op; if (fread(&op, 1, 1, stdin) != 1 || op != 'W') break;
+    uint32_t n = u32(); if (n > 4000000u) exit(3);
+    double *w = malloc(sizeof(double) * (n ? n : 1)), *clk = malloc(sizeof(double) * (n + 1)); get(w, sizeof(double) * n);
+    for (uint32_t k = 0; k <= n; k++) clk[k] = -1;
+    char *po = NULL; long r = getwave ? getwave(w, (long)n, clk, &po, mem) : 0;
+    uint32_t nc = 0; while (nc <= n && clk[nc] >= 0) nc++;
+    pi32(r != 0 ? 0 : 1); pu32(n); put(w, sizeof(double) * n); pu32(nc); if (nc) put(clk, sizeof(double) * nc); ptext(po);
+    fflush(stdout); free(w); free(clk);
+  }
+  if (closef && mem) closef(mem);
+  return 0;
 }
 
 int main(void) {
 #ifdef _WIN32
   _setmode(_fileno(stdin), _O_BINARY); _setmode(_fileno(stdout), _O_BINARY);
 #endif
-  char magic[4]; get(magic, 4); if (memcmp(magic, "AMI1", 4)) exit(2);
+  char magic[4]; get(magic, 4);
+  if (!memcmp(magic, "AMS1", 4)) return step();
+  if (memcmp(magic, "AMI1", 4)) exit(2);
   char *path = text(), *params = text();
   int32_t rows, agg; get(&rows, 4); get(&agg, 4);
   double dt, ui; get(&dt, 8); get(&ui, 8);
@@ -50,22 +111,7 @@ int main(void) {
   double *wave = nw ? malloc(sizeof(double) * nw) : NULL; if (nw) get(wave, sizeof(double) * nw);
   uint32_t block = u32(); if (!block) block = nw ? nw : 1;
 
-#ifdef _WIN32
-  int wn = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
-  wchar_t *wpath = malloc(sizeof(wchar_t) * wn); MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, wn);
-  HMODULE lib = LoadLibraryW(wpath);
-  if (!lib) { char m[160]; snprintf(m, sizeof m, "The 32-bit model's library could not be loaded (Windows error %lu).", (unsigned long)GetLastError()); fail(m); }
-  init_fn init = (init_fn)(void *)GetProcAddress(lib, "AMI_Init");
-  wave_fn getwave = (wave_fn)(void *)GetProcAddress(lib, "AMI_GetWave");
-  close_fn closef = (close_fn)(void *)GetProcAddress(lib, "AMI_Close");
-#else
-  void *lib = dlopen(path, RTLD_NOW | RTLD_LOCAL);
-  if (!lib) { char m[512]; snprintf(m, sizeof m, "The 32-bit model's library could not be loaded: %s", dlerror()); fail(m); }
-  init_fn init = (init_fn)dlsym(lib, "AMI_Init");
-  wave_fn getwave = (wave_fn)dlsym(lib, "AMI_GetWave");
-  close_fn closef = (close_fn)dlsym(lib, "AMI_Close");
-#endif
-  if (!init) fail("This library has no AMI_Init function: it is not an IBIS-AMI model.");
+  load(path);
 
   char *pout = NULL, *msg = NULL; void *mem = NULL;
   long ret = init(imp, rows, agg, dt, ui, params, &pout, &mem, &msg);

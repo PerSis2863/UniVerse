@@ -93,10 +93,16 @@ function helper32() {
 }
 const text = (s) => { const b = Buffer.from(String(s), 'utf8'); const n = Buffer.alloc(4); n.writeUInt32LE(b.length); return [n, b]; };
 /** One session in the 32-bit helper: the request as bytes on its input, the answer read back from its output. */
-function run32(req, prepared) {
+/** The 32-bit helper ready to run here, or why not. */
+function need32() {
   const exe = helper32();
-  if (!exe) return Promise.resolve({ ok: false, error: process.platform === 'darwin' ? 'This model is 32-bit: Macs have not run 32-bit programs since macOS 10.15. Ask its maker for a 64-bit version.' : "This model is 32-bit and this copy of Hyperion has no 32-bit helper. Install the newest Hyperion, or ask the model's maker for a 64-bit version." });
-  if (process.platform === 'linux' && !fs.existsSync('/lib/ld-linux.so.2') && !fs.existsSync('/usr/lib32') && !fs.existsSync('/lib32')) return Promise.resolve({ ok: false, error: 'This model is 32-bit: running it on Linux needs the 32-bit system libraries ("sudo apt install libc6-i386" on Debian and Ubuntu).' });
+  if (!exe) return { error: process.platform === 'darwin' ? 'This model is 32-bit: Macs have not run 32-bit programs since macOS 10.15. Ask its maker for a 64-bit version.' : "This model is 32-bit and this copy of Hyperion has no 32-bit helper. Install the newest Hyperion, or ask the model's maker for a 64-bit version." };
+  if (process.platform === 'linux' && !fs.existsSync('/lib/ld-linux.so.2') && !fs.existsSync('/usr/lib32') && !fs.existsSync('/lib32')) return { error: 'This model is 32-bit: running it on Linux needs the 32-bit system libraries ("sudo apt install libc6-i386" on Debian and Ubuntu).' };
+  return { exe };
+}
+function run32(req, prepared) {
+  const { exe, error } = need32();
+  if (error) return Promise.resolve({ ok: false, error });
   const head = Buffer.alloc(4 + 4 + 8 + 8);
   head.write('AMI1', 0, 'latin1'); head.writeInt32LE(req.rows, 4); head.writeInt32LE(req.aggressors || 0, 8);
   const nums = Buffer.alloc(16); nums.writeDoubleLE(req.dt, 0); nums.writeDoubleLE(req.ui, 8);
@@ -132,17 +138,26 @@ function run(req, prepared) {
   if (bitsOf(prepared.file) === 32) return run32(req, prepared);
   return ask({ file: prepared.file, params: req.params, impulse: req.impulse, rows: req.rows, aggressors: req.aggressors || 0, dt: req.dt, ui: req.ui, wave: req.wave, block: req.block });
 }
-/** A back-channel link (M579): both models in one process, in a private shared folder removed afterwards. */
+/** A back-channel link (M579): the models run in turns in a private shared folder removed afterwards; a 32-bit one
+ * through the 32-bit helper (M581); each neighbouring line in `aggs` a trained link of its own (M582). */
 async function link(req, tx, rx) {
   const bad = check({ ...req, aggressors: 0, params: req.tx && req.tx.params });
   if (bad) return { ok: false, error: bad };
-  if (bitsOf(tx.file) === 32 || bitsOf(rx.file) === 32) return { ok: false, error: 'A back-channel link with a 32-bit model is not supported: ask the maker for 64-bit versions.' };
-  if (typeof req.rx?.params !== 'string' || typeof req.wave !== 'string' || (req.extra !== undefined && bytesOf(req.extra) !== bytesOf(req.wave))) return { ok: false, error: 'The link request is incomplete.' };
+  if (typeof req.rx?.params !== 'string' || typeof req.wave !== 'string') return { ok: false, error: 'The link request is incomplete.' };
+  const aggs = req.aggs === undefined ? [] : req.aggs;
+  if (!Array.isArray(aggs) || aggs.length > 16 || aggs.some((g) => !g || bytesOf(g.wave) !== bytesOf(req.wave) || bytesOf(g.h) !== req.rows * 8)) return { ok: false, error: 'The neighbouring lines in the link request have bad sizes.' };
   const interval = Math.round(req.interval), training = Math.round(req.training);
   if (!(interval >= 1 && interval <= 1e6 && training >= 0 && training <= 1e7)) return { ok: false, error: 'BCI_Message_Interval_UI and BCI_Training_UI must be whole numbers of UI.' };
+  const side = (p, params) => {
+    if (bitsOf(p.file) !== 32) return { file: p.file, params };
+    const h = need32();
+    return h.error ? h : { file: p.file, params, helper: h.exe };
+  };
+  const t = side(tx, req.tx.params), r = side(rx, req.rx.params);
+  if (t.error || r.error) return { ok: false, error: t.error || r.error };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hyperion-bci-'));
   try {
-    return await ask({ op: 'link', tx: { file: tx.file, params: req.tx.params }, rx: { file: rx.file, params: req.rx.params }, impulse: req.impulse, rows: req.rows, dt: req.dt, ui: req.ui, wave: req.wave, extra: req.extra, interval, training, dir });
+    return await ask({ op: 'link', tx: t, rx: r, impulse: req.impulse, rows: req.rows, dt: req.dt, ui: req.ui, wave: req.wave, aggs: aggs.map((g) => ({ wave: g.wave, h: g.h })), interval, training, dir });
   } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the system cleans its temporary folder */ } }
 }
 

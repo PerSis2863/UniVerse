@@ -3,6 +3,7 @@ import { textOf, type Lab } from './interp';
 import { cmat, imOf, mat, num, str, toMat, type Value } from './values';
 import { fileBytes, fileText, hasFile, writeFileText } from './files';
 import * as ami from './ami';
+import { readAnalog, type Analog } from './ibis-analog';
 import { bytesToB64, hasNative } from './native';
 import * as si from './si';
 import { call, col, def, field, isText, lines, need, nums, options, optNum, optText, record, row, rows } from './sci-kit';
@@ -32,7 +33,16 @@ function modelOf(lab: Lab, v: Value | undefined, who: string): ami.Model | null 
   if (v.k !== 'struct' || !v.f.has('Executable') || !v.f.has('Parameters')) throw new LabError(`'${who}' takes a model from amiModel.`);
   const exe = textOf(v.f.get('Executable')!), name = exe.split(/[\\/]/).pop() || exe;
   const file = hasFile(lab, exe) ? { name, bytes: bytesToB64(fileBytes(lab, exe)) } : { name, path: exe };
-  return { name: textOf(v.f.get('Name')!), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ', maxAggressors: v.f.has('MaxInitAggressors') ? field(v, 'MaxInitAggressors', who) : 16, ...(v.f.has('BCIProtocol') && textOf(v.f.get('BCIProtocol')!) ? { bci: { protocol: textOf(v.f.get('BCIProtocol')!), interval: field(v, 'BCIInterval', who), training: field(v, 'BCITraining', who) } } : {}) } };
+  const an = v.f.get('Analog'), analog = an?.k === 'struct' ? analogOf(an, who) : undefined;
+  return { name: textOf(v.f.get('Name')!), ...(analog ? { analog } : {}), file, params: textOf(v.f.get('Parameters')!), info: { root: textOf(v.f.get('Name')!), params: [], reserved: {}, initReturnsImpulse: field(v, 'InitReturnsImpulse', who) === 1, getWaveExists: field(v, 'GetWaveExists', who) === 1, ignoreBits: field(v, 'IgnoreBits', who), modulation: 'NRZ', maxAggressors: v.f.has('MaxInitAggressors') ? field(v, 'MaxInitAggressors', who) : 16, ...(v.f.has('BCIProtocol') && textOf(v.f.get('BCIProtocol')!) ? { bci: { protocol: textOf(v.f.get('BCIProtocol')!), interval: field(v, 'BCIInterval', who), training: field(v, 'BCITraining', who) } } : {}) } };
+}
+/** A model's analog buffer (M583) as a struct, and back. */
+const ANALOG: [string, keyof Analog][] = [['Driver', 'rs'], ['Termination', 'rt'], ['Ccomp', 'cComp'], ['Rpkg', 'rPkg'], ['Lpkg', 'lPkg'], ['Cpkg', 'cPkg'], ['Rise', 'rise']];
+const analogRecord = (a: Analog) => record([['ModelType', a.type], ['Corner', a.corner], ...ANALOG.map(([k, f]) => [k, a[f] as number] as [string, number]), ['Notes', a.notes.join('; ')]]);
+function analogOf(v: Value, who: string): Analog {
+  const a: Analog = { type: v.k === 'struct' && v.f.has('ModelType') ? textOf(v.f.get('ModelType')!) : '', corner: v.k === 'struct' && v.f.has('Corner') ? textOf(v.f.get('Corner')!) : 'typ', rs: 50, rt: 50, cComp: 0, rPkg: 0, lPkg: 0, cPkg: 0, rise: 0, notes: [] };
+  for (const [k, f] of ANALOG) if (v.k === 'struct' && v.f.has(k)) { const x = field(v, k, who); if (!(x >= 0) || ((f === 'rs' || f === 'rt') && !(x > 0))) throw new LabError(`${who}: the model's Analog.${k} must be above 0.`); (a[f] as number) = x; }
+  return a;
 }
 const ctleOf = (v: Value | undefined): [number, number, number, number] | null => {
   if (!v) return null;
@@ -156,9 +166,9 @@ function amiEye(S: ReturnType<typeof sOf>, H: si.C[], rate: number, spu: number,
   return { pulse: null, agg: undefined, measured, main: al.main, record: record([['Flow', 'timedomain'], ['Wave', row(z)], ['Delay', al.delay * dt], ['Clocks', row(clocks)], ['Aggressors', f.aggRx.length], ['UsedGetWave', row(f.usedGetWave.map(Number))], ...bciFields(f), ['Messages', str(f.messages.join('\n'))], ['ParamsOut', str(f.paramsOut.join('\n'))]]) };
 }
 /** A back-channel link's record (M579): the protocol, when each block ran (UI) and what the transmitter reported. */
-const bciFields = (f: ami.FlowOut): [string, Value][] => (f.bci ? [['BCI', record([['Protocol', f.bci.protocol], ['UI', row(f.bci.history.map((x) => x.ui))], ['TxParams', str(f.bci.history.map((x) => x.tx).join('\n'))], ['RxParams', str(f.bci.history.map((x) => x.rx).join('\n'))], ['Files', str(f.bci.files.join(', '))]])]] : []);
+const bciFields = (f: ami.FlowOut): [string, Value][] => (f.bci ? [['BCI', record([['Protocol', f.bci.protocol], ['UI', row(f.bci.history.map((x) => x.ui))], ['TxParams', str(f.bci.history.map((x) => x.tx).join('\n'))], ['RxParams', str(f.bci.history.map((x) => x.rx).join('\n'))], ['Files', str(f.bci.files.join(', '))], ['AggressorTxParams', str(f.bci.lanes.map((l) => l.tx).join('\n'))]])]] : []);
 def('amiModel', (a, nout, lab) => {
-  let exe = a[0] ? textOf(a[0]) : '', src = a[1] ? textOf(a[1]) : '', picked = '';
+  let exe = a[0] ? textOf(a[0]) : '', src = a[1] ? textOf(a[1]) : '', picked = '', analog: Analog | null = null;
   const pairs = new Map<string, Value>();
   for (let i = 2; i < a.length; i += 2) {
     if (!isText(a[i]) || a[i + 1] === undefined) throw new LabError('amiModel: the settings come as name, value pairs.');
@@ -170,7 +180,11 @@ def('amiModel', (a, nout, lab) => {
     const models = ami.readIbis(fileText(lab as Lab, exe)), m = models.find((x) => x.name.toLowerCase() === src.toLowerCase());
     if (!m) throw new LabError(`${exe} has no model "${src}" with an [Algorithmic Model] (it has: ${models.map((x) => x.name).join(', ') || 'none'}).`);
     const folder = pairs.has('Folder') ? textOf(pairs.get('Folder')!) : '', role = pairs.has('Role') ? textOf(pairs.get('Role')!).toLowerCase() : '';
-    pairs.delete('Folder'); pairs.delete('Role');
+    const corner = pairs.has('Corner') ? textOf(pairs.get('Corner')!).toLowerCase() : 'typ', useAnalog = !pairs.has('Analog') || toMat(pairs.get('Analog')!).d[0] !== 0;
+    if (!['typ', 'min', 'max'].includes(corner)) throw new LabError("amiModel: 'Corner' is 'typ', 'min' or 'max'.");
+    pairs.delete('Folder'); pairs.delete('Role'); pairs.delete('Corner'); pairs.delete('Analog');
+    // the [Model]'s pads, package and driver (M583), applied around the channel in the flows
+    if (useAnalog) analog = readAnalog(fileText(lab as Lab, exe), m.name, corner);
     const ex = ami.pickExecutable(m, role), base = (f: string) => f.split(/[\\/]/).pop()!;
     exe = hasFile(lab as Lab, base(ex.lib)) ? base(ex.lib) : folder ? `${folder.replace(/[\\/]+$/, '')}/${base(ex.lib)}` : '';
     if (!exe) throw new LabError(`Put ${base(ex.lib)} in your files, or give where it is on this computer: amiModel('${a[0] && textOf(a[0])}', '${src}', 'Folder', 'C:\\models').`);
@@ -181,11 +195,12 @@ def('amiModel', (a, nout, lab) => {
   const info = ami.readAmi(src.includes('(') ? src : fileText(lab as Lab, src)), choices = new Map<string, string>();
   for (const [k, v] of pairs) choices.set(k, isText(v) ? v.v : String(toMat(v).d[0]));
   const params = ami.paramString(info, choices), inputs = info.params.filter((p) => /^(in|inout)$/i.test(p.usage));
-  const m = record([['Type', 'amiModel'], ['Name', info.root], ['Executable', exe], ['Parameters', params], ['InitReturnsImpulse', +info.initReturnsImpulse], ['GetWaveExists', +info.getWaveExists], ['IgnoreBits', info.ignoreBits], ['MaxInitAggressors', info.maxAggressors], ['Modulation', info.modulation], ['Platform', picked], ['BCIProtocol', info.bci?.protocol ?? ''], ['BCIInterval', info.bci?.interval ?? 0], ['BCITraining', info.bci?.training ?? 0]]);
+  const m = record([['Type', 'amiModel'], ['Name', info.root], ['Executable', exe], ['Parameters', params], ['InitReturnsImpulse', +info.initReturnsImpulse], ['GetWaveExists', +info.getWaveExists], ['IgnoreBits', info.ignoreBits], ['MaxInitAggressors', info.maxAggressors], ['Modulation', info.modulation], ['Platform', picked], ['BCIProtocol', info.bci?.protocol ?? ''], ['BCIInterval', info.bci?.interval ?? 0], ['BCITraining', info.bci?.training ?? 0], ...(analog ? [['Analog', analogRecord(analog)]] as [string, Value][] : [])]);
   if (nout > 0) return [m];
   const lines = [`IBIS-AMI model ${info.root} (${exe}): Init ${info.initReturnsImpulse ? 'returns the equalised impulse' : 'does not return an impulse'}, GetWave ${info.getWaveExists ? 'yes' : 'no'}${info.ignoreBits ? `, adapts over ${info.ignoreBits} bits` : ''}.`, 'Settings you can choose:'];
   for (const p of inputs) lines.push(`  ${p.path.join('.')} = ${p.value ?? '(none)'}${p.list ? `  one of ${p.list.join(' ')}` : p.range ? `  ${p.range[1]} to ${p.range[2]}` : ''}${p.description ? `  ${p.description}` : ''}`);
   lines.push(`Sent to AMI_Init: ${params}`);
+  if (analog) lines.push(`Analog buffer (${analog.type || 'model'}, ${analog.corner}): driver ${analog.rs.toPrecision(3)} ohms, termination ${analog.rt.toPrecision(3)} ohms, C_comp ${(analog.cComp * 1e12).toPrecision(3)} pF, package ${analog.rPkg} ohms ${(analog.lPkg * 1e9).toPrecision(3)} nH ${(analog.cPkg * 1e12).toPrecision(3)} pF, edge ${(analog.rise * 1e12).toPrecision(3)} ps${analog.notes.length ? ` (${analog.notes.join('; ')})` : ''}.`);
   (lab as Lab).host.out(lines.join('\n') + '\n');
   return [];
 });
