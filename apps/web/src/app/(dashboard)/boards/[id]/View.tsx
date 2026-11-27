@@ -8,7 +8,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { ArrowLeft, BarChart3, FileDown, History, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { spring, popIn } from '@/lib/motion';
+import { pop, popIn } from '@/lib/motion';
 import { Sheet } from '@/components/ui/Sheet';
 import { drawDiagram, drawMindMap, drawSummary, drawThemes, type Diagram } from '@/components/boards/board-ai-draw';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -372,20 +372,20 @@ function BoardPage({ id }: { id: string }) {
           <AnimatePresence>
             {timer && <TimerPill key="timer" endsAt={timer.endsAt} by={timer.by} onDone={() => setTimer(null)} />}
             {presentState?.mine && slides.length > 0 && (
-              <motion.div key="slides" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-1 rounded-full bg-zinc-900/90 text-white px-2 py-1 shadow-xl backdrop-blur">
+              <motion.div key="slides" initial={{ opacity: 0, transform: 'translateY(-10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="pointer-events-auto flex items-center gap-1 rounded-full bg-zinc-900/90 text-white px-2 py-1 shadow-xl backdrop-blur">
                 <button type="button" aria-label="Previous slide" disabled={slide === 0} onClick={() => goSlide(slide - 1)} className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
                 <span className="text-xs font-semibold px-1 tabular-nums">{slides[slide]?.name} · {slide + 1}/{slides.length}</span>
                 <button type="button" aria-label="Next slide" disabled={slide >= slides.length - 1} onClick={() => goSlide(slide + 1)} className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
               </motion.div>
             )}
             {presentState && !presentState.mine && presentState.name && (
-              <motion.div key="following" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-2 rounded-full bg-indigo-600/95 text-white ps-3 pe-1 py-1 shadow-xl text-xs font-semibold">
+              <motion.div key="following" initial={{ opacity: 0, transform: 'translateY(-10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="pointer-events-auto flex items-center gap-2 rounded-full bg-indigo-600/95 text-white ps-3 pe-1 py-1 shadow-xl text-xs font-semibold">
                 <MonitorUp className="w-3.5 h-3.5" />{presentState.name.split(' ')[0]} is presenting
                 <button type="button" onClick={() => { const on = !follow; setFollow(on); controls.current?.follow(on); }} className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25">{follow ? 'Stop following' : 'Follow'}</button>
               </motion.div>
             )}
             {votesOpen && votes.length > 0 && (
-              <motion.div key="votes" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 dark:bg-[#151517]/95 border border-zinc-200 dark:border-white/10 shadow-2xl p-3 backdrop-blur">
+              <motion.div key="votes" initial={{ opacity: 0, transform: 'translateY(-10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 dark:bg-[#151517]/95 border border-zinc-200 dark:border-white/10 shadow-2xl p-3 backdrop-blur">
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Votes</p>
                 <ul className="space-y-1.5 max-h-60 overflow-y-auto">
                   {votes.map((v) => (

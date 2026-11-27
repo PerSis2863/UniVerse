@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { sheetIn, fadeIn, foldIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronRight, Compass, Crown, Globe2, Hash, Headphones, ImagePlus, Link2, Loader2, Lock, LogOut, Megaphone, Plus, Search, Settings2, Shield, Smile, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
-import { spring, sheetIn, fadeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { QrCode } from '@/components/ui/QrCode';
 import { Avatar } from '@/components/ui/Avatar';
@@ -76,7 +76,7 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
             </div>
             <AnimatePresence initial={false}>
               {isOpen(c) && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden ms-6 ps-3 border-s border-zinc-200 dark:border-white/10">
+                <motion.div {...foldIn} className="overflow-hidden ms-6 ps-3 border-s border-zinc-200 dark:border-white/10">
                   {/* Channels under their category headings (Stage 5 · B7.4). */}
                   {groupChannels(c.channels.map((ch) => ({ ...ch, category: ch.category ?? null }))).map((g) => (
                     <div key={g.category ?? ''}>

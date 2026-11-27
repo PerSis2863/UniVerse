@@ -11,7 +11,7 @@ import Link from '@/components/ui/Link';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { STAR_NAMES, wordCount } from '@/lib/careers';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { foldIn, fadeUp, list } from '@/lib/motion';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { cn } from '@/lib/utils';
 
@@ -146,7 +146,7 @@ export default function InterviewPracticePage() {
                   placeholder="Answer as you would out loud. For “tell me about a time…”, use STAR: the situation, your task, what you did, and the result." />
                 <AnimatePresence>
                   {dictating && (
-                    <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.gentle} className="mt-1 text-sm text-zinc-500 italic" aria-live="polite">
+                    <motion.p {...foldIn} className="mt-1 text-sm text-zinc-500 italic" aria-live="polite">
                       {hearing || 'Listening…'}
                     </motion.p>
                   )}

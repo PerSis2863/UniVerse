@@ -16,7 +16,7 @@ import { SdgBadge, StatusChip, day, when } from '@/components/league/LeagueBits'
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { ROLE_LABEL, SDGS, type LeagueRole, type LeagueStatus } from '@/lib/impact-league';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { foldIn, fadeUp, list } from '@/lib/motion';
 import { useAuthStore } from '@/store/auth';
 
 // Impact League (Stage 5 · D14): seasonal challenges between universities around a UN goal. A tab of
@@ -102,7 +102,7 @@ function NewChallenge({ onClose, onMade }: { onClose: () => void; onMade: () => 
     } catch (err) { toast.error(errorMessage(err, 'Couldn’t make the challenge.')); setBusy(false); }
   };
   return (
-    <motion.form initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} onSubmit={save} className="overflow-hidden" aria-labelledby="new-league-title">
+    <motion.form {...foldIn} onSubmit={save} className="overflow-hidden" aria-labelledby="new-league-title">
       <div className="panel p-5 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 id="new-league-title" className="font-semibold text-zinc-900 dark:text-white">New challenge</h2>

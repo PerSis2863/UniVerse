@@ -23,7 +23,7 @@ import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
 import { chime, setSounds, soundsOn } from '@/lib/sounds';
 import { ACCENTS, accent as savedAccent, setAccent, type Accent, menuPlace, setMenuPlace, type MenuPlace, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setSmoothScroll, smoothScrollOn, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
-import { spring, edgeIn } from '@/lib/motion';
+import { spring, pop, foldIn, edgeIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
 import { authedJson } from '@/lib/authed-fetch';
@@ -177,7 +177,7 @@ export function SettingsApp({ role }: { role: Role }) {
             <div className="flex-1 min-w-0">
               <AnimatePresence mode="wait">
                 {current && (
-                  <motion.div key={current.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                  <motion.div key={current.id} initial={{ opacity: 0, transform: 'translateY(10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-6px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}>
                     <SectionBody id={current.id} role={role} title={current.label} />
                   </motion.div>
                 )}
@@ -401,7 +401,7 @@ function Profile({ role }: { role: Role }) {
       </div>
       <AnimatePresence>
         {changed && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.snappy} className="flex justify-end overflow-hidden">
+          <motion.div {...foldIn} className="flex justify-end overflow-hidden">
             <button type="button" className="btn-primary" disabled={busy === 'save' || form.name.trim().length < 2} onClick={() => void saveDetails()}>{busy === 'save' && <Loader2 className="w-4 h-4 animate-spin" />} Save changes</button>
           </motion.div>
         )}

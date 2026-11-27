@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { foldIn } from '@/lib/motion';
 import { Database, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -85,7 +86,7 @@ export function SampleWorldCard() {
       </div>
       <AnimatePresence initial={false}>
         {run && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }} className="overflow-hidden">
+          <motion.div {...foldIn} className="overflow-hidden">
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/5" role="progressbar" aria-valuemin={0} aria-valuemax={run.of} aria-valuenow={run.step} aria-label="Filling sample data">
               <Fill value={pct / 100} className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-indigo-500" />
             </div>

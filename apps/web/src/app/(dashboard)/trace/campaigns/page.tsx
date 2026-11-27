@@ -7,6 +7,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { foldIn } from '@/lib/motion';
 import { Banknote, Check, Globe2, Loader2, MapPin, Megaphone, Pause, Play, Plus, Square, Target, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
@@ -88,7 +89,7 @@ function Campaigns() {
         </div>
         <AnimatePresence initial={false}>
           {creating && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+            <motion.div {...foldIn} className="overflow-hidden">
               <CampaignForm products={products ?? []} fromMap={fromMap} currency={currency} pointValue={pointValue} onDone={() => { setCreating(false); void mutate(); }} />
             </motion.div>
           )}

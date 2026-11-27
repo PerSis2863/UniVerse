@@ -4,7 +4,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { popIn, fadeIn } from '@/lib/motion';
+import { popIn, fadeIn, foldIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import {
   Shield, ExternalLink, CheckCircle2, Clock, Loader2, Plus, X,
@@ -277,7 +277,7 @@ function CredentialCard({ cred }: { cred: Credential }) {
 
       <AnimatePresence>
         {expanded && isVerified && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+          <motion.div {...foldIn}
             className="overflow-hidden border-t border-zinc-200 dark:border-zinc-800">
             <div className="p-5 bg-zinc-950/50">
               <div className="flex items-center gap-2 mb-3">

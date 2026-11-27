@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, Eye, EyeOff, HeartHandshake, Info, ListChecks, Loader2, Mail, Minus, MessageSquare, PhoneCall, RefreshCw, Search, Send, ShieldCheck, Sparkles, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { spring } from '@/lib/motion';
+import { pop, foldIn } from '@/lib/motion';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import Link from '@/components/ui/Link';
@@ -343,7 +343,7 @@ function EarlyHelp({ f, inboxBase, onChanged }: { f: Flag; inboxBase: string; on
       )}
       <AnimatePresence initial={false} mode="wait">
         {step === 'checkin' && (
-          <motion.div key="checkin" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
+          <motion.div key="checkin" {...foldIn} className="overflow-hidden">
             <div className="mt-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 p-3 space-y-2">
               <p className="text-xs text-zinc-500">A kind first message to {first}. Edit it as you like; it opens your one-to-one chat.</p>
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={2000} aria-label="Check-in message" className="w-full rounded-xl bg-white dark:bg-zinc-900/60 p-3 text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/40 border border-zinc-200 dark:border-white/10" />
@@ -352,7 +352,7 @@ function EarlyHelp({ f, inboxBase, onChanged }: { f: Flag; inboxBase: string; on
           </motion.div>
         )}
         {step === 'plan' && (
-          <motion.div key="plan" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
+          <motion.div key="plan" {...foldIn} className="overflow-hidden">
             <div className="mt-3 rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/15 p-3 space-y-2">
               <p className="text-xs text-zinc-600 dark:text-zinc-300">AI writes 3–5 encouraging steps for the next week from {first}’s weak topics (low rubric scores and missed quiz questions). {first} sees it in their Study planner, never as a warning. You’re reminded in 7 days to follow up.</p>
               <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} placeholder={`Optional note to ${first}, e.g. “Let’s meet on Thursday after class.”`} aria-label="Note to the student" className="w-full rounded-xl bg-white dark:bg-zinc-900/60 p-3 text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/40 border border-zinc-200 dark:border-white/10" />
@@ -363,7 +363,7 @@ function EarlyHelp({ f, inboxBase, onChanged }: { f: Flag; inboxBase: string; on
       </AnimatePresence>
 
       {p && (
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="mt-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02] p-3">
+        <motion.div initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="mt-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02] p-3">
           <p className="text-xs text-zinc-500">Plan sent {day(p.createdAt)} by {p.createdByName} · {p.stepsDone.length}/{p.plan.steps.length} steps ticked by {first}</p>
           <ul className="mt-2 space-y-1">
             {p.plan.steps.map((st, i) => (

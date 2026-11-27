@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
 import { Check, HeartHandshake } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Fill } from '@/components/ui/Fill';
 
@@ -37,7 +37,7 @@ export function SupportPlans() {
         const done = p.stepsDone.length;
         const total = p.plan.steps.length;
         return (
-          <motion.article key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
+          <motion.article key={p.id} initial={{ opacity: 0, transform: 'translateY(10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
             className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.07] via-white/60 to-fuchsia-500/[0.07] dark:via-white/[0.02] p-4 sm:p-6">
             <div className="flex items-start gap-3">
               <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-fuchsia-500/20"><HeartHandshake className="w-5 h-5" /></span>

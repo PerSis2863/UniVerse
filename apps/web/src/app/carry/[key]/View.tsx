@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { pop } from '@/lib/motion';
 import { toast } from 'sonner';
 import { Bluetooth, BluetoothOff, Check, Loader2, MapPin, Navigation, PackageCheck, Radio, SearchX, Square, Store, Thermometer, Warehouse } from 'lucide-react';
 import { LogoMark } from '@/components/ui/LogoMark';
@@ -132,7 +133,7 @@ export default function View() {
 
       <AnimatePresence mode="wait">
         {delivered ? (
-          <motion.div key="done" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="mt-8 rounded-3xl bg-emerald-500/10 ring-1 ring-emerald-400/30 p-6 text-center">
+          <motion.div key="done" initial={{ opacity: 0, transform: 'scale(0.96)' }} animate={{ opacity: 1, transform: 'scale(1)' }} transition={pop.spring} className="mt-8 rounded-3xl bg-emerald-500/10 ring-1 ring-emerald-400/30 p-6 text-center">
             <PackageCheck className="w-10 h-10 mx-auto text-emerald-300" aria-hidden />
             <p className="mt-3 text-xl font-bold">Delivered</p>
             <p className="mt-1 text-sm text-zinc-300">This batch has arrived. You can close this page.</p>

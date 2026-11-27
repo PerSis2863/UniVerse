@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowDownToLine, Crown, DoorOpen, Hand, MessageSquareOff, Mic, MicOff, MoreHorizontal, Pin, PinOff, Presentation, Shield, ShieldOff, UserMinus, Video, VideoOff, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
-import { spring, fadeIn, riseIn } from '@/lib/motion';
+import { spring, fadeIn, riseIn, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Fill } from '@/components/ui/Fill';
 
@@ -65,7 +65,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
             </div>
             <AnimatePresence initial={false}>
               {canModerate && lobby.length > 0 && (
-                <motion.section key="lobby" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+                <motion.section key="lobby" {...foldIn} className="overflow-hidden">
                   <div className="mx-3 mb-3 rounded-2xl bg-indigo-500/15 border border-indigo-300/20 p-3">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200 inline-flex items-center gap-1.5"><DoorOpen className="w-3.5 h-3.5" />Waiting to join · {lobby.length}</p>
@@ -87,7 +87,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                 </motion.section>
               )}
               {hands.length > 0 && (
-                <motion.section key="hands" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+                <motion.section key="hands" {...foldIn} className="overflow-hidden">
                   <div className="mx-3 mb-3 rounded-2xl bg-amber-400/10 border border-amber-300/20 p-3">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-xs font-semibold uppercase tracking-wider text-amber-200 inline-flex items-center gap-1.5"><Hand className="w-3.5 h-3.5" />Raised hands · {hands.length}</p>
@@ -172,7 +172,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                     </div>
                     <AnimatePresence initial={false}>
                       {menu && openRow === p.id && (
-                        <motion.div key="actions" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+                        <motion.div key="actions" {...foldIn} className="overflow-hidden">
                           <div className="px-4 pb-3 ps-16 flex flex-wrap gap-1.5">
                             {others && (p.muted
                               ? <button type="button" onClick={() => act('ask-unmute', p.id)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><Mic className="w-3.5 h-3.5" />Ask to unmute</button>

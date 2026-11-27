@@ -74,6 +74,17 @@ export const barPop = {
   initial: { opacity: 0, transform: 'translateY(16px) scale(0.96)' }, animate: { opacity: 1, transform: 'translateY(0px) scale(1)' },
   exit: { opacity: 0, transform: 'translateY(10px) scale(0.98)', transition: outQuick }, transition: pop.spring,
 };
+/** A section that folds open in place (a form, details under a row): the same as a `<details>` fold-out (M480),
+ *  growing to its height on Apple's curve in 0.34 s and fading, folding away in 0.22 s. Give it `overflow-hidden`. */
+export const foldIn = {
+  initial: { height: 0, opacity: 0 }, animate: { height: 'auto', opacity: 1 },
+  exit: { height: 0, opacity: 0, transition: { duration: 0.22, ease: [0.4, 0, 0.2, 1] as const } }, transition: { duration: 0.34, ease: ease.ios },
+};
+/** A banner dropping from the top edge (an incoming call, a question about notifications): 20 px down from 96%. */
+export const dropIn = {
+  initial: { opacity: 0, transform: 'translateY(-20px) scale(0.96)' }, animate: { opacity: 1, transform: 'translateY(0px) scale(1)' },
+  exit: { opacity: 0, transform: 'translateY(-12px) scale(0.98)', transition: outQuick }, transition: pop.spring,
+};
 /** A pane that slides a short way in from the end side (a thread, a document's side panel). Mirrors in Arabic. */
 export function sideIn() {
   const d = typeof document !== 'undefined' && document.dir === 'rtl' ? -1 : 1;

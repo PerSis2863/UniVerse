@@ -9,7 +9,7 @@ import { Check, ChevronDown, Loader2, MessageSquareWarning, PauseCircle, PlayCir
 import { Avatar } from '@/components/ui/Avatar';
 import { Segmented } from '@/components/ui/Segmented';
 import { authedJson } from '@/lib/authed-fetch';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { foldIn, fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Admin → Safety → Chat safety (Stage 4 · 4.10; src/server/safety.ts): messages the chat safety
@@ -103,7 +103,7 @@ export function ChatSafety() {
                   </button>
                   <AnimatePresence initial={false}>
                     {open && (
-                      <motion.div key="more" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+                      <motion.div key="more" {...foldIn} className="overflow-hidden">
                         <div className="pt-3 space-y-3">
                           {f.reason && <p className="text-xs text-zinc-600 dark:text-zinc-300 flex gap-1.5"><MessageSquareWarning className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />{f.reason}{f.source === 'words' ? '' : ' (AI)'}</p>}
                           <Context id={f.id} />

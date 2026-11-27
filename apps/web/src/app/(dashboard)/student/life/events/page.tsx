@@ -10,7 +10,7 @@ import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { authedJson } from '@/lib/authed-fetch';
 import { safeHref } from '@/lib/safe-href';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
 import { Sheet } from '@/components/ui/Sheet';
@@ -100,7 +100,7 @@ export default function EventsPage() {
         <div className="max-w-4xl mx-auto space-y-5">
           <AnimatePresence>
             {checkedIn && (
-              <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={spring.smooth} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-5 flex items-center gap-3">
+              <motion.div initial={{ opacity: 0, transform: 'scale(0.96)' }} animate={{ opacity: 1, transform: 'scale(1)' }} exit={{ opacity: 0, transform: 'scale(1)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-5 flex items-center gap-3">
                 <CheckCircle2 className="w-8 h-8 text-emerald-500 shrink-0" />
                 <div className="flex-1"><p className="font-bold text-zinc-900 dark:text-white">You’re checked in</p><p className="text-sm text-zinc-600 dark:text-zinc-300">{checkedIn.title}. Enjoy!</p></div>
                 <button type="button" className="btn-ghost btn-sm" onClick={() => setCheckedIn(null)}>Close</button>

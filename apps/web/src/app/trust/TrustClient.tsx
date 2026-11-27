@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { m as motion } from 'framer-motion';
+import { pop } from '@/lib/motion';
 
 interface SystemStatus {
   name: string;
@@ -214,8 +215,8 @@ export function TrustClient() {
           {/* ── Tab Content: DPDP Act 2023 ── */}
           {activeTab === 'dpdp' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: 'translateY(10px)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
               className="space-y-6"
             >
               <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl space-y-6">
@@ -277,8 +278,8 @@ export function TrustClient() {
           {/* ── Tab Content: FERPA & COPPA ── */}
           {activeTab === 'ferpa' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: 'translateY(10px)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
               className="space-y-6"
             >
               <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl space-y-6">
@@ -340,8 +341,8 @@ export function TrustClient() {
           {/* ── Tab Content: Infrastructure & Security ── */}
           {activeTab === 'security' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: 'translateY(10px)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
               className="space-y-6"
             >
               <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl space-y-6">
@@ -397,8 +398,8 @@ export function TrustClient() {
           {/* ── Tab Content: Subprocessors ── */}
           {activeTab === 'subprocessors' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: 'translateY(10px)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
               className="space-y-6"
             >
               <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl space-y-6">
@@ -454,8 +455,8 @@ export function TrustClient() {
           {/* ── Tab Content: DPO & Rights ── */}
           {activeTab === 'dpo' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: 'translateY(10px)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
               className="space-y-6"
             >
               <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl space-y-6">

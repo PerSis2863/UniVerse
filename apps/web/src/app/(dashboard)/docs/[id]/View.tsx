@@ -25,7 +25,7 @@ import { FindBar, PageSetupSheet, WordCount, usePageSetup } from '@/components/d
 import { fillContents, headingsOf } from '@/components/docs/word-ext';
 import { pageCss, type PageSetup } from '@/lib/page-setup';
 import type * as Y from 'yjs';
-import { spring, sideIn } from '@/lib/motion';
+import { pop, sideIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { templateById } from '@/lib/doc-templates';
 import { downloadDocx, downloadMarkdown, importFile } from '@/components/docs/doc-files';
@@ -143,7 +143,7 @@ function DocPage({ id }: { id: string }) {
           <button type="button" onClick={() => setExportOpen((o) => !o)} title="Download or import" aria-label="Download or import" aria-expanded={exportOpen} className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Download className="w-4 h-4" /></button>
           <AnimatePresence>
             {exportOpen && editor && (
-              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.snappy} onMouseLeave={() => setExportOpen(false)}
+              <motion.div initial={{ opacity: 0, transform: 'translateY(-6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-6px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} onMouseLeave={() => setExportOpen(false)}
                 className="absolute end-0 top-10 z-30 w-56 py-1 rounded-xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
                 <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, fillContents(editor.getHTML(), headingsOf(editor.state)), page); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
                 <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor, page).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>

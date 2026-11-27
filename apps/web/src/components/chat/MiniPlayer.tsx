@@ -3,7 +3,7 @@
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Mic, Pause, Play, X } from 'lucide-react';
 import { useVoice, voice } from '@/lib/voice-player';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 
 // The voice message that's playing, while its message isn't on screen (you opened another chat
 // or page): play/pause, progress, speed, close (src/lib/voice-player.ts).
@@ -15,7 +15,7 @@ export function MiniPlayer() {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div key="mini-voice" initial={{ y: 40, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0, scale: 0.96 }} transition={spring.smooth}
+        <motion.div key="mini-voice" initial={{ opacity: 0, transform: 'translateY(40px) scale(0.96)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(40px) scale(0.96)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className="fixed z-[280] end-3 lg:end-6 bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-6 w-[min(92vw,20rem)] rounded-2xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-2.5 flex items-center gap-2.5" role="region" aria-label="Voice message playing">
           <button type="button" onClick={() => v.src && voice.toggle(v.src, v.title)} aria-label={v.playing ? 'Pause' : 'Play'} className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center">
             {v.playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ms-0.5" />}

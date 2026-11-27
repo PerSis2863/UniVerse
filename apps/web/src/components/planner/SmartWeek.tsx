@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { CalendarClock, Check, Info, Layers, ListChecks, Loader2, NotebookPen, Settings2, Target } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { spring, pop, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Study planner → "Your week, scheduled" (upgrade 6). Sessions are placed in free time around
@@ -73,7 +73,7 @@ export function SmartWeek({ today, tz }: { today: string; tz: string }) {
 
       <AnimatePresence initial={false}>
         {settings && data && (
-          <motion.div key="settings" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+          <motion.div key="settings" {...foldIn} className="overflow-hidden">
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06] p-3 text-sm">
               <label className="space-y-1"><span className="block text-xs font-semibold text-zinc-500">Most study a day</span>
                 <select value={data.prefs.capMin} disabled={saving} onChange={(e) => void savePrefs({ capMin: Number(e.target.value) })} className="w-full rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 px-3 py-2">
@@ -98,7 +98,7 @@ export function SmartWeek({ today, tz }: { today: string; tz: string }) {
 
       <AnimatePresence>
         {data?.note && (
-          <motion.p key={data.note} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={spring.smooth} role="status"
+          <motion.p key={data.note} initial={{ opacity: 0, transform: 'translateY(-4px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(0px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} role="status"
             className="mt-4 text-sm rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-800 dark:text-sky-200 px-3 py-2 flex items-center gap-2"><Info className="w-4 h-4 shrink-0" /> {data.note}</motion.p>
         )}
       </AnimatePresence>

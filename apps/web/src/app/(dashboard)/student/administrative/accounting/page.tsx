@@ -5,7 +5,7 @@ import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock, X,      Loader2 } from 'lucide-react';
 import { FolderCard } from '@/components/files/FolderCard';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { popIn } from '@/lib/motion';
+import { pop, popIn } from '@/lib/motion';
 import { useState, useEffect, Suspense } from 'react';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
@@ -246,8 +246,8 @@ function AccountingContent() {
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, transform: 'translateY(10px)' }}
+            animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
             className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white relative overflow-hidden shadow-xl shadow-indigo-500/20"
           >
             <div className="absolute top-0 end-0 w-48 h-48 bg-white/10 rounded-full blur-2xl -me-12 -mt-12 pointer-events-none" />

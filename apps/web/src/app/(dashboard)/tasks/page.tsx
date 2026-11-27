@@ -11,7 +11,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { CollabTabs } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useOnceParam } from '@/lib/use-once-param';
 
@@ -65,7 +65,7 @@ export default function TasksPage() {
             {!creating && <button type="button" className="btn-primary" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> New board</button>}
           </div>
           {creating && (
-            <motion.form initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} className={`panel p-5 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
+            <motion.form initial={{ opacity: 0, transform: 'translateY(-8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} onSubmit={create} className={`panel p-5 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">Name</span>
                 <input required autoFocus maxLength={80} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Science fair project" className="input" />
               </label>

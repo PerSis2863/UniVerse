@@ -6,7 +6,7 @@ import { Activity, Check, Star, WifiOff, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { CALL_ISSUES, grade, rate, type Grade, type Reading } from '@/lib/call-quality';
 import { haptic } from '@/lib/haptics';
-import { spring, popIn, fadeIn, riseIn } from '@/lib/motion';
+import { pop, popIn, fadeIn, riseIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Call quality (Stage 5 · B8.1; numbers from src/lib/call-quality.ts): the Connection panel (my
@@ -85,7 +85,7 @@ export function WeakNetwork({ show, onAudioOnly, onDismiss }: { show: boolean; o
   return (
     <AnimatePresence>
       {show && (
-        <motion.div role="status" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.snappy}
+        <motion.div role="status" initial={{ opacity: 0, transform: 'translateY(-10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className="pointer-events-auto rounded-2xl bg-amber-500/15 border border-amber-400/30 backdrop-blur-xl px-3 py-2 flex items-center gap-2 text-sm shadow-xl">
           <WifiOff className="w-4 h-4 text-amber-300 shrink-0" aria-hidden />
           <span className="flex-1 min-w-0 text-amber-100">Your network is weak, so video may freeze.</span>

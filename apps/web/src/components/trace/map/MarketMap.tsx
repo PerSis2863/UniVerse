@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { fadeIn } from '@/lib/motion';
+import { pop, fadeIn } from '@/lib/motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Factory, Globe2, Loader2, Lock, Maximize2, Megaphone, Minimize2, Minus, Pause, Play, Plus, Radio, Sparkles, Target, Wand2, X } from 'lucide-react';
@@ -583,7 +583,7 @@ export function MarketMap() {
             <div ref={tip} className="absolute left-0 top-0 pointer-events-none will-change-transform" aria-hidden>
               <AnimatePresence>
                 {hovered && (
-                  <motion.div key={`${hover?.kind}-${hover?.i}`} initial={{ opacity: 0, scale: 0.94, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                  <motion.div key={`${hover?.kind}-${hover?.i}`} initial={{ opacity: 0, transform: 'translateY(4px) scale(0.94)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={pop.spring}
                     className="min-w-44 max-w-64 rounded-xl bg-white dark:bg-[#111113] px-3 py-2.5 text-xs shadow-xl border border-zinc-200 dark:border-white/10">
                     {'scans' in hovered ? (
                       <>
@@ -617,7 +617,7 @@ export function MarketMap() {
             <AnimatePresence>
               {locked && market?.locked && (
                 <motion.div {...fadeIn} className="absolute inset-0 grid place-items-center p-4 bg-[#111113]/40 backdrop-blur-[2px]">
-                  <motion.div initial={{ y: 16, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.98 }} transition={{ type: 'spring', stiffness: 360, damping: 30 }} className="relative max-w-md rounded-3xl trace-hero text-white p-7 shadow-2xl">
+                  <motion.div initial={{ transform: 'translateY(16px) scale(0.97)' }} animate={{ transform: 'translateY(0px) scale(1)' }} exit={{ transform: 'translateY(8px) scale(0.98)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="relative max-w-md rounded-3xl trace-hero text-white p-7 shadow-2xl">
                     <button type="button" onClick={() => setLocked(false)} aria-label="Close" className="absolute right-3 top-3 w-8 h-8 grid place-items-center rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
                     <span className="passport-pill">PRO</span>
                     <h3 className="mt-3 text-2xl font-black tracking-tight">See your whole category, city by city.</h3>

@@ -7,7 +7,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Ban, Check, ChevronDown, Clock, Flag, History, Loader2, ShieldAlert, Trash2, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { spring, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { chatJson } from './chat-client';
 
@@ -118,7 +118,7 @@ export function CommunityModeration({ communityId, members }: { communityId: str
         </button>
         <AnimatePresence initial={false}>
           {showLog && (
-            <motion.ul key="log" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+            <motion.ul key="log" {...foldIn} className="overflow-hidden">
               {data.log.length === 0 ? <li className="pt-2 text-xs text-zinc-500">Nothing yet.</li> : data.log.map((l) => (
                 <li key={l.id} className="pt-2 text-xs text-zinc-600 dark:text-zinc-300">
                   <span className="font-semibold">{l.actor}</span> {ACTION[l.action] ?? l.action}{l.target ? <> <span className="font-semibold">{l.target}</span></> : ''}{l.detail ? <span className="text-zinc-500"> · {l.detail}</span> : ''} <span className="text-zinc-400">· {ago(l.at)}</span>

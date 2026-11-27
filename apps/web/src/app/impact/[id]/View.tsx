@@ -9,7 +9,7 @@ import Link from '@/components/ui/Link';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { ImpactReportView, type ImpactCallReport } from '@/components/impact/ImpactReport';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { foldIn, fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // An impact room's public page (Stage 4 · 4.12), for sponsors and partners: no sign-in. Verified
@@ -117,7 +117,7 @@ function PublicImpactPage({ id }: { id: string }) {
                       </button>
                       <AnimatePresence initial={false}>
                         {open === r.id && (
-                          <motion.div key="r" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+                          <motion.div key="r" {...foldIn} className="overflow-hidden">
                             <div className="pt-4"><ImpactReportView report={r.report} verified={r.verified} /></div>
                           </motion.div>
                         )}

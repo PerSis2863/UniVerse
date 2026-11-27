@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { foldIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { CheckCircle2, Clock, Loader2, Plus, QrCode as QrIcon, Trash2, UserCheck, Users, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -10,7 +11,6 @@ import { SectionTabs, IMPACT_REPORT_TABS } from '@/components/layout/SectionTabs
 import { RotatingQr } from '@/components/ui/RotatingQr';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
 
 // Verified volunteering (upgrade 5), supervisor side: shifts on NGO projects, the rotating check-in
 // code for the site, and the roster (mark someone present if their phone couldn't check in).
@@ -54,7 +54,7 @@ export default function AdminShiftsPage() {
                   </div>
                   <AnimatePresence initial={false}>
                     {open === s.id && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden border-t border-zinc-100 dark:border-white/[0.06]">
+                      <motion.div {...foldIn} className="overflow-hidden border-t border-zinc-100 dark:border-white/[0.06]">
                         <RosterList id={s.id} />
                       </motion.div>
                     )}
@@ -85,7 +85,7 @@ function ShiftForm({ form, setForm, onDone }: { form: typeof empty; setForm: (f:
   };
   const here = () => navigator.geolocation?.getCurrentPosition((p) => setForm({ ...form, lat: p.coords.latitude.toFixed(5), lng: p.coords.longitude.toFixed(5) }), () => toast.error('Allow location to use where you are.'));
   return (
-    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
+    <motion.div {...foldIn} className="overflow-hidden">
       <div className={`panel p-4 space-y-3`}>
         <div className="flex items-center justify-between"><p className="font-semibold text-zinc-900 dark:text-white">New shift</p><button type="button" onClick={() => setForm(null)} aria-label="Cancel" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button></div>
         <select className="input" value={form.projectId} onChange={set('projectId')} aria-label="Project">

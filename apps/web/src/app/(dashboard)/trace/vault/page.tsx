@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { foldIn } from '@/lib/motion';
 import { Copy, KeyRound, Loader2, Package, Send, ShieldCheck } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
@@ -107,7 +108,7 @@ function Card({ it, i, onChange }: { it: Item; i: number; onChange: () => void }
       <UnitClaim vaultId={it.id} code={it.code} product={it.product?.name ?? 'A product'} warrantyActive={!!it.warrantyEnds && new Date(it.warrantyEnds).getTime() > now} />
       <AnimatePresence mode="wait" initial={false}>
         {it.transfer ? (
-          <motion.div key="t" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+          <motion.div key="t" {...foldIn} className="overflow-hidden">
             <div className="mt-3 rounded-xl bg-pink-500/10 px-3 py-2 flex items-center gap-2">
               <span className="flex-1 font-mono tracking-widest text-pink-700 dark:text-pink-200">{it.transfer.code}</span>
               <span className="text-[10px] text-zinc-500">until {new Date(it.transfer.until).toLocaleDateString()}</span>

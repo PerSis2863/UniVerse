@@ -7,7 +7,7 @@ import { m as motion } from 'framer-motion';
 import { Clapperboard, FileEdit, FileText, GraduationCap, Loader2, NotebookPen, PlayCircle, Search, Sparkles, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // "Ask your semester" (Stage 4 · 4.5; src/server/semester.ts): one box to search everything from a
@@ -121,7 +121,7 @@ export function SemesterSearch() {
         {pending > 0 && <p className="text-xs text-zinc-500">Still reading {pending} older item{pending === 1 ? '' : 's'} from your semester; results get fuller as you search.</p>}
 
         {answer?.answer && (
-          <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="rounded-2xl border border-indigo-200/70 dark:border-indigo-400/20 bg-indigo-50/60 dark:bg-indigo-500/[0.07] p-4 space-y-3" aria-label="Answer">
+          <motion.section initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="rounded-2xl border border-indigo-200/70 dark:border-indigo-400/20 bg-indigo-50/60 dark:bg-indigo-500/[0.07] p-4 space-y-3" aria-label="Answer">
             <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-100 whitespace-pre-line"><Cited text={answer.answer} citations={answer.citations} /></p>
             {answer.citations.length > 0 && (
               <ol className="space-y-1.5">

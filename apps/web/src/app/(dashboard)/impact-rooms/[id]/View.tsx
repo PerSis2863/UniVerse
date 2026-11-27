@@ -18,7 +18,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { ImpactReportView, type ImpactCallReport } from '@/components/impact/ImpactReport';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
-import { fadeUp, list, spring, fadeIn } from '@/lib/motion';
+import { spring, fadeIn, foldIn, fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { Fill } from '@/components/ui/Fill';
@@ -277,7 +277,7 @@ function ImpactCallCard({ data, busy, run, call, onJoin, onReport }: { data: Roo
           {!next && <button type="button" onClick={onJoin} className="btn-secondary w-full"><Video className="w-4 h-4" />Start a call now</button>}
           <AnimatePresence initial={false}>
             {planning ? (
-              <motion.div key="plan" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden space-y-2">
+              <motion.div key="plan" {...foldIn} className="overflow-hidden space-y-2">
                 <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="When" className="input" />
                 <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Title (optional)" aria-label="Title" className="input" />
                 <div className="flex gap-2">

@@ -9,7 +9,7 @@ import { CheckCircle2, Clock, CloudUpload, Loader2, RotateCcw, Send, Trash2 } fr
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { discard, enqueue, getDraft, listOutbox, newClientId, onOutbox, retry, saveDraft, type OutboxItem } from '@/lib/outbox';
 import type { PackAssignment, PackQuiz } from '@/lib/offline-packs';
-import { spring } from '@/lib/motion';
+import { spring, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Offline-first classroom (upgrade 4): take a saved quiz or write a saved assignment with no
@@ -185,7 +185,7 @@ export function OfflineAssignment({ assignment }: { assignment: PackAssignment }
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.snappy} className="space-y-3 overflow-hidden">
+          <motion.div {...foldIn} className="space-y-3 overflow-hidden">
             <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{assignment.instructions}</p>
             {assignment.rubric.length > 0 && <ul className="text-xs text-zinc-500 list-disc ps-5">{assignment.rubric.map((r) => <li key={r.id}>{r.criterion} ({r.points})</li>)}</ul>}
             <textarea rows={10} maxLength={20_000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Write your answer here. It’s saved on this device as you type."

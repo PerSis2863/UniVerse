@@ -11,7 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Segmented } from '@/components/ui/Segmented';
 import { authedJson } from '@/lib/authed-fetch';
 import { chime } from '@/lib/call-sounds';
-import { fadeUp, spring, popIn } from '@/lib/motion';
+import { pop, popIn, fadeUp } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useActivePoll } from '@/lib/realtime-client';
 
@@ -93,7 +93,7 @@ function TeacherOffice({ s, onChange }: { s: TeacherState; onChange: (s: Teacher
       </div>
       <AnimatePresence initial={false} mode="wait">
         {s.open ? (
-          <motion.div key="open" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className="flex flex-wrap gap-2">
+          <motion.div key="open" initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-6px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="flex flex-wrap gap-2">
             <motion.button type="button" onClick={() => router.push(`/call/${s.callId}`)} className="h-10 px-4 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-semibold inline-flex items-center gap-1.5 active:scale-[0.95]">
               <Users className="w-4 h-4" />Go to office hours
             </motion.button>
@@ -105,7 +105,7 @@ function TeacherOffice({ s, onChange }: { s: TeacherState; onChange: (s: Teacher
             </button>
           </motion.div>
         ) : (
-          <motion.form key="closed" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className="space-y-2.5"
+          <motion.form key="closed" initial={{ opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-6px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="space-y-2.5"
             onSubmit={(e) => { e.preventDefault(); void post('open', { open: true, minutes: Number(minutes), topic }); }}>
             <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={80} placeholder="Topic (optional), e.g. Essay questions" aria-label="Topic"
               className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
@@ -146,7 +146,7 @@ export function QueueStatus({ queue, hostHere }: { queue: { pos: number; waiting
     <div className="space-y-3">
       <div>
         <AnimatePresence mode="popLayout" initial={false}>
-          <motion.p key={head} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.snappy} className="text-2xl font-bold" role="status" aria-live="polite">{head}</motion.p>
+          <motion.p key={head} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="text-2xl font-bold" role="status" aria-live="polite">{head}</motion.p>
         </AnimatePresence>
         <p className="text-sm text-zinc-400 mt-1">
           {[wait, queue && queue.waiting > 1 ? `${queue.waiting} in line` : null].filter(Boolean).join(' · ') || ' '}
@@ -182,7 +182,7 @@ export function OfficeBar({ line, students, onNext }: { line: { waiting: number;
   };
   const waiting = line?.waiting ?? 0;
   return (
-    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.smooth} className="pointer-events-auto w-[min(94vw,26rem)] flex flex-col items-stretch gap-2">
+    <motion.div initial={{ opacity: 0, transform: 'translateY(-8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="pointer-events-auto w-[min(94vw,26rem)] flex flex-col items-stretch gap-2">
       <div className="flex items-center gap-2 rounded-full bg-black/55 backdrop-blur-xl border border-white/10 ps-3.5 pe-1.5 py-1.5">
         <DoorOpen className="w-4 h-4 text-emerald-300 shrink-0" />
         <span className="flex-1 min-w-0 text-xs font-semibold truncate" role="status" aria-live="polite">

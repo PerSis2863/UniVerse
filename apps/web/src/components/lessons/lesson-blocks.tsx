@@ -6,7 +6,7 @@ import { NodeSelection } from '@tiptap/pm/state';
 import { m as motion } from 'framer-motion';
 import { AlertTriangle, ChevronLeft, ChevronRight, CircleCheck, CircleHelp, CircleX, Info, Layers, Lightbulb, Plus, Shuffle, Sparkles, Trash2, type LucideIcon } from 'lucide-react';
 import { CALLOUT_TONES, MAX_CARDS, MAX_OPTIONS, type CalloutTone } from '@/lib/lesson-page';
-import { spring } from '@/lib/motion';
+import { spring, pop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // The blocks lesson pages add to the document editor (Stage 5 · B2; saved as the editor's JSON and
@@ -192,7 +192,7 @@ function CheckTry({ a }: { a: Check }) {
       </div>
       <div aria-live="polite" className="text-sm">
         {result && (
-          <motion.div key={`${result}-${shown}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className="mt-3 space-y-1">
+          <motion.div key={`${result}-${shown}`} initial={{ opacity: 0, transform: 'translateY(4px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="mt-3 space-y-1">
             <p className={cn('font-semibold', result === 'right' ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300')}>
               {result === 'right' ? 'Right!' : shown ? `The answer: ${a.options[a.answer] ?? ''}` : 'Not quite. Have another go.'}
             </p>

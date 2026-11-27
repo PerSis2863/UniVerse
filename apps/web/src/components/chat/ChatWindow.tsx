@@ -9,7 +9,7 @@ import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { sideIn } from '@/lib/motion';
+import { pop, foldIn, sideIn } from '@/lib/motion';
 import { toast } from 'sonner';
 import { ArrowDown, Bookmark, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock, Check, Copy, CornerUpRight, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -885,7 +885,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
 
         <AnimatePresence>
           {catchup && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-b border-zinc-200/80 dark:border-white/[0.06] bg-fuchsia-50/70 dark:bg-fuchsia-500/[0.07]">
+            <motion.div {...foldIn} className="overflow-hidden border-b border-zinc-200/80 dark:border-white/[0.06] bg-fuchsia-50/70 dark:bg-fuchsia-500/[0.07]">
               <div className="flex items-start gap-2 px-3 md:px-5 py-2.5">
                 <Sparkles className="w-4 h-4 text-fuchsia-500 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0 text-sm text-zinc-800 dark:text-zinc-200">
@@ -1068,7 +1068,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
 
         <AnimatePresence>
           {(showJump || unseen > 0 || !!win) && (
-            <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+            <motion.button initial={{ opacity: 0, transform: 'translateY(10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} exit={{ opacity: 0, transform: 'translateY(10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }}
               onClick={() => { setUnseen(0); if (win) backToLatest(); else scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
               className={cn('absolute end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg', hasHints(convo, messages[messages.length - 1], me) ? 'bottom-48' : 'bottom-28', ' flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#151517] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
               <ArrowDown className="w-4 h-4" aria-hidden />

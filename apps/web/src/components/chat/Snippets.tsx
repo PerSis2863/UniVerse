@@ -7,7 +7,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { chatJson } from './chat-client';
 import { Sheet } from '@/components/ui/Sheet';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { useAuthStore } from '@/store/auth';
 
 // Saved replies and message templates (Stage 4 · 1.9, src/app/api/chat/snippets): up to 50 per
@@ -57,7 +57,7 @@ export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: (
     <Sheet title={edit ? (list.some((s) => s.id === edit.id) ? 'Edit saved reply' : 'New saved reply') : 'Saved replies'} onClose={onClose}>
       <AnimatePresence mode="wait" initial={false}>
         {edit ? (
-          <motion.div key="edit" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={spring.smooth} className="space-y-3">
+          <motion.div key="edit" initial={{ opacity: 0, transform: 'translateX(16px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} exit={{ opacity: 0, transform: 'translateX(16px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="space-y-3">
             <input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} maxLength={60} placeholder="Title, e.g. Deadline reminder" aria-label="Title" className="input" autoFocus />
             <textarea value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} maxLength={2000} rows={5} placeholder="The message" aria-label="Message" className={`input resize-none`} />
             <div className="flex items-center gap-2">
@@ -75,7 +75,7 @@ export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: (
             </div>
           </motion.div>
         ) : (
-          <motion.div key="list" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={spring.smooth} className="space-y-3">
+          <motion.div key="list" initial={{ opacity: 0, transform: 'translateX(-16px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} exit={{ opacity: 0, transform: 'translateX(-16px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="space-y-3">
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-zinc-400" />

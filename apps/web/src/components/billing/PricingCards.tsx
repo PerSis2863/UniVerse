@@ -1,6 +1,7 @@
 'use client';
 
 import { m as motion, AnimatePresence } from 'framer-motion';
+import { pop } from '@/lib/motion';
 import { Check, Loader2, Sparkles } from 'lucide-react';
 import { PLANS, PLAN_ORDER, formatPrice, type BillingInterval, type PlanId } from '@/lib/plans';
 import { cn } from '@/lib/utils';
@@ -75,10 +76,10 @@ export function PricingCards({ interval, onIntervalChange, onSelect, currentPlan
                   <AnimatePresence mode="popLayout" initial={false}>
                     <motion.span
                       key={`${id}-${interval}`}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -12 }}
-                      transition={{ duration: 0.25 }}
+                      initial={{ opacity: 0, transform: 'translateY(12px)' }}
+                      animate={{ opacity: 1, transform: 'translateY(0px)' }}
+                      exit={{ opacity: 0, transform: 'translateY(-12px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }}
+                      transition={pop.spring}
                       className={cn('text-5xl font-black tracking-tight', dark ? 'text-white' : 'text-zinc-900 dark:text-white')}
                     >
                       {plan.contactSales ? 'Custom' : price === 0 ? 'Free' : formatPrice(price)}

@@ -7,6 +7,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { foldIn } from '@/lib/motion';
 import { ArrowRight, Ban, Crown, ExternalLink, FileCheck2, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Recycle, Rocket, ScanLine, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
 import { DPP_PARTS, dppScore, readDpp } from '@/lib/dpp';
 import { Topbar } from '@/components/layout/Topbar';
@@ -231,7 +232,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
       </section>
       <AnimatePresence initial={false}>
         {settings && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+          <motion.div {...foldIn} className="overflow-hidden">
             <BrandSettings brand={brand} pro={info.pro} onDone={() => { setSettings(false); onChange(); }} />
             <div className="mt-4"><ChainTeam /></div>
           </motion.div>

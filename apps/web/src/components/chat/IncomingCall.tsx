@@ -8,7 +8,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { Phone, PhoneOff, Video } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringtone } from '@/lib/call-sounds';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { Avatar } from '@/components/ui/Avatar';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { useCalls } from '@/store/calls';
@@ -83,10 +83,10 @@ export function IncomingCall({ inboxPath }: { inboxPath: string }) {
       {call && (
         <motion.div
           key={call.id}
-          initial={{ opacity: 0, y: -40, scale: 0.94 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -40, scale: 0.94 }}
-          transition={spring.smooth}
+          initial={{ opacity: 0, transform: 'translateY(-40px) scale(0.94)' }}
+          animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }}
+          exit={{ opacity: 0, transform: 'translateY(-40px) scale(0.94)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }}
+          transition={pop.spring}
           role="alertdialog"
           aria-label={`Incoming ${video ? 'video' : 'voice'} call from ${call.sender.name}`}
           className="fixed top-[calc(env(safe-area-inset-top)+0.75rem)] left-1/2 -translate-x-1/2 z-[200] w-[min(94vw,400px)] rounded-[28px] bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-indigo-900/50 p-4"

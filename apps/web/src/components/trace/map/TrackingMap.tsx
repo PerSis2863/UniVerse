@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { popIn } from '@/lib/motion';
+import { pop, popIn, foldIn } from '@/lib/motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertTriangle, Check, Clock, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, PackageCheck, Plus, Route, Sparkles, Thermometer, Timer, Truck, X } from 'lucide-react';
@@ -319,7 +319,7 @@ export function TrackingMap() {
             )}
             <AnimatePresence>
               {picking && (
-                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-1/2 -translate-x-1/2 top-3 flex items-center gap-2 rounded-full bg-indigo-600 text-white px-4 py-2 text-xs font-semibold shadow-lg">
+                <motion.div initial={{ opacity: 0, transform: 'translateY(-8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} className="absolute left-1/2 -translate-x-1/2 top-3 flex items-center gap-2 rounded-full bg-indigo-600 text-white px-4 py-2 text-xs font-semibold shadow-lg">
                   <Crosshair className="w-3.5 h-3.5" aria-hidden />Click where it’s going
                   <button type="button" onClick={() => setPicking(null)} aria-label="Cancel" className="ml-1 w-5 h-5 grid place-items-center rounded-full hover:bg-white/15"><X className="w-3 h-3" /></button>
                 </motion.div>
@@ -339,7 +339,7 @@ export function TrackingMap() {
             </AnimatePresence>
             <AnimatePresence>
               {sel && sel.status === 'IN_TRANSIT' && (
-                <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                <motion.div key={sel.id} initial={{ opacity: 0, transform: 'translateY(12px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(8px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
                   className="absolute left-3 bottom-3 right-3 sm:right-auto sm:w-[420px] rounded-2xl bg-white/94 dark:bg-[#111113]/90 backdrop-blur px-4 py-3 shadow-xl border border-zinc-200/70 dark:border-white/10">
                   <LiveStrip s={sel} />
                 </motion.div>
@@ -512,7 +512,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
 
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+          <motion.div {...foldIn} className="overflow-hidden">
             <div className="px-4 pb-4 border-t border-zinc-100 dark:border-white/[0.06] pt-3">
               {s.simulated && <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-pink-500/10 px-2.5 py-1 text-[11px] font-semibold text-pink-700 dark:text-pink-200"><Sparkles className="w-3 h-3" aria-hidden />Sample: it moves by itself until a real phone shares its position</p>}
               {/* M50: the journey so far, stage by stage, and how far along it is. */}

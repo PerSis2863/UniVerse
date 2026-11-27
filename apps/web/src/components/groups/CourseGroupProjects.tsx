@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadError } from '@/components/ui/LoadError';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { spring, foldIn, fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Course board → Group projects, for the course's teacher (Stage 5 · D6): student groups that linked
@@ -87,7 +87,7 @@ export function CourseGroupProjects({ courseId }: { courseId: string }) {
               </button>
               <AnimatePresence initial={false}>
                 {expanded && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+                  <motion.div {...foldIn} className="overflow-hidden">
                     <div className="px-4 pb-4 space-y-3">
                       {r ? (
                         <>

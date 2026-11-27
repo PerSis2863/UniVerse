@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Award, BadgeCheck, BookOpen, ChevronDown, ClipboardCheck, Clock, ExternalLink, Eye, EyeOff, GraduationCap, HeartHandshake, ListChecks, Quote, Sparkles, Users } from 'lucide-react';
-import { spring } from '@/lib/motion';
+import { pop, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { safeHref } from '@/lib/safe-href';
 import { CertificateQrButton, CopyLinkButton } from './CredentialShare';
@@ -80,7 +80,7 @@ export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportDa
       </header>
 
       {p.strengths && (
-        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="relative rounded-3xl border border-indigo-500/15 bg-gradient-to-br from-indigo-500/[0.06] to-fuchsia-500/[0.06] p-5 sm:p-6">
+        <motion.section initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="relative rounded-3xl border border-indigo-500/15 bg-gradient-to-br from-indigo-500/[0.06] to-fuchsia-500/[0.06] p-5 sm:p-6">
           <Quote aria-hidden className="absolute top-4 end-4 w-8 h-8 text-indigo-500/15" />
           <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-500">Strengths</h2>
           <p className="mt-2 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-100">{p.strengths}</p>
@@ -196,7 +196,7 @@ function EvidenceSection({ groups, onHide }: { groups: EvidenceGroup[]; onHide?:
                 </button>
                 <AnimatePresence initial={false}>
                   {isOpen && (
-                    <motion.ul key="items" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden border-t border-zinc-100 dark:border-white/[0.05]">
+                    <motion.ul key="items" {...foldIn} className="overflow-hidden border-t border-zinc-100 dark:border-white/[0.05]">
                       {g.items.map((it) => {
                         const k = KIND[it.kind] ?? KIND.PROJECT;
                         return (

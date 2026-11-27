@@ -8,7 +8,7 @@ import { m as motion } from 'framer-motion';
 import { DoorOpen, Loader2, ShieldCheck, Video } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { CallView } from '@/components/call/CallView';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 
 // Joining a call link as a guest, without an account (Stage 4 · 2.11; src/server/calls.ts guest
 // links): type your name, then wait until a host lets you in. The link was made by the call link's
@@ -45,7 +45,7 @@ function GuestJoin({ id }: { id: string }) {
 
   return (
     <main className="min-h-[100dvh] flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,#1e1b4b_0%,#0b0e1a_60%)] text-white">
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
+      <motion.div initial={{ opacity: 0, transform: 'translateY(16px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring}
         className="w-full max-w-sm rounded-3xl bg-white/[0.06] border border-white/10 backdrop-blur-xl p-6 shadow-2xl">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-fuchsia-500/20"><Video className="w-6 h-6" /></div>
         {left ? (

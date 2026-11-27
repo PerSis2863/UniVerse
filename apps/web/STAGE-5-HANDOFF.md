@@ -12689,3 +12689,26 @@ compositor runs it; framer's `x` / `y` / `scale` ran on the page's thread), clos
   ~0.3 s and settles at 0; it closes in under 0.3 s; no page errors.
 - **Rule:** a backdrop is `{...fadeIn}`, a side panel `{...edgeIn()}` (or `{...sideIn()}` for a short slide), a panel
   from a bottom bar `{...riseIn}`; don't put a `transition` prop after the spread (it would override the preset's).
+
+
+## M483 (27 Nov): fold-outs, banners and in-place swaps on the same timing
+
+The owner, 27 Nov, after M482: "check for other types of area also". A sweep of the framer-motion parts left that
+still moved by `x` / `y` / `scale` (the page's thread) or opened by height on their own timings:
+- **Fold-out sections (44):** forms and details that open in place (`height: 0 → auto`) now use **`foldIn`**
+  (`src/lib/motion.ts`): 0.34 s on Apple's curve, folding away in 0.22 s, the same as the `<details>` fold-outs of M480.
+  Height stays (it's the one allowed use: opening and closing a section).
+- **Banners, map pop-ups, hints and swapped rows (109 in 49 files):** each keeps its distance and direction, but as one
+  `transform` string (the compositor runs it) on `pop.spring`, with exits in 0.16 s easing in. Among them: the incoming
+  call banner, the mini player, the call's hints and toasts, Trace's and Relief's map cards, office hours, boards'
+  banners, scholarships' steps, rooms, the trust page. The converter only touched tags whose `initial` / `animate` /
+  `exit` were plain numbers ending at rest, with no `layout`, `drag`, `variants` or `style` transform.
+- **`dropIn`** added for a banner dropping from the top (not used by the sweep yet; for new ones).
+- Left alone: games, the landing, slides, the live screens, photo swiping (`ImageViewer`, moves with the finger),
+  parts with `layout`, and tiny tooltips.
+- Tried in a browser (`scripts/checks/smooth-rest-ui.mjs`): the Planner's Settings section grows 16 → 95 px in about
+  0.2 s and settles; it folds away; the M482 panel check still passes.
+- **Trap:** a cleanup that looks for a name's use must count `{...name}` and skip `pop.spring` (`.spring` is not
+  `spring`); let eslint's unused list and `tsc`'s missing names decide instead of a regex.
+- **Rule:** a new section that folds open is `{...foldIn}` with `overflow-hidden`; a small arrival or swap animates
+  `transform: 'translateY(6px)'` → `'translateY(0px)'` on `pop.spring`, not `y`.

@@ -5,7 +5,7 @@ import { useTick } from '@/lib/use-now';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowLeft, Clock, DoorOpen, LifeBuoy, Megaphone, Minus, Plus, Send, Shuffle, Users, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
-import { spring, popIn, fadeIn, riseIn, barPop } from '@/lib/motion';
+import { spring, pop, popIn, fadeIn, riseIn, barPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Breakout rooms (Stage 4 · 2.6): the host splits the call into smaller rooms (shuffled, by hand, or
@@ -85,11 +85,11 @@ export function BreakoutPanel({ open, onClose, bo, people, room, onSend, onJoin 
             </div>
             <AnimatePresence mode="wait" initial={false}>
               {bo ? (
-                <motion.div key={`live-${bo.id}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="flex-1 min-h-0 flex flex-col">
+                <motion.div key={`live-${bo.id}`} initial={{ opacity: 0, transform: 'translateY(10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="flex-1 min-h-0 flex flex-col">
                   <Running bo={bo} people={people} room={room} send={send} onJoin={(n) => { haptic('tap'); onJoin(n); }} />
                 </motion.div>
               ) : (
-                <motion.div key="setup" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="flex-1 min-h-0 flex flex-col">
+                <motion.div key="setup" initial={{ opacity: 0, transform: 'translateY(10px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-10px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring} className="flex-1 min-h-0 flex flex-col">
                   <Setup people={people} onOpen={(msg) => send(msg)} />
                 </motion.div>
               )}
@@ -338,7 +338,7 @@ export function BreakoutBar({ bo, room, mod, onHelp, onMain, onPick, onManage }:
   return (
     <AnimatePresence>
       {show && bo && (
-        <motion.div key="bo-bar" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}
+        <motion.div key="bo-bar" role="status" initial={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)' }} animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }} exit={{ opacity: 0, transform: 'translateY(-14px) scale(0.96)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={pop.spring}
           className={cn('pointer-events-auto w-full max-w-lg rounded-2xl border backdrop-blur-xl shadow-2xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2', bo.closing ? 'bg-[#2a1f12]/90 border-amber-400/30' : 'bg-[#151517]/90 border-fuchsia-400/25')}>
           <DoorOpen className={cn('w-4 h-4 shrink-0', bo.closing ? 'text-amber-300' : 'text-fuchsia-300')} />
           <p className="text-sm flex-1 min-w-[10rem]">

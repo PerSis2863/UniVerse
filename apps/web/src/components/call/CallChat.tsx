@@ -8,7 +8,7 @@ import { FileText, Loader2, MessageSquare, Paperclip, SendHorizontal, X } from '
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { haptic } from '@/lib/haptics';
-import { spring, fadeIn, riseIn } from '@/lib/motion';
+import { pop, fadeIn, riseIn, foldIn } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { chatJson, formatBytes, messageTypeFor, uploadChatFile, type ChatMessage, type ThreadResponse } from '@/components/chat/chat-client';
 
@@ -126,7 +126,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title, loc
                 const first = i === 0 || lines[i - 1].name !== l.name || lines[i - 1].mine !== l.mine || l.at - lines[i - 1].at > 5 * 60_000;
                 if (l.note) return <p key={l.id} className="text-center text-[11px] text-zinc-500 py-1">{l.name ? `${l.name}: ` : ''}{l.text}</p>;
                 return (
-                  <motion.div key={l.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className={cn('flex flex-col', l.mine ? 'items-end' : 'items-start', first && i > 0 && 'pt-1.5')}>
+                  <motion.div key={l.id} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className={cn('flex flex-col', l.mine ? 'items-end' : 'items-start', first && i > 0 && 'pt-1.5')}>
                     {first && <span className="text-[11px] text-zinc-400 px-1 mb-0.5">{l.mine ? 'You' : l.name} · {new Date(l.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>}
                     <div className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug whitespace-pre-wrap break-words', l.mine ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-ee-md' : 'bg-white/10 rounded-es-md')}>
                       {l.file && (
@@ -149,7 +149,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title, loc
             </div>
             <AnimatePresence>
               {progress !== null && (
-                <motion.div key="up" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-4 overflow-hidden">
+                <motion.div key="up" {...foldIn} className="px-4 overflow-hidden">
                   <div className="flex items-center gap-2 text-xs text-zinc-300 py-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Uploading… {progress}%</div>
                 </motion.div>
               )}

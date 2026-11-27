@@ -16,7 +16,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { spring, foldIn, fadeUp, list } from '@/lib/motion';
 import { reportCardsPage, type ReportCardData } from '@/lib/report-card';
 import { openPrintable } from '@/lib/open-printable';
 import { cn } from '@/lib/utils';
@@ -278,7 +278,7 @@ function CardRow({ card, title, open, onToggle, onComment }: { card: Card; title
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+          <motion.div {...foldIn} className="overflow-hidden">
             <div className="px-4 pb-4 space-y-4">
               <p className="sm:hidden text-sm text-zinc-600 dark:text-zinc-300">GPA {d.overall.gpa == null ? '—' : d.overall.gpa.toFixed(2)} · Attendance {pct(d.overall.attendanceRate)}</p>
               {d.courses.length ? (

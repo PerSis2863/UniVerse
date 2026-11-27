@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { spring } from '@/lib/motion';
+import { spring, foldIn } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
 import { Bookmark, Link2, Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CheckCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
@@ -406,7 +406,7 @@ export function MessagingHub() {
           {/* Message search filters (1.14): each chip adds or removes its filter in the search box. */}
           <AnimatePresence initial={false}>
             {search.trim() && (
-              <motion.div key="search-filters" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] -mx-1 px-1">
+              <motion.div key="search-filters" {...foldIn} className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] -mx-1 px-1">
                 {SEARCH_CHIPS.map(([token, label]) => {
                   const tok = token === 'after:' ? `after:${weekAgo}` : token;
                   const on = token === 'after:' ? /(^|\s)after:\S+/.test(search) : search.split(/\s+/).includes(tok);

@@ -7,7 +7,7 @@ import { Loader2, RotateCcw, Send, Sparkles } from 'lucide-react';
 import { GhidraReply, type GhidraPlan, type Settled } from '@/components/ui/GhidraReply';
 import { api, errorMessage } from '@/lib/api';
 import type { AskTurn } from '@/lib/ask';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 
 // Ghidra, the assistant (M422; "Ask UniVerse", M30, until then; src/lib/ask.ts): a short chat on the hub. Each request
 // gets one reply (GhidraReply: an answer, a list of the person's own things, or one action to confirm). The last turns go
@@ -70,7 +70,7 @@ export function Ghidra({ role }: { role: string }) {
         <ol ref={list} className="mt-4 max-h-[28rem] space-y-3 overflow-y-auto overscroll-contain" aria-live="polite">
           <AnimatePresence initial={false}>
             {turns.map((t) => (
-              <motion.li key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className="space-y-2">
+              <motion.li key={t.id} initial={{ opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={pop.spring} className="space-y-2">
                 <p className="ms-auto w-fit max-w-[85%] rounded-2xl rounded-ee-md bg-zinc-900 px-3.5 py-2 text-sm text-white dark:bg-white dark:text-zinc-900" translate="no">{t.q}</p>
                 {!t.reply ? (
                   <p className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden />Ghidra is thinking…</p>
