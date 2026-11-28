@@ -5,10 +5,12 @@ import { mat, num, str, toMat, type Struct, type Value } from './values';
 import * as cf from './cellfit';
 import * as se from './socest';
 import * as sp from './spme';
+import * as pk from './pack';
 
 // Hyperion's battery systems in the language (M570–, from MathWorks' battery-systems page and its topic pages; written
 // fresh). Part 1, cell characterisation: ecmCell, ecmSimulate, hppcTest, hppcFit. Part 2 (M571), state estimation:
-// socCoulomb, socKalman, ocvSOC, sohEstimate. Part 3 (M572), electrochemistry: spmeCell, spmeSimulate, spmeFit. Cells are plain structs (Type
+// socCoulomb, socKalman, ocvSOC, sohEstimate. Part 3 (M572), electrochemistry: spmeCell, spmeSimulate, spmeFit.
+// Part 4 (M573), packs: packBuild, packFault, packSimulate, packAging, arcTest. Cells are plain structs (Type
 // 'ecmCell'): Capacity, SOC, OCV, R0 (rows over SOC), R and Tau (one row a pair).
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
@@ -202,4 +204,79 @@ def('spmeFit', (a) => {
   cell.f.set('Groups', S(sp.GROUP_NAMES.map((k) => [k, num(r.groups[k])] as [string, Value])));
   cell.f.set('FitRMS', num(r.rms));
   return [cell];
+});
+
+// ——— M573: packs ———
+// shortcut: the full spec (the cell, faults, coolant) rides beside the struct, not in its fields, so a pack edited
+// field by field or saved and loaded must be built again with packBuild; likewise a run for packAging.
+const packs = new WeakMap<Struct, pk.PackSpec>();
+function packValue(p: pk.PackSpec): Struct {
+  const v = S([['Type', str('batteryPackModel')], ['Series', num(p.series)], ['Parallel', num(p.parallel)], ['Cells', num(p.series * p.parallel)],
+    ['NominalVoltage', num(p.series * cf.lookup(p.cell.soc, p.cell.ocv, 0.5))], ['Capacity', num(p.parallel * p.cell.capacity)], ['Faults', num(p.faults.length)]]);
+  packs.set(v, p);
+  return v;
+}
+const packOf = (v: Value | undefined, what: string) => { const p = v && v.k === 'struct' ? packs.get(v) : undefined; if (!p) throw new LabError(`${what} needs a pack from packBuild (or packFault).`); return p; };
+def('packBuild', (a) => {
+  const c = ecmOf(a[0], 'packBuild'), s = Math.round(n0(a[1], NaN)), p = Math.round(n0(a[2], NaN));
+  if (!(s >= 1 && p >= 1 && s * p <= 2000)) throw new LabError('packBuild(cell, series, parallel, …): 1–2,000 cells.');
+  const o = opts(a, 3, ['Spread', 'Seed', 'Coolant', 'Ambient', 'Cooling', 'Temperature'], 'packBuild');
+  const spec = pk.packSpec(c, s, p);
+  if (o.has('Spread')) { const x = vec(o.get('Spread'), 'Spread'); if (x.length !== 3 || x.some((y) => !(y >= 0 && y < 0.5))) throw new LabError("'Spread' is [capacity R0 SOC], one-sigma shares from 0 to 0.5."); spec.spread = { capacity: x[0], r0: x[1], soc: x[2] }; }
+  if (o.has('Seed')) spec.seed = n0(o.get('Seed'), 1);
+  if (o.has('Ambient')) spec.ambient = n0(o.get('Ambient'), 25);
+  if (o.has('Temperature')) spec.t0 = n0(o.get('Temperature'), 25);
+  if (o.has('Coolant')) {
+    const x = vec(o.get('Coolant'), 'Coolant');
+    if (x.length === 0) spec.coolant = null;
+    else { if (x.length !== 2 || !(x[1] > 0)) throw new LabError("'Coolant' is [inlet °C, flow kg/s], or [] for none."); spec.coolant = { ...pk.GLYCOL, inlet: x[0], flow: x[1] }; }
+  }
+  if (o.has('Cooling')) { const x = vec(o.get('Cooling'), 'Cooling'); if (x.length !== 3 || x.some((y) => !(y >= 0))) throw new LabError("'Cooling' is [to the coolant, to the air, to each neighbour] in W/K."); spec.thermal = { ...pk.CELL_THERMAL, hCool: x[0], hAir: x[1], kNeighbour: x[2] }; }
+  return [packValue(spec)];
+});
+def('packFault', (a) => {
+  const p = packOf(a[0], 'packFault'), cellNo = Math.round(n0(a[1], NaN)), kind = a[2] ? textOf(a[2]).toLowerCase() : '', at = n0(a[3], 0), value = n0(a[4], NaN);
+  const N = p.series * p.parallel;
+  if (!(cellNo >= 1 && cellNo <= N)) throw new LabError(`packFault(pack, cell, kind, at, value): cell 1 to ${N}.`);
+  if (kind !== 'resistance' && kind !== 'short' && kind !== 'heater') throw new LabError("packFault: the kind is 'resistance' (Ω added), 'short' (Ω across the cell) or 'heater' (W).");
+  if (!(value > 0) || !(at >= 0)) throw new LabError('packFault: a value above 0 and a time of 0 or more.');
+  return [packValue({ ...p, faults: [...p.faults, { cell: cellNo - 1, kind, at, value }] })];
+});
+const lastRun = new WeakMap<Struct, pk.PackRun>();
+def('packSimulate', (a, nout, lab) => {
+  const p = packOf(a[0], 'packSimulate'), I = vec(a[1], 'The current (A, + discharging)'), dt = n0(a[2], NaN), z0 = n0(a[3], 1);
+  if (!(dt > 0) || !(z0 >= 0 && z0 <= 1)) throw new LabError('packSimulate(pack, I, dt, soc0): dt above 0, soc0 from 0 to 1.');
+  if (I.length * p.series * p.parallel > 20_000_000) throw new LabError('packSimulate: too much to simulate (samples × cells over 20 million).');
+  const r = pk.packSim(p, I, dt, z0);
+  const out = S([['Time', row(r.t)], ['Voltage', row(r.v)], ['CellVoltage', rows(r.cellV)], ['CellCurrent', rows(r.cellI)], ['SOC', rows(r.soc)], ['Temperature', rows(r.temp)],
+    ['CoolantOut', row(r.coolantOut)], ['MaxTemperature', num(r.maxTemp)], ['Runaway', row(r.runaway.map((i) => i + 1))], ['CellCapacity', row(r.capacity)]]);
+  lastRun.set(out, r);
+  if (nout > 0) return [out];
+  const t = row(r.t.map((x) => x / 60));
+  call(lab, 'subplot', num(3), num(1), num(1)); call(lab, 'plot', t, row(r.v)); call(lab, 'ylabel', str('Pack (V)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(r.runaway.length ? `Thermal runaway in cell${r.runaway.length > 1 ? 's' : ''} ${r.runaway.map((i) => i + 1).join(', ')}` : `Hottest cell ${r.maxTemp.toFixed(1)} °C`));
+  call(lab, 'subplot', num(3), num(1), num(2)); call(lab, 'imagesc', t, row(r.temp.map((_, i) => i + 1)), rows(r.temp)); call(lab, 'colorbar'); call(lab, 'ylabel', str('Cell (°C)'));
+  call(lab, 'subplot', num(3), num(1), num(3));
+  const zmin = r.t.map((_, k) => Math.min(...r.soc.map((s) => s[k]))), zmax = r.t.map((_, k) => Math.max(...r.soc.map((s) => s[k])));
+  call(lab, 'plot', t, row(zmin.map((x) => 100 * x)), str('-'), t, row(zmax.map((x) => 100 * x)), str('-'));
+  call(lab, 'legend', str('Lowest cell'), str('Highest cell')); call(lab, 'ylabel', str('SOC (%)')); call(lab, 'xlabel', str('Minutes')); call(lab, 'grid', str('on'));
+  return [];
+});
+def('packAging', (a) => {
+  const p = packOf(a[0], 'packAging'), r = a[1] && a[1].k === 'struct' ? lastRun.get(a[1]) : undefined, n = n0(a[2], NaN);
+  if (!r) throw new LabError('packAging(pack, run, cycles): run is what packSimulate gave for this pack.');
+  if (!(n >= 0)) throw new LabError('packAging: cycles of 0 or more.');
+  const g = pk.packAge(p, r, n);
+  return [S([['SOH', row(g.soh)], ['GroupCapacity', row(g.groupCapacity)], ['PackCapacity', num(g.packCapacity)], ['WeakestGroup', num(g.weakest + 1)]])];
+});
+def('arcTest', (a, nout, lab) => {
+  const o = opts(a, 0, ['A', 'Ea', 'H', 'Mass', 'Start', 'Step'], 'arcTest'), rx = { ...pk.NMC_RUNAWAY }, th = { ...pk.CELL_THERMAL };
+  for (const k of ['A', 'Ea', 'H'] as const) if (o.has(k)) { const x = n0(o.get(k), NaN); if (!(x > 0)) throw new LabError(`arcTest: '${k}' must be above 0.`); rx[k] = x; }
+  if (o.has('Mass')) th.mass = n0(o.get('Mass'), th.mass);
+  const r = pk.arcTest(rx, th, { start: o.has('Start') ? n0(o.get('Start'), 50) : undefined, step: o.has('Step') ? n0(o.get('Step'), 5) : undefined });
+  const out = S([['Onset', num(r.onset)], ['MaxTemperature', num(r.maxTemp)], ['PeakRate', num(r.peakRate)], ['TimeToPeak', num(r.timeToPeak)], ['Time', row(r.time)], ['Temperature', row(r.temp)]]);
+  if (nout > 0) return [out];
+  call(lab, 'plot', row(r.time.map((x) => x / 3600)), row(r.temp)); call(lab, 'xlabel', str('Hours')); call(lab, 'ylabel', str('Cell (°C)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`ARC: onset ${r.onset.toFixed(0)} °C, peak ${r.maxTemp.toFixed(0)} °C at ${r.peakRate.toFixed(0)} °C/s`));
+  return [];
 });

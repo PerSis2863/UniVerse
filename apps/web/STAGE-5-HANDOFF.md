@@ -15696,3 +15696,14 @@ Part 3 of the owner's battery-systems page (MathWorks' Battery Single Particle b
 - `spmeFit`: grouped parameters (`tauN`, `tauP` = R²/D, `kScale` on both rate constants, `rContact`) by Levenberg–Marquardt (optim.ts) on their logarithms; a run cut short counts its missing samples as 0.5 V off.
 - Language: `spmeCell`, `spmeSimulate` (no output: the voltage and the electrolyte's profile as it develops), `spmeFit` ('Fit', {names}). Tests `spme.test.ts`.
 - Not done: temperature dependence (Arrhenius on D and k), side reactions (SEI) and lithium plating in the SPMe itself.
+
+## M573: Hyperion battery systems: packs, cooling and faults (28 Nov)
+
+Part 4 of the owner's battery-systems page (MathWorks' pack design: cells, parallel assemblies, modules, packs, cooling plates with a fluid path, cell-to-cell temperature, ageing per cell, fault injection; the ARC thermal-runaway example), written fresh in **`src/lib/lab/pack.ts`**. Also, the owner (28 Nov, "Do all of them") asked for the left-outs' stand-ins after this plan: HIL with their own board over USB and loading code onto Arduino / ESP32 (in the plan).
+
+- `packSpec`, `packSim`: s groups in series of p cells in parallel (cell i = group·p + j), each an `EcmCell` with a seeded spread of capacity, R0 and SOC. A group's voltage each step from Σ(ocv − V)/r0 = I, an internal short folded in as a Thévenin cell; resistances × `arrhenius(T, 19 kJ)`; heat I²R0 + the pairs' loss + the short + a heater.
+- **Thermal (rule for code that builds on it):** a lumped mass per cell, conduction to its index neighbours, air, and a cooling plate whose coolant passes the cells in index order, each cell relaxing exactly towards the local coolant over the sub-step while the coolant takes its heat (q / ṁcp). The step is cut so no cell moves more than 1 K and no reaction more than 5 % in a sub-step.
+- **Runaway:** every cell carries a single-step Arrhenius decomposition (Semenov; `NMC_RUNAWAY`: A 1.6·10¹², Ea 150 kJ/mol, H 700 kJ/kg; self-heating 0.02 °C/min near 150 °C, ~700 K adiabatic rise); a cell past 200 °C is listed in `runaway`. **Trap:** near onset the adiabatic induction time is about 8 h (RT²/Ea over the rate), so `arcTest` follows the runaway until the reaction is spent (up to 72 h of test time), not for a fixed time.
+- `packAge`: each cell's SOH after n repeats from its own swing, C-rate and mean temperature (`cycleLoss`, battery.ts); the pack's capacity is its weakest series group's.
+- Language: `packBuild`, `packFault`, `packSimulate` (no output: pack voltage, every cell's temperature as an image, the SOC spread), `packAging`, `arcTest`. **Shortcut:** the spec and the run ride beside their structs in WeakMaps, so a pack edited field by field or saved and loaded must be built again. Tests `pack.test.ts`.
+- Not done: a 2D/3D plate layout (cells in a grid with the coolant's channel drawn), venting gases and fire.

@@ -1246,7 +1246,7 @@ Battery systems (`cellfit.ts`, `socest.ts`, `battsys-lab.ts`, `help-battery.ts`)
 - M571 SOC and SOH (Coulomb counting, EKF, UKF, adaptive R0, capacity from rests). Done.
 - M572 the electrochemical single-particle model with electrolyte (SPMe) and its grouped parameter estimation. Done.
 - M573 packs: cells with spread in series and parallel (current sharing), cooling plates and their fluid path,
-  cell-to-cell temperature, ageing per cell, faults (added resistance, internal short, thermal runaway as an ARC test).
+  cell-to-cell temperature, ageing per cell, faults (added resistance, internal short, thermal runaway as an ARC test). Done.
 - M574 the BMS closed loop: monitoring and protection, contactors and precharge (a state chart), CC-CV and fast
   charging, passive and active balancing, the bar-delta filter for a pack's SOC.
 - M575 data-driven SOC (a small neural network trained on simulated drives) and SOC on a microcontroller (C).
@@ -1264,6 +1264,10 @@ Power systems (after the battery set; numbers from M577):
   solar and price; MPC scheduling of a battery and HVAC; techno-economics: life-cycle cost, payback, IRR); PEM fuel cells
   and electrolysers (polarisation, balance of plant, a green-hydrogen microgrid).
 - Left out on purpose: HIL and real-time machines (Speedgoat, dSPACE), certified code (IEC 61508, EN 50128).
+- Then the stand-ins for the left-outs (the owner, 28 Nov: "Do all of them"): hardware-in-the-loop with the person's
+  own board (a Hyperion model run in real time, swapping values with a microcontroller over USB through the Serial
+  window's Web Serial link) and loading code onto Arduino (STK500) and ESP32 boards from the browser. Paid SPICE tools and
+  safety certification stay out (paid software; an official approval process).
 
 ## Progress (keep this up to date, so either agent can take over)
 
@@ -2016,6 +2020,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M570 | Hyperion battery systems: cell characterisation (28 Nov) | **Done** (branch) | ecmCell (1–3 RC pairs as SOC tables), ecmSimulate, hppcTest, hppcFit (load-and-relaxation, variable projection) |
 | M571 | Hyperion battery systems: SOC and SOH (28 Nov) | **Done** (branch) | socCoulomb, socKalman (EKF / UKF on n-RC cells), ocvSOC, sohEstimate (R0 adaptive, capacity from rests) |
 | M572 | Hyperion battery systems: the single particle model with electrolyte (28 Nov) | **Done** (branch) | spmeCell (Chen 2020 LG M50), spmeSimulate, spmeFit (grouped: diffusion times, reaction scale, contact resistance) |
+| M573 | Hyperion battery systems: packs, cooling and faults (28 Nov) | **Done** (branch) | packBuild (cell spread), packFault (resistance, short, heater), packSimulate (parallel sharing, cooling plate, runaway spreading), packAging, arcTest |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
