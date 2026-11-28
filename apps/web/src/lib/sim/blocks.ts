@@ -2,9 +2,11 @@
 // your development process"): a block-diagram simulator. Blocks (sources, maths, continuous dynamics, scopes) joined by
 // wires from an output to an input; the diagram runs with a fixed-step 4th-order Runge–Kutta solver over every block's
 // states. Blocks whose output follows their input at once (a gain, a sum) are worked out in the order the wires allow;
-// a loop of them with no state inside is an "algebraic loop" and is refused in plain words.
+// a loop of them with no state inside is an "algebraic loop" and is refused in plain words. A Chart block (M568,
+// chart.ts) is supervisory logic: its state changes at the start of each step and holds through the step.
+import { CHART_EXAMPLE, chartStart, chartStep, parseChart, type Chart, type ChartRun } from './chart';
 
-export type BlockKind = 'step' | 'sine' | 'constant' | 'pulse' | 'ramp' | 'gain' | 'sum' | 'product' | 'saturation' | 'integrator' | 'tf' | 'pid' | 'scope';
+export type BlockKind = 'step' | 'sine' | 'constant' | 'pulse' | 'ramp' | 'gain' | 'sum' | 'product' | 'saturation' | 'integrator' | 'tf' | 'pid' | 'chart' | 'scope';
 export interface Block { id: string; kind: BlockKind; x: number; y: number; p: Record<string, number | string> }
 export interface Wire { id: string; from: string; out: number; to: string; in: number }
 export interface Diagram { blocks: Block[]; wires: Wire[]; stop: number; dt: number }
@@ -23,6 +25,7 @@ export const KINDS: Record<BlockKind, { name: string; group: string; ins: (p: Bl
   integrator: { name: 'Integrator', group: 'Continuous', ins: () => 1, outs: 1, p: { initial: 0 } },
   tf: { name: 'Transfer function', group: 'Continuous', ins: () => 1, outs: 1, p: { num: '1', den: '1 1' } },
   pid: { name: 'PID controller', group: 'Continuous', ins: () => 1, outs: 1, p: { Kp: 1, Ki: 0, Kd: 0, N: 100 } },
+  chart: { name: 'Chart', group: 'Logic', ins: (p) => Math.max(1, Math.min(4, Number(p.inputs ?? 1))), outs: 1, p: { inputs: 1, chart: CHART_EXAMPLE } },
   scope: { name: 'Scope', group: 'Sinks', ins: (p) => Math.max(1, Math.min(4, Number(p.inputs ?? 1))), outs: 0, p: { inputs: 1 } },
 };
 
@@ -55,6 +58,11 @@ export function simulate(dg: Diagram): RunResult {
   for (const w of dg.wires) if (byId.has(w.from) && byId.has(w.to)) into.set(`${w.to}:${w.in}`, w);
   // States per block.
   const off = new Map<string, number>(), info = new Map<string, ReturnType<typeof canon>>();
+  const charts = new Map<string, { c: Chart; run: ChartRun }>();
+  for (const b of blocks) if (b.kind === 'chart') {
+    try { charts.set(b.id, { c: parseChart(String(b.p.chart ?? '')), run: chartStart() }); }
+    catch (e) { throw new Error(`Chart: ${e instanceof Error ? e.message : String(e)}`); }
+  }
   let ns = 0;
   for (const b of blocks) {
     if (b.kind === 'integrator') { off.set(b.id, ns); ns += 1; }
@@ -62,7 +70,7 @@ export function simulate(dg: Diagram): RunResult {
     else if (b.kind === 'tf') { const c = canon(coeffs(b.p.num), coeffs(b.p.den)); info.set(b.id, c); off.set(b.id, ns); ns += c.order; }
   }
   // Direct feedthrough: whether a block's output this instant needs its inputs.
-  const through = (b: Block) => !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'scope'].includes(b.kind) && !(b.kind === 'tf' && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
+  const through = (b: Block) => !['step', 'sine', 'constant', 'pulse', 'ramp', 'integrator', 'chart', 'scope'].includes(b.kind) && !(b.kind === 'tf' && info.get(b.id)!.D === 0 && info.get(b.id)!.order > 0);
   // Order: a block after the blocks feeding it directly.
   const order: Block[] = [], mark = new Map<string, 0 | 1 | 2>();
   const visit = (b: Block, path: string[]) => {
@@ -94,6 +102,7 @@ export function simulate(dg: Diagram): RunResult {
         case 'integrator': v = x[off.get(b.id)!]; break;
         case 'tf': { const c = info.get(b.id)!, o = off.get(b.id)!; v = c.D * input(b, 0); for (let k = 0; k < c.order; k++) v += c.C[k] * x[o + k]; break; }
         case 'pid': { const o = off.get(b.id)!, e = input(b, 0), N = n(p.N, 100); v = n(p.Kp, 1) * e + n(p.Ki) * x[o] + n(p.Kd) * N * (e - x[o + 1]); break; }
+        case 'chart': { const ch = charts.get(b.id)!; v = ch.c.states[ch.run.active].value; break; }
       }
       y.set(b.id, v);
     }
@@ -119,8 +128,15 @@ export function simulate(dg: Diagram): RunResult {
   const every = Math.max(1, Math.floor(steps / 2000)), t: number[] = [], scopes = new Map<string, number[][]>();
   for (const b of blocks) if (b.kind === 'scope') scopes.set(b.id, Array.from({ length: KINDS.scope.ins(b.p) }, () => []));
   const record = (tt: number) => { outputs(tt, x); t.push(tt); for (const b of blocks) if (b.kind === 'scope') scopes.get(b.id)!.forEach((arr, i) => arr.push(into.has(`${b.id}:${i}`) ? input(b, i) : NaN)); };
+  /** Charts move on with the inputs at the start of a step (then hold through it). */
+  const supervise = (tt: number) => {
+    if (!charts.size) return;
+    outputs(tt, x);
+    for (const [id, ch] of charts) { const b = byId.get(id)!; ch.run = chartStep(ch.c, ch.run, tt, Array.from({ length: KINDS.chart.ins(b.p) }, (_, i) => input(b, i))); }
+  };
   for (let k = 0; k < steps; k++) {
     const tk = k * h;
+    supervise(tk);
     if (k % every === 0) record(tk);
     const k1 = deriv(tk, x), x2 = x.map((v, i) => v + (h / 2) * k1[i]);
     const k2 = deriv(tk + h / 2, x2), x3 = x.map((v, i) => v + (h / 2) * k2[i]);
@@ -155,6 +171,12 @@ export const EXAMPLES: { id: string; name: string; make: () => Diagram }[] = [
     },
   },
   {
+    id: 'thermostat', name: 'A thermostat (chart)', make: () => {
+      const ch = B('chart', 20, 80), room = B('tf', 170, 80, { num: '20', den: '300 1' }), out = B('constant', 170, 190, { value: 10 }), sum = B('sum', 320, 120, { signs: '++' }), sc = B('scope', 480, 120, { inputs: 2 });
+      return { stop: 1500, dt: 0.1, blocks: [ch, room, out, sum, sc], wires: [W(ch, room), W(room, sum), W(out, sum, 1), W(sum, sc), W(ch, sc, 1), W(sum, ch)] };
+    },
+  },
+  {
     id: 'loop', name: 'A first-order loop', make: () => {
       const s = B('step', 20, 80, { time: 0 }), sum = B('sum', 160, 80, { signs: '+-' }), k = B('gain', 300, 80, { k: 2 }), it = B('integrator', 440, 80), sc = B('scope', 610, 80);
       return { stop: 5, dt: 0.001, blocks: [s, sum, k, it, sc], wires: [W(s, sum), W(sum, k), W(k, it), W(it, sc), W(it, sum, 1)] };
@@ -168,7 +190,7 @@ export function readDiagram(raw: unknown): Diagram {
   if (!d || !Array.isArray(d.blocks) || !Array.isArray(d.wires)) return EXAMPLES[0].make();
   const blocks = d.blocks.filter((b) => b && typeof b.kind === 'string' && b.kind in KINDS).slice(0, 120).map((b) => ({
     id: String(b.id), kind: b.kind, x: n(b.x), y: n(b.y),
-    p: Object.fromEntries(Object.entries(KINDS[b.kind].p).map(([k, v]) => [k, typeof b.p?.[k] === typeof v && (k !== 'signs' || /^[+-]{1,6}$/.test(String(b.p[k]))) ? (typeof v === 'string' ? String(b.p[k]).slice(0, 80) : b.p[k]) : v])),
+    p: Object.fromEntries(Object.entries(KINDS[b.kind].p).map(([k, v]) => [k, typeof b.p?.[k] === typeof v && (k !== 'signs' || /^[+-]{1,6}$/.test(String(b.p[k]))) ? (typeof v === 'string' ? String(b.p[k]).slice(0, k === 'chart' ? 2000 : 80) : b.p[k]) : v])),
   }));
   const ids = new Set(blocks.map((b) => b.id));
   const wires = d.wires.filter((w) => w && ids.has(String(w.from)) && ids.has(String(w.to))).slice(0, 400).map((w) => ({ id: String(w.id), from: String(w.from), out: n(w.out), to: String(w.to), in: n(w.in) }));

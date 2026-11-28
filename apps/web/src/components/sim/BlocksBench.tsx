@@ -6,6 +6,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import { tfInline } from '@/lib/lab/lti-text';
 import { blockId, coeffs, EXAMPLES, KINDS, MAX_STEPS, newBlock, readDiagram, type Block, type BlockKind, type Diagram } from '@/lib/sim/blocks';
+import { ChartError, chartToC, parseChart } from '@/lib/sim/chart';
 import { NumField, ui } from './bench-ui';
 import type { FromBlocks, ToBlocks } from './blocks.worker';
 
@@ -18,7 +19,7 @@ const VW = 760, VH = 340, BW = 88, SNAP = 10;
 const height = (b: Block) => Math.max(54, 18 * (KINDS[b.kind].ins(b.p) + 1));
 const inPort = (b: Block, i: number) => ({ x: b.x, y: b.y + (height(b) * (i + 1)) / (KINDS[b.kind].ins(b.p) + 1) });
 const outPort = (b: Block) => ({ x: b.x + BW, y: b.y + height(b) / 2 });
-const GROUPS = ['Sources', 'Maths', 'Continuous', 'Sinks'];
+const GROUPS = ['Sources', 'Maths', 'Continuous', 'Logic', 'Sinks'];
 const LIGHT = ['#7c3aed', '#0e7490', '#b45309', '#047857'], DARK = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399'];
 
 type Field = { key: string; label: string; unit?: string; text?: string };
@@ -35,8 +36,45 @@ const FIELDS: Record<BlockKind, Field[]> = {
   integrator: [{ key: 'initial', label: 'Starts at' }],
   tf: [{ key: 'num', label: 'Numerator', text: 'powers of s, highest first: 1 2 = s + 2' }, { key: 'den', label: 'Denominator', text: '1 3 2 = s² + 3s + 2' }],
   pid: [{ key: 'Kp', label: 'Kp (proportional)' }, { key: 'Ki', label: 'Ki (integral)' }, { key: 'Kd', label: 'Kd (derivative)' }, { key: 'N', label: 'Derivative filter N' }],
+  chart: [],
   scope: [],
 };
+
+/** The chart's text read, or why it can't be. */
+function readChart(text: string) {
+  try { return { chart: parseChart(text) }; } catch (e) { if (e instanceof ChartError) return { error: e.message }; throw e; }
+}
+
+/** A Chart block's own panel: its text, its inputs, and the same chart as C for a microcontroller. */
+function ChartFields({ b, name, setParam }: { b: Block; name: string; setParam: (id: string, key: string, v: number | string) => void }) {
+  const [draft, setDraft] = useState(String(b.p.chart));
+  const [copied, setCopied] = useState(false);
+  const read = useMemo(() => readChart(draft), [draft]);
+  const c = read.chart ? chartToC(read.chart, name) : '';
+  const { label, small } = ui;
+  return (
+    <>
+      <label className={label}>States and transitions
+        <textarea value={draft} rows={8} spellCheck={false} className={cn(ui.input, 'font-mono text-xs leading-relaxed')}
+          onChange={(e) => { const v = e.target.value.slice(0, 2000); setDraft(v); if (readChart(v).chart) setParam(b.id, 'chart', v); }} />
+      </label>
+      {read.error
+        ? <p className="text-xs text-red-700 dark:text-red-400" role="alert">{read.error}</p>
+        : <p className="text-xs text-zinc-600 dark:text-zinc-300">{read.chart!.states.length} states, {read.chart!.trans.length} transitions; starts in {read.chart!.states[0].name}.</p>}
+      <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">One line each: <code className="font-mono">state Heat = 1</code> (the output while in it; the first state is the start) or <code className="font-mono">Off -&gt; Heat when u1 &lt; 19</code>. Conditions use u1…u4, t, after(seconds in the state), and, or, not, abs, min, max.</p>
+      <label className={label}>Inputs
+        <select value={KINDS.chart.ins(b.p)} onChange={(e) => setParam(b.id, 'inputs', Number(e.target.value))} className="input mt-1 w-full">{[1, 2, 3, 4].map((v) => <option key={v} value={v}>{v}</option>)}</select>
+      </label>
+      {c && (
+        <details className="rounded-md border border-zinc-200 dark:border-white/10">
+          <summary className="cursor-pointer px-2 py-1.5 text-xs font-medium text-zinc-800 dark:text-zinc-100">C code for a microcontroller</summary>
+          <pre tabIndex={0} aria-label="The chart as C" className="max-h-56 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-violet-500 border-t border-zinc-200 p-2 font-mono text-[11px] leading-snug text-zinc-800 dark:border-white/10 dark:text-zinc-100" translate="no">{c}</pre>
+          <button type="button" className={cn(small, 'm-2')} onClick={() => { void navigator.clipboard?.writeText(c).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy the C'}</button>
+        </details>
+      )}
+    </>
+  );
+}
 
 const fmt = (v: number) => (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : String(+v.toPrecision(4)));
 function summary(b: Block): string {
@@ -54,6 +92,7 @@ function summary(b: Block): string {
     case 'tf': return tfInline(coeffs(p.num), coeffs(p.den));
     case 'pid': return `Kp ${v('Kp')}, Ki ${v('Ki')}, Kd ${v('Kd')}`;
     case 'scope': return `${KINDS.scope.ins(p)} input${KINDS.scope.ins(p) > 1 ? 's' : ''}`;
+    case 'chart': { const r = readChart(String(p.chart)); return r.chart ? `${r.chart.states.length} states` : 'needs fixing'; }
     default: return '';
   }
 }
@@ -79,6 +118,7 @@ function Glyph({ b }: { b: Block }) {
       const top = cut(tfInline(coeffs(b.p.num), [1])), bottom = cut(tfInline(coeffs(b.p.den), [1]));
       return <><text x={0} y={-5} fontSize={10.5} textAnchor="middle" fill="currentColor" className="font-mono">{top}</text><line x1={-34} y1={0} x2={34} y2={0} stroke="currentColor" strokeWidth={1.1} /><text x={0} y={13} fontSize={10.5} textAnchor="middle" fill="currentColor" className="font-mono">{bottom}</text></>;
     }
+    case 'chart': return <><rect x={-24} y={-13} width={18} height={12} rx={4} fill="none" stroke="currentColor" strokeWidth={1.4} /><rect x={6} y={1} width={18} height={12} rx={4} fill="none" stroke="currentColor" strokeWidth={1.4} /><path d="M-6,-7 H2 Q8,-7 10,0" {...line} strokeWidth={1.4} /><path d="M7,-3 L10,1 L13,-3" {...line} strokeWidth={1.4} /></>;
     case 'scope': return <><rect x={-22} y={-14} width={44} height={28} rx={4} fill="none" stroke="currentColor" strokeWidth={1.4} /><path d="M-17,6 C-10,-12 -4,12 3,-2 S13,-8 17,-4" {...line} strokeWidth={1.4} /></>;
   }
 }
@@ -282,6 +322,7 @@ export function BlocksBench() {
                   onBlur={() => setText((t) => { const next = { ...t }; delete next[`${sel.id}:${f.key}`]; return next; })} />
               </label>
             ) : <NumField key={f.key} label={f.label} unit={f.unit} value={Number(sel.p[f.key])} onChange={(v) => setParam(sel.id, f.key, v)} />)}
+            {sel.kind === 'chart' && <ChartFields key={sel.id} b={sel} name={(names.get(sel.id) ?? 'chart').replace(/\s+/g, '_')} setParam={setParam} />}
             {sel.kind === 'scope' && (
               <label className={label}>Inputs
                 <select value={KINDS.scope.ins(sel.p)} onChange={(e) => setParam(sel.id, 'inputs', Number(e.target.value))} className="input mt-1 w-full">{[1, 2, 3, 4].map((v) => <option key={v} value={v}>{v}</option>)}</select>
