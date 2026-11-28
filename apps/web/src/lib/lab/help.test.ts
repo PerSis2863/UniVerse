@@ -12,6 +12,7 @@ import './text-lab';
 import './net-lab';
 import './octtest-lab';
 import './power-lab';
+import './battsys-lab';
 import './maint-lab';
 import './dsp-lab';
 import './energy-lab';

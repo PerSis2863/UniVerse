@@ -1982,6 +1982,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M567 | Hyperion Simulate → Circuits: SPICE netlists and faults (28 Nov) | **Done** (branch) | Open a SPICE netlist (readSpice, ladder layout), parts that break open or short at a time (Fault) |
 | M568 | Hyperion Simulate → Blocks: state charts (28 Nov) | **Done** (branch) | The Chart block (supervisory mode logic: states, transitions, after()), the chart as C for a microcontroller (chartToC), a thermostat example |
 | M569 | Hyperion Simulate → Circuits: makers' part libraries (28 Nov) | **Done** (branch) | .subckt, .include / .lib files opened with the netlist, .param and {expressions}, VDMOS models (flatten, spiceExpr) |
+| M570 | Hyperion battery systems: cell characterisation (28 Nov) | **Done** (branch) | ecmCell (1–3 RC pairs as SOC tables), ecmSimulate, hppcTest, hppcFit (load-and-relaxation, variable projection) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

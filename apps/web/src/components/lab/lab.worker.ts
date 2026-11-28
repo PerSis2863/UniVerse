@@ -18,6 +18,7 @@ import '@/lib/lab/text-lab';
 import '@/lib/lab/net-lab';
 import '@/lib/lab/octtest-lab';
 import '@/lib/lab/power-lab';
+import '@/lib/lab/battsys-lab';
 import '@/lib/lab/maint-lab';
 import '@/lib/lab/dsp-lab';
 import '@/lib/lab/energy-lab';

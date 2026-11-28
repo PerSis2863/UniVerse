@@ -15668,3 +15668,12 @@ M567's other left-out: importing vendor component libraries, in **`src/lib/sim/s
 - `.subckt` with pins and `PARAMS:` defaults; `X` instances flattened (parts renamed `R1@X1`, inner nets `X1.n`, ground global), nested up to 8 deep, at most 400 parts; `.param` and `{expr}` / `'expr'` values (+ − * / ^, SPICE numbers). VDMOS models (power MOSFETs) give their Vto; `pchan` is warned as before.
 - What a subcircuit holds that the board lacks (E, G, B, Q, J sources and parts) is listed as left out, so most op-amp macromodels won't run; the board's 7 nets are still the limit.
 - Tests in `spice.test.ts`; the browser check above covers opening a netlist with a library.
+
+## M570: Hyperion battery systems: cell characterisation (28 Nov)
+
+The owner, 28 Nov: "https://www.mathworks.com/solutions/battery-systems.html now do deep analysis this whole page and built this in hyperion". The page and its topic pages (battery modelling, SOC by Kalman filters, SOH, HPPC parameter estimation, pack design, thermal management, BMS, code generation and HIL) are split into M570–M576; written fresh. Shared files: **`src/lib/lab/battsys-lab.ts`** (the language; `opts`, `ecmValue`, `ecmOf`), **`help-battery.ts`** (`BATTERY_HELP`, appended in `help.ts`), registered in `lab.worker.ts`, `par.worker.ts` and `help.test.ts`. The older single-RC `batteryCell` family (M425, M433, `energy.ts`, `battery.ts`) stays as it is.
+
+- **`src/lib/lab/cellfit.ts`**: `EcmCell` (capacity, rising `soc` points, `ocv`, `r0`, `r[pair][point]`, `tau[pair][point]`; values read by `lookup`, flat past the ends), `ecmSim`, `sampleEcm(pairs)` (a 5 Ah NMC cell whose resistances rise towards empty), `hppcProfile`, `hppcFit`.
+- **The fit (trap):** a 40 s rest after a 10 s pulse can't show a slow pair (τ ≈ 130 s fitted as 20–80 s, 19 mV RMS); so each level's whole stretch, from its discharge pulse to the next level's (the pulses, the 10 % discharge and the long rest), is fitted with OCV(soc) (from the rests) and R0 (from the pulse's jump) taken off. For given τ the resistances are linear least squares on first-order lags of the current (`rcFit`); τ on a 24-point log grid, then golden-section refinement one at a time. The sample cell's test comes back within 5 mV.
+- Language: `ecmCell`, `ecmSimulate`, `hppcTest`, `hppcFit` (structs of Type 'ecmCell'; R and Tau one row a pair). Tests `cellfit.test.ts`.
+- Not done: separate charge and discharge tables, temperature as a second table dimension (MathWorks' 2-D/3-D tables).

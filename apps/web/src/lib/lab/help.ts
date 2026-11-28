@@ -5,6 +5,7 @@ import { SCIENCES_HELP } from './help-sciences';
 
 import { MACHINES_HELP } from './help-machines';
 import { POWER_HELP } from './help-power';
+import { BATTERY_HELP } from './help-battery';
 
 const TEXT = `
 # Numbers and arithmetic
@@ -1129,7 +1130,7 @@ pkg | pkg load | (Every package is already loaded.)
 nargin | nargin | How many inputs the function was given.
 nargout | nargout | How many outputs were asked for.
 exist | exist('name') | 1 a variable, 2 a file, 5 a function, 0 nothing.
-` + MACHINES_HELP + POWER_HELP;
+` + MACHINES_HELP + POWER_HELP + BATTERY_HELP;
 
 export interface Entry { name: string; syntax: string; text: string; section: string }
 export const HELP = new Map<string, Entry>();
