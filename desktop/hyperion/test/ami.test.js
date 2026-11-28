@@ -95,6 +95,10 @@ test('neighbouring lines train their own transmitters, each by its own receiver 
   const across = await ami.link({ ...req, aggs: [{ ...n1, across: 2, share: 0.3 }, { ...n2, across: 1, share: 0.5 }] }, p, p);
   assert.ok(Math.abs(pk2(across) - pk2(apart) - 0.4 * (2 / 3) * 0.1 * 0.5) < 0.005, `${pk2(across)} ${pk2(apart)}`);
   assert.match((await ami.link({ ...req, aggs: [{ ...n1, across: 2 }, n2] }, p, p)).error, /names this one back/);
+  // M590: the victim hears a path through another line with that lane's wave: the first lane (held at +0.4 V) once more
+  const via = await ami.link({ ...req, aggs: [n1, n2], heard: [{ of: 1, h: b64(couple) }] }, p, p), dv = f64(via.wave).map((v, i) => v - f64(apart.wave)[i]);
+  assert.ok(Math.max(...dv.map(Math.abs)) > 0.01 && Math.max(...dv.map(Math.abs)) < 0.05, `${Math.max(...dv.map(Math.abs))}`);
+  assert.match((await ami.link({ ...req, aggs: [n1, n2], heard: [{ of: 3, h: b64(couple) }] }, p, p)).error, /one of 1 to 2/);
 });
 
 test('a 32-bit model runs through the 32-bit helper (M580)', { skip: (!fs.existsSync(path.join(__dirname, '..', 'bin', 'ami-host32-linux')) || process.platform !== 'linux') && 'no 32-bit helper here' }, async () => {

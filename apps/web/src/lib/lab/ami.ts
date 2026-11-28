@@ -120,7 +120,8 @@ export function session(m: Model, cols: number[][], dt: number, ui: number, wave
  * `inner` (M588) the index of the line just inside it on the same side, the two leaking into each other in a link;
  * `share` its coupling coefficient; `across` (M589) the index of the first line on the victim's other side, the two
  * hearing each other through the victim in a link; `of` (M589) for a second-order path, the index of the outer line
- * it carries (heard through the line inside it), left out of a link, where the lines really hear each other. */
+ * it carries (heard through the line inside it, or M590 through the victim and the line across it), in a link heard
+ * by the victim with that lane's transmitted wave (`heard`). */
 export interface Aggressor { h: number[]; x?: number[]; inner?: number; share?: number; across?: number; of?: number }
 export interface FlowOut { h: number[]; hTx: number[]; hRx: number[]; aggRx: number[][]; z?: number[]; clocks: number[]; messages: string[]; paramsOut: string[]; usedGetWave: [boolean, boolean]; bci?: { protocol: string; history: { ui: number; tx: string; rx: string }[]; files: string[]; lanes: { tx: string; rx: string }[] } }
 /**
@@ -139,7 +140,10 @@ export function flow(h: number[], dt: number, ui: number, tx: Model | null, rx: 
     // each neighbouring line a trained link of its own (M582): its signal and its coupling go to the app as they are
     const used = aggs.flatMap((g, i) => (g.x && g.of === undefined ? [i] : [])), lane = (i?: number) => (i === undefined ? -1 : used.indexOf(i) + 1);
     const lanes = used.map((i) => { const g = aggs[i], k = lane(g.inner), o = lane(g.across); return { wave: f64ToB64(Array.from({ length: x.length }, (_, j) => g.x![j] ?? 0)), h: f64ToB64(Array.from({ length: h.length }, (_, j) => g.h[j] ?? 0)), ...(k > 0 ? { inner: k } : {}), ...(o > 0 ? { across: o, share: g.share ?? 0 } : {}) }; });
-    const r = native('link', { tx: { executable: tx.file, params: tx.params }, rx: { executable: rx.file, params: rx.params }, impulse: f64ToB64(h), rows: h.length, dt, ui, wave: f64ToB64(x), aggs: lanes, interval: Math.max(tx.info.bci.interval, rx.info.bci.interval), training: Math.max(tx.info.bci.training, rx.info.bci.training) });
+    // (M590) the victim also hears a lane through another line (second and third order): that path's coupling, heard
+    // with the lane's own transmitted wave
+    const heard = aggs.flatMap((g) => (g.of !== undefined && lane(g.of) > 0 ? [{ of: lane(g.of), h: f64ToB64(Array.from({ length: h.length }, (_, j) => g.h[j] ?? 0)) }] : []));
+    const r = native('link', { tx: { executable: tx.file, params: tx.params }, rx: { executable: rx.file, params: rx.params }, impulse: f64ToB64(h), rows: h.length, dt, ui, wave: f64ToB64(x), aggs: lanes, ...(heard.length ? { heard } : {}), interval: Math.max(tx.info.bci.interval, rx.info.bci.interval), training: Math.max(tx.info.bci.training, rx.info.bci.training) });
     const hist = (r.history as { ui: number; tx: string; rx: string }[]) ?? [], said = (r.messages as string[]) ?? [];
     said.forEach((t, i) => { if (t) messages.push(`${[tx.name, rx.name][i]}: ${t}`); });
     ((r.paramsOut as string[]) ?? []).forEach((t, i) => { if (t) paramsOut.push(`${[tx.name, rx.name][i]}: ${t}`); });

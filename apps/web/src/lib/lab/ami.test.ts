@@ -562,3 +562,44 @@ describe('M589: a neighbour through another, neighbours across the victim, a nei
     expect(sent.aggs!.map((a) => [a.inner, a.across, a.share])).toEqual([[undefined, 2, 0.1], [undefined, 1, 0.2], [1, undefined, undefined]]);
   });
 });
+
+describe('M590: every mix of NEXT and FEXT through another line, the victim hearing the line across, a coupling that changes along a stretch', () => {
+  it('which way a coupled wave runs, hop by hop', () => {
+    expect(si.hopCoefs('T', [])).toEqual({ n: 1, f: 0 });
+    expect(si.hopCoefs('R', [])).toEqual({ n: 0, f: 1 });
+    // a NEXT pattern (running away from the receiver) through a line: back towards the receiver by its kNext, then heard
+    // through the last line's FEXT; on by its kFext, then heard through the last line's NEXT
+    expect(si.hopCoefs('T', [[0.2, 0.3]])).toEqual({ n: 0.3, f: 0.2 });
+    expect(si.hopCoefs('R', [[0.2, 0.3]])).toEqual({ n: 0.2, f: 0.3 });
+  });
+  const pulse = { p: Array.from({ length: 2000 }, (_, k) => Math.exp(-(((k - 200) / 12) ** 2))), cursor: 200 };
+  const e: si.Eye = { rate: 28e9, spu: 16, pam4: false, order: 7, nsym: 1200, swing: 0.8, ffe: [], ffePre: 0, dfe: 0, rj: 0, dj: 0, noise: 0, ber: 1e-12, xtalk: [], seed: 1 };
+  const h = (x: number[][]) => si.eye(pulse, { ...e, xtalk: x as si.Eye['xtalk'] }).heightBest;
+  it('an outer line with only FEXT comes in through an inner line with only NEXT (a mix M589 left out)', () => {
+    // the same two lines and patterns; on side 0 and 1 they neither sit inside nor across each other (the inner line's
+    // near-end noise smeared over two symbols, as from a stretch, so that it reaches the eye's centre)
+    const p = (x: number[][]) => si.eye(pulse, { ...e, xtalk: x as si.Eye['xtalk'], xtalkPath: [new Array(32).fill(1 / 32), undefined] }).height;
+    const a = p([[0.1, 0, 1], [0, 0.1, 1]]), b = p([[0.1, 0, 0], [0, 0.1, 1]]);
+    expect(Math.max(...a.map((v, i) => Math.abs(v - b[i])))).toBeGreaterThan(1e-3);
+  });
+  it('the victim hears a line across through the line on its other side (third order, smaller still)', () => {
+    const across = h([[0.1, 0.1, 1], [0.1, 0.1, -1]]), apart = h([[0.1, 0.1, 1], [0.1, 0.1, 0]]), none = h([]);
+    expect(Math.abs(across - apart)).toBeGreaterThan(1e-7);
+    expect(Math.abs(across - apart)).toBeLessThan(0.05 * (none - apart));
+  });
+  it('a coupling that grows towards the far end of a stretch bites less than one that fades', () => {
+    let out = '';
+    const lab = new Lab({ out: (t) => { out += t; }, graphics: new Graphics(), files: new FileStore() });
+    lab.run("S = sparamLine((1:400)*1e8, 'Length', 0.2); a = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0 0.5 0]); b = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0 0.5 5]); c = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0 0.5 1]); d = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0 0.5]); fprintf('%d %d\\n', b.Height > a.Height + 1e-4, abs(c.Height - d.Height) < 1e-12)");
+    expect(out.trim()).toBe('1 1');
+    expect(() => lab.run("e = eyeDiagram(S, 10e9, 'Crosstalk', [0.1 0 0 0 0.5 -1]);")).toThrow(/0 or more/);
+  });
+  it('a link hears the paths through other lines with their lanes’ own waves', () => {
+    let sent: { heard?: { of: number }[] } = {};
+    setNative((_op, body) => { sent = body as typeof sent; const b = body as { wave: string }; return { ok: true, wave: b.wave, clocks: f64ToB64([]), history: [], files: [], paramsOut: ['', ''], messages: ['', ''], lanes: [] }; });
+    const info = ami.readAmi(fs.readFileSync(path.join(__dirname, 'fixtures', 'test-bci.ami'), 'utf8')), tx: ami.Model = { name: 'tx', file: { name: 'b.so', path: '/b.so' }, params: ami.paramString(info, new Map()), info };
+    const x = new Array(64).fill(0.4), g = (o: Partial<ami.Aggressor>) => ({ h: [1e11, 0, 0, 0], x, ...o });
+    ami.flow([1e12, 0, 0, 0], 1e-12, 8e-12, tx, { ...tx, name: 'rx' }, x, [g({}), g({ inner: 0 }), g({ of: 1 }), g({ of: 0 })]);
+    expect(sent.heard!.map((p) => p.of)).toEqual([2, 1]);
+  });
+});

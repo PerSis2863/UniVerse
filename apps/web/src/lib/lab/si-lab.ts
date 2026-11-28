@@ -201,15 +201,23 @@ function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSigna
     at.push(me);
   });
   // (M589) second order: a line further out leaks into the line inside it as that one leaks into the victim (equally
-  // spaced) and a share of it goes on; outside a link (where the lines really hear each other) as its own entry, with
-  // the outer line's signal. And the first line on each side told of the one across the victim.
+  // spaced) and a share of it goes on, (M590) every mix of NEXT and FEXT in both hops (si.hopCoefs); and (M590) the first
+  // line on each side through the victim and the line across it (third order). Each as its own entry with the line's
+  // signal (`of`); the first line on each side also told of the one across the victim (a link's lanes hear each other).
+  const kk = (i: number): [number, number] => [e.xtalk[i][0], e.xtalk[i][1]];
+  const via = (mine: number | undefined, start: 'T' | 'R', q: number | undefined, hops: [number, number][]) => {
+    if (mine === undefined || q === undefined) return;
+    const c = si.hopCoefs(start, hops), N = at[q].n, F = at[q].f;
+    if (!((c.n && N !== undefined) || (c.f && F !== undefined))) return;
+    out.push({ h: out[mine].h.map((_, j) => (N !== undefined ? c.n * (out[N].h[j] ?? 0) : 0) + (F !== undefined ? c.f * (out[F].h[j] ?? 0) : 0)), x: out[mine].x, of: mine });
+  };
   e.xtalk.forEach((_, r) => {
-    const q = rows.inner[r];
-    if (q !== undefined) for (const k of ['n', 'f'] as const) {
-      const mine = at[r][k], theirs = at[q][k];
-      if (mine !== undefined && theirs !== undefined) out.push({ h: out[theirs].h.map((v) => v * out[theirs].share!), x: out[mine].x, of: mine });
+    const q = rows.inner[r], o = rows.across[r];
+    for (const [k, start] of [['n', 'T'], ['f', 'R']] as const) {
+      via(at[r][k], start, q, q === undefined ? [] : [kk(q)]);
+      via(at[r][k], start, o, o === undefined ? [] : [kk(r), kk(o)]);
     }
-    const o = rows.across[r], mine = at[r].n ?? at[r].f, theirs = o === undefined ? undefined : at[o].n ?? at[o].f;
+    const mine = at[r].n ?? at[r].f, theirs = o === undefined ? undefined : at[o].n ?? at[o].f;
     if (mine !== undefined && theirs !== undefined) out[mine].across = theirs;
   });
   return out;
@@ -218,19 +226,23 @@ function aggressorsOf(h: number[], dt: number, spu: number, e: si.Eye, withSigna
  * at] (side 1 beside the pair's first leg, −1 its second, 0 a neighbouring pair; with several rows and no side given,
  * they sit on alternate sides, M584's one on each side, the later rows further out; at, M588, where along the line the
  * neighbour runs beside it: 0 at the receiver's end, 1 at the transmitter's; a fifth column, M589, where it stops:
- * beside the line all along from at to there, its coupling spread evenly over that stretch). */
+ * beside the line all along from at to there, its coupling spread evenly over that stretch; a sixth, M590, how its
+ * coupling changes along the stretch: the coupling at its further end over that at its nearer, 1 even, in a straight
+ * line between, the same total). */
 function crosstalkOf(v: Value | undefined): si.Eye['xtalk'] {
   if (!v) return [];
   const M = toMat(v);
   if (M.r * M.c === 0) return [];
-  if (!(M.c >= 2 && M.c <= 5) && !(M.r === 1 && M.c <= 5)) throw new LabError("'Crosstalk' is [kNext kFext], or a row per neighbour [kNext kFext], [kNext kFext side], [kNext kFext side at] or [kNext kFext side from to].");
+  if (!(M.c >= 2 && M.c <= 6) && !(M.r === 1 && M.c <= 6)) throw new LabError("'Crosstalk' is [kNext kFext], or a row per neighbour [kNext kFext], [kNext kFext side], [kNext kFext side at], [kNext kFext side from to] or [kNext kFext side from to taper].");
   return Array.from({ length: M.r }, (_, r) => {
     const at = (c: number) => (c < M.c ? M.d[c * M.r + r] : undefined), sd = at(2), where = at(3) ?? 0;
     if (sd !== undefined && ![0, 1, -1].includes(sd)) throw new LabError("'Crosstalk': a neighbour's side is 1 (beside the first leg), -1 (the second) or 0 (a neighbouring pair).");
     const to = at(4) ?? where;
     if (!(where >= 0 && where <= 1 && to >= where && to <= 1)) throw new LabError("'Crosstalk': where a neighbour runs beside the line is 0 (the receiver's end) to 1 (the transmitter's), a stretch from the nearer place to the further.");
+    const taper = at(5) ?? 1;
+    if (!(taper >= 0 && Number.isFinite(taper))) throw new LabError("'Crosstalk': how a neighbour's coupling changes along its stretch is the coupling at the further end over that at the nearer, 0 or more (1 even).");
     const side = (sd ?? (M.r > 1 ? (r % 2 ? -1 : 1) : 0)) as 0 | 1 | -1;
-    return [at(0) ?? 0, at(1) ?? 0, side, where, to];
+    return [at(0) ?? 0, at(1) ?? 0, side, where, to, taper];
   });
 }
 /**
@@ -239,9 +251,10 @@ function crosstalkOf(v: Value | undefined): si.Eye['xtalk'] {
  * delay, a uniform line's), per sample every dt. Whole symbols of delay are dropped: the neighbour's pattern is
  * independent of the victim's, so only the part of a symbol (and the loss) changes what the eye sees. Over a stretch
  * (M589) the waves of 24 places along it are averaged, the coupling spread evenly: the near-end noise lasts the round
- * trip over the stretch instead of one edge.
+ * trip over the stretch instead of one edge. (M590) With a taper the places weigh in a straight line from 1 at the nearer
+ * end to `taper` at the further, scaled to the same total coupling.
  */
-function nextPath(f: number[], H: si.C[], from: number, to: number, rate: number, spu: number): number[] {
+function nextPath(f: number[], H: si.C[], from: number, to: number, rate: number, spu: number, taper = 1): number[] {
   let u = 0, prev = 0;
   const mag = H.map(([re, im]) => Math.hypot(re, im)), ph = H.map(([re, im], k) => {
     const p = Math.atan2(im, re);
@@ -250,11 +263,12 @@ function nextPath(f: number[], H: si.C[], from: number, to: number, rate: number
   });
   // (M589) a stretch: the near-end waves of every place along it, averaged (the coupling spread evenly), 24 places
   const m = to > from ? 24 : 1, sum: number[] = [];
+  const w = Array.from({ length: m }, (_, i) => (m > 1 ? 1 + ((taper - 1) * (i + 0.5)) / m : 1)), wSum = w.reduce((x, y) => x + y, 0) || 1;
   let pk = 0;
   for (let i = 0; i < m; i++) {
     const a = m > 1 ? from + ((to - from) * (i + 0.5)) / m : from;
     const r = si.impulseResponse(f, H.map((_, k): si.C => { const g = mag[k] ** (2 * a); return [g * Math.cos(2 * a * ph[k]), g * Math.sin(2 * a * ph[k])]; }), rate, spu, 256);
-    r.h.forEach((v, k) => { sum[k] = (sum[k] ?? 0) + (v * r.dt) / m; });
+    r.h.forEach((v, k) => { sum[k] = (sum[k] ?? 0) + (v * r.dt * w[i]) / wSum; });
     // whole symbols of delay before the nearest place's wave are dropped
     if (!i) for (let k = 1; k < r.h.length; k++) if (Math.abs(r.h[k]) > Math.abs(r.h[pk])) pk = k;
   }
@@ -263,7 +277,7 @@ function nextPath(f: number[], H: si.C[], from: number, to: number, rate: number
 /** The rows' ways back (only for those partway along or over a stretch). */
 const pathsOf = (S: ReturnType<typeof sOf>, xt: si.Eye['xtalk'], rate: number, spu: number) => {
   const H = through(S);
-  return xt.map((x) => (x[3] || x[4] ? nextPath(S.f, H, x[3] ?? 0, x[4] ?? x[3] ?? 0, rate, spu) : undefined));
+  return xt.map((x) => (x[3] || x[4] ? nextPath(S.f, H, x[3] ?? 0, x[4] ?? x[3] ?? 0, rate, spu, x[5] ?? 1) : undefined));
 };
 /** The eye through IBIS-AMI models: the channel's impulse response (and any CTLE) and the aggressors' through the
  * statistical or the time-domain flow; statistical gives pulses for the usual eye, time-domain a received waveform
@@ -275,7 +289,7 @@ function amiEye(S: ReturnType<typeof sOf>, H: si.C[], rate: number, spu: number,
   const an = analogChannel(S, rate, spu, plain.h, dt, ctle, tx, rx), h = an.h;
   if (flowName === 'statistical') {
     const gs = aggressorsOf(h, dt, spu, e, false, an.near), f = ami.flow(h, dt, ui, tx, rx, null, gs), pulse = si.pulseFromImpulse(f.hRx, dt, spu);
-    // (M589) a second-order path added to its outer line's own pulse (the same signal)
+    // (M589, M590) a second- or third-order path added to its line's own pulse (the same signal)
     const agg: number[][] = [];
     f.aggRx.forEach((c, i) => { const p = si.pulseFromImpulse(c, dt, spu).p, of = gs[i]?.of; if (of === undefined) agg.push(p); else { const t = agg[of]; p.forEach((v, j) => { t[j] = (t[j] ?? 0) + v; }); } });
     f.messages.unshift(...an.messages);

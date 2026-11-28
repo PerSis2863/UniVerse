@@ -172,8 +172,9 @@ function remote(file, exe, dir) {
  * further out on the same side (M588: `inner`, the lane just inside it, 1-based) and that lane hear each other too,
  * through the inner lane's own coupling (the lines equally spaced). The first lane on each side (M589: `across`, the
  * one on the other side, and `share`, its own coupling coefficient) hear each other through the victim: a lane's leak
- * into the victim, and that share of it on into the other.
- * req: { tx, rx: { file, params, helper? }, impulse, rows, dt, ui, wave, aggs: [{ wave, h, inner?, across?, share? }], interval, training, dir }.
+ * into the victim, and that share of it on into the other. The victim also hears a lane through another line (M590:
+ * `heard`, each path's coupling `h` and the lane `of` it carries, 1-based) with that lane's transmitted wave.
+ * req: { tx, rx: { file, params, helper? }, impulse, rows, dt, ui, wave, aggs: [{ wave, h, inner?, across?, share? }], heard?: [{ of, h }], interval, training, dir }.
  */
 async function link(req) {
   const fs = require('node:fs'), path = require('node:path');
@@ -218,6 +219,11 @@ async function link(req) {
       const sj = Number(g.share) || 0, sk = Number(o.share) || 0, hj = f64(g.h), hk = f64(o.h);
       pairs.push({ j, k, toJ: channel(hk.map((v) => v * sj), req.dt, most), toK: channel(hj.map((v) => v * sk), req.dt, most) });
     });
+    // (M590) paths through another line, heard by the victim with their lane's own wave
+    const heard = (req.heard || []).map((p, i) => {
+      if (!Number.isInteger(p.of) || p.of < 1 || p.of > aggs.length) throw new Error(`Path ${i + 1} through another line: its line is one of 1 to ${aggs.length}.`);
+      return { of: p.of, chan: channel(f64(p.h), req.dt, most) };
+    });
     const out = new Float64Array(n), clocks = [], history = [];
     for (let at = 0; at < n && !error;) {
       const len = Math.min(at < trainEnd ? small : big, n - at), sent = [];
@@ -233,6 +239,7 @@ async function link(req) {
         const c = L.into(sent[j].wave), back = L.from(sent[0].wave);
         for (let k = 0; k < len; k++) { pins[0][k] += c[k]; pins[j][k] += back[k]; }
       });
+      for (const P of heard) { const c = P.chan(sent[P.of].wave); for (let k = 0; k < len; k++) pins[0][k] += c[k]; }
       for (const P of pairs) {
         const a = P.toJ(sent[P.k].wave), b = P.toK(sent[P.j].wave);
         for (let k = 0; k < len; k++) { pins[P.j][k] += a[k]; pins[P.k][k] += b[k]; }

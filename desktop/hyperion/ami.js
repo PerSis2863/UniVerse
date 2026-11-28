@@ -139,13 +139,15 @@ function run(req, prepared) {
   return ask({ file: prepared.file, params: req.params, impulse: req.impulse, rows: req.rows, aggressors: req.aggressors || 0, dt: req.dt, ui: req.ui, wave: req.wave, block: req.block });
 }
 /** A back-channel link (M579): the models run in turns in a private shared folder removed afterwards; a 32-bit one
- * through the 32-bit helper (M581); each neighbouring line in `aggs` a trained link of its own (M582), `inner` the lane just inside it on the same side (M588), `across` the first lane on the victim's other side and `share` its coupling (M589). */
+ * through the 32-bit helper (M581); each neighbouring line in `aggs` a trained link of its own (M582), `inner` the lane just inside it on the same side (M588), `across` the first lane on the victim's other side and `share` its coupling (M589); `heard` the paths through another line the victim hears, each its coupling `h` and the lane `of` it carries (M590). */
 async function link(req, tx, rx) {
   const bad = check({ ...req, aggressors: 0, params: req.tx && req.tx.params });
   if (bad) return { ok: false, error: bad };
   if (typeof req.rx?.params !== 'string' || typeof req.wave !== 'string') return { ok: false, error: 'The link request is incomplete.' };
   const aggs = req.aggs === undefined ? [] : req.aggs;
   if (!Array.isArray(aggs) || aggs.length > 16 || aggs.some((g) => !g || bytesOf(g.wave) !== bytesOf(req.wave) || bytesOf(g.h) !== req.rows * 8)) return { ok: false, error: 'The neighbouring lines in the link request have bad sizes.' };
+  const heard = req.heard === undefined ? [] : req.heard;
+  if (!Array.isArray(heard) || heard.length > 64 || heard.some((g) => !g || bytesOf(g.h) !== req.rows * 8)) return { ok: false, error: 'The paths through other lines in the link request have bad sizes.' };
   const interval = Math.round(req.interval), training = Math.round(req.training);
   if (!(interval >= 1 && interval <= 1e6 && training >= 0 && training <= 1e7)) return { ok: false, error: 'BCI_Message_Interval_UI and BCI_Training_UI must be whole numbers of UI.' };
   const side = (p, params) => {
@@ -157,7 +159,7 @@ async function link(req, tx, rx) {
   if (t.error || r.error) return { ok: false, error: t.error || r.error };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hyperion-bci-'));
   try {
-    return await ask({ op: 'link', tx: t, rx: r, impulse: req.impulse, rows: req.rows, dt: req.dt, ui: req.ui, wave: req.wave, aggs: aggs.map((g) => ({ wave: g.wave, h: g.h, ...(g.inner === undefined ? {} : { inner: Number(g.inner) }), ...(g.across === undefined ? {} : { across: Number(g.across), share: Number(g.share) || 0 }) })), interval, training, dir });
+    return await ask({ op: 'link', tx: t, rx: r, impulse: req.impulse, rows: req.rows, dt: req.dt, ui: req.ui, wave: req.wave, aggs: aggs.map((g) => ({ wave: g.wave, h: g.h, ...(g.inner === undefined ? {} : { inner: Number(g.inner) }), ...(g.across === undefined ? {} : { across: Number(g.across), share: Number(g.share) || 0 }) })), ...(heard.length ? { heard: heard.map((g) => ({ of: Number(g.of), h: g.h })) } : {}), interval, training, dir });
   } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the system cleans its temporary folder */ } }
 }
 

@@ -230,7 +230,7 @@ export function ffeZeroForcing(p: number[], cursor: number, spu: number, pre: nu
 
 export interface Eye {
   rate: number; spu: number; pam4: boolean; order: number; nsym: number; swing: number; ffe: number[]; ffePre: number;
-  dfe: number; rj: number; dj: number; noise: number; ber: number; xtalk: [number, number, (0 | 1 | -1)?, number?, number?][]; xtalkPath?: (number[] | undefined)[]; mask?: [number, number]; seed: number;
+  dfe: number; rj: number; dj: number; noise: number; ber: number; xtalk: [number, number, (0 | 1 | -1)?, number?, number?, number?][]; xtalkPath?: (number[] | undefined)[]; mask?: [number, number]; seed: number;
 }
 /** (M588, M589) Each 'Crosstalk' row's line just inside it on the same side (rows on one side stack outwards in order;
  * only rows with some coupling count), and the first line on each side of the victim (`across`: the one on the other
@@ -245,6 +245,19 @@ export function crosstalkRows(xt: Eye['xtalk']) {
   const a = first.get(1), b = first.get(-1);
   const across = xt.map((_, r) => (r === a ? b : r === b ? a : undefined));
   return { inner, across };
+}
+/**
+ * (M590) Which way a coupled wave runs, hop by hop: a wave running one way along a line leaks into the next line as a
+ * near-end wave running back (that line's kNext) and a far-end wave running on (its kFext). A neighbour's NEXT
+ * pattern starts at the receiver's end running away from it ('T'), its FEXT pattern towards it ('R'). `hops` are the
+ * lines it passes through before the last one (each [kNext kFext], the lines equally spaced); only waves reaching the
+ * victim running towards its receiver are heard: through the last line's NEXT response the share running away (`n`),
+ * through its FEXT response the share running towards (`f`). All four mixes of NEXT and FEXT in every hop.
+ */
+export function hopCoefs(start: 'T' | 'R', hops: [number, number][]) {
+  let t = start === 'T' ? 1 : 0, r = 1 - t;
+  for (const [kn, kf] of hops) [t, r] = [r * kn + t * kf, t * kn + r * kf];
+  return { n: t, f: r };
 }
 const Qinv = (p: number) => { let lo = 0, hi = 40; for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (0.5 * erfc(m / Math.SQRT2) > p) lo = m; else hi = m; } return (lo + hi) / 2; };
 function erfc(x: number) { const z = Math.abs(x), t = 1 / (1 + 0.5 * z), r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277))))))))); return x >= 0 ? r : 2 - r; }
@@ -269,10 +282,20 @@ export function eye(pulse: { p: number[]; cursor: number }, e: Eye, agg?: number
   // one NEXT and one FEXT per neighbouring line, each its own PRBS (the first line's seeds as before)
   const sym = (s: number) => symbols(prbs(e.order, e.pam4 ? 2 * e.nsym : e.nsym, s), e.pam4);
   const nextOf = (i: number) => way(dS.map((v) => v * e.xtalk[i][0]), e.xtalkPath?.[i]), fextOf = (i: number) => dP.map((v) => v * e.xtalk[i][1]);
-  // (M589) a line further out also reaches the victim through the line inside it: it leaks into that line as that line
-  // leaks into the victim (equally spaced), and a share of it (that line's own coupling) goes on: second order, k²
-  const { inner } = crosstalkRows(e.xtalk);
-  const via = (i: number, k: 0 | 1, r: number[]) => { const q = inner[i], kq = q === undefined ? 0 : e.xtalk[q][k]; if (!kq) return r; const t = k ? fextOf(q!) : nextOf(q!); return r.map((v, j) => v + kq * t[j]); };
+  // (M589) a line further out also reaches the victim through the line inside it, (M590) every mix of NEXT and FEXT
+  // in both hops (hopCoefs: only the waves running towards the receiver are heard), and the first line on each side
+  // through the victim and the line across it (third order: the victim's own pickup leaking out and back)
+  const { inner, across } = crosstalkRows(e.xtalk), kk = (i: number): [number, number] => [e.xtalk[i][0], e.xtalk[i][1]];
+  const via = (i: number, k: 0 | 1, r: number[]) => {
+    const add = (q: number | undefined, hops: [number, number][]) => {
+      if (q === undefined) return;
+      const c = hopCoefs(k ? 'R' : 'T', hops), N = c.n && e.xtalk[q][0] ? nextOf(q) : null, F = c.f && e.xtalk[q][1] ? fextOf(q) : null;
+      if (N || F) r = r.map((v, j) => v + (N ? c.n * N[j] : 0) + (F ? c.f * F[j] : 0));
+    };
+    add(inner[i], inner[i] === undefined ? [] : [kk(inner[i]!)]);
+    add(across[i], across[i] === undefined ? [] : [kk(i), kk(across[i]!)]);
+    return r;
+  };
   const xt = e.xtalk.flatMap(([kn, kf], i) => [...(kn ? [{ s: sym(e.seed + 77 + 1000 * i), r: via(i, 0, nextOf(i)) }] : []), ...(kf ? [{ s: sym(e.seed + 151 + 1000 * i), r: via(i, 1, fextOf(i)) }] : [])]);
   const L = n * spu, y = new Float64Array(L);
   const sup = (sym: number[], resp: number[]) => { for (let k = 0; k < sym.length; k++) { const base = (k - pre) * spu; for (let j = 0; j < resp.length; j++) { const idx = base + j; if (idx >= 0 && idx < L) y[idx] += sym[k] * resp[j]; } } };

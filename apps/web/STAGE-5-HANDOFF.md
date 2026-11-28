@@ -13806,3 +13806,27 @@ backwards refused; the link told `across`/`share` and no `of` lanes; in the comp
 the other (held at 0.4 V) at 0.4 × 2/3 × 0.1 × its share, one not named back refused. Not built: the four-way mix of
 NEXT and FEXT in second order (each kind goes on as itself); a line across the victim heard by the victim (third order);
 coupling that changes along a stretch (spread evenly).
+
+## M590 (28 Nov): Hyperion IBIS-AMI: every mix of NEXT and FEXT through another line, the victim hearing a line across, a coupling that changes along a stretch
+
+M589's three left-outs (the owner pasted the list, 28 Nov). **Which way waves run:** `si.hopCoefs(start, hops)` follows a
+coupled wave line by line: running one way, it leaks into the next line as a near-end wave running back (that line's
+kNext) and a far-end wave running on (its kFext); a NEXT pattern starts running away from the receiver ('T'), a FEXT
+pattern towards it ('R'); only waves reaching the victim running towards its receiver are heard, through the last
+line's NEXT response the share running away (`n`), its FEXT response the share running towards (`f`). This replaces
+M589's "NEXT through NEXT, FEXT through FEXT" (which sent a NEXT pattern's NEXT-of-NEXT to the transmitter's end, really):
+a NEXT pattern through an inner line is kFext·its NEXT response + kNext·its FEXT response, a FEXT pattern kNext·NEXT +
+kFext·FEXT. Shapes stay lumped (the first hops scalars, the last hop the line's own response). **Third order:** the first
+line on each side reaches the victim through the victim and the line across it: hops [its own k, the other's k], then
+the other's response (in `si.eye` added to its response; in `aggressorsOf` another `of` entry). **A link** now hears
+the `of` paths too: M589 left them out believing the lanes carried them, but the victim's receiver only hears each
+lane's transmitted wave, so `ami.flow` sends `heard: [{ of: lane, h }]` and the computer app's `link` adds each path's
+coupling of that lane's wave to the victim's pins (`ami.js` checks sizes, the host the lane number). **A coupling that
+changes:** 'Crosstalk' takes a sixth column, the coupling at the stretch's further end over the nearer (1 even, 0 or more):
+`nextPath` weighs its 24 places in a straight line between, scaled to the same total; FEXT unchanged. Tests: `hopCoefs`;
+an outer FEXT-only line through an inner NEXT-only one changes the eye (M589 had no path for it); the line across changes
+it by less than 0.05 of the first-order bite; a coupling growing to 5× at the far end bites less than one fading to 0,
+taper 1 equals none, a negative one refused; the link sent `heard` with lane numbers; in the computer app the victim hears
+a held lane once more through `heard`, a bad lane refused. Not built: shapes for the inner hops (they are scalars, the
+lines equally spaced), paths beyond third order, the first line's second order through the line across (fourth order),
+couplings that change along a stretch other than in a straight line.
