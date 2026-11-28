@@ -75,6 +75,40 @@ describe('Hyperion deployment: ROS 2 and AUTOSAR (M580)', () => {
     const out = execFileSync(PY, [join(__dirname, '../../../scripts/checks/arxml-check.py'), join(dir, 'GainpeakSwc/GainpeakSwc.arxml'), join(dir, 'ClampcSwc/ClampcSwc.arxml')]).toString();
     expect(out).toContain('ALL OK');
   });
+  // The official checks (M591), kept ready and off until the owner has them: AUTOSAR_XSD names the official schema file
+  // (AUTOSAR_00049.xsd), AUTOSAR_TOOL_CMD a paid tool's command with {file} for the ARXML. Without them these are skipped.
+  const arxmls = () => {
+    const { l, files } = lab();
+    l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Target', 'AUTOSAR'); codegen('clampc', {int16(0)}, 'Target', 'AUTOSAR');");
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-arxml-'));
+    unpack(files, 'GainpeakSwc.zip', dir); unpack(files, 'ClampcSwc.zip', dir);
+    return { dir, list: [join(dir, 'GainpeakSwc/GainpeakSwc.arxml'), join(dir, 'ClampcSwc/ClampcSwc.arxml')] };
+  };
+  const official = (args: string[]) => { try { return { code: 0, out: execFileSync(PY, [join(__dirname, '../../../scripts/checks/arxml-official.py'), ...args]).toString() }; } catch (e) { const x = e as { status: number; stdout: Buffer }; return { code: x.status, out: x.stdout.toString() }; } };
+  it.runIf(!!process.env.AUTOSAR_XSD && hasPy('lxml'))('the AUTOSAR files pass the official AUTOSAR schema', () => {
+    const r = official(['--xsd', process.env.AUTOSAR_XSD!, ...arxmls().list]);
+    expect(r.out).toContain('ALL OK');
+  });
+  it.runIf(!!process.env.AUTOSAR_TOOL_CMD)('the AUTOSAR files pass the owner’s AUTOSAR tool', () => {
+    const r = official(['--tool', process.env.AUTOSAR_TOOL_CMD!, ...arxmls().list]);
+    expect(r.out).toContain('ALL OK');
+  });
+  // The connection itself, with stand-ins: a small schema in place of the official one and a small program in place of
+  // the paid tool, each passing a good file and catching a bad one.
+  it.runIf(hasPy('lxml'))('the official checks’ connection works (stand-in schema and tool)', () => {
+    expect(official(['x.arxml']).out).toContain('SKIPPED');
+    const { dir, list } = arxmls();
+    const xsd = join(dir, 'standin.xsd');
+    writeFileSync(xsd, `<?xml version="1.0"?><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://autosar.org/schema/r4.0" xmlns="http://autosar.org/schema/r4.0" elementFormDefault="qualified">
+<xs:element name="AUTOSAR"><xs:complexType><xs:sequence><xs:element name="AR-PACKAGES"><xs:complexType><xs:sequence><xs:any processContents="skip" maxOccurs="unbounded"/></xs:sequence></xs:complexType></xs:element></xs:sequence><xs:anyAttribute processContents="skip"/></xs:complexType></xs:element></xs:schema>`);
+    const bad = join(dir, 'bad.arxml');
+    writeFileSync(bad, '<?xml version="1.0"?><AUTOSAR xmlns="http://autosar.org/schema/r4.0"><WRONG/></AUTOSAR>');
+    expect(official(['--xsd', xsd, ...list])).toEqual({ code: 0, out: expect.stringContaining('ALL OK') });
+    expect(official(['--xsd', xsd, bad])).toEqual({ code: 1, out: expect.stringContaining('SCHEMA') });
+    const tool = `${PY} -c "import sys; sys.exit(0 if b'<AUTOSAR' in open(sys.argv[1], 'rb').read() and b'WRONG' not in open(sys.argv[1], 'rb').read() else 3)" {file}`;
+    expect(official(['--tool', tool, ...list])).toEqual({ code: 0, out: expect.stringContaining('ALL OK') });
+    expect(official(['--tool', tool, bad])).toEqual({ code: 1, out: expect.stringContaining('TOOL') });
+  });
   it.runIf(has('cc'))('the AUTOSAR component builds and runs through its RTE with Hyperion’s answers', () => {
     const { l, files } = lab();
     l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Target', 'AUTOSAR'); codegen('clampc', {int16(0)}, 'Target', 'AUTOSAR'); [y, p] = gainpeak([1 2 3; 4 5 6], -2.5); c = clampc(int16(250));");

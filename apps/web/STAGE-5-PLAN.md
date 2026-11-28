@@ -2163,6 +2163,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M580 | Automated driving 7: deploying to ROS 2 and AUTOSAR | **Done** | `deploy.ts` (a ROS 2 package around the generated C; an AUTOSAR Classic component: runnable, ARXML, stand-in RTE), `codegen(…, 'Target', 'ROS 2' / 'AUTOSAR', 'Rate', 'Name')` writes a .zip; codegen's exponent literals fixed; example `deploy.m`. |
 | M581 | Automated driving 8: requirements, scenario test suites and reports | **Done** | `scenario-test.ts` (gap, time to collision, headway, braking, jerk, off-road; the HTML report), `drivetest-lab.ts` (scenarioMetrics, requirements, addRequirement, verifyScenarios, testReport); the Scenario designer shows the run's measurements; example `drivetests.m`. |
 | M582 | Deploying, tested for real: ROS 2 and AUTOSAR | **Done** | `deploy.test.ts`: the ARXML through autosar-data's strict check (`scripts/checks/arxml-check.py`), the ROS 2 package built with colcon on ROS 2 Jazzy and driven over real topics (`scripts/checks/ros2-check.py`); both run only where installed; `cmake_minimum_required` 3.10 (CMake 4 warned) |
+| M591 | AUTOSAR's official checks, ready and off | **Done** | `scripts/checks/arxml-official.py` (`--xsd` the official schema, `--tool` a paid tool's command); `deploy.test.ts` runs them only with `AUTOSAR_XSD` / `AUTOSAR_TOOL_CMD` set, and tests the connection with a stand-in schema and tool; **[owner]** |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 
