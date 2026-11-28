@@ -15596,3 +15596,12 @@ Ghidra's add-on retrained on the owner's RunPod (26 Nov; the owner: "train ghidr
 - **Uploaded as `ghidra-20261126-0926`** (it replaces `ghidra-20261123-1827`). The owner sets `GHIDRA_LORA` to it in Cloudflare; until then the old add-on answers the new list's skills too (only the variable changes which one).
 - **Still weak, for a later run:** sim-setup 78% (the load's kind), health 74% (a high finding with a healthy score), social 80% (green or health claims), assistant 82% (wrong details). The lessons step refused most often: meetings' Friday due dates (156), health summaries' length (99), sim-setup's load kind (56).
 - Next time: rent Community first (Secure costs about twice as much); keep `tee` and `STOP_WHEN_DONE=0` so a failure can be read before the pod goes.
+
+## M563: Hyperion power electronics: losses and heat (26–28 Nov)
+
+The owner, 28 Nov: "see all the 3 links here and built it in hyperion" (MathWorks' power-electronics pages: circuit design, motor drives and traction motors, power conversion control). Part 1 of five (M563–M567), written fresh: no MathWorks code or models.
+
+- **What already existed** (so it isn't built again): Simulate → Circuits (MNA, PWM switches, buck and boost, a MOSFET with its gate, inverters, a DC motor, M410–M432), the motor library `motor.ts` (DC motor, PMSM with FOC, `focTune`, MTPA, field weakening, steppers, six-step BLDC, motor heating, M485), `pll`, `thd`, converter imperfections (`convert.ts`), codegen and fixed point.
+- **New, `src/lib/lab/power.ts`** (maths) and **`power-lab.ts`** (the language), help in **`help-power.ts`** (joined onto `help.ts` like `help-machines.ts`): `powerDevice` (a MOSFET or IGBT with its diode from datasheet numbers and Eon/Eoff/Err tables against current at a test voltage), `conductionLoss`, `switchingLoss` (energies read at the current, scaled by voltage, times fsw), `buckLosses` (a buck's loss breakdown, CCM or DCM worked out from the ripple, synchronous or diode), `efficiencyMap` (over Vin × Iout), `fosterNet`, `zth`, `foster2cauer` (continued fraction of 1/Z(s); the test checks both impedances agree at four frequencies), `junctionTemp` (each Foster stage stepped exactly, an optional heatsink stage).
+- In DCM the body diode doesn't recover (the current reaches zero first), so `ReverseRecovery` is 0 there.
+- Tests: `power.test.ts`.

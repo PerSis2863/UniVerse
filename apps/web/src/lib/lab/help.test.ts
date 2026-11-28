@@ -11,6 +11,7 @@ import './special-lab';
 import './text-lab';
 import './net-lab';
 import './octtest-lab';
+import './power-lab';
 import './maint-lab';
 import './dsp-lab';
 import './energy-lab';
