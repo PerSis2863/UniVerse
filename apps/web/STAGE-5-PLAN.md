@@ -1234,6 +1234,37 @@ with the real AI; moving QR codes with real phones and a projector; drawing the 
 
 ---
 
+### Hyperion battery and power systems (the owner, 28 Nov)
+
+The owner: "https://www.mathworks.com/solutions/battery-systems.html now do deep analysis this whole page and built
+this in hyperion", then the power-systems pages (utility-scale power grids, electrified transportation, commercial
+energy management): "next build all these also and make sure everything is ultra smooth". Written fresh, one item at a
+time, each with tests; every window checked at 1280, light and dark, axe-clean, runs off the page's thread.
+
+Battery systems (`cellfit.ts`, `socest.ts`, `battsys-lab.ts`, `help-battery.ts`):
+- M570 cell characterisation (HPPC test, fit of 1–3 RC pairs as SOC tables). Done.
+- M571 SOC and SOH (Coulomb counting, EKF, UKF, adaptive R0, capacity from rests). Done.
+- M572 the electrochemical single-particle model with electrolyte (SPMe) and its grouped parameter estimation.
+- M573 packs: cells with spread in series and parallel (current sharing), cooling plates and their fluid path,
+  cell-to-cell temperature, ageing per cell, faults (added resistance, internal short, thermal runaway as an ARC test).
+- M574 the BMS closed loop: monitoring and protection, contactors and precharge (a state chart), CC-CV and fast
+  charging, passive and active balancing, the bar-delta filter for a pack's SOC.
+- M575 data-driven SOC (a small neural network trained on simulated drives) and SOC on a microcontroller (C).
+- M576 the Battery window (Learn → Battery): characterise, estimate, pack, BMS.
+
+Power systems (after the battery set; numbers from M577):
+- Utility grids: IEEE 9- and 39-bus load flow; phasor dynamics of machines initialised from the load flow; SVC (TSC,
+  TCR) and STATCOM; grid-forming (virtual synchronous machine) against grid-following inverters with the short-circuit
+  ratio; IEEE 2800 / 1547 ride-through checks; an MMC HVDC link (average model); distance and overcurrent relays and
+  their coordination; microgrid islanding and resynchronisation; droop microgrids; peak shaving with a BESS; harmonics.
+- Electrified transportation: a ship's electric power system (generators, propulsion, thrusters, event sequences), an
+  aircraft's DC network and its energy management, a train's traction with its TCU; EV charging (AC, DC fast, V2G for
+  frequency support, a charging station with solar).
+- Commercial energy: a data centre's racks, heat and cooling, its grid impact; a building's EMS (forecasts of load,
+  solar and price; MPC scheduling of a battery and HVAC; techno-economics: life-cycle cost, payback, IRR); PEM fuel cells
+  and electrolysers (polarisation, balance of plant, a green-hydrogen microgrid).
+- Left out on purpose: HIL and real-time machines (Speedgoat, dSPACE), certified code (IEC 61508, EN 50128).
+
 ## Progress (keep this up to date, so either agent can take over)
 
 > **Taking over?** Read `STAGE-5-HANDOFF.md` first: where things stand, what's next, the owner's rules and how to test.
@@ -1983,6 +2014,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M568 | Hyperion Simulate → Blocks: state charts (28 Nov) | **Done** (branch) | The Chart block (supervisory mode logic: states, transitions, after()), the chart as C for a microcontroller (chartToC), a thermostat example |
 | M569 | Hyperion Simulate → Circuits: makers' part libraries (28 Nov) | **Done** (branch) | .subckt, .include / .lib files opened with the netlist, .param and {expressions}, VDMOS models (flatten, spiceExpr) |
 | M570 | Hyperion battery systems: cell characterisation (28 Nov) | **Done** (branch) | ecmCell (1–3 RC pairs as SOC tables), ecmSimulate, hppcTest, hppcFit (load-and-relaxation, variable projection) |
+| M571 | Hyperion battery systems: SOC and SOH (28 Nov) | **Done** (branch) | socCoulomb, socKalman (EKF / UKF on n-RC cells), ocvSOC, sohEstimate (R0 adaptive, capacity from rests) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
