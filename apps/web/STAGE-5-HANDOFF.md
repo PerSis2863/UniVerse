@@ -15649,3 +15649,22 @@ Part 5, the last, of the owner's power-electronics ask (MathWorks' "circuit desi
 - **The layout (rule for code that builds on it):** the board joins wires only where their ends meet, so a netlist becomes a ladder: each net a horizontal rail in its own row (two apart; ground at the bottom), each part upright in its own column between its nets' rows (3 columns each, a MOSFET 5, its gate wired straight to its net's rail), and each rail cut into segments that end exactly at its parts' columns, so crossings never join. A ground mark and up to six probes are placed. Too many nets for the board's rows is an error; parts past its width are left out with a note.
 - **Faults** (`Fault` in `circuit.ts`, `Item.fault`, kept by `readBoard`): a part set to "break open" or "short out" at a time becomes 10 MΩ or 10 mΩ from then (a source's, coil's or motor's branch included, its equation turned into that resistance); a capacitor's stored current is dropped. The part shows a red ✕ (faint until it fails) and says so to screen readers.
 - Tests: `spice.test.ts` (numbers, a divider and RC solved, a MOSFET from its model switching, a resistor failing open and short). Browser check `scripts/checks/hyperion-spice-ui.mjs` (dark and light, axe clean, no page errors).
+
+## M568: Hyperion Simulate → Blocks: state charts (28 Nov)
+
+M567's left-outs (the owner, 28 Nov): "supervisory mode logic" (MathWorks' Stateflow), written fresh in **`src/lib/sim/chart.ts`**.
+
+- **The Chart block** (Blocks → Logic): typed text, `state Heat = 1` (the output while in it; the first is the start) and `Off -> Heat when u1 < 19`. Conditions: u1…u4, t, `after(s)` (seconds in the state), and / or / not, abs / min / max, + − * /, comparisons. A mistake names its line (`ChartError`).
+- **Semantics (rule for code that builds on it):** the chart moves on once at the start of each step with the inputs at that instant (`supervise` in `simulate`), the first transition that holds is taken (one a step) and the state holds through the Runge–Kutta sub-steps. Its output depends only on its state, so it never makes an algebraic loop. The chart's text is kept up to 2,000 characters (`readDiagram`).
+- **`chartToC`**: the same chart as C99 for a microcontroller (an enum, `name_init`, `name_step(&s, dt, u)`, `after` on a timer); shown and copied from the block's panel.
+- Example "A thermostat (chart)" (a 20 s rest after heating). Tests `chart.test.ts`; browser check `scripts/checks/hyperion-chart-ui.mjs`.
+- Still left out: hardware-in-the-loop and flashing a real board (need the hardware), links to paid SPICE tools.
+
+## M569: Hyperion Simulate → Circuits: makers' part libraries (28 Nov)
+
+M567's other left-out: importing vendor component libraries, in **`src/lib/sim/spice.ts`** (`flatten`, `spiceExpr`).
+
+- Open a netlist **together with** its library files (.lib, .inc, .mod, .sub; up to 12 files, 2 MB): libraries are read whether or not an `.include` / `.lib file section` names them (found by file name; a library's own `.lib section` / `.endl` markers are passed over: every section is read; from a library only `.subckt` and `.model` are taken).
+- `.subckt` with pins and `PARAMS:` defaults; `X` instances flattened (parts renamed `R1@X1`, inner nets `X1.n`, ground global), nested up to 8 deep, at most 400 parts; `.param` and `{expr}` / `'expr'` values (+ − * / ^, SPICE numbers). VDMOS models (power MOSFETs) give their Vto; `pchan` is warned as before.
+- What a subcircuit holds that the board lacks (E, G, B, Q, J sources and parts) is listed as left out, so most op-amp macromodels won't run; the board's 7 nets are still the limit.
+- Tests in `spice.test.ts`; the browser check above covers opening a netlist with a library.

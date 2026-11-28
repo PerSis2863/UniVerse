@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readSpice, spiceValue } from './spice';
+import { readSpice, spiceExpr, spiceValue } from './spice';
 import { netlist } from './schematic';
 import { Circuit } from './circuit';
 
@@ -65,5 +65,43 @@ Q1 a b c qmod
       for (let k = 0; k < 20; k++) c.step(1e-4);
       expect(c.v(b)).toBeCloseTo(kind === 'open' ? 10 : 0, 1);
     }
+  });
+});
+
+describe('vendor libraries and subcircuits (M568)', () => {
+  const lib = `* a vendor's library
+.lib typical
+.subckt DIV top mid PARAMS: R=1k
+R1 top mid {R}
+R2 mid 0 {R*3}
+.ends DIV
+.model IRFX VDMOS(Vto=3.5 Rd=10m)
+.endl`;
+  it('works out .param expressions', () => {
+    const v = new Map([['r', 1000]]);
+    expect(spiceExpr('r*2+1k', v)).toBe(3000);
+    expect(spiceExpr('(1+1)^3', v)).toBe(8);
+    expect(spiceExpr('nope', v)).toBeNull();
+  });
+  it('a subcircuit from an included library, its parameters, nets kept apart per instance', () => {
+    const r = readSpice(`uses a library
+.include "parts/vendor.lib"
+.param big=2k
+V1 in 0 12
+X1 in a DIV
+X2 a b DIV PARAMS: R={big}
+M1 b in 0 0 IRFX
+.end`, [{ name: 'vendor.lib', text: lib }]);
+    expect(r.warnings.filter((w) => !/body is tied/.test(w))).toEqual([]);
+    expect(r.parts).toBe(6); // V1, four resistors, M1
+    const net = netlist(r.board), R = net.parts.filter((p) => p.kind === 'R').map((p) => p.value).sort((a, b) => a - b);
+    expect(R).toEqual([1000, 2000, 3000, 6000]);
+    expect(r.board.items.find((i) => i.kind === 'M')!.value).toBeCloseTo(3.5, 9);
+  });
+  it('says what is missing', () => {
+    const r = readSpice('t\n.lib other.lib typ\nX1 a 0 OPAMP\nR1 a 0 1k\n');
+    expect(r.warnings.join(' ')).toMatch(/open that file together/);
+    expect(r.warnings.join(' ')).toMatch(/no subcircuit called OPAMP/);
+    expect(readSpice('t\nX1 a DIV\nR9 a 0 1\n', [{ name: 'v.lib', text: lib }]).warnings.join(' ')).toMatch(/has 2 pins, given 1/);
   });
 });

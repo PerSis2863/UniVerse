@@ -310,17 +310,22 @@ export function CircuitBench() {
           </select>
         </label>
         <label className={cn(small, 'cursor-pointer self-start')}><FileUp className="h-3.5 w-3.5" aria-hidden />Open a SPICE netlist
-          <input type="file" accept=".cir,.net,.sp,.spice,.ckt,.txt" className="sr-only" onChange={(e) => {
-            const f = e.target.files?.[0];
+          <input type="file" multiple accept=".cir,.net,.sp,.spice,.ckt,.txt,.lib,.inc,.mod,.sub" className="sr-only" onChange={(e) => {
+            const files = [...(e.target.files ?? [])].slice(0, 12);
             e.target.value = '';
-            if (!f) return;
-            if (f.size > 200_000) { setNotes(['That file is too big for a netlist (over 200 kB).']); return; }
-            void f.text().then((text) => {
-              try { const r = readSpice(text); setBoard(() => r.board); setChosen(null); setFailed(null); setNotes([`Opened ${f.name}: ${r.parts} parts.`, ...r.warnings].slice(0, 12)); }
+            if (!files.length) return;
+            if (files.reduce((s, f) => s + f.size, 0) > 2_000_000) { setNotes(['Those files are too big for netlists (over 2 MB together).']); return; }
+            // Library files (a vendor's .lib, .inc, .mod, .sub) go with the netlist: the one file that isn't one is the circuit.
+            const isLib = (n: string) => /\.(lib|inc|mod|sub)$/i.test(n), main = files.find((f) => !isLib(f.name)) ?? (files.length === 1 ? files[0] : null);
+            if (!main) { setNotes(['Choose the netlist (.cir, .net, .sp…) together with its library files.']); return; }
+            void Promise.all(files.map(async (f) => ({ name: f.name, text: await f.text() }))).then((read) => {
+              const libs = read.filter((f) => f.name !== main.name), text = read.find((f) => f.name === main.name)!.text;
+              try { const r = readSpice(text, libs); setBoard(() => r.board); setChosen(null); setFailed(null); setNotes([`Opened ${main.name}${libs.length ? ` with ${libs.map((l) => l.name).join(', ')}` : ''}: ${r.parts} parts.`, ...r.warnings].slice(0, 12)); }
               catch (err) { setNotes([err instanceof Error ? err.message : String(err)]); }
             });
           }} />
         </label>
+        <p className="-mt-2 text-xs text-zinc-600 dark:text-zinc-300">Choose a maker’s library files (.lib, .inc) with it to bring in their subcircuits and models.</p>
         <button type="button" className={cn(small, 'self-start')} onClick={() => { if (confirm('Clear the whole board?')) { setBoard((b) => ({ ...b, items: [], marks: [] })); setChosen(null); } }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Clear the board</button>
       </aside>
       <section className="panel flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="Circuit">
