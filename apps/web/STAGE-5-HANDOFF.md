@@ -13814,6 +13814,15 @@ its own cornering stiffness and axle loads), then it skids as one block as befor
 seat, 50 km/h square: slide 4.4 m and 12° braked, 6.3 m and 48° rolling (one axle's tyres grip while it coasts along,
 so it pivots); at 30°: 2.8 m → 8.5 m; a pole at 32 km/h, 30°: 0.03 m → 0.34 m. The default's numbers are unchanged.
 
+## M486zc (26 Nov): Hyperion vehicles, the struck driver's reaction time
+
+The owner (M486zb's left-out: the delay was fixed at 1 s). `sideCrash`'s `react` (s, default `REACT` 1), passed to
+`strikerAfter` and `slideAfter` and on to `ownTyres`: the struck car's wheels roll for that long, then it skids as one
+block. Language: vehicleSideCrash 'StruckReact' (0–3 s; giving it implies 'StruckRolling'). Window: Crash → Into the side →
+"This car's driver wasn't braking" shows a "Brakes after" slider (0–3 s). Aimed at the back seat, 50 km/h square: 0 s
+4.4 m and 12° (as braked), 0.5 s 5.0 m and 39°, 1 s 6.3 m and 48° (as before), 2 s 9.4 m, 3 s 11.6 m. The other driver's
+second (`REACT` in the striker's `a`/`rolls`) is still fixed.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
@@ -16088,3 +16097,403 @@ The owner's "please do this" on M580's "not tested for real".
 - Both are tests in `deploy.test.ts` that run only where the tools are (`HYP_PYTHON` names the Python with
   autosar-data or rclpy; for ROS, source ROS first so `colcon` is on the path); CI skips them.
 
+
+## M562 (26 Nov): Hyperion, the PID tuner and linearising a diagram
+
+The owner (26 Nov, four pictures of MATLAB's control-design page: the PID Tuner, hardware in the loop, production code,
+verification; "can you make all this Hyperion app"). Five items, M562–M566, all in Simulate → Blocks, a row of tools
+under the board (`BlocksBench.tsx`, `Tool`); this one is **Tune**.
+
+- **Blocks refactor:** `blocks.ts`'s `compile(dg, hold?)` returns the model's parts (`order`, `ns`, `x0`, `y`, `input`,
+  `outputs`, `deriv`, `step` = one RK4 step); `simulate` uses it. `hold` fixes chosen blocks' outputs (a loop opened
+  there; their states don't move and they aren't direct feedthrough). Later tools (real time, code, tests) build on it.
+- **Linearise** (`src/lib/sim/linearize.ts`): run to time `at`, hold block `from` at its output there, central
+  differences over every other state and the held input give A, B, C, D; `ssToTf` by Faddeev–LeVerrier. Saturations
+  pinned at a limit give 0 (the window says so).
+- **Tuning** (`src/lib/lab/pidtune.ts`, pure maths over `control.ts`): at wc the loop has gain 1 and the wanted phase
+  margin; a PID's third number from Ti = 4 Td; PIDF's filter Tf = Kd / (Kp N) folded in by correcting the aim. With no
+  wc: the most integral gain with the integral's corner at or below wc (z ≤ wc), at most ten times the plant's fastest
+  pole or zero, closed loop checked stable (1/(s+1)³ as a PI: Kp 1.15, Ki 0.454 at 0.525 rad/s; MATLAB 1.14, 0.454 at
+  0.52). P and I: the plant's own phase. `pidReport`: closed-loop step numbers (stepinfo), margins, stability, the
+  tracking, disturbance and effort transfer functions. **Trap:** `control.ts`'s time responses assume a monic
+  denominator (makeTf makes one); tf objects made by hand must be made monic (`monic` in `pidReport`), or steps are
+  nonsense (it gave 900 % overshoots). Language: `pidtune`, `pidtuneOptions` (registered from `machines-lab.ts`).
+- **The window** (`BlocksTune.tsx`, `tune.worker.ts`): the plant is the diagram as a PID block sees it (its output to the
+  block feeding its input, minus that, `minreal` 1e-5) or a typed transfer function; Type; Response time slider (wc =
+  auto × 10^±1), Transient behaviour (phase margin 85° → 30°); plots Reference tracking, Disturbance, Controller effort,
+  Bode; tables Controller parameters and Performance and robustness, Tuned beside the block's gains; **Update block**
+  writes Kp, Ki, Kd and N = 1/Tf. **Trap:** a worker that imports the engine's modules imports `@/lib/lab/interp`
+  first (the modules import each other; otherwise "Cannot access 'BUILTINS' before initialization").
+- `ScopePlot` moved to `scope-plot.tsx` (shared). Check: `scripts/checks/hyperion-control-ui.mjs` (ONLY=Tune).
+- Left out: MIMO, plants with delays, 2-DOF PIDs, tuning in discrete time.
+
+## M563 (26 Nov): Hyperion, state charts for supervisory logic
+
+The owner's second picture-paragraph ("develop and verify state machines for supervisory control and error handling;
+use graphical animation to analyze and debug supervisory logic while it is executing"). A **Chart** block (library group
+Logic) holds a state machine in plain lines (`src/lib/sim/chart.ts`): `inputs:`, `outputs:`, `state Name` (the first is
+where it starts) with `entry:` / `during:` / `exit:` actions (`a = expr; b = expr`), transitions `A -> B: condition after T
+/ actions`, tried in the order written, one per step. Expressions are parsed into a tree (`Expr`, `parseExpr`, `evalExpr`:
++ − * / ^, comparisons, && || !, abs min max sqrt sin cos exp floor, `t` = seconds in the state): the code generators
+(M565) print the same tree. Mistakes name their line; inputs can't be set; names used must be inputs, outputs or set.
+
+- **Blocks:** `KINDS[].outs` is now a function (a chart has one output per name); a wire's `out` picks which (`yo` in
+  `compile`, `input` reads it). Charts aren't direct feedthrough: they run in `update(t, x)` after each RK4 step (and
+  at 0), so their outputs hold between steps and never make an algebraic loop. `RunResult.charts`: the active state at
+  each recorded time, transitions fired and states entered. `chartOf` caches the parse per text; `chartPorts` counts
+  ports from the text even with a mistake elsewhere; the chart text is kept up to 4,000 characters (`readDiagram`).
+- **The page:** ports labelled with the chart's names, several output dots, the input selects list every output; the
+  chart is edited in a textarea with its mistake shown; editing a chart never drops its wires. **Logic** tool
+  (`BlocksLogic.tsx`): the chart drawn (states in a grid, bent arrows with their conditions), Play (the run in ~8 s) and
+  a time slider light the active state and the transition that led there; a strip of the active state over time; how
+  often each state was entered and each transition fired ("never" in amber: a gap for M566's tests).
+- Example "A tank with a supervisor (state chart)": Filling / Draining / Alarm with a dump valve.
+- Left out: hierarchy (states inside states), parallel states, events and messages, history junctions.
+
+## M564 (26 Nov): Hyperion, real-time runs and hardware in the loop
+
+The owner's second picture ("hardware-in-the-loop testing and rapid control prototyping … run real-time simulations").
+The real thing (Speedgoat target machines) is paid hardware; Hyperion's version runs the diagram against the browser's
+clock and talks to an Arduino over Web Serial with StandardFirmata (M474's `serialLink`), or the simulated one.
+
+- **Blocks:** `boardIn` (an analog pin A0–A5, value = raw / 1023 × scale; offline runs use its `test` value) and
+  `boardOut` (a pin as PWM 0–255 or on/off; the input from `lo` to `hi` mapped by `boardLevel`), group Hardware.
+  `compile(dg, hold, io)` takes a `BoardIo` (`read(b)`).
+- **`RealTime`** (`src/lib/sim/realtime.ts`): `advance(wallSeconds)` steps the model (RK4 at dt, charts too) to catch up,
+  carrying the part of a step left over (so model time keeps exactly with the clock); more than `MAX_CATCH_UP` (0.25 s) in
+  one frame is dropped and counted; outputs written only when their level changes. Timing: steps, worst late frame,
+  dropped steps, work a frame.
+- **The window** (`BlocksLive.tsx`, Blocks → Real time): Use the simulated Arduino / Connect a board / Disconnect; Run
+  in real time / Stop (started from the click, not an effect: the hooks lint refuses setState in an effect body); the
+  scopes show the last 10 s, redrawn ~15 times a second while the model steps every frame; the board's pins live.
+  Pins are set up on Run (analog reporting for inputs, PWM or output for outputs).
+- Example "Hardware in the loop (an Arduino's PWM read back)": a PI here drives D9, reads A5 (the simulated Uno wires
+  them; a real one needs an RC filter from D9 into A5). Checked: it settles on the set point through Firmata.
+- Left out: running the model on the board itself (that is M565's generated C, uploaded with the Arduino IDE), sample
+  rates beyond the screen's frame rate for the board's own I/O (Firmata reports every 50 ms).
+
+## M565 (26 Nov): Hyperion, code from block diagrams (C, C++, Structured Text, Verilog, VHDL)
+
+The owner's third picture ("generating optimized C, C++, IEC 61131-3 Structured Text, … Verilog, or VHDL code directly
+from … Simulink"). Blocks → **Code**.
+
+- **One step, every language** (`src/lib/sim/blockir.ts`): `buildIr` turns the diagram into signals (in `compile`'s
+  order), outputs (every wired Scope input, `scope1_2`; every Board output), states with their derivatives and charts;
+  names are `kind + count` (`gain1`, `chart1_pump`: `safeNames`). A step: signals, outputs, derivatives, states += DT ·
+  d (forward Euler, as generated code with a fixed-step solver), charts (inputs copied in, CASE on the state, the first
+  transition whose condition holds and whose `after` has passed), t += DT. `emulate(ir, steps)` runs exactly that in JS:
+  the reference the tests hold the compiled code against. Inputs: the Board inputs (already scaled values).
+- **Printers** (`src/lib/sim/blockcode.ts`, `generateCode(dg, lang, name)`): one statement tree (`Stmt`: set / if / case)
+  printed per language. C (model.h, model.c with `model_init` / `model_step`, main.c), C++ (a class, main.cpp),
+  Structured Text (a FUNCTION_BLOCK, LREAL, BOOL only where the language demands: `SEL`, `<>`, `AND`; `started` runs the
+  set-up on the first call), Verilog and VHDL in Q15.16 fixed point (`qmul` keeps 64 bits then shifts; one step per clock
+  edge with en; test benches print the outputs). Fixed point refuses sin, cos, exp, sqrt, floor, dividing by a signal
+  and powers other than 2 and 3, by name; numbers past ±32,767 too.
+- **Checked** (`blockcode.test.ts`): C with `-Wall -Wextra -Werror` and C++ give the emulation's numbers to 1e-9 for four
+  examples (a chart included); Verilog in Icarus and VHDL in GHDL within 0.02 on all but 2 % of steps (a chart may switch a
+  step apart: 0.01 s is 655/65,536 in Q15.16). The tests skip a compiler the machine lacks (CI has cc and c++; iverilog
+  and ghdl were installed here with apt). Euler against Runge–Kutta: the spring at dt 0.0005 agrees to 2 decimals.
+- **The window** (`BlocksCode.tsx`): language, name, the files as tabs, Copy, Download all (a ZIP by fflate).
+- Left out: Ladder Diagram, CUDA, fixed-point C (M524 does that for scripts), choosing word lengths for the HDL,
+  multirate diagrams, the PLC vendor's project file (paste the .st into TIA Portal / CODESYS / Studio 5000).
+
+## M566 (26 Nov): Hyperion, verification and validation of block diagrams
+
+The owner's fourth picture ("author, import, and manage requirements … traceability across designs, tests, and generated
+code … automatically generate test cases for model coverage … check model and code compliance … prove the absence of
+critical run-time errors … reports … to certify to … IEC 61508, ISO 26262, and DO-178"). Blocks → **Verify**.
+
+- **Requirements** (`Diagram.reqs`, `Req`, kept by `readDiagram`, 50 at most): a signal (`blockId#out`) that stays
+  between a and b from a time, settles within ±b of a by a time, reaches a by a time, or overshoots at most a % after a
+  time (`checkReq`, with where it first fails).
+- **Coverage** (`outcomes`, `run` in `src/lib/sim/verify.ts`): each Saturation and Board output below / inside / above,
+  each chart state entered, transition fired, and its condition found false and true (`ChartRun.cond`, counted in
+  `chartStep` whenever a condition is tried).
+- **Tests made automatically** (`generateTests`): the model as it is, then seeded random changes to the sources' numbers
+  (`KNOBS`), one to three at a time, kept when they reach an outcome no test had, until everything is reached or the
+  budget of runs is spent; the same tests every time (`rng` seed 7). Every requirement is also checked under each test.
+- **Model checks** (`modelChecks`): unwired inputs, outputs going nowhere, a saturation upside down, an algebraic loop,
+  a PID filter or transfer function too fast for the step (unstable Euler in the generated code), unreachable chart
+  states, transitions shadowed by an earlier always-true one, chart lines that divide by a signal or take a root of one
+  (run-time errors in the code), values past ±32,767 in any test (fixed-point overflow in the HDL). The ranges are what
+  the tests saw, not a proof: the report says so.
+- **The window** (`BlocksVerify.tsx`, `verify.worker.ts`): add requirements, Run verification (in a worker), pass / fail
+  per requirement with the generated tests' count, coverage with what wasn't reached, the tests, the checks; **Download
+  the report** (one HTML page: requirements, traceability to blocks and the generated code's names (`safeNames`, M565),
+  coverage, tests, checks, ranges, and what the evidence is for under IEC 61508 / ISO 26262 / DO-178C: not a certificate).
+- Left out: formal proof (model checking every input), MC/DC, importing requirements from ReqIF or Word, static
+  analysis of hand-written C (scripts have M399's checker).
+
+## M567 (26 Nov): Hyperion, time delays (a Delay block, delays in the tuner, scripts and generated code)
+
+M562's left-out (the owner, 26 Nov: "please do this all").
+
+- **`pade(L, N)`** (`src/lib/lab/pade.ts`): e^(−sL) as polynomials. Order 4 everywhere: at 6, `rootsOf` (Hyperion's eig)
+  sometimes can't settle the 9th-degree polynomials a delayed plant makes ("eig didn't settle").
+- **Delay block** (Continuous): its input's past kept at every major step (`past`, recorded in `update`, which now runs
+  for delays too) and read back L later with straight lines between steps; `initial` until then; never direct
+  feedthrough. `compile(…, padeDelays)` makes it a Padé transfer function instead: `linearize` uses that for the
+  operating run and the opened loop alike (so the states line up), and a delay's phase reaches the tuner.
+- **Scripts:** `tf(num, den, 'InputDelay' | 'OutputDelay' | 'IODelay', T)` folds the delay in; `pade(T, N)`.
+- **Tuner:** a typed plant has a Delay field. A delay costs phase, so the crossover chosen is lower, the margin kept.
+- **Code:** a delay is a ring of round(L / dt) past inputs (`Ir.delays`, `read` / `write` statements): C and C++ arrays,
+  Structured Text `ARRAY[0..n-1] OF LREAL` (and `DINT` counters now), Verilog `reg` arrays, VHDL an array type in the
+  process. Tested: emulation against the simulation, C to 1e-9, Verilog and VHDL in fixed point.
+
+## M568 (26 Nov): Hyperion, tuning several PID loops together
+
+M562's left-out ("tuning several inputs at once"). Blocks → Tune shows **Tune all N loops together** when the diagram
+has two or more PID blocks (`src/lib/sim/tune-all.ts`, `tuneAll`, run in `tune.worker.ts` as a `ToTuneAll` message).
+
+- **Sequential loop closing, iterated:** each loop's crossover is chosen once, from the plant it sees with every other
+  loop open (gains 0), fastest loop first; then round after round each loop is retuned on the plant it sees with the
+  others closed at their current gains (`plantSeenBy` = `linearize` from the block's output to what feeds it, minus),
+  moving half way to the new gains after the first round, until no gain moves by 1 % (`settled`) or 20 rounds.
+- **Traps learned:** a crossover chosen afresh each round runs away (the closed loops' own fast poles raise the "ten
+  times the fastest pole" cap every round); and coupled loops can cross 0 dB more than once, so a design that has 60° at
+  its own crossover may have 38° at another: `tuneNear` lowers the crossover (×0.7 at a time) until the worst crossing
+  has the margin (within 3°), or keeps the best it found.
+- **Checks:** each loop's margins with the others closed (`pidReport` on its seen plant), and the whole closed loop's
+  stability from its own Jacobian (`closedLoopStable`: finite differences of every state, poles of its characteristic
+  polynomial). Example "Two coupled loops (tune them together)", a 2×2 plant; both loops reach 60° (PI and PIDF).
+- Left out: true simultaneous (structured H∞) tuning as MATLAB's systune does, decouplers.
+
+## M569 (26 Nov): Hyperion, states inside states in charts
+
+M563's left-out. A chart state can sit inside another: `state Slow in Running` (the outer one written first).
+
+- **Meaning** (Stateflow's, simply): entering an outer state enters its first inner state, down to an innermost one; an
+  outer state's transitions are tried before its inner states' (outermost first) and leave whichever inner state is
+  active; outer during actions run before inner ones; a transition exits from the active innermost state up to (not
+  including) the deepest state holding both ends, then enters down to the target's first innermost state.
+- **How:** `parseChart` flattens such a chart (`flatten` in `chart.ts`) into an ordinary one over its innermost states
+  (named `Running.Slow`), so the simulator, coverage, Verify and all five code generators work unchanged. Outer states
+  keep when they were entered in hidden locals `_since_X` (set to the new name `time`, the absolute time, which chart
+  expressions may use too); an outer state's `t` and `after` read `time − _since_X`; entry actions see t = 0. `Chart.init`
+  holds the starting chain of entries (used by `chartStart`, the code's set-up and `emulate`), `Chart.parents` each
+  leaf's outer states (the Logic drawing puts a dashed box round each outer state's inner ones and draws an outer
+  transition once). Reserved: `time`, `in`.
+- Example "A machine with modes (states inside states)"; tests: the first inner state on entry, the outer transition
+  winning from inside, an outer `after` counted from the outer state's entry, generated C matching the emulation.
+- Left out: parallel (AND) states, history junctions, inner transitions that don't leave the outer state.
+
+## M570 (27 Nov): Hyperion, states side by side in charts
+
+M569's left-out (the owner, 27 Nov, sent the list of left-outs back). `state On parallel` (or `(parallel)`): On's direct
+inner states are regions that are all active at once.
+
+- **Meaning** (Stateflow's): from the outermost active state down, its transitions are tried (the first that holds
+  fires); if none fires, its during actions run and then its inside takes its turn: the active inner state, or each
+  region in the order written, each able to fire one transition per step and seeing the values the regions before it
+  left. An outer transition leaves every region (innermost first, regions last to first). Entering a parallel state
+  enters every region's first state. A transition between two regions of the same parallel state is refused.
+- **Change from M569:** an outer state's during actions now run whenever its own transitions don't fire, even when an
+  inner state's transition then fires (Stateflow's order); M569 skipped them in that case.
+- **How:** `flatten` in `chart.ts` is one engine for both: per configuration (the set of active leaves) it lists every
+  way a step can go (`options`, an `Outcome` each: guard, actions, moves), regions combined in order; a later region's
+  guard is rewritten onto the values at the step's start (`subst` folds the earlier actions in), so the flat chart's
+  "first transition that holds" picks the same thing. Without parallel states every leaf is still a flat state (the
+  starting one first); with them only reachable configurations (at most 64 states, 600 transitions). Leaves inside a
+  parallel state keep `_since_X` like outer states.
+- **Drawing:** `Chart.written` keeps the chart as written (leaves, which are active in each flat state, outer states,
+  the parallel ones, transitions and which of them each flat transition fired); `viewOf` in `BlocksLogic.tsx` draws the
+  leaves with every region's active one lit, a solid box marked "(side by side)" round a parallel state. Flat states are
+  named `On.Pump.Idle | On.Light.Green`, shortened on the timeline and in "What ran" to `Idle + Green`. Each region (or
+  state outside them) is its own column of the drawing (`layout(n, groups)`), so region boxes never overlap.
+- Example "A pump and its light (states side by side)"; tests: both regions in one step, the light's `after` counted
+  from its own entry, the outer transition leaving both, refusals, the emulated code following the simulation.
+- Left out: history junctions, events broadcast between regions (regions talk through variables), inner transitions
+  that don't leave the outer state.
+
+## M571 (27 Nov): Hyperion, Ladder Diagram from block diagrams
+
+M565's left-out. Blocks → Code → "Ladder Diagram (IEC 61131-3)" (`src/lib/sim/ladder.ts`, `genLadder`).
+
+- **Lowering** (`lowerLadder`): the same `steps` as every language (now exported from `blockcode.ts` with `roles`,
+  `initLines`, `cNum`, `Stmt`), one box per operation into temporaries (`t1…` LREAL, `b1…` BOOL, `i1…` DINT); a
+  comparison is a box writing a BOOL, then a contact on it; && is contacts in series, || parallel branches, ! a normally
+  closed contact (De Morgan pushes it down to the contacts). An if / case becomes guard coils `g1…`, every arm's guard
+  worked out before any arm's actions (an earlier arm's actions must not change what a later arm reads), and each
+  action's box has its guard's contact on EN. floor and fmod are TRUNC → DINT_TO_LREAL boxes; delays index the ring
+  (`buf[buf_k]`) with the array set in its declaration (PLCopen `repetitionValue`); the first call's set-up hangs off
+  `[/started] → (first)`.
+- **Files:** `model_ladder.txt` (rungs drawn in text: `--[ x ]--`, `--[/x ]--`, branches between `+`, `( coil )`,
+  `[ y := OP(a, b) ]`) and `model.xml` (PLCopen TC6 XML 2.01, a function block with an LD body: power rails, contacts,
+  coils, blocks with EN/ENO, in- and out-variables; positions laid out simply).
+- **Tests** (`ladder.test.ts`): `runLadder` steps the rungs and matches `emulate` to 1e-9 on seven diagrams (charts,
+  states inside and side by side, coupled loops, a delay); the XML is well formed, every connection names an element.
+- Not tried in a real PLC tool here (none in the container): the XML follows the TC6 2.01 schema's element names; if a
+  tool complains on import, its message names the element.
+- Left out: function block diagram (FBD) and sequential function chart (SFC) output.
+
+## M572 (27 Nov): Hyperion, tuning every loop at once (structured H∞)
+
+M568's left-out ("MATLAB's more advanced all-at-once tuning method", systune). Blocks → Tune → **Tune all at once
+(H∞)** (`src/lib/sim/systune.ts`, `systune`, run in `tune.worker.ts` as a `ToSystune` message).
+
+- **The plant** once, every loop open (all PID gains 0): `G_ij` = `linearize(open, pid_j, what feeds pid_i)`, negated.
+  Then on 140 frequencies, `S = (I + G·C)⁻¹` (`sensDiag`, complex Gauss–Jordan); `S_ii` is loop i's sensitivity with
+  the others closed.
+- **Goals** (`goals`): soft, tracking `max_i ‖W_i S_ii‖∞` with `W_i = (s/2 + ω_i)/(s + 0.001 ω_i)`, ω_i from M568's
+  crossovers; hard, the disk margin `α_i = 1/‖S_ii − ½‖∞ ≥ 2 tan(PM/2)` and roll-off `‖W_T (1 − S_ii)‖∞ ≤ 1`,
+  `W_T = (s + 5ω_i)/(10ω_i)`. **Trap:** without the roll-off goal the gains run off to 10¹³ (more gain always tracks
+  better on paper; the closed loop then fails its stability check).
+- **Search:** gains in log-space (signs from M568's design), Nelder–Mead restarted three times from where it stops,
+  from M568's design and three spread starts (seeded); score = soft + 100 · (hard − 1)⁺; gains kept within e⁹ of the
+  start; the best whose whole loop is stable (`closedLoopStable` on the diagram) wins, else M568's design stays.
+- Disk margin shown as the phase (±2 atan(α/2)) and gain (±20 log((2+α)/(2−α)) dB) it guarantees together, so its
+  phase reads lower than the classic one for the same loop.
+- Two-loop example (PI, 60°): tracking 1.49 → 0.50, hard 1.27 → 1.00, about 1.5 s. In the time domain y1's overshoot
+  42 % → 25 %, the dip when the other loop steps 28 % → 0.1 %.
+- **A PIDF's filter time is tuned too** (one more log-variable per loop): with M568's fixed `Tf = Kd/(Kp·N)` the
+  controller's high-frequency gain is Kp(1+N), the roll-off goal can't be met and every candidate failed (the UI's
+  default is PIDF; found by the browser check). Now PIDF meets every goal too (hard 8.5 → 1.0).
+- Left out: multiloop (D-scaled) disk margins, decouplers, goals the person writes (custom weights, step targets).
+
+## M573 (27 Nov): Hyperion, proofs for every input (formal verification of charts)
+
+M566's left-out ("formal proof, model checking every input"). Blocks → Verify → **Prove for every input**
+(`src/lib/sim/prove.ts`, `BlocksProve.tsx`, `prove.worker.ts`), for the chosen Chart block.
+
+- **Abstract interpretation over intervals** (`boxes`): per flat state a box (a range per output and own variable).
+  The start is exact (`chartStart`); each step takes the inputs as anything in their ranges and `t`, `time` as any
+  time, follows every transition whose condition might hold (the box refined by it, `refine`), the during actions
+  otherwise (refined by every earlier condition being false, except past a transition with `after`, which may not have
+  waited), and joins what arrives; a box that grows more than 25 times is widened to ±∞ on the growing side, so it
+  ends. Sound: no box means never reached, a transition never refined-possible can never fire, a property true over
+  every box (`ivOf`, interval arithmetic for every chart operator) is proved, and the outputs' joined ranges are proved
+  bounds. Hidden `_since_*` and `time − _since_*` come out as any value, so timers never make a proof wrong (only less
+  sharp).
+- **Counterexample search** (`search`) when the boxes can't decide, or to show a state is reachable: seeded random
+  runs of the chart itself (400 × 40 steps per question), inputs from their ends, 0, every number in the conditions
+  and ±0.001, ±1 around them; steps of dt and long waits (the largest `after` + dt). Found: FALSIFIED (or "can be
+  reached") with the steps to replay; otherwise "Not decided", said plainly.
+- **Properties:** chart expressions over outputs, own variables, inputs and `in(State)` (`parseProperty` turns it into
+  `__in_State`, true when that name is part of the flat state's name: outer and side-by-side states count). Input
+  ranges per input (blank = any real number). Properties and ranges live in the window, not saved with the diagram.
+- Tests (`prove.test.ts`): an unreachable state and a dead (contradictory or shadowed) transition proved, bounds,
+  invariants, a counterexample, ranges changing the answer, a counter widened to [0, ∞), side-by-side regions' coupling
+  proved. Browser check `hyperion-control-ui.mjs` (Parallel, Ladder, At once, Prove; axe clean, light and dark).
+- Left out: proofs over the continuous blocks (the chart's inputs stand for whatever the diagram feeds it), relational
+  domains (octagons, polyhedra: two variables' relation is lost in boxes), temporal properties beyond "always" and
+  "can reach" (for example "within 2 s after").
+
+## M574 (27 Nov): Hyperion, proofs inside the diagram, rules kept, history in charts
+
+M573's three left-outs, plus the red Checks run on 8746f99.
+
+- **Checks fix:** `ladder.test.ts` line 33 used `(x.match(re) ?? [])`, which GitHub's fresh TypeScript read as `never[]`
+  ("Property 'startsWith' does not exist on type 'never'"); local passed. Now `[...x.matchAll(re)]`. Watch for the
+  `?? []` pattern on a `match` result in new code.
+- **History** (`state Machine history`, `chart.ts`): Stateflow's history junction, shallow. `_h_<Machine>` (a hidden
+  local) holds the index of the inner state last entered (set in that inner state's entry chain; 0 at the start, so the
+  first visit is as before). `enterTo` now returns the ways in (`Entry`: guard, actions, leaves): a history state gives
+  one per inner state, guarded by `_h_X == j`, the guard `subst`-ed by whatever runs before it (exits, the
+  transition's actions, earlier regions); `options` pushes one outcome per way; the start takes the way whose guard
+  holds with every `_h_` at 0. An explicit target inside still wins; the remembered state's own inside starts afresh
+  unless it has `history` too. Refused on a parallel state and on a state with nothing inside. `Chart.history` lists
+  them; the drawing labels the box "(H: remembers)". Simulation, generated code, Ladder and Prove need nothing new
+  (it's all in the flat chart). Tests in `chart.test.ts` (with/without history, explicit target, code matches).
+- **The rest of the diagram** (`prove-diagram.ts`, `diagramRanges`, `chartInputRanges`): a range for every signal over
+  the run (0 … stop s), a monotone fixpoint over the blocks (⊥ = nothing yet; 12 growths → widened to ±∞; ≤ 300
+  rounds). Transfer functions: `impulseParts`, ∫h⁺ and ∫h⁻ of the strictly proper part by RK4 (step ≤ stop/2000 and
+  ≤ 0.2/(1+max|a|), stops when died away, a 1e-4 relative margin), output ⊂ D·u + ∫h⁺·u + ∫h⁻·u (from rest). Integrator:
+  start + stop·hull(0, u); PID: Kp·e + Ki·stop·hull(0,e) + Kd·N·(e − hull(0,e)); ramp to where it gets by `stop`;
+  board inputs any value; charts by M573's `boxes` (cached per input ranges). The worker (`prove.worker.ts`) now gets
+  the whole diagram and the chart's id (`ToProve.dg`, `chart`, `fromDiagram`) and returns the ranges used.
+  **Trap:** an integrator inside a loop is bounded only by the run's length, so the tank example gives level ∈
+  [−94.5, 89.5]: sound, not sharp. A loop with no saturation or chart in it widens to ±∞ (the chart then sees "any
+  number", same as before).
+- **Kept with the diagram:** `Diagram.prove` (`ProveRules`: props, ranges as typed strings, `fromDiagram`), per Chart
+  block id, cleaned by `readDiagram` (≤ 30 charts, 20 properties of ≤ 200 characters, 6 ranges). `BlocksProve` reads
+  and writes it through `setProve` from `BlocksBench` (so it's saved and undone like the rest of the diagram).
+- Browser check `hyperion-control-ui.mjs` (ONLY=Prove): the diagram's ranges shown, the rules in `uv-sim-blocks`; axe
+  clean, light and dark.
+- Left out: deep history (Stateflow's is shallow too), relating signals to each other in the diagram (an integrator in
+  a loop is bounded by the run's length, not by the loop holding it), proofs past the run's end for the diagram part.
+
+
+## M575 (27 Nov): Hyperion, the diagram's loops proved together, forever, and deep history
+
+M574's four left-outs (loose ranges in a loop, a loop of integrators going to "any value", one level of history, the
+diagram part covering only the run).
+
+- **The linear part as one system** (`prove-linear.ts`): `linearNet` joins gains, sums, integrators, transfer functions
+  and PIDs into ẋ = Ax + Bu, s = Cx + Du; u are the "cuts" (outputs of every other block that feed a linear one). Each
+  signal: free response range + Σ (D + ∫h⁺ + ∫h⁻)·[u] (`coefficients`, `sigRange`), h = C e^{At} B followed by RK4
+  (columns [B | x0], step ≤ 0.2/(1 + max row sum), budget 2e8 multiply-adds). Signals are grouped by the closed set of
+  states they depend on (`closure`); **forever** only when that part is stable (`abscissa`: the largest real part of
+  its eigenvalues, `eigvals` from `lab/complex.ts`, < 0), followed until it dies away (1e-13 of the peak) with a tail
+  margin of 2·|h(T)|/|α|; an unstable part (a bare integrator) gets "any value" forever and the run's bound over the run.
+  The convolution over the whole loop is never looser than block by block, so it replaces M574's per-block integrator,
+  transfer-function and PID rules (and `impulseParts`, removed).
+- **A chart with its plant** (`prove-loop.ts`, `loopRanges`): when a chart's inputs read linear signals whose states its
+  own outputs move, the loop is one discrete system per dt: x ← Φx + Γ·y (chart outputs held, exact) + P·u + N·u (other
+  cuts, positive and negative parts of ∫e^{As}b, so they may vary within the step). Boxes per (state, steps active):
+  states with `after` are split into ⌈after/dt⌉+2 pieces (capped at 4000 nodes, then "maybe" as before) so a timed
+  state can't drift longer than its timer allows. A chart input that is exactly one plant state takes that state's
+  name, so its conditions narrow the plant (`level >= 2`). Growth: plain joins up to 2000 times per node (guards
+  usually stop it first), then widening to the next **threshold** (numbers in the conditions, ±2^k), then up to 60
+  rounds of **narrowing** (each box met with what really reaches it). Without the 2000 joins the tank's Filling state
+  kept −∞ (a self-loop with no guard on that side can't be narrowed back): keep that in mind before lowering it.
+- **`diagramRanges`** now solves twice (`solve(dg, net, stop)` and `solve(…, Infinity)`: a ramp grows to ±∞ forever),
+  fixpoint over the other blocks with the linear signals recomputed each round, then each chart's loop result capped in
+  (`loop`: its outputs, and linear signals from the plant's state ranges widened by one step's drift dt·|ẋ|, since boxes
+  hold at the steps), then 6 narrowing rounds. `sig` is the run's ranges capped by the forever ones; `forever` is new;
+  `chartInputRanges(…, 'forever')`. The worker sends `forever: true` when the chart's forever inputs equal the run's;
+  the window then says "These hold after the run too, so the proof does".
+- Results: the tank example's level [0.985, 2.515] (was [−94.5, 89.5]), forever; the damped spring's x within ±1.01
+  forever (was ±∞); a PI loop on 1/(s+1) bounded forever.
+- **Deep history** (`state X history deep`, `chart.ts`): every state inside X with states of its own (not a parallel
+  one) gets `history` too, so the whole inside resumes; `Chart.deep` lists them, drawn "(H*: remembers all inside)".
+  "deep" alone is refused. Difference from UML's deep history: entering an inner state of X directly from outside also
+  resumes that inner state's own inside (it has `history`).
+- Tests: `prove-diagram.test.ts` (spring forever, bare integrator run only, PI loop, the tank with a proof that only
+  holds with the diagram's ranges), `chart.test.ts` (deep vs shallow vs none). Browser check `hyperion-control-ui.mjs`
+  (ONLY=Prove) waits for "These hold after the run too".
+- Left out: relations between two plant states inside a chart loop (boxes per state, so a 2-state oscillating plant
+  under a chart can still widen; the linear bound then applies), saturations and products inside the chart's loop are
+  taken at their ranges (not followed step by step), delays are still cuts (their start value or anything their input
+  had), and several charts in one loop are each proved with the others' outputs as ranges.
+
+## M576 (27 Nov): fix, Machine health stuck on "computing…"
+
+The owner's screenshot: Hyperion → Learn → Machine health with the Recording and Feature lists empty and "computing…"
+forever (Signal, Spectrum, Envelope spectrum never drawn).
+
+- Not the maths: the same code draws all three in under 2 s in `local:dev` and in a production build (`local:serve`).
+  The page waited for its background worker (`health.worker.ts`) with no `error` handler, so a worker that never
+  started (its script gone: a tab left open across a deploy, PR #163 had just gone live) left it waiting for ever.
+  Cloudflare's `_headers` already give `/_next/static/*` the isolation header the workers need (M521), so not that.
+- `watchWorker(w, name, failed)` in `src/lib/error-monitor.ts`: a bare `error` (no message: the script didn't load)
+  goes through `captureError` as a `ChunkLoadError`, so the page reloads once to the new version like any old chunk
+  (then the site's Reload screen); a crash with a message is reported as a runtime error; either way `failed(message)`.
+  Used by Learn's three tabs: Machine health (shows the error, stops "computing…"), Classify (`useLatestWorker` ends
+  the job) and Sciences. Test `error-monitor.test.ts`; checked in a browser with the worker's file blocked (one reload,
+  then the Reload screen).
+- Other Hyperion pages still create workers without it (20 more `new Worker(new URL(…))`, listed by
+  `grep -rn "new Worker(new URL" src`): add `watchWorker` where a page shows a busy state while it waits.
+
+## M577 (27 Nov): fix, every Hyperion window stops waiting when its worker can't start
+
+M576's left-out. `watchWorker` (`src/lib/error-monitor.ts`) now also guards the Code window (`LabApp.tsx`: the message
+goes to the command window, the run and anything queued end) and the Simulate benches: Structures, Heat, Fields,
+3D file, Fluids, Planner, Sensing, Blocks and its Tune, Prove and Verify tools (busy / running… ends and a toast says
+why). As in M576, a worker that didn't load reloads the page once to the new version.
+- Not guarded on purpose: the decorative workers (`AppBackdrop`, `EarthGlobe`, `Planet`, Trace's map engine), Ghidra's
+  on-device model (it already falls back) and `lab.worker.ts`'s own `par.worker.ts` helpers (inside a worker).
+- A new page that waits on a worker: call `watchWorker(w, name, failed)` right after `new Worker(...)`.
+
+## M578 (27 Nov): fix, M577's left-outs (the last workers that could wait for ever)
+
+- **Hyperion's parallel helpers** (`lab.worker.ts`, `WorkerPool`): a `par.worker.ts` that doesn't start or crashes ends
+  its task with `{ error }` (`fail`, the worker tracked in `on`), so parfor / parfeval stop with "In a parfor
+  iteration: …" in place of "running…" for ever; `warm()` keeps the waiting set only if every helper answered (else
+  `canWait` is false and the run hands out its iterations the other way). No unit test: the pool lives in the worker
+  file (Worker isn't in Vitest).
+- **The console's Ghidra try-out** (`console/ghidra.tsx`): `watchWorker`, the error shown, the worker dropped so the
+  next press starts a new one. **The on-device Ghidra** (`ghidra-device.ts`): `onerror` answers null at once.
+- Already handled, left alone: `AppBackdrop` and `Planet` draw on the page instead (M137), Trace's map engine projects
+  on the page. The landing's `EarthGlobe` has no fallback once its canvas is handed over: it just stays invisible
+  (it fades in only on `ready`), which is acceptable for a decoration.
+- Every `new Worker(new URL(…))` in `src` now has an error path.

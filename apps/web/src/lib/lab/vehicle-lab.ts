@@ -190,7 +190,10 @@ def('vehicleSideCrash', (a, nout, lab) => {
   if (!(angle >= 0 && angle <= 60)) throw new LabError("'Angle' is degrees from square on, 0 to 60.");
   if (hitAt !== undefined && !(Math.abs(hitAt) <= 3)) throw new LabError("'HitAt' is where the blow lands, metres ahead of the centre of mass (behind: negative), up to 3.");
   if (seatRow !== 'front' && seatRow !== 'rear') throw new LabError("'Row' is 'front' or 'rear'.");
-  const c = vd.sideCrash(v, sp, { into, other, belt: flag('belts', 1), bags: flag('airbags', 1), seat, beside: flag('beside', 0), angle, hitAt, row: seatRow, braked: flag('otherbraked', 0), rolling: flag('struckrolling', 0) });
+  // M486zc: 'StruckReact', the seconds this car's driver takes to brake (its wheels roll till then; implies 'StruckRolling').
+  const react = o.get('struckreact') ? toMat(o.get('struckreact')!).d[0] : undefined;
+  if (react !== undefined && !(react >= 0 && react <= 3)) throw new LabError("'StruckReact' is the seconds this car's driver takes to brake, 0 to 3.");
+  const c = vd.sideCrash(v, sp, { into, other, belt: flag('belts', 1), bags: flag('airbags', 1), seat, beside: flag('beside', 0), angle, hitAt, row: seatRow, braked: flag('otherbraked', 0), rolling: flag('struckrolling', 0) || react !== undefined, react });
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Intrusion', num(c.intrusion)], ['SpeedChange', num(c.dv)], ['AlongSpeedChange', num(c.along)], ['Spin', num(c.spin)], ['Ribs', num(c.ribs)], ['AirbagAt', num(c.bagAt)], ['ChestG', num(c.chestG)], ['HeadG', num(c.headG)], ['HeadHit', num(c.headHit ? 1 : 0)], ['PersonForce', num(c.hitPerson)], ['Injury', str(c.risk)],
     // M486q: where it slides after the blow.
     ['SlideDistance', num(c.path.distance)], ['SlideTurn', num(c.path.turned)], ['Path', table([['Time', col(c.path.t)], ['X', col(c.path.x)], ['Y', col(c.path.y)], ['Turn', col(c.path.psi)]])],

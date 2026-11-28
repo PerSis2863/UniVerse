@@ -122,6 +122,7 @@ class WorkerPool implements Pool {
   private all: Worker[] = [];
   private queue: { task: Task; done: (r: TaskResult) => void }[] = [];
   private waiting = new Map<number, (r: TaskResult) => void>();
+  private on = new Map<Worker, number>();
   private seq = 0;
   constructor(readonly size: number) {}
   run(task: Task) { return new Promise<TaskResult>((done) => { this.queue.push({ task, done }); this.next(); }); }
@@ -130,14 +131,25 @@ class WorkerPool implements Pool {
       let w = this.idle.pop();
       if (!w && this.all.length < this.size) {
         w = new Worker(new URL('./par.worker.ts', import.meta.url));
-        w.onmessage = (ev: MessageEvent<{ id: number; result: TaskResult }>) => { const d = this.waiting.get(ev.data.id); this.waiting.delete(ev.data.id); this.idle.push(ev.target as Worker); d?.(ev.data.result); this.next(); };
+        w.onmessage = (ev: MessageEvent<{ id: number; result: TaskResult }>) => { const d = this.waiting.get(ev.data.id); this.waiting.delete(ev.data.id); this.on.delete(ev.target as Worker); this.idle.push(ev.target as Worker); d?.(ev.data.result); this.next(); };
+        // M578: a helper that didn't start (its file gone after an update) or crashed ends its task with an error, not a wait.
+        w.onerror = (ev) => { ev.preventDefault(); this.fail(ev.target as Worker, ev.message || 'a parallel worker couldn’t start (reload the page)'); };
         this.all.push(w);
       }
       if (!w) return;
       const job = this.queue.shift()!, id = ++this.seq;
       this.waiting.set(id, job.done);
+      this.on.set(w, id);
       w.postMessage({ id, task: job.task });
     }
+  }
+  private fail(w: Worker, error: string) {
+    w.terminate();
+    this.all = this.all.filter((x) => x !== w); this.idle = this.idle.filter((x) => x !== w);
+    const id = this.on.get(w); this.on.delete(w);
+    const d = id === undefined ? undefined : this.waiting.get(id);
+    if (id !== undefined) this.waiting.delete(id);
+    d?.({ error, out: '', ms: 0 });
   }
   // M521: on an isolated page a second set of engines, each with a slot of shared memory, so a parfor inside a
   // function or a loop can hand out its iterations and sleep until every slot is answered. They are started (and
@@ -145,11 +157,15 @@ class WorkerPool implements Pool {
   private ready: { w: Worker; sab: SharedArrayBuffer }[] = [];
   async warm() {
     if (!canShare() || this.ready.length) return;
-    this.ready = await Promise.all(Array.from({ length: this.size }, () => new Promise<{ w: Worker; sab: SharedArrayBuffer }>((ok) => {
+    const got = await Promise.all(Array.from({ length: this.size }, () => new Promise<{ w: Worker; sab: SharedArrayBuffer } | null>((ok) => {
       const w = new Worker(new URL('./par.worker.ts', import.meta.url)), sab = newSlot(32 << 20);
       w.onmessage = () => ok({ w, sab });
+      // M578: one that can't start leaves the waiting set unused (the run hands out its iterations the other way).
+      w.onerror = (ev) => { ev.preventDefault(); w.terminate(); ok(null); };
       w.postMessage({ ping: true });
     })));
+    if (got.every(Boolean)) this.ready = got as { w: Worker; sab: SharedArrayBuffer }[];
+    else for (const r of got) r?.w.terminate();
   }
   get canWait() { return this.ready.length > 0; }
   runNow(tasks: Task[]): TaskResult[] {

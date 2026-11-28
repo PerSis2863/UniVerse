@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Segmented } from '@/components/ui/Segmented';
 import { card } from './shared';
 import type { GhidraMeta } from '@/lib/ghidra';
+import { watchWorker } from '@/lib/error-monitor';
 
 // Owner console → Server → Usage: try Ghidra (M421), UniVerse's own GPT, trained from nothing (scripts/ai/train-ghidra.py).
 // It runs in this browser on a background thread (src/lib/ghidra.worker.ts), started only when Write is pressed.
@@ -34,6 +35,7 @@ export function GhidraCard() {
         if (e.data.done) setState('idle');
         if (e.data.error) { setError('Ghidra couldn’t load. Check the connection and try again.'); setState('idle'); }
       };
+      watchWorker(w, 'ghidra', (msg) => { setError(msg); setState('idle'); worker.current?.terminate(); worker.current = null; });
       worker.current = w;
     }
     const start = prompt.trim() || (mode === 'ask' ? QUESTIONS[0] : STARTS[0]);

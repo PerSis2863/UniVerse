@@ -2,6 +2,7 @@ import { LabError } from './parse';
 import { BUILTINS, type Builtin } from './builtins';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import type { Lab } from './interp';
+import { pade } from './pade';
 
 // Hyperion's control systems toolbox (M414, the owner's MATLAB list, "Control Systems: design, test, and implement
 // control systems"): transfer functions as values (tf, zpk, ss, pid; s = tf('s') then (s + 1)/(s^2 + 2*s + 1)) that add,
@@ -259,7 +260,16 @@ def('tf', (a) => {
   if (a.length === 1 && a[0].k === 'str') { if (a[0].v !== 's') throw new LabError("tf('s') makes the Laplace variable s."); return [makeTf([1, 0], [1])]; }
   if (a.length === 1 && isLti(a[0])) return [a[0]];
   if (a.length < 2) throw new LabError('tf needs a numerator and a denominator, like tf(1, [1 2 1]).');
-  return [makeTf(vec(a[0], 'The numerator'), vec(a[1], 'The denominator'))];
+  // M567: 'InputDelay', 'OutputDelay' or 'IODelay' (seconds): the delay folded in as its 4th-order Padé approximation (6th orders
+  // make polynomials whose roots Hyperion's eig can't always settle).
+  let L = 0;
+  for (let i = 2; i + 1 < a.length; i += 2) {
+    const k = a[i], v = a[i + 1];
+    if (k.k !== 'str' || !/^(input|output|io)delay$/i.test(k.v)) throw new LabError("tf's options are 'InputDelay', 'OutputDelay' and 'IODelay' (seconds).");
+    L += toMat(v).d[0];
+  }
+  const p = pade(L, 4);
+  return [makeTf(conv(vec(a[0], 'The numerator'), p.n), conv(vec(a[1], 'The denominator'), p.d))];
 });
 def('zpk', (a) => {
   const z = toMat(a[0] ?? mat(0, 0)), p = toMat(a[1] ?? mat(0, 0)), k = a[2] ? toMat(a[2]).d[0] : 1;
