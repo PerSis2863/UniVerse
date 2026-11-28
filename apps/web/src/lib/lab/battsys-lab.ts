@@ -3,9 +3,11 @@ import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Struct, type Value } from './values';
 import * as cf from './cellfit';
+import * as se from './socest';
 
 // Hyperion's battery systems in the language (M570–, from MathWorks' battery-systems page and its topic pages; written
-// fresh). Part 1, cell characterisation: ecmCell, ecmSimulate, hppcTest, hppcFit. Cells are plain structs (Type
+// fresh). Part 1, cell characterisation: ecmCell, ecmSimulate, hppcTest, hppcFit. Part 2 (M571), state estimation:
+// socCoulomb, socKalman, ocvSOC, sohEstimate. Cells are plain structs (Type
 // 'ecmCell'): Capacity, SOC, OCV, R0 (rows over SOC), R and Tau (one row a pair).
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
@@ -101,5 +103,50 @@ def('hppcFit', (a, nout, lab) => {
   call(lab, 'hold', str('off'));
   call(lab, 'legend', str('R0'), ...r.cell.r.map((_, i) => str(`R${i + 1}`)));
   call(lab, 'xlabel', str('State of charge (%)')); call(lab, 'ylabel', str('Resistance (mΩ)')); call(lab, 'grid', str('on'));
+  return [];
+});
+
+// ——— M571: SOC and SOH ———
+def('socCoulomb', (a) => {
+  const I = vec(a[0], 'The current (A, + discharging)'), dt = n0(a[1], NaN), cap = n0(a[2], NaN), z0 = n0(a[3], 1), eta = n0(a[4], 1);
+  if (!(dt > 0 && cap > 0) || !(z0 >= 0 && z0 <= 1) || !(eta > 0 && eta <= 1)) throw new LabError('socCoulomb(I, dt, capacity, soc0, eta): dt and capacity above 0, soc0 from 0 to 1, the charging efficiency eta in (0, 1].');
+  return [row(se.coulombCount(I, dt, cap, z0, eta))];
+});
+def('ocvSOC', (a) => { const c = ecmOf(a[0], 'ocvSOC'), v = toMat(a[1] ?? num(NaN), 'The rested voltage'); return [mat(v.r, v.c, [...v.d].map((x) => se.socFromOcv(c, x)))]; });
+/** The common options of the filters. */
+function filterOpts(a: Value[], from: number, what: string, extra: string[] = []) {
+  const o = opts(a, from, ['Filter', 'SOC0', 'P0', 'Q', 'R', ...extra], what), p: Partial<se.SocOptions> = {};
+  if (o.has('Filter')) { const f = textOf(o.get('Filter')!).toLowerCase(); if (f !== 'ekf' && f !== 'ukf') throw new LabError(`${what}: 'Filter' is 'ekf' or 'ukf'.`); p.filter = f; }
+  if (o.has('SOC0')) { p.soc0 = n0(o.get('SOC0'), NaN); if (!(p.soc0 >= 0 && p.soc0 <= 1)) throw new LabError(`${what}: 'SOC0' is from 0 to 1.`); }
+  for (const [k, key] of [['P0', 'p0'], ['Q', 'q'], ['R', 'r']] as const) if (o.has(k)) { const x = n0(o.get(k), NaN); if (!(x > 0)) throw new LabError(`${what}: '${k}' must be above 0.`); p[key] = x; }
+  return { p, o };
+}
+const signals = (a: Value[], what: string) => {
+  const c = ecmOf(a[0], what), I = vec(a[1], 'The current (A, + discharging)'), v = vec(a[2], 'The voltage (V)'), dt = n0(a[3], NaN);
+  if (I.length !== v.length || !(dt > 0)) throw new LabError(`${what}(cell, I, v, dt, …): current and voltage the same length, dt above 0.`);
+  if (I.length > 500_000) throw new LabError(`${what}: at most 500,000 samples.`);
+  return { c, I, v, dt };
+};
+def('socKalman', (a, nout, lab) => {
+  const { c, I, v, dt } = signals(a, 'socKalman'), { p } = filterOpts(a, 4, 'socKalman');
+  const r = se.socFilter(c, I, v, dt, p);
+  if (nout > 0) return [row(r.soc), row(r.spread)];
+  const t = row(I.map((_, k) => (k * dt) / 60)), z = r.soc.map((x) => 100 * x);
+  call(lab, 'plot', t, row(z), str('-'), t, row(z.map((x, k) => x + 200 * r.spread[k])), str(':'), t, row(z.map((x, k) => x - 200 * r.spread[k])), str(':'));
+  call(lab, 'legend', str(`SOC (${(p.filter ?? 'ekf').toUpperCase()})`), str('± 2σ'));
+  call(lab, 'xlabel', str('Minutes')); call(lab, 'ylabel', str('State of charge (%)')); call(lab, 'grid', str('on'));
+  return [];
+});
+def('sohEstimate', (a, nout, lab) => {
+  const { c, I, v, dt } = signals(a, 'sohEstimate'), { p, o } = filterOpts(a, 4, 'sohEstimate', ['Rest']);
+  const rest = n0(o.get('Rest'), 300);
+  if (!(rest > 0)) throw new LabError("sohEstimate: 'Rest' (s) must be above 0.");
+  const r = se.sohFilter(c, I, v, dt, { ...p, rest });
+  const out = S([['SOH', num(r.soh)], ['Capacity', num(r.capacity)], ['R0Growth', num(r.r0Growth.at(-1) ?? 1)], ['SOC', row(r.soc)], ['R0Track', row(r.r0Growth)]]);
+  if (nout > 0) return [out];
+  const t = row(I.map((_, k) => (k * dt) / 3600));
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', t, row(r.soc.map((x) => 100 * x))); call(lab, 'ylabel', str('SOC (%)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`SOH ${(100 * r.soh).toFixed(1)}% (${r.capacity.toFixed(2)} of ${c.capacity} Ah), R0 × ${(r.r0Growth.at(-1) ?? 1).toFixed(2)}`));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', t, row(r.r0Growth)); call(lab, 'ylabel', str('R0 / new')); call(lab, 'xlabel', str('Hours')); call(lab, 'grid', str('on'));
   return [];
 });

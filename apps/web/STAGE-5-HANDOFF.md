@@ -15677,3 +15677,12 @@ The owner, 28 Nov: "https://www.mathworks.com/solutions/battery-systems.html now
 - **The fit (trap):** a 40 s rest after a 10 s pulse can't show a slow pair (τ ≈ 130 s fitted as 20–80 s, 19 mV RMS); so each level's whole stretch, from its discharge pulse to the next level's (the pulses, the 10 % discharge and the long rest), is fitted with OCV(soc) (from the rests) and R0 (from the pulse's jump) taken off. For given τ the resistances are linear least squares on first-order lags of the current (`rcFit`); τ on a 24-point log grid, then golden-section refinement one at a time. The sample cell's test comes back within 5 mV.
 - Language: `ecmCell`, `ecmSimulate`, `hppcTest`, `hppcFit` (structs of Type 'ecmCell'; R and Tau one row a pair). Tests `cellfit.test.ts`.
 - Not done: separate charge and discharge tables, temperature as a second table dimension (MathWorks' 2-D/3-D tables).
+
+## M571: Hyperion battery systems: SOC and SOH (28 Nov)
+
+Part 2 of the owner's battery-systems page (MathWorks' SOC Estimator (Kalman Filter), (Adaptive Kalman Filter) and SOH Estimator examples), written fresh in **`src/lib/lab/socest.ts`**.
+
+- `coulombCount`, `socFilter` (EKF or UKF on an `EcmCell` with any number of pairs; states SOC and each pair's voltage; Jacobians numerical; the UKF with α 1, β 2, κ 3 − n), `socFromOcv`, `capacityFromRests`, `capacityFromSoc`, `sohFilter`.
+- **SOH (traps):** following the capacity as a slow filter state, or iterating the filter's SOC swings against the charge passed (dual estimation), both stay biased towards the capacity the filter starts from (0.91–0.94 for a true 0.85), since the filter's SOC leans on its own Coulomb counting. So the capacity comes from **rests**: after each rest of 5 min or more the voltage read back through the OCV table gives the SOC, and the charge between consecutive rests over the SOC change (≥ 5 %) gives the capacity by least squares; the dual rounds are only the fallback. R0 is an adaptive filter state (`g`, R0 over the table's). Test data must stay inside 0–1 (a clamped truth breaks every count) and have rests at different SOCs (parking mid-drive).
+- Language: `socCoulomb`, `socKalman`, `ocvSOC`, `sohEstimate`. Tests `socest.test.ts`.
+- The plan for the rest of the battery page (M572–M576) and the three power-systems pages (from M577) is in `STAGE-5-PLAN.md`, "Hyperion battery and power systems".
