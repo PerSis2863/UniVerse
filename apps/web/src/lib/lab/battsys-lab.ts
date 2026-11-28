@@ -4,10 +4,11 @@ import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Struct, type Value } from './values';
 import * as cf from './cellfit';
 import * as se from './socest';
+import * as sp from './spme';
 
 // Hyperion's battery systems in the language (M570–, from MathWorks' battery-systems page and its topic pages; written
 // fresh). Part 1, cell characterisation: ecmCell, ecmSimulate, hppcTest, hppcFit. Part 2 (M571), state estimation:
-// socCoulomb, socKalman, ocvSOC, sohEstimate. Cells are plain structs (Type
+// socCoulomb, socKalman, ocvSOC, sohEstimate. Part 3 (M572), electrochemistry: spmeCell, spmeSimulate, spmeFit. Cells are plain structs (Type
 // 'ecmCell'): Capacity, SOC, OCV, R0 (rows over SOC), R and Tau (one row a pair).
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
@@ -149,4 +150,56 @@ def('sohEstimate', (a, nout, lab) => {
   call(lab, 'title', str(`SOH ${(100 * r.soh).toFixed(1)}% (${r.capacity.toFixed(2)} of ${c.capacity} Ah), R0 × ${(r.r0Growth.at(-1) ?? 1).toFixed(2)}`));
   call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', t, row(r.r0Growth)); call(lab, 'ylabel', str('R0 / new')); call(lab, 'xlabel', str('Hours')); call(lab, 'grid', str('on'));
   return [];
+});
+
+// ——— M572: the single particle model with electrolyte ———
+const SPME_KEYS = Object.keys(sp.LGM50) as (keyof sp.SpmeParams)[];
+function spmeValue(p: sp.SpmeParams): Struct {
+  return S([['Type', str('spmeCell')], ...SPME_KEYS.map((k) => [k, num(p[k])] as [string, Value]), ['Capacity', num(sp.spmeCapacity(p))]]);
+}
+function spmeOf(v: Value | undefined, what: string): sp.SpmeParams {
+  if (!v || v.k !== 'struct' || !v.f.get('Type') || textOf(v.f.get('Type')!) !== 'spmeCell') throw new LabError(`${what} needs a cell from spmeCell.`);
+  const p = { ...sp.LGM50 };
+  for (const k of SPME_KEYS) { const x = v.f.get(k); if (x) { const n = toMat(x).d[0]; if (!(n > 0) && k !== 'rContact') throw new LabError(`${what}: the cell's ${k} must be above 0.`); p[k] = n; } }
+  if (!(p.x100 > p.x0 && p.y0 > p.y100 && p.x100 < 1 && p.y0 < 1)) throw new LabError(`${what}: the stoichiometries need x0 < x100 < 1 and y100 < y0 < 1.`);
+  return p;
+}
+def('spmeCell', (a) => {
+  const o = opts(a, 0, SPME_KEYS as string[], 'spmeCell'), p = { ...sp.LGM50 };
+  for (const [k, v] of o) p[k as keyof sp.SpmeParams] = toMat(v).d[0];
+  return [spmeValue(spmeOf(spmeValue(p), 'spmeCell'))];
+});
+const spmeArgs = (a: Value[], what: string) => {
+  const p = spmeOf(a[0], what), I = vec(a[1], 'The current (A, + discharging)'), dt = n0(a[2], NaN), z0 = n0(a[3], 1);
+  if (!(dt > 0) || !(z0 >= 0 && z0 <= 1)) throw new LabError(`${what}(cell, I, dt, soc0): dt above 0, soc0 from 0 to 1.`);
+  if (I.length > 200_000) throw new LabError(`${what}: at most 200,000 samples.`);
+  return { p, I, dt, z0 };
+};
+def('spmeSimulate', (a, nout, lab) => {
+  const { p, I, dt, z0 } = spmeArgs(a, 'spmeSimulate'), r = sp.spmeSim(p, I, dt, z0, { keepCe: Math.max(1, Math.floor(I.length / 6)) });
+  if (nout > 0) return [row(r.v), row(r.soc), row(r.xSurf), row(r.ySurf)];
+  const t = row(r.v.map((_, k) => (k * dt) / 60));
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', t, row(r.v)); call(lab, 'ylabel', str('Voltage (V)')); call(lab, 'xlabel', str('Minutes')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(r.v.length < I.length ? `Stopped at ${r.v.at(-1)!.toFixed(2)} V after ${((r.v.length * dt) / 60).toFixed(1)} min` : 'Single particle model with electrolyte'));
+  call(lab, 'subplot', num(2), num(1), num(2));
+  const x = row(r.ceAt.map((m) => m * 1e6));
+  r.ce.forEach((c, i) => { call(lab, 'plot', x, row(c)); if (i === 0) call(lab, 'hold', str('on')); });
+  call(lab, 'hold', str('off'));
+  call(lab, 'xlabel', str('Across the cell, negative to positive (µm)')); call(lab, 'ylabel', str('Electrolyte (mol/m³)')); call(lab, 'grid', str('on'));
+  return [];
+});
+def('spmeFit', (a) => {
+  const { p, I, dt, z0 } = spmeArgs([a[0], a[1], a[3], a[4]], 'spmeFit'), v = vec(a[2], 'The measured voltage (V)');
+  if (v.length !== I.length) throw new LabError('spmeFit(cell, I, v, dt, soc0, \'Fit\', {…}): current and voltage the same length.');
+  if (I.length > 20_000) throw new LabError('spmeFit: at most 20,000 samples (it simulates the cell many times).');
+  const o = opts(a, 5, ['Fit'], 'spmeFit');
+  let fit = sp.GROUP_NAMES;
+  if (o.has('Fit')) {
+    const want = o.get('Fit')!, names = want.k === 'cell' ? want.d.map((x) => textOf(x)) : [textOf(want)];
+    fit = names.map((n) => { const k = sp.GROUP_NAMES.find((g) => g.toLowerCase() === n.toLowerCase()); if (!k) throw new LabError(`spmeFit can fit ${sp.GROUP_NAMES.join(', ')}.`); return k; });
+  }
+  const r = sp.spmeFit(p, I, v, dt, z0, fit), cell = spmeValue(r.cell);
+  cell.f.set('Groups', S(sp.GROUP_NAMES.map((k) => [k, num(r.groups[k])] as [string, Value])));
+  cell.f.set('FitRMS', num(r.rms));
+  return [cell];
 });

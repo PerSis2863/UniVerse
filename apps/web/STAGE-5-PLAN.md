@@ -1244,7 +1244,7 @@ time, each with tests; every window checked at 1280, light and dark, axe-clean, 
 Battery systems (`cellfit.ts`, `socest.ts`, `battsys-lab.ts`, `help-battery.ts`):
 - M570 cell characterisation (HPPC test, fit of 1–3 RC pairs as SOC tables). Done.
 - M571 SOC and SOH (Coulomb counting, EKF, UKF, adaptive R0, capacity from rests). Done.
-- M572 the electrochemical single-particle model with electrolyte (SPMe) and its grouped parameter estimation.
+- M572 the electrochemical single-particle model with electrolyte (SPMe) and its grouped parameter estimation. Done.
 - M573 packs: cells with spread in series and parallel (current sharing), cooling plates and their fluid path,
   cell-to-cell temperature, ageing per cell, faults (added resistance, internal short, thermal runaway as an ARC test).
 - M574 the BMS closed loop: monitoring and protection, contactors and precharge (a state chart), CC-CV and fast
@@ -2015,6 +2015,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M569 | Hyperion Simulate → Circuits: makers' part libraries (28 Nov) | **Done** (branch) | .subckt, .include / .lib files opened with the netlist, .param and {expressions}, VDMOS models (flatten, spiceExpr) |
 | M570 | Hyperion battery systems: cell characterisation (28 Nov) | **Done** (branch) | ecmCell (1–3 RC pairs as SOC tables), ecmSimulate, hppcTest, hppcFit (load-and-relaxation, variable projection) |
 | M571 | Hyperion battery systems: SOC and SOH (28 Nov) | **Done** (branch) | socCoulomb, socKalman (EKF / UKF on n-RC cells), ocvSOC, sohEstimate (R0 adaptive, capacity from rests) |
+| M572 | Hyperion battery systems: the single particle model with electrolyte (28 Nov) | **Done** (branch) | spmeCell (Chen 2020 LG M50), spmeSimulate, spmeFit (grouped: diffusion times, reaction scale, contact resistance) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
