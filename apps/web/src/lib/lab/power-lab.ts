@@ -4,6 +4,7 @@ import { textOf } from './interp';
 import { cmat, mat, num, str, toMat, type Struct, type Value } from './values';
 import { makeTf, tfOf } from './control';
 import * as pw from './power';
+import * as pwc from './powerctl';
 
 // Hyperion's power electronics in the language (M563–, from MathWorks' power-electronics pages: circuit design, motor
 // drives, power conversion control; written fresh). Part 1, losses and heat: powerDevice, conductionLoss,
@@ -217,3 +218,59 @@ def('pidtune', (a) => {
   return [C, S([['Kp', num(r.Kp)], ['Ki', num(r.Ki)], ['Kd', num(r.Kd)], ['Crossover', num(r.wc)], ['PhaseMargin', num(r.pm)]])];
 });
 
+
+// ——— M565: converter control ———
+const series = (m: ArrayLike<number>) => col(Float64Array.from(m));
+function rowsOf(v: Value | undefined, cols: number, what: string): number[][] {
+  if (!v) return [];
+  const m = toMat(v);
+  if (m.c !== cols) throw new LabError(`${what} has ${cols} columns, one row per step.`);
+  return Array.from({ length: m.r }, (_, i) => Array.from({ length: cols }, (_, j) => m.d[i + j * m.r]));
+}
+def('buckControlSim', (a) => {
+  const mode = (a[0] ? textOf(a[0]) : 'voltage').toLowerCase();
+  if (mode !== 'voltage' && mode !== 'current') throw new LabError("buckControlSim('voltage') or buckControlSim('current'), then 'Vin', 'Vref', 'L', 'C', 'R', 'fsw', 'ESR', 'Cycles', 'Steps' ([t R] rows).");
+  const p = pairs(a, 1, ['Vin', 'Vref', 'L', 'C', 'R', 'fsw', 'ESR', 'Cycles', 'Steps'], 'buckControlSim'), d = pwc.BUCK_CTL;
+  const cfg: pwc.BuckCtl = { mode, vin: n0(p.get('Vin'), d.vin), vref: n0(p.get('Vref'), d.vref), L: n0(p.get('L'), d.L), C: n0(p.get('C'), d.C), R: n0(p.get('R'), d.R), fsw: n0(p.get('fsw'), d.fsw), esr: n0(p.get('ESR'), d.esr), cycles: Math.round(n0(p.get('Cycles'), d.cycles)), steps: p.has('Steps') ? rowsOf(p.get('Steps'), 2, "'Steps'").map(([t, R]) => ({ t, R })) : d.steps };
+  if (!(cfg.vin > cfg.vref && cfg.vref > 0 && cfg.cycles >= 10 && cfg.cycles <= 20000)) throw new LabError('buckControlSim: Vin above Vref above 0; Cycles from 10 to 20,000.');
+  let r: ReturnType<typeof pwc.buckControl>;
+  try { r = pwc.buckControl(cfg); } catch (e) { throw new LabError(e instanceof Error ? e.message : String(e)); }
+  const t0 = cfg.steps[0]?.t ?? 0, st = pwc.settle(r.t, r.vout, t0, 0.02 * cfg.vref);
+  return [S([['t', series(r.t)], ['Vout', series(r.vout)], ['IL', series(r.iL)], ['Duty', series(r.duty)], ['Peak', series(r.peak)], ['Kp', num(r.gains.Kp)], ['Ki', num(r.gains.Ki)], ['Kd', num(r.gains.Kd)], ['SettlingTime', num(st.time)], ['Deviation', num(st.deviation)]])];
+});
+def('pfcSim', (a) => {
+  const p = pairs(a, 0, ['Vrms', 'Fline', 'Vout', 'L', 'C', 'P', 'fsw', 'Cycles'], 'pfcSim'), d = pwc.PFC;
+  const cfg: pwc.Pfc = { vrms: n0(p.get('Vrms'), d.vrms), fline: n0(p.get('Fline'), d.fline), vout: n0(p.get('Vout'), d.vout), L: n0(p.get('L'), d.L), C: n0(p.get('C'), d.C), P: n0(p.get('P'), d.P), fsw: n0(p.get('fsw'), d.fsw), cycles: Math.round(n0(p.get('Cycles'), d.cycles)) };
+  if (!(cfg.vout > cfg.vrms * Math.SQRT2 && cfg.P > 0 && cfg.cycles >= 2 && cfg.cycles <= 100)) throw new LabError('pfcSim: Vout above the line\'s peak (√2·Vrms), P above 0, Cycles (of the line) from 2 to 100.');
+  const r = pwc.pfcBoost(cfg);
+  return [S([['t', series(r.t)], ['Vout', series(r.vout)], ['Iin', series(r.iin)], ['Vac', series(r.vac)], ['PowerFactor', num(r.pf)], ['THD', num(r.thd)], ['Ripple', num(r.ripple)], ['Vmean', num(r.vmean)]])];
+});
+def('mpptSim', (a) => {
+  const method = (a[0] ? textOf(a[0]) : 'po').toLowerCase();
+  if (method !== 'po' && method !== 'inccond') throw new LabError("mpptSim('po', G) or mpptSim('inccond', G): G the irradiance (W/m²) at each step; 'T', 'Step', 'Series'.");
+  const G = vec(a[1], 'G (W/m²)'), p = pairs(a, 2, ['T', 'Step', 'Series'], 'mpptSim');
+  if (!G.every((g) => g >= 0)) throw new LabError('mpptSim: irradiance is 0 or more.');
+  const r = pwc.mppt(method, G, n0(p.get('T'), 25), n0(p.get('Step'), 0.2), undefined, Math.max(1, Math.round(n0(p.get('Series'), 1))));
+  return [S([['V', series(r.v)], ['P', series(r.p)], ['Pmax', series(r.pmax)], ['Efficiency', num(r.efficiency)]])];
+});
+def('svpwm', (a, nout) => {
+  const va = toMat(a[0] ?? num(NaN)), vb = toMat(a[1] ?? num(NaN)), vdc = n0(a[2], NaN);
+  if (va.d.length !== vb.d.length || !(vdc > 0)) throw new LabError('svpwm(valpha, vbeta, Vdc): the reference vector\'s two parts (the same size) and the DC link.');
+  const out = [0, 1, 2, 3].map(() => new Float64Array(va.d.length));
+  va.d.forEach((x, i) => { const r = pwc.svpwm(x, vb.d[i], vdc); out[0][i] = r.da; out[1][i] = r.db; out[2][i] = r.dc; out[3][i] = r.sector; });
+  const shape = (d: Float64Array) => ({ ...va, d });
+  return out.slice(0, Math.max(1, nout)).map(shape);
+});
+def('gridInverterSim', (a) => {
+  const p = pairs(a, 0, ['Vgrid', 'f', 'Vdc', 'L', 'R', 'fsw', 'Tend', 'Steps'], 'gridInverterSim'), d = pwc.GRID_INV;
+  const cfg: pwc.GridInv = { vgrid: n0(p.get('Vgrid'), d.vgrid), f: n0(p.get('f'), d.f), vdc: n0(p.get('Vdc'), d.vdc), L: n0(p.get('L'), d.L), R: n0(p.get('R'), d.R), fsw: n0(p.get('fsw'), d.fsw), tEnd: n0(p.get('Tend'), d.tEnd), steps: p.has('Steps') ? rowsOf(p.get('Steps'), 3, "'Steps'").map(([t, P, Q]) => ({ t, P, Q })) : d.steps };
+  if (!(cfg.tEnd > 0 && cfg.tEnd * cfg.fsw <= 2e6)) throw new LabError('gridInverterSim: Tend above 0 and at most two million steps (Tend·fsw).');
+  const r = pwc.gridInverter(cfg);
+  return [S([['t', series(r.t)], ['P', series(r.P)], ['Q', series(r.Q)], ['Id', series(r.id)], ['Iq', series(r.iq)], ['Ia', series(r.ia)], ['AngleError', series(r.angleErr)]])];
+});
+def('droopShare', (a) => {
+  const load = n0(a[0], NaN), m = vec(a[1], 'm (Hz/W)'), pmax = a[2] ? vec(a[2], 'Pmax') : m.map(() => Infinity), f0 = n0(a[3], 50);
+  if (!(load >= 0) || m.length !== pmax.length || !m.every((x) => x > 0)) throw new LabError('droopShare(load, m, Pmax, f0): the load (W), each unit\'s droop (Hz per W, above 0) and limit.');
+  const r = pwc.droopShare(load, m, pmax, f0);
+  return [row(r.P), num(r.f), S([['Overloaded', { ...num(r.overloaded ? 1 : 0), logical: true }]])];
+});

@@ -15617,3 +15617,16 @@ Part 2 of the owner's power-electronics ask (MathWorks' "circuit design" and "po
 - **`prbs`**, **`idinput`** (PRBS from a maximal-length shift register, taps for 2–16 bits), **`frestimate`** (cross spectrum over input spectrum, Hann-windowed half-overlapping segments, complex answer).
 - **`pidtune`**: P, PI or PID for a crossover wc and phase margin (Ti = 4·Td for the PID). A plant that lags little leaves a PI more margin than asked: the integral's corner then sits a decade below wc, and `info.PhaseMargin` says what was reached. A PI asked for phase lead it can't give is an error that suggests 'PID'.
 - Tests: `power.test.ts` (the tuned loop's |C·G| = 1 and its margin at wc; frestimate against a known first-order lag).
+
+## M565: Hyperion power electronics: converter control (28 Nov)
+
+Part 3 of the owner's power-electronics ask (MathWorks' "power conversion control" page, and its topic links), written fresh in **`src/lib/lab/powerctl.ts`** (maths) and `power-lab.ts` (the language).
+
+- **`buckControlSim`**: a buck switched cycle by cycle (60 steps a cycle, the loop sampled once a cycle like a digital controller) under voltage-mode control (a PID tuned by M564's `pidtune` on the converter's own averaged model, fsw/10, 50°) or peak-current mode (an outer PI at fsw/20 on R(1+sC·ESR)/(1+sRC), slope compensation half the falling slope, 90 % maximum duty). Load steps as [t R] rows; anti-windup holds the integral while saturated; the settling time after the first step.
+- **`pfcSim`**: a boost PFC under average-current control, averaged over each switching period: an inner current loop (1/(sL), fsw/10) and an outer conductance loop at 10 Hz (plant Vpk²/(2CVs)), so the 100 Hz ripple stays out of the current. Power factor and THD (harmonics 2–40) over the last line cycle: the test asks PF > 0.97 and THD < 12 %.
+- **`mpptSim`**: perturb-and-observe or incremental conductance on `energy.ts`'s single-diode panel, against the true maximum found by golden-section search each step.
+- **`svpwm`**: phase duties by min–max zero-sequence injection (the same as classical space vector timing), clipped in over-modulation, and the sector.
+- **`gridInverterSim`**: a three-phase inverter on an L filter to the grid, averaged per switching period: a synchronous-frame PLL (30 Hz), dq PIs (fsw/20) with ωL cross-coupling cancelled and grid feed-forward, the vector limited to Vdc/√3; P and Q from [t P Q] steps. Trap fixed while building: compute P and Q from the same instant's current and voltage (a one-step lag showed as a 1 % error with reactive power flowing), and compare the PLL's angle with the grid's at the same instant.
+- **`droopShare`**: steady-state frequency–power droop sharing, units at their limits held there.
+- Not done (a closed model can't stand in for them): Stateflow-style supervisory logic, HIL and code generation for a real controller (Hyperion's own `codegen` covers scripts).
+- Tests: `powerctl.test.ts`, `power.test.ts`.

@@ -1977,6 +1977,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M562 | Ghidra's add-on retrained: 85% → 94% on the exam (26 Nov) | **Done** (branch) | ghidra-20261126-0926, 28 skills in ADDON_SKILLS; the owner sets GHIDRA_LORA |
 | M563 | Hyperion power electronics: losses and heat (26–28 Nov) | **Done** (branch) | powerDevice, buckLosses, efficiencyMap, fosterNet, foster2cauer, junctionTemp (power.ts, power-lab.ts, help-power.ts) |
 | M564 | Hyperion power electronics: converter design (28 Nov) | **Done** (branch) | converterModel (CCM/DCM, Gvd), llcGain, dabPower, buckDesign, monteCarlo, prbs, idinput, frestimate, pidtune |
+| M565 | Hyperion power electronics: converter control (28 Nov) | **Done** (branch) | buckControlSim (voltage and peak-current mode), pfcSim, mpptSim, svpwm, gridInverterSim, droopShare (powerctl.ts) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

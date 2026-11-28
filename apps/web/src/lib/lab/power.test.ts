@@ -131,3 +131,23 @@ M = llcGain([0.5 1 2], 5, [0.2 0.5]); sz = size(M);`);
     expect([...g('sz')]).toEqual([2, 3]);
   });
 });
+
+describe('converter control in the language (M565)', () => {
+  it('buckControlSim, pfcSim, mpptSim, svpwm, gridInverterSim, droopShare', () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: new FileStore() });
+    lab.run(`r = buckControlSim('current', 'Cycles', 500); v = r.Vout(end);
+p = pfcSim('Cycles', 8); pf = p.PowerFactor;
+m = mpptSim('inccond', [1000*ones(1,200) 700*ones(1,200)]); me = m.Efficiency;
+th = linspace(0, 2*pi, 13); [da, db, dc, s] = svpwm(300*cos(th), 300*sin(th), 700);
+g = gridInverterSim('Tend', 0.15, 'Steps', [0 4e3 1e3]); P = g.P(end);
+[Ps, f] = droopShare(10e3, [1e-4 1e-4], [8e3 8e3]);`);
+    const g = (k: string) => toMat(lab.vars.get(k)!).d;
+    expect(g('v')[0]).toBeCloseTo(3.3, 1);
+    expect(g('pf')[0]).toBeGreaterThan(0.95);
+    expect(g('me')[0]).toBeGreaterThan(0.95);
+    expect(Math.max(...g('da'))).toBeLessThanOrEqual(1);
+    expect([...g('s')].slice(0, 6)).toEqual([1, 1, 2, 2, 3, 3]);
+    expect(g('P')[0]).toBeCloseTo(4e3, -2);
+    expect([...g('Ps')]).toEqual([5e3, 5e3]);
+  });
+});
