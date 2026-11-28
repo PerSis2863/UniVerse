@@ -1979,6 +1979,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M564 | Hyperion power electronics: converter design (28 Nov) | **Done** (branch) | converterModel (CCM/DCM, Gvd), llcGain, dabPower, buckDesign, monteCarlo, prbs, idinput, frestimate, pidtune |
 | M565 | Hyperion power electronics: converter control (28 Nov) | **Done** (branch) | buckControlSim (voltage and peak-current mode), pfcSim, mpptSim, svpwm, gridInverterSim, droopShare (powerctl.ts) |
 | M566 | Hyperion power electronics: induction motors and the six-pulse rectifier (28 Nov) | **Done** (branch) | inductionMotor, inductionSim ('vf', 'foc', 'sensorless' with an MRAS observer), torqueSpeed, rectifier3 (induction.ts) |
+| M567 | Hyperion Simulate → Circuits: SPICE netlists and faults (28 Nov) | **Done** (branch) | Open a SPICE netlist (readSpice, ladder layout), parts that break open or short at a time (Fault) |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

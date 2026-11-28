@@ -1,4 +1,4 @@
-import { HOLD, type Part, type Wave } from './circuit';
+import { HOLD, type Fault, type Part, type Wave } from './circuit';
 
 // Hyperion Simulate → Circuits (M410): the drawing board. Parts and wires join grid points; points joined by wires are
 // one node; a ground symbol makes its point node "0"; probes show a node on the oscilloscope. `netlist` turns the board
@@ -8,7 +8,7 @@ export type ItemKind = 'wire' | 'R' | 'C' | 'L' | 'V' | 'I' | 'D' | 'S' | 'M' | 
 /** `hold` and `sense` (M431): a switch that holds `hold` volts at the probe `sense` (a mark's id); 0 or none: off.
  * `ac`, `depth`, `invert` (M432): a switch whose on-time follows a sine of `ac` Hz (`depth` 0–1), or the opposite
  * half of a pair. */
-export interface Item { id: string; kind: ItemKind; x1: number; y1: number; x2: number; y2: number; value: number; wave: Wave; freq: number; hold?: number; sense?: string; ac?: number; depth?: number; invert?: boolean }
+export interface Item { id: string; kind: ItemKind; x1: number; y1: number; x2: number; y2: number; value: number; wave: Wave; freq: number; hold?: number; sense?: string; ac?: number; depth?: number; invert?: boolean; fault?: Fault }
 export interface Mark { id: string; kind: 'ground' | 'probe'; x: number; y: number }
 export interface Board { items: Item[]; marks: Mark[]; dt: number; window: number }
 
@@ -17,6 +17,8 @@ export const UNITS: Record<ItemKind, string> = { wire: '', R: 'Ω', C: 'F', L: '
 export const NAMES: Record<ItemKind, string> = { wire: 'Wire', R: 'Resistor', C: 'Capacitor', L: 'Coil (inductor)', V: 'Voltage source', I: 'Current source', D: 'Diode', S: 'Switch (PWM)', M: 'Transistor (MOSFET)', Mo: 'Motor (DC)' };
 /** A small DC motor's winding and shaft (M432): 1 Ω, 5 mH, 0.1 V·s/rad, 0.1 g·m², light friction. Its value on the
  * board is the load torque it turns against. */
+/** The board's time steps and screen widths (the bench's choices; a netlist's .tran is rounded onto them, M567). */
+export const STEPS = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 1e-3], WINDOWS = [2e-4, 5e-4, 1e-3, 3e-3, 0.01, 0.03, 0.06, 0.1, 0.3, 1];
 export const MOTOR = { r: 1, l: 5e-3, k: 0.1, j: 1e-4, fric: 1e-5 };
 /** A MOSFET's on-strength k (A/V²) and λ: a power transistor's (about 6 mΩ on at 10 V on its gate). */
 export const MOS_K = 20, MOS_LAMBDA = 0.01;
@@ -46,7 +48,8 @@ export function netlist(board: Board) {
   parent.set('0', '0');
   for (const m of board.marks) if (m.kind === 'ground') { find(key(m.x, m.y)); join('0', key(m.x, m.y)); }
   const node = (x: number, y: number) => find(key(x, y));
-  const parts: Part[] = board.items.filter((it) => it.kind !== 'wire').map((it): Part => {
+  const parts: Part[] = board.items.filter((it) => it.kind !== 'wire').map((it): Part => ({ ...partOf(it), ...(it.fault ? { fault: it.fault } : {}) }));
+  function partOf(it: Item): Part {
     const a = node(it.x1, it.y1), b = node(it.x2, it.y2);
     if (it.kind === 'V') return { id: it.id, kind: 'V', a, b, value: it.value, wave: it.wave, freq: it.freq };
     if (it.kind === 'D') return { id: it.id, kind: 'D', a, b };
@@ -59,7 +62,7 @@ export function netlist(board: Board) {
       return { id: it.id, kind: 'S', a, b, duty: Math.max(0, Math.min(1, it.value)), freq: it.freq, ...(probe ? { hold: { node: node(probe.x, probe.y), target: it.hold!, ...HOLD } } : it.ac ? { sine: { m: Math.max(0, Math.min(1, it.depth ?? 0.8)), f: it.ac, phase: 0 } } : {}), ...(it.invert ? { invert: true } : {}) };
     }
     return { id: it.id, kind: it.kind as 'R' | 'C' | 'L' | 'I', a, b, value: it.value };
-  });
+  }
   const probes = board.marks.filter((m) => m.kind === 'probe').map((m, i) => ({ id: m.id, node: node(m.x, m.y), label: `P${i + 1}`, colour: PROBE_COLOURS[i % PROBE_COLOURS.length] }));
   return { parts, node, probes, grounded: board.marks.some((m) => m.kind === 'ground') };
 }
@@ -101,7 +104,7 @@ export function readBoard(raw: unknown): Board {
   const kinds: ItemKind[] = ['wire', 'R', 'C', 'L', 'V', 'I', 'D', 'S', 'M', 'Mo'];
   return {
     dt: Math.max(1e-7, Math.min(1e-2, num(b.dt, 1e-5))), window: Math.max(1e-4, Math.min(5, num(b.window, 0.03))),
-    items: b.items.filter((x) => x && kinds.includes(x.kind)).slice(0, 200).map((x) => ({ id: String(x.id), kind: x.kind, x1: num(x.x1, 0), y1: num(x.y1, 0), x2: num(x.x2, 0), y2: num(x.y2, 0), value: num(x.value, x.kind === 'wire' ? 0 : DEFAULTS[x.kind]), ...(x.kind === 'S' && typeof x.hold === 'number' && Number.isFinite(x.hold) && x.hold !== 0 && typeof x.sense === 'string' ? { hold: Math.max(-1000, Math.min(1000, x.hold)), sense: x.sense.slice(0, 80) } : {}), ...(x.kind === 'S' && typeof x.ac === 'number' && x.ac > 0 && x.ac <= 1e5 ? { ac: x.ac, depth: Math.max(0, Math.min(1, num(x.depth, 0.8))) } : {}), ...(x.kind === 'S' && x.invert === true ? { invert: true } : {}), wave: (['dc', 'sine', 'square'] as const).find((w) => w === x.wave) ?? 'dc', freq: Math.max(0.01, Math.min(1e7, num(x.freq, x.kind === 'S' ? 50_000 : 50))) })),
+    items: b.items.filter((x) => x && kinds.includes(x.kind)).slice(0, 200).map((x) => ({ id: String(x.id), kind: x.kind, x1: num(x.x1, 0), y1: num(x.y1, 0), x2: num(x.x2, 0), y2: num(x.y2, 0), value: num(x.value, x.kind === 'wire' ? 0 : DEFAULTS[x.kind]), ...(x.kind === 'S' && typeof x.hold === 'number' && Number.isFinite(x.hold) && x.hold !== 0 && typeof x.sense === 'string' ? { hold: Math.max(-1000, Math.min(1000, x.hold)), sense: x.sense.slice(0, 80) } : {}), ...(x.kind === 'S' && typeof x.ac === 'number' && x.ac > 0 && x.ac <= 1e5 ? { ac: x.ac, depth: Math.max(0, Math.min(1, num(x.depth, 0.8))) } : {}), ...(x.kind === 'S' && x.invert === true ? { invert: true } : {}), ...(x.kind !== 'wire' && x.fault && (x.fault.kind === 'open' || x.fault.kind === 'short') && Number.isFinite(x.fault.at) && x.fault.at >= 0 ? { fault: { kind: x.fault.kind, at: Math.min(10, x.fault.at) } } : {}), wave: (['dc', 'sine', 'square'] as const).find((w) => w === x.wave) ?? 'dc', freq: Math.max(0.01, Math.min(1e7, num(x.freq, x.kind === 'S' ? 50_000 : 50))) })),
     marks: b.marks.filter((m) => m && (m.kind === 'ground' || m.kind === 'probe')).slice(0, 40).map((m) => ({ id: String(m.id), kind: m.kind, x: num(m.x, 0), y: num(m.y, 0) })),
   };
 }

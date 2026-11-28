@@ -5,7 +5,10 @@
 // method with the voltage step limited each time (as SPICE does) so it never runs away.
 
 export type Wave = 'dc' | 'sine' | 'square';
-export type Part =
+/** A fault (M567, a virtual FMEA): from time `at` (s) the part stops working as itself and becomes an open circuit
+ *  (10 MΩ) or a short (10 mΩ). */
+export interface Fault { kind: 'open' | 'short'; at: number }
+export type Part = { fault?: Fault } & (
   | { id: string; kind: 'R'; a: string; b: string; value: number }
   | { id: string; kind: 'C'; a: string; b: string; value: number }
   | { id: string; kind: 'L'; a: string; b: string; value: number }
@@ -23,7 +26,7 @@ export type Part =
   /** An n-channel MOSFET (M430): drain a, source b, gate g. It turns on above its threshold `vth` (volts); `k` (A/V²)
    * sets how hard (the on-resistance is about 1 / (k (Vgs − Vth))); `lambda` (1/V) lets the current rise a little
    * with Vds when saturated. A body diode runs from source to drain, as in every power MOSFET. */
-  | { id: string; kind: 'M'; a: string; b: string; g: string; vth: number; k: number; lambda: number };
+  | { id: string; kind: 'M'; a: string; b: string; g: string; vth: number; k: number; lambda: number });
 
 /** The square-law MOSFET: drain current and its slopes (gm = ∂I/∂Vgs, gds = ∂I/∂Vds) for Vds ≥ 0; for Vds < 0 the
  * drain and source swap roles (the device is symmetric). */
@@ -126,9 +129,12 @@ export class Circuit {
   private at = (node: string) => (node === '0' ? -1 : this.index.get(node)!);
   /** The voltage of a node now. */
   v(node: string) { const i = this.at(node); return i < 0 ? 0 : this.x[i] ?? 0; }
+  /** Whether a part's fault has happened by time t. */
+  failed = (p: Part, t: number) => !!p.fault && t >= p.fault.at;
   /** The current through a part now, from a to b inside it (A). */
   current(p: Part): number {
     const vd = this.v(p.a) - this.v(p.b);
+    if (this.failed(p, this.t)) return p.kind === 'V' || p.kind === 'L' || p.kind === 'Mo' ? this.x[this.branch.get(p.id)!] : vd / (p.fault!.kind === 'short' ? RON : ROFF);
     if (p.kind === 'R') return vd / p.value;
     if (p.kind === 'V' || p.kind === 'L' || p.kind === 'Mo') return this.x[this.branch.get(p.id)!];
     if (p.kind === 'C') return this.ic.get(p.id) ?? 0;
@@ -186,9 +192,22 @@ export class Circuit {
         const id = IS * (e - 1), gd = (IS / VT) * e + GMIN;
         g(a, b, gd); inj(a, b, -(id - gd * vd));
       };
+      const tNow = h === null ? this.t : this.t + h;
       for (const p of this.parts) {
         const a = this.at(p.a), b = this.at(p.b);
         const vPrev = (a >= 0 ? prev[a] : 0) - (b >= 0 ? prev[b] : 0);
+        if (this.failed(p, tNow)) {
+          // A failed part: its branch (a source's, a coil's, a motor's) carries what a 10 mΩ short or a 10 MΩ open
+          // would; any other part is that resistance between its ends.
+          const R = p.fault!.kind === 'short' ? RON : ROFF;
+          if (p.kind === 'V' || p.kind === 'L' || p.kind === 'Mo') {
+            const k = this.branch.get(p.id)!;
+            if (a >= 0) { A[a][k] += 1; A[k][a] += 1; }
+            if (b >= 0) { A[b][k] -= 1; A[k][b] -= 1; }
+            A[k][k] -= R;
+          } else g(a, b, 1 / R);
+          continue;
+        }
         if (p.kind === 'R') g(a, b, 1 / Math.max(p.value, 1e-9));
         else if (p.kind === 'C') {
           if (h === null) continue; // open at DC
@@ -285,6 +304,7 @@ export class Circuit {
     // Each capacitor's current for the next step: i = G(v¹ − v⁰) − i⁰ (trapezoidal) or C(v¹ − v⁰)/h.
     for (const p of this.parts) {
       if (p.kind !== 'C') continue;
+      if (this.failed(p, this.t + h)) { this.ic.set(p.id, 0); continue; }
       const a = this.at(p.a), b = this.at(p.b);
       const v1 = (a >= 0 ? x[a] : 0) - (b >= 0 ? x[b] : 0), v0 = (a >= 0 ? prev[a] : 0) - (b >= 0 ? prev[b] : 0);
       this.ic.set(p.id, trap ? ((2 * p.value) / h) * (v1 - v0) - (this.ic.get(p.id) ?? 0) : (p.value / h) * (v1 - v0));

@@ -15640,3 +15640,12 @@ Part 4 of the owner's power-electronics ask (MathWorks' "motor drives and tracti
 - **`torqueSpeed`**: the equivalent circuit's steady torque at each slip (Thévenin form).
 - **`rectifier3`**: a six-pulse bridge (ideal diodes, no source inductance) into a choke, capacitor and load, sub-stepped for the LC's own resonance; phase a's current, harmonics 1–25 (5th, 7th, 11th, 13th; no even or triple ones once settled: 40 cycles by default, as the LC rings at ~35 Hz), THD, power factor.
 - Tests: `induction.test.ts`, `power.test.ts`.
+
+## M567: Hyperion Simulate → Circuits: SPICE netlists and faults (28 Nov)
+
+Part 5, the last, of the owner's power-electronics ask (MathWorks' "circuit design" page: SPICE netlist import, fault injection for a virtual FMEA), on Simulate → Circuits. Written fresh.
+
+- **Open a SPICE netlist** (`src/lib/sim/spice.ts`, `readSpice`; the button under "Start from"): R, C, L, V (DC, SIN, PULSE), I, D and M (VTO from its `.model`); `.tran` for the time step and screen (rounded onto the board's own choices, `STEPS` / `WINDOWS`, now exported from `schematic.ts`); `*` comments, `+` continuations, `;` trailing comments; SPICE suffixes (`meg`, `m` = milli, units after them). What isn't read (subcircuits, BJTs, a PMOS drawn as NMOS, a sine's offset, a pulse's low level) is listed in a note above the board.
+- **The layout (rule for code that builds on it):** the board joins wires only where their ends meet, so a netlist becomes a ladder: each net a horizontal rail in its own row (two apart; ground at the bottom), each part upright in its own column between its nets' rows (3 columns each, a MOSFET 5, its gate wired straight to its net's rail), and each rail cut into segments that end exactly at its parts' columns, so crossings never join. A ground mark and up to six probes are placed. Too many nets for the board's rows is an error; parts past its width are left out with a note.
+- **Faults** (`Fault` in `circuit.ts`, `Item.fault`, kept by `readBoard`): a part set to "break open" or "short out" at a time becomes 10 MΩ or 10 mΩ from then (a source's, coil's or motor's branch included, its equation turned into that resistance); a capacitor's stored current is dropped. The part shows a red ✕ (faint until it fails) and says so to screen readers.
+- Tests: `spice.test.ts` (numbers, a divider and RC solved, a MOSFET from its model switching, a resistor failing open and short). Browser check `scripts/checks/hyperion-spice-ui.mjs` (dark and light, axe clean, no page errors).

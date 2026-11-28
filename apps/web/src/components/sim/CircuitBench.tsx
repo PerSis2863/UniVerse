@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { MousePointer2, Pause, Play, RotateCcw, Trash2 } from 'lucide-react';
+import { FileUp, MousePointer2, Pause, Play, RotateCcw, Trash2 } from 'lucide-react';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import { Circuit, parseSi, si, type Wave } from '@/lib/sim/circuit';
-import { EXAMPLES, gatePoint, NAMES, netlist, newItem, readBoard, UNITS, type Board, type Item, type ItemKind, type Mark } from '@/lib/sim/schematic';
+import { EXAMPLES, gatePoint, NAMES, netlist, newItem, readBoard, STEPS, UNITS, WINDOWS, type Board, type Item, type ItemKind, type Mark } from '@/lib/sim/schematic';
 import { ui } from './bench-ui';
+import { readSpice } from '@/lib/sim/spice';
 
 // Hyperion Simulate → Circuits (M410): a drawing board and an oscilloscope. Pick a part, drag from one dot to another
 // to place it; wires join points; a ground (⏚) is the 0 V point; probes show their voltage on the oscilloscope. The
@@ -21,7 +22,6 @@ const TOOLS: { id: Tool; label: string; glyph: string }[] = [
   { id: 'L', label: 'Coil', glyph: 'L' }, { id: 'V', label: 'Voltage source', glyph: 'V' }, { id: 'I', label: 'Current source', glyph: 'I' }, { id: 'D', label: 'Diode', glyph: 'D' }, { id: 'S', label: 'Switch (PWM)', glyph: 'S' }, { id: 'M', label: 'Transistor (MOSFET)', glyph: 'M' }, { id: 'Mo', label: 'Motor (DC)', glyph: '⊛' },
   { id: 'ground', label: 'Ground', glyph: '⏚' }, { id: 'probe', label: 'Probe', glyph: 'P' },
 ];
-const STEPS = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 1e-3], WINDOWS = [2e-4, 5e-4, 1e-3, 3e-3, 0.01, 0.03, 0.06, 0.1, 0.3, 1];
 
 /** A part's drawing along the x axis from 0 to len (its leads to the ends), turned into place by the caller. */
 function Symbol({ it, len, gate, ang = 0 }: { it: Item; len: number; gate?: [number, number]; ang?: number }) {
@@ -90,6 +90,8 @@ export function CircuitBench() {
   }, [net]);
   const scope = useRef<{ t: number[]; v: number[][] }>({ t: [], v: [] });
   const [failed, setFailed] = useState<string | null>(null);
+  // M567: what opening a SPICE netlist left out or changed.
+  const [notes, setNotes] = useState<string[]>([]);
   // Each part's energy over the screen's time, and the average power of the last full screen (M430).
   const energy = useRef<{ e: Map<string, number>; span: number; last?: Map<string, number> }>({ e: new Map(), span: 0 });
   useEffect(() => { scope.current = { t: [], v: net.probes.map(() => []) }; energy.current = { e: new Map(), span: 0 }; }, [net, board.dt, board.window]);
@@ -274,6 +276,17 @@ export function CircuitBench() {
                 {sel.wave !== 'dc' && <label className={label}>Frequency (Hz)<input type="number" min={0.01} step="any" value={sel.freq} onChange={(e) => { const n = Number(e.target.value); if (n > 0) setItem(sel.id, { freq: n }); }} className={ui.input} /></label>}
               </div>
             )}
+            {sel && sel.kind !== 'wire' && (
+              // M567: a fault, for trying out what happens when a part fails (a virtual FMEA).
+              <div className="grid grid-cols-2 gap-2">
+                <label className={label}>When it fails
+                  <select value={sel.fault?.kind ?? 'none'} onChange={(e) => { const k = e.target.value; setItem(sel.id, { fault: k === 'open' || k === 'short' ? { kind: k, at: sel.fault?.at ?? board.window / 2 } : undefined }); }} className="input mt-1 w-full">
+                    <option value="none">It doesn’t</option><option value="open">It breaks open</option><option value="short">It shorts out</option>
+                  </select>
+                </label>
+                {sel.fault && <label className={label}>At (ms)<input type="number" min={0} step="any" value={Math.round(sel.fault.at * 1e6) / 1e3} onChange={(e) => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 10_000) setItem(sel.id, { fault: { kind: sel.fault!.kind, at: n / 1000 } }); }} className={ui.input} /></label>}
+              </div>
+            )}
             {sel && sel.kind !== 'wire' && c && <p className="font-mono text-xs tabular-nums text-zinc-700 dark:text-zinc-200">Now: {si(across, 'V')} across, {si(through, 'A')} through{part?.kind === 'Mo' ? `, ${Math.round((c.speedOf(part) * 60) / (2 * Math.PI))} rpm` : ''}</p>}
             <button type="button" className={cn(small, 'text-red-700 dark:text-red-400')} onClick={() => remove(chosen!)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
           </div>
@@ -296,9 +309,27 @@ export function CircuitBench() {
             <option value="">Choose a circuit…</option>{EXAMPLES.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
           </select>
         </label>
+        <label className={cn(small, 'cursor-pointer self-start')}><FileUp className="h-3.5 w-3.5" aria-hidden />Open a SPICE netlist
+          <input type="file" accept=".cir,.net,.sp,.spice,.ckt,.txt" className="sr-only" onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (!f) return;
+            if (f.size > 200_000) { setNotes(['That file is too big for a netlist (over 200 kB).']); return; }
+            void f.text().then((text) => {
+              try { const r = readSpice(text); setBoard(() => r.board); setChosen(null); setFailed(null); setNotes([`Opened ${f.name}: ${r.parts} parts.`, ...r.warnings].slice(0, 12)); }
+              catch (err) { setNotes([err instanceof Error ? err.message : String(err)]); }
+            });
+          }} />
+        </label>
         <button type="button" className={cn(small, 'self-start')} onClick={() => { if (confirm('Clear the whole board?')) { setBoard((b) => ({ ...b, items: [], marks: [] })); setChosen(null); } }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Clear the board</button>
       </aside>
       <section className="panel flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="Circuit">
+        {notes.length > 0 && (
+          <div className="flex items-start gap-2 border-b border-zinc-200/80 bg-violet-50 px-3 py-2 text-xs text-violet-950 dark:border-white/10 dark:bg-violet-500/10 dark:text-violet-100" role="status">
+            <ul className="min-w-0 flex-1 space-y-0.5">{notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+            <button type="button" className="shrink-0 underline" onClick={() => setNotes([])}>Hide</button>
+          </div>
+        )}
         {error ? <p className="border-b border-zinc-200/80 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-white/10 dark:bg-red-950/40 dark:text-red-300">{error}</p>
           : !net.grounded && board.items.length > 0 && <p className="border-b border-zinc-200/80 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-white/10 dark:bg-amber-950/40 dark:text-amber-200">Add a ground (⏚) somewhere: the voltages are measured from it.</p>}
         <div className="min-h-0 flex-1 overflow-auto p-2">
@@ -309,11 +340,13 @@ export function CircuitBench() {
               const on = it.id === chosen, colour = it.kind === 'wire' ? volt(nodeV(it.x1, it.y1)) : undefined;
               const text = describe(it), vertical = Math.abs(y2 - y1) > Math.abs(x2 - x1);
               return (
-                <g key={it.id} role="button" tabIndex={0} aria-label={`${NAMES[it.kind]} ${text}`} onPointerDown={(e) => { if (tool === 'select') { e.stopPropagation(); setChosen(it.id); } }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChosen(it.id); } }} className="cursor-pointer outline-none">
+                <g key={it.id} role="button" tabIndex={0} aria-label={`${NAMES[it.kind]} ${text}${it.fault ? `, set to ${it.fault.kind === 'open' ? 'break open' : 'short out'} at ${si(it.fault.at, 's')}` : ''}`} onPointerDown={(e) => { if (tool === 'select') { e.stopPropagation(); setChosen(it.id); } }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChosen(it.id); } }} className="cursor-pointer outline-none">
                   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={14} />
                   <g transform={`translate(${x1} ${y1}) rotate(${ang})`} style={{ color: colour ?? (on ? '#7c3aed' : dark ? '#e4e4e7' : '#27272a') }}>
                     {it.kind === 'wire' ? <line x1={0} y1={0} x2={len} y2={0} stroke={on ? '#7c3aed' : colour} strokeWidth={on ? 3 : 2.4} strokeLinecap="round" /> : <Symbol it={it} len={len} ang={ang} gate={it.kind === 'M' ? local(it) : undefined} />}
                   </g>
+                  {/* A part set to fail (M567): a red ✕ on it, solid once it has failed. */}
+                  {it.fault && <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 + 5} fontSize={16} fontWeight={700} textAnchor="middle" fill="#dc2626" opacity={built.c && built.c.t >= it.fault.at ? 1 : 0.45} aria-hidden>✕</text>}
                   {text && <text x={(x1 + x2) / 2 + (vertical ? 16 : 0)} y={(y1 + y2) / 2 + (vertical ? 4 : -16)} fontSize={11} textAnchor={vertical ? 'start' : 'middle'} className="fill-zinc-600 dark:fill-zinc-300">{text}</text>}
                 </g>
               );
