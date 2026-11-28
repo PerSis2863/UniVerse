@@ -28,6 +28,7 @@ describe('battery packs (M573)', () => {
     expect(h.runaway).toContain(1);
     expect(h.runaway.length).toBeGreaterThan(1);
     expect(h.maxTemp).toBeGreaterThan(500);
+    expect(h.maxTemp).toBeLessThan(1500); // a cell that ran away carries no current (M573b)
   });
   it("an ARC test finds the onset near 150 °C and the runaway's peak", () => {
     const a = arcTest();
@@ -64,5 +65,45 @@ a = arcTest(); on = a.Onset;`);
     expect(g('w')).toBe(2);
     expect(g('on')).toBeGreaterThan(120);
     expect(() => lab.run("packFault(p, 99, 'short', 0, 1)")).toThrow(/cell 1 to 8/);
+  });
+  it('the plate drawn, and the gas and fire after venting (M573b)', () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: new FileStore() });
+    lab.run(`c = ecmCell(1); p = packBuild(c, 2, 3, 'Columns', 3, 'Coolant', [], 'Gas', [170 1.5 0.05 0]); p = packFault(p, 2, 'heater', 0, 40);
+r = packSimulate(p, zeros(1, 2400), 1, 1); v = r.Vented(1); lf = r.TimeToLFL; L = numel(r.GasVolume);
+s = packPlate(p, r); y = s.Y(4); packPlate(p, r, 600); packSimulate(p, zeros(1, 300), 1, 1);
+q = packBuild(c, 2, 3, 'Columns', 3, 'Coolant', [], 'Fire', 0.1); q = packFault(q, 2, 'heater', 0, 40); f = packSimulate(q, zeros(1, 2400), 1, 1); w = max(f.HeatRelease);`);
+    const g = (k: string) => toMat(lab.vars.get(k)!).d[0];
+    expect(g('v')).toBe(2);
+    expect(g('lf')).toBeGreaterThan(0);
+    expect(g('y')).toBe(2);
+    expect(g('w')).toBeGreaterThan(100);
+    expect(() => lab.run("packBuild(c, 2, 2, 'Fire', 2)")).toThrow(/0 \(no fire\) to 0.25/);
+  });
+});
+
+import { mixLfl, NMC_GAS, plateLayout } from './pack';
+describe('the plate and venting (M573b)', () => {
+  it('lays cells out in snaking rows with grid neighbours', () => {
+    const L = plateLayout(6, 3);
+    expect([L.x, L.y]).toEqual([[0, 1, 2, 2, 1, 0], [0, 0, 0, 1, 1, 1]]);
+    expect(L.nb[1].sort()).toEqual([0, 2, 4]);
+    expect(plateLayout(4).nb[0]).toEqual([1]);
+  });
+  it("the mix's flammable limit by Le Chatelier", () => {
+    const l = mixLfl(NMC_GAS.mix);
+    expect(l).toBeGreaterThan(0.04);
+    expect(l).toBeLessThan(0.08);
+    expect(mixLfl({ H2: 1, CO: 0, CO2: 0, CH4: 0, C2H4: 0 })).toBeCloseTo(0.04, 6);
+  });
+  it('a vented cell fills a closed box past its LFL; airing or a fire changes that', () => {
+    const base = { coolant: null, cols: 2, faults: [{ cell: 0, kind: 'heater' as const, at: 0, value: 40 }] };
+    const shut = packSim(packSpec(cell, 2, 2, { ...base, gas: { ...NMC_GAS, volume: 0.05 } }), new Array(2400).fill(0), 1, 1);
+    expect(shut.vented[0]).toBe(0);
+    expect(shut.gas.at(-1)!).toBeGreaterThan(5);
+    expect(shut.timeToLfl).toBeGreaterThan(shut.ventTime[0] - 1);
+    const fire = packSim(packSpec(cell, 2, 2, { ...base, gas: { ...NMC_GAS, volume: 0.05, fire: 0.2 } }), new Array(2400).fill(0), 1, 1);
+    expect(Number.isNaN(fire.timeToLfl)).toBe(true);
+    expect(Math.max(...fire.hrr)).toBeGreaterThan(100);
+    expect(fire.ventTime[1]).toBeLessThan(shut.ventTime[1] ?? Infinity);
   });
 });

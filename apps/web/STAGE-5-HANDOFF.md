@@ -15707,3 +15707,13 @@ Part 4 of the owner's battery-systems page (MathWorks' pack design: cells, paral
 - `packAge`: each cell's SOH after n repeats from its own swing, C-rate and mean temperature (`cycleLoss`, battery.ts); the pack's capacity is its weakest series group's.
 - Language: `packBuild`, `packFault`, `packSimulate` (no output: pack voltage, every cell's temperature as an image, the SOC spread), `packAging`, `arcTest`. **Shortcut:** the spec and the run ride beside their structs in WeakMaps, so a pack edited field by field or saved and loaded must be built again. Tests `pack.test.ts`.
 - Not done: a 2D/3D plate layout (cells in a grid with the coolant's channel drawn), venting gases and fire.
+
+## M573b: M573's left-outs: the plate drawn, venting gas and fire (28 Nov)
+
+The owner pasted M573's left-outs (a drawn layout of the cells on the plate; gases or fire after runaway). Lettered, so the plan's M574–M576 keep their numbers. All in `pack.ts` and `battsys-lab.ts`; tests in `pack.test.ts`.
+
+- **Plate:** `plateLayout(N, cols)` puts cells in rows of `cols`, snaking (row 2 runs back), so the coolant's path is still cell order and each cell's neighbours are the grid's (beside, above, below). No `cols` = one row = M573's line, unchanged. `packBuild(…, 'Columns', n)`; `packPlate(p, r, t)` draws it (imagesc of the grid, the channel in blue, cell numbers up to 200 cells, vented ringed, runaway crossed); with an output, X, Y, Temperature.
+- **Gas (`VentGas`, `NMC_GAS`):** the vent opens at 170 °C and lets out what the reaction had made so far, then gas as it's made (1.5 L/Ah over the whole reaction; H₂ 30 %, CO 25 %, CO₂ 25 %, CH₄ 8 %, C₂H₄ 12 %). Unlit, it fills a well-mixed enclosure (m³, air changes an hour): `LFLShare` against the mix's limit by Le Chatelier (`mixLfl`, ~6.4 % of the whole gas; **shortcut:** CO₂'s own narrowing of the limits left out), `TimeToLFL`. With `'Fire'` (0–0.25) it burns at the vent instead (lower heats of combustion), `HeatRelease` in W, and that share of each flame heats each neighbour (the vent's first burst as an instant jump).
+- **Fix to M573 (rule for code that builds on it):** a cell past 200 °C is open: no current, no short, none taken from its parallel neighbours. Before, its siblings kept pushing current through a near-zero resistance and temperatures ran to ~780,000 °C; now ~900–1,000 °C. If every cell of a group has run away under a current, the run stops ("the pack is open").
+- Not done: the vent's jet as a flow (the gas only fills a box or burns), oxygen running out in a closed pack, the pressure inside the can before the vent, a 3D plate.
+
