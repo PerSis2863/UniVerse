@@ -2,10 +2,11 @@
 // all of these in the downloaded app"). A window of its own that opens Hyperion on the live site, so every new feature
 // reaches the app the moment it reaches the website. Safe by default: the page has no access to the computer beyond
 // what a browser gives it, other sites open in the normal browser, and only the site may use the camera or microphone.
-const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, protocol, shell, session } = require('electron');
 const crypto = require('node:crypto');
 const runner = require('./runner');
 const sims = require('./simulators');
+const ami = require('./ami');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -22,6 +23,13 @@ app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 // Behind the page before it paints and while the window resizes: the system's light or dark, never a white flash.
 const BACK = () => (nativeTheme.shouldUseDarkColors ? '#070808' : '#f1f2f4');
+// IBIS-AMI models (M577): Hyperion's engine runs in a background worker that can't wait for an answer from the page, so
+// it asks the app synchronously through a private address scheme only this app has (hyperion-native://). Electron
+// doesn't pass the asking page's origin to a scheme's handler, so the gate is this launch's secret token, given only
+// to Hyperion's own site in the window's main frame (the hyperion:native message below); only that site may read the
+// answers (CORS), and the person says yes before any model loads.
+protocol.registerSchemesAsPrivileged([{ scheme: 'hyperion-native', privileges: { corsEnabled: true, supportFetchAPI: true, secure: true } }]);
+const NATIVE_TOKEN = crypto.randomBytes(24).toString('hex');
 
 const STATE = () => path.join(app.getPath('userData'), 'window.json');
 function readBounds() { try { return JSON.parse(fs.readFileSync(STATE(), 'utf8')); } catch { return { width: 1440, height: 900 }; } }
@@ -118,10 +126,51 @@ ipcMain.handle('hyperion:simulate', async (e, id, files, top) => {
 // The File menu: within the page when it can (preload.js), so moving between Code, Simulate and Learn doesn't reload.
 const goTo = (p) => { if (!win) return; if (ours(win.webContents.getURL())) win.webContents.send('hyperion:go', p); else void win.loadURL(`${ORIGIN}${p}`); };
 
+// IBIS-AMI models (M577): loading one runs a chip maker's compiled code, so the person says yes first (once per model,
+// told apart by its fingerprint, or for every model until Hyperion closes when they tick the box). It runs in a
+// process of its own (ami-host.js), stopped after two minutes.
+const models = { all: false, ok: new Set() };
+async function mayLoad(name, sha) {
+  if (models.all || models.ok.has(sha)) return true;
+  const { response, checkboxChecked } = await dialog.showMessageBox(win, {
+    type: 'warning', buttons: ['Load the model', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
+    title: 'Load an IBIS-AMI model?',
+    message: `Load the IBIS-AMI model "${name}"?`,
+    detail: 'An AMI model is a compiled program from a chip maker. It runs on your computer with your permissions, in a separate process. Only load models from makers you trust.',
+    checkboxLabel: "Don't ask again for IBIS-AMI models until Hyperion is closed",
+  });
+  if (response !== 0) return false;
+  if (checkboxChecked) models.all = true; else models.ok.add(sha);
+  return true;
+}
+ipcMain.handle('hyperion:native', (e) => { if (!trusted(e)) throw new Error('Not allowed.'); return { url: 'hyperion-native://app', token: NATIVE_TOKEN, platform: process.platform, arch: process.arch }; });
+const tokenOk = (t) => typeof t === 'string' && t.length === NATIVE_TOKEN.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(NATIVE_TOKEN));
+async function native(request) {
+  const headers = { 'Access-Control-Allow-Origin': ORIGIN, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', Vary: 'Origin' };
+  const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers });
+  const url = new URL(request.url);
+  if (request.method !== 'POST' || !tokenOk(url.searchParams.get('t'))) return reply({ ok: false, error: 'Not allowed.' }, 403);
+  if (url.pathname !== '/ami' && url.pathname !== '/link') return reply({ ok: false, error: 'Unknown request.' }, 404);
+  let body;
+  try { body = JSON.parse(await request.text()); } catch { return reply({ ok: false, error: 'The request was not readable.' }, 400); }
+  if (url.pathname === '/link') {
+    // A back-channel link (M579): both models, each asked about.
+    const tx = ami.prepare(body && body.tx && body.tx.executable), rx = ami.prepare(body && body.rx && body.rx.executable);
+    if (tx.error || rx.error) return reply({ ok: false, error: tx.error || rx.error });
+    if (!(await mayLoad(body.tx.executable.name, tx.sha)) || !(await mayLoad(body.rx.executable.name, rx.sha))) return reply({ ok: false, cancelled: true, error: 'Not run: you chose Cancel.' });
+    return reply(await ami.link(body, tx, rx));
+  }
+  const prepared = ami.prepare(body && body.executable);
+  if (prepared.error) return reply({ ok: false, error: prepared.error });
+  if (!(await mayLoad(body.executable.name, prepared.sha))) return reply({ ok: false, cancelled: true, error: 'Not run: you chose Cancel.' });
+  return reply(await ami.run(body, prepared));
+}
+
 app.whenReady().then(() => {
   // The connection to the site is opened while the window is being made.
   session.defaultSession.preconnect({ url: ORIGIN, numSockets: 2 });
   nativeTheme.on('updated', () => win?.setBackgroundColor(BACK()));
+  protocol.handle('hyperion-native', native);
   // Only Hyperion's own site may ask for the camera, microphone, clipboard or notifications; nothing else.
   session.defaultSession.setPermissionRequestHandler((wc, permission, done) => done(ours(wc.getURL()) && ['media', 'clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen'].includes(permission)));
   const mac = process.platform === 'darwin';

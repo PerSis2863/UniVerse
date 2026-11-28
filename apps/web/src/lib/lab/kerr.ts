@@ -12,6 +12,7 @@ import { rk45 } from './sci-num';
 // disc glows and absorbs all through its gas (it shadows its own far side); a solid one's inner and outer walls shine.
 // M545: lengths in the gas measured by the gas itself, and absorption by colour with each pixel's spectrum (`spectrumRGB`).
 // M546: scattering (`scatter`), in the Eddington approximation: the spectrum hardens by the colour correction f_col.
+// M570: the scattered light from all of the disc (`transfer` 'disc', `discTransfer`) and a Compton corona (`comptonize`).
 
 /** The hole's charge q and the particle's charge per mass ε (Gaussian units, G = c = M = 1). */
 export interface Charge { q?: number; eps?: number; g?: number }
@@ -243,7 +244,7 @@ export function imageRay(a: number, thO: number, alpha: number, beta: number) {
  * taken at the cylinder radius), and `opacity` below 1 lets light through: each crossing adds its glow times what is
  * left, (1 − opacity) per crossing, so the hole's far side and the thin ring of light shine through. `T` is each pixel's
  * colour temperature, g · (F/F_peak)^¼ relative to the hottest gas, weighted by brightness. */
-export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number; thick?: number; opacity?: number; tK?: number; absorb?: number; scatter?: number } = {}) {
+export function discImage(a: number, thO: number, o: { q?: number; n?: number; rIn?: number; rOut?: number; half?: number; thick?: number; opacity?: number; tK?: number; absorb?: number; scatter?: number; transfer?: 'slab' | 'disc'; corona?: { kTe: number; tau: number }; wide?: boolean } = {}) {
   const H = o.thick ?? 0, op = o.opacity ?? 1, q = o.q ?? 0, n = o.n ?? 80, rOut = o.rOut ?? 20, rIn = o.rIn ?? isco(a, q ? { q } : {}), half = o.half ?? rOut * 1.1, rh = horizon(a, q), r0 = 1000;
   if (!(rOut > rIn)) throw new Error('The disc\'s outer edge must lie outside its inner edge.');
   if (!(H >= 0 && H <= 0.3 && op > 0 && op <= 1)) throw new Error('The disc\'s thickness h/r is 0 to 0.3 and its opacity more than 0, up to 1.');
@@ -266,7 +267,7 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
   // so 2 (free–free) takes red more than blue and −1 (dust) blue more. The light that leaves gas at T reaches us as a
   // black body at gT (I_ν/ν³ is the same for every observer).
   const S = o.tK ? new Float64Array(n * n * LAM.length) : null, beta = o.absorb ?? 0, trS = new Float64Array(LAM.length);
-  if (o.tK !== undefined && !(o.tK >= 100 && o.tK <= 1e6 && Math.abs(beta) <= 4)) throw new Error('The hottest gas is 100 K to 10⁶ K and the absorption\'s power −4 to 4.');
+  if (o.tK !== undefined && !(o.tK >= 100 && o.tK <= 1e8 && Math.abs(beta) <= 4)) throw new Error('The hottest gas is 100 K to 10⁸ K and the absorption\'s power −4 to 4.');
   // M546: `scatter` ω, the share of the opacity (at the gas's peak colour) that turns light aside instead of taking it,
   // in the Eddington (two-stream) approximation: at a colour whose absorption is f times the peak's, the extinction is
   // (1 − ω)f + ω times κ and the share destroyed ε = (1 − ω)f / that. A surface (or a deep slab) gives out ε_eff =
@@ -278,13 +279,24 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
   if (!(om >= 0 && om <= 0.99)) throw new Error('The scattering share is 0 to 0.99.');
   const ext = (f: number) => (1 - om) * f + om, epsOf = (f: number) => ((1 - om) * f) / ext(f), effOf = (f: number) => { const e = Math.sqrt(epsOf(f)); return (2 * e) / (1 + e); };
   const fcol = effOf(1) ** -0.25, srcOf = (f: number, tau: number) => { const e = epsOf(f), se = Math.sqrt(e); return e + (1 - e) * (1 - Math.exp(-Math.sqrt(3 * e) * tau * ext(f)) / (1 + se)); };
-  const spec = (k: number, g: number, rc: number, takeOf: (kr: number) => number, src: (f: number) => number) => {
+  // M570: with `transfer` 'disc' the light scattered inside a see-through slab is the light really arriving at each
+  // point from all of the disc's gas (discTransfer), not a flat slab's own.
+  const nl = o.transfer === 'disc' && H > 0 && op < 1 && om > 0 ? discTransfer({ rIn, rOut, zc: H, op, om, beta, fcol, rh, Tl: (r) => Fof(r) ** 0.25 / Tpk }) : null;
+  if (o.transfer && !['slab', 'disc'].includes(o.transfer)) throw new Error("The light inside the gas is 'slab' or 'disc'.");
+  const spec = (k: number, g: number, rc: number, takeOf: (kr: number) => number, src: (f: number, u: number) => number) => {
     const T = o.tK! * (Fof(rc) ** 0.25 / Tpk);
     LAM.forEach((l, b) => {
       const x = 14387.77 / (l * 1e-3 * g * T) / 2.821, f = beta ? x ** -beta : 1, take = takeOf(ext(f));
-      S![k * LAM.length + b] += trS[b] * take * src(f) * planck(l, g * fcol * T); trS[b] *= 1 - take;
+      S![k * LAM.length + b] += trS[b] * take * src(f, (x * T) / o.tK!) * planck(l, g * fcol * T); trS[b] *= 1 - take;
     });
   };
+  // M570: `corona` (kTe in keV, its optical depth τ): hot electrons above the disc boosting its light by Compton
+  // scattering. The whole picture's light over 10⁻³ to 10³ keV (E, X as E·F_E, arbitrary units) from each bit of gas a
+  // black body at g f_col T (grey weights), then e^−τ of it passes and the rest is Comptonized (`comptonize`).
+  const wide = o.corona || o.wide ? new Float64Array(EK.length) : null;
+  if (wide && !o.tK) throw new Error('The wide spectrum needs the gas\'s temperature.');
+  if (o.corona && !(o.corona.kTe >= 1 && o.corona.kTe <= 1000 && o.corona.tau > 0 && o.corona.tau <= 10)) throw new Error('A corona needs the gas\'s temperature, electrons of 1 to 1000 keV and an optical depth above 0 up to 10.');
+  const addWide = (w: number, Tobs: number) => { if (wide) { const kT = 8.617333e-8 * Tobs; EK.forEach((E, i) => { const x = E / kT; wide[i] += x > 700 ? 0 : (w * (15 / Math.PI ** 4) * x ** 4) / Math.expm1(x); }); } };
   const opaque = (t: number) => t < 1e-3 && (!S || trS.every((x) => x < 1e-3));
   for (let py = 0; py < n; py++) for (let px = 0; px < n; px++) {
     trS.fill(1);
@@ -311,9 +323,10 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
         if (Math.abs(um) < zc && rc >= rIn && rc <= rOut) {
           const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), ds = ((rm * rm + a * a * um * um) * h) / g;
           const kap = -Math.log(1 - op) / (2 * rm * Math.asin(zc)), take = 1 - Math.exp(-kap * ds);
-          const tau = kap * rm * (Math.asin(zc) - Math.asin(Math.min(zc, Math.abs(um)))), w = (tr2 * take * g ** 4 * Fof(rc) * srcOf(1, tau)) / effOf(1);
-          Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
-          if (S) spec(py * n + px, g, rc, (kr) => 1 - Math.exp(-kap * kr * ds), (f) => srcOf(f, tau));
+          const tau = kap * rm * (Math.asin(zc) - Math.asin(Math.min(zc, Math.abs(um)))), Tl = Fof(rc) ** 0.25 / Tpk;
+          const w = (tr2 * take * g ** 4 * Fof(rc) * (nl ? Math.exp(nl(rc, um / zc, Tl)) : srcOf(1, tau))) / effOf(1);
+          Isum += w; Tsum += w * g * fcol * Tl; addWide(w, o.tK! * g * fcol * Tl);
+          if (S) spec(py * n + px, g, rc, (kr) => 1 - Math.exp(-kap * kr * ds), (f, uu) => (nl ? Math.exp(nl(rc, um / zc, uu)) : srcOf(f, tau)));
           // Its shift and radius: where the gas has taken the first 5% (one step takes little).
           if (Number.isNaN(G[py * n + px]) && tr2 * (1 - take) < 0.95) { G[py * n + px] = g; Rh[py * n + px] = rc; }
           tr2 *= 1 - take;
@@ -331,7 +344,7 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
       const wall = !zc || Math.abs(u) >= zc || Math.abs(ny[2]) >= zc ? 0 : c0 < rIn && c1 >= rIn ? Math.min(rOut, rIn * (1 + zc)) : c0 > rOut && c1 <= rOut ? rOut : 0;
       if (wall) {
         const rc = wall, g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * g ** 4 * Fof(rc);
-        Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+        Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk); addWide(w, o.tK! * g * fcol * (Fof(rc) ** 0.25 / Tpk));
         if (S) spec(py * n + px, g, rc, () => 1, effOf);
         if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = wall === rOut ? rOut : rIn; }
         break;
@@ -347,7 +360,7 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
         const rc = (r + hit * (ny[0] - r)) * Math.sqrt(1 - zc * zc);
         if (rc >= rIn && rc <= rOut) {
           const g = 1 / (look(rc, tUt) * (1 - look(rc, tOm) * L)), w = tr2 * op * g ** 4 * Fof(rc);
-          Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk);
+          Isum += w; Tsum += w * g * fcol * (Fof(rc) ** 0.25 / Tpk); addWide(w, o.tK! * g * fcol * (Fof(rc) ** 0.25 / Tpk));
           if (S) spec(py * n + px, g, rc, (kr) => (op >= 1 ? 1 : 1 - (1 - op) ** kr), effOf);
           if (Number.isNaN(G[py * n + px])) { G[py * n + px] = g; Rh[py * n + px] = rc; }
           tr2 *= 1 - op;
@@ -361,7 +374,109 @@ export function discImage(a: number, thO: number, o: { q?: number; n?: number; r
     }
     if (Isum > 0) { I[py * n + px] = Isum; Tm[py * n + px] = Tsum / Isum; }
   }
-  return { I, g: G, r: Rh, T: Tm, n, half, S, lam: LAM };
+  const px2 = ((2 * half) / n) ** 2; // each pixel's patch of sky, so X is the picture's total
+  return { I, g: G, r: Rh, T: Tm, n, half, S, lam: LAM, ...(wide ? { E: EK, X: o.corona ? comptonize(EK, wide.map((v) => v * px2), o.corona.kTe, o.corona.tau) : Array.from(wide, (v) => v * px2) } : {}) };
+}
+
+/** M570: the light scattered inside a see-through thick disc, from all of its gas: the gas cut into 20 rings (log
+ * spaced) × 8 layers (by cos θ / h), and from the middle of each cell 48 straight rays (evenly spread) followed
+ * through the gas, each crossing of a cell weighted by the light it gives that is not taken on the way (the Λ
+ * operator); at each of 25 frequencies (10⁻³ to 10³ times the hottest gas's peak, in each cell's own frame) the
+ * source S = ε B + (1 − ε) Λ S is solved exactly (a dense linear solve; Λ iteration stalls when ε is small), ε the
+ * share of the extinction that is absorption there, B a black body at f_col T. Returns ln(S / B) at a cylinder
+ * radius R, a height ζ = cos θ / (h/r) (−1 to 1) and a frequency u (in the hottest gas's peaks), interpolated.
+ * shortcut: flat space and straight rays, and the gas taken still while it scatters (no shift between its parts);
+ * rays into the hole end there. */
+export function discTransfer(p: { rIn: number; rOut: number; zc: number; op: number; om: number; beta: number; fcol: number; rh: number; Tl: (r: number) => number }) {
+  const NR = 20, NZ = 8, NC = NR * NZ, qR = (p.rOut / p.rIn) ** (1 / NR), lnq = Math.log(qR), zc = p.zc;
+  const kapOf = (r: number) => -Math.log(1 - p.op) / (2 * r * Math.asin(zc));
+  const cellAt = (x: number, y: number, z: number) => {
+    const R = Math.hypot(x, y), r = Math.hypot(R, z), c = z / r;
+    if (!(Math.abs(c) < zc && R >= p.rIn && R < p.rOut)) return -1;
+    return Math.min(NR - 1, Math.floor(Math.log(R / p.rIn) / lnq)) * NZ + Math.min(NZ - 1, Math.floor(((c / zc + 1) / 2) * NZ));
+  };
+  const Rc = Array.from({ length: NR }, (_, i) => p.rIn * qR ** (i + 0.5)), Zc = Array.from({ length: NZ }, (_, k) => -1 + ((k + 0.5) * 2) / NZ);
+  const ND = 48, dirs = Array.from({ length: ND }, (_, i) => { const z = 1 - (2 * i + 1) / ND, s = Math.sqrt(1 - z * z), t = i * Math.PI * (3 - Math.sqrt(5)); return [s * Math.cos(t), s * Math.sin(t), z]; });
+  // Each ray's crossings: (cell, κ times the length in it, without the colour's factor).
+  const off: number[] = [0], segC: number[] = [], segT: number[] = [];
+  for (let i = 0; i < NC; i++) {
+    const R0 = Rc[Math.floor(i / NZ)], c0 = Zc[i % NZ] * zc, r0 = R0 / Math.sqrt(1 - c0 * c0), P0 = [R0, 0, r0 * c0];
+    for (const d of dirs) {
+      let x = P0[0], y = P0[1], z = P0[2], last = -1, acc = 0, tauG = 0;
+      for (let st = 0; st < 40000; st++) {
+        const R = Math.hypot(x, y), r = Math.hypot(R, z);
+        if (r < p.rh * 1.01 || (R > p.rOut && x * d[0] + y * d[1] > 0) || tauG > 40 / p.om) break;
+        const h = 0.5 * Math.min((2 * zc * Math.max(r, p.rIn)) / NZ, Math.max(R, p.rIn) * (qR - 1)), mx = x + 0.5 * h * d[0], my = y + 0.5 * h * d[1], mz = z + 0.5 * h * d[2];
+        const c = cellAt(mx, my, mz), dt = c >= 0 ? kapOf(Math.hypot(mx, my, mz)) * h : 0;
+        if (c !== last) { if (last >= 0) { segC.push(last); segT.push(acc); } last = c; acc = 0; }
+        acc += dt; tauG += dt; x += h * d[0]; y += h * d[1]; z += h * d[2];
+      }
+      if (last >= 0) { segC.push(last); segT.push(acc); }
+      off.push(segC.length);
+    }
+  }
+  const NU = 25, U = Array.from({ length: NU }, (_, k) => 10 ** (-3 + (6 * k) / (NU - 1)));
+  const lnS = new Float64Array(NU * NC), Tc = Rc.map((R) => p.Tl(R)), A = new Float64Array(NC * NC), rhs = new Float64Array(NC);
+  const lnexpm1 = (y: number) => (y > 30 ? y : Math.log(Math.expm1(y)));
+  U.forEach((u, ku) => {
+    const ext = new Float64Array(NC), eps = new Float64Array(NC), lnB = new Float64Array(NC);
+    for (let j = 0; j < NC; j++) {
+      const Tl = Tc[Math.floor(j / NZ)], f = p.beta ? (u / Tl) ** -p.beta : 1;
+      ext[j] = (1 - p.om) * f + p.om; eps[j] = ((1 - p.om) * f) / ext[j]; lnB[j] = 3 * Math.log(u) - lnexpm1((2.821 * u) / (p.fcol * Tl));
+    }
+    const top = Math.max(...lnB);
+    A.fill(0);
+    for (let i = 0; i < NC; i++) {
+      for (let dd = 0; dd < ND; dd++) {
+        let ta = 0;
+        for (let s2 = off[i * ND + dd]; s2 < off[i * ND + dd + 1] && ta < 40; s2++) {
+          const j = segC[s2], dtau = segT[s2] * ext[j];
+          A[i * NC + j] -= ((1 - eps[i]) * Math.exp(-ta) * -Math.expm1(-dtau)) / ND; ta += dtau;
+        }
+      }
+      A[i * NC + i] += 1; rhs[i] = eps[i] * Math.exp(lnB[i] - top);
+    }
+    // Gaussian elimination with partial pivoting.
+    for (let c = 0; c < NC; c++) {
+      let pv = c;
+      for (let r = c + 1; r < NC; r++) if (Math.abs(A[r * NC + c]) > Math.abs(A[pv * NC + c])) pv = r;
+      if (pv !== c) { for (let k = 0; k < NC; k++) { const t = A[c * NC + k]; A[c * NC + k] = A[pv * NC + k]; A[pv * NC + k] = t; } const t = rhs[c]; rhs[c] = rhs[pv]; rhs[pv] = t; }
+      for (let r = c + 1; r < NC; r++) { const m = A[r * NC + c] / A[c * NC + c]; if (!m) continue; for (let k = c; k < NC; k++) A[r * NC + k] -= m * A[c * NC + k]; rhs[r] -= m * rhs[c]; }
+    }
+    for (let r = NC - 1; r >= 0; r--) { let v = rhs[r]; for (let k = r + 1; k < NC; k++) v -= A[r * NC + k] * rhs[k]; rhs[r] = v / A[r * NC + r]; }
+    for (let j = 0; j < NC; j++) lnS[ku * NC + j] = Math.log(Math.max(rhs[j], 1e-300)) + top - lnB[j];
+  });
+  const idx = (x: number, n: number) => { const c = Math.max(0, Math.min(n - 1.000001, x)), i = Math.floor(c); return [i, c - i] as const; };
+  return (R: number, zeta: number, u: number) => {
+    const [i, fi] = idx(Math.log(R / p.rIn) / lnq - 0.5, NR), [k, fk] = idx(((zeta + 1) / 2) * NZ - 0.5, NZ), [m, fm] = idx(((Math.log10(u) + 3) / 6) * (NU - 1), NU);
+    let v = 0;
+    for (const [a, wa] of [[i, 1 - fi], [i + 1, fi]]) for (const [b, wb] of [[k, 1 - fk], [k + 1, fk]]) for (const [c, wc] of [[m, 1 - fm], [m + 1, fm]]) {
+      if (!(wa * wb * wc)) continue;
+      v += wa * wb * wc * lnS[Math.min(NU - 1, c) * NC + Math.min(NR - 1, a) * NZ + Math.min(NZ - 1, b)];
+    }
+    return v;
+  };
+}
+
+/** M570: the energies (keV) of the wide spectrum, 10⁻³ to 10³ keV, 25 a decade. */
+export const EK = Array.from({ length: 151 }, (_, i) => 10 ** (-3 + i / 25));
+/** M570: thermal Comptonization of a spectrum F (E·F_E at the energies E, keV) by a cloud of electrons at kTe (keV)
+ * of optical depth τ: e^−τ of the photons pass, the rest are boosted along a power law up to a cutoff near kTe. The
+ * power law's index from Kompaneets' equation: y = (4θ + 16θ²) max(τ, τ²), θ = kTe / m_e c², photon index
+ * Γ = −½ + √(9/4 + 4/y); each photon at E₀ < kTe spreads as (E/E₀)^(1−Γ) e^(−E/kTe) per ln E above E₀ (Steiner's SIMPL,
+ * upward only, with the cutoff), photons kept in number. Returns E·F_E. shortcut: one Green's function, not Kompaneets
+ * solved; no photons scattered down (photons above kTe pass unchanged). */
+export function comptonize(E: number[], F: ArrayLike<number>, kTe: number, tau: number) {
+  const th = kTe / 511, y = (4 * th + 16 * th * th) * Math.max(tau, tau * tau), G = -0.5 + Math.sqrt(9 / 4 + 4 / y), esc = Math.exp(-tau), n = E.length;
+  const N = Array.from(F, (v, i) => v / E[i]), out = N.map((v) => v * esc);
+  for (let j = 0; j < n; j++) {
+    if (!(N[j] > 0)) continue;
+    if (E[j] >= kTe) { out[j] += N[j] * (1 - esc); continue; }
+    let tot = 0; const w: number[] = [];
+    for (let i = j; i < n; i++) { const v = (E[i] / E[j]) ** (1 - G) * Math.exp(-E[i] / kTe); w.push(v); tot += v; }
+    w.forEach((v, k) => { out[j + k] += (N[j] * (1 - esc) * v) / tot; });
+  }
+  return out.map((v, i) => v * E[i]);
 }
 
 /** The wavelengths (nm) of discImage's spectra (M545). */

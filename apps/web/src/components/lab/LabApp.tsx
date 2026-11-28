@@ -254,6 +254,9 @@ export function LabApp() {
   };
   const start = () => {
     const w = new Worker(new URL('./lab.worker.ts', import.meta.url));
+    // In Hyperion's computer app the engine may run IBIS-AMI models (M577): it gets the app's private address and token.
+    const desk = (window as Window & { hyperionDesktop?: { native?: () => Promise<{ url: string; token: string; platform?: string; arch?: string }> } }).hyperionDesktop;
+    if (desk?.native) void desk.native().then((n) => w.postMessage({ native: n } satisfies ToLab)).catch(() => { /* an older app: no AMI models */ });
     w.onmessage = (e: MessageEvent<FromLab>) => {
       const m = e.data;
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.

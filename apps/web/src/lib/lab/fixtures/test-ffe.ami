@@ -1,0 +1,14 @@
+| A tiny IBIS-AMI parameter file for Hyperion's tests (M577), beside desktop/hyperion/test/ami-test-model.c.
+(test_tx
+  (Description "A two-tap transmit FFE for tests")
+  (Reserved_Parameters
+    (AMI_Version (Usage Info) (Type String) (Value "7.1"))
+    (Init_Returns_Impulse (Usage Info) (Type Boolean) (Value True))
+    (GetWave_Exists (Usage Info) (Type Boolean) (Value True))
+    (Ignore_Bits (Usage Info) (Type Integer) (Value 0)))
+  (Model_Specific
+    (tap (Usage In) (Type Float) (Range -0.2 -0.5 0) (Description "Post-cursor de-emphasis"))
+    (mode (Usage In) (Type Integer) (List 0 1 2) (Default 1))
+    (label (Usage In) (Type String) (Value "lane0"))
+    (report (Usage Out) (Type Float) (Value 0))
+    (eq (adapt (Usage In) (Type Boolean) (Default True)))))

@@ -16497,3 +16497,537 @@ why). As in M576, a worker that didn't load reloads the page once to the new ver
   on the page. The landing's `EarthGlobe` has no fallback once its canvas is handed over: it just stays invisible
   (it fades in only on `ready`), which is acceptable for a decoration.
 - Every `new Worker(new URL(…))` in `src` now has an error path.
+
+## M570 (25 Nov; built as M547, renumbered: another branch had used M547–M569): Hyperion physics, M546's left-outs (V-HACD's cube search, the disc's light from all of its gas, a Compton corona)
+
+The owner sent M546's "left out on purpose" list back. **`convexSplit(…, { search: 'voxel' })`** (`rigid3d.ts`;
+`'Search', 'voxel'`): V-HACD's own way of choosing cuts. The solid is chopped into cubes (32 along its longest side, a
+cube filled when its middle is inside the mesh); for a part (its cubes those inside its cell) every plane across an
+axis between two layers of cubes is scored by the empty cubes inside its two sides' hulls (a hull is the filled cubes'
+extent in 90 directions, an empty cube counted when its middle is strictly inside) plus a twentieth for lopsided halves
+(V-HACD's balance term), tried at every eighth layer first and then layer by layer round the best (its coarse-then-fine
+search). The cubes only **propose** planes: the best 4 are judged exactly beside the fold cuts, so the plateau's
+look-ahead, the 64-corner limit and the tolerance are shared, and the parts are merged at the end as 'full' does.
+A first version with its own loop cut only by the cubes: on the dented cube it made 16 slivers (axis planes staircase a
+slanted dent; V-HACD keeps to the axes) and lost volume, so a plane from the cubes whose sides hold less solid than the
+part (a corner cut off) is also left out. Measured (12-step half ring / L / U / dented cube): 11 parts within 0.7% (12
+plain), 2, 3, 4 exact, 1–15× slower than plain. **Two older bugs found and fixed:** (1) **`hull`'s faces** were its
+coplanar points sorted by angle round their middle, so a point **inside** a face (not on its edge) went into the
+outline, which folded: a part's volume came out 1.215 for 1.25. Faces are now the flat convex hull (Andrew's monotone
+chain, turning round the normal). (2) **`fill`** passed two merged parts' shared corners twice; it now takes corners
+closer than a hair once. And merging now also needs the joint hull to add at most the tolerance of the two parts'
+volumes (merged hulls overlapped their neighbours: a sum of volumes 5% over). **The disc** (`kerr.ts`):
+**`discTransfer`**, the scattered light in a see-through thick disc from all of its gas (`transfer: 'disc'`,
+'Transfer', 'disc'; only with thickness, opacity under 1 and scattering): 20 rings (log) × 8 layers (by cos θ / h),
+48 straight rays from each cell's middle followed through the gas (the Λ operator), and at 25 frequencies (10⁻³ to
+10³ of the hottest gas's peak, in the gas's own frame) S = εB + (1 − ε)ΛS solved exactly (dense, pivoted; Λ iteration
+stalls when ε is small), stored as ln(S/B) and interpolated (ln R, ζ, log u). `shortcut:` flat space, straight rays, the
+gas still while it scatters; rays into the hole end. Trap: M546's slab formula assumed a **deep** slab (J → B inside):
+for a thin slab that mostly scatters (opacity 0.6, ω = 0.99) the real light is ~0.17 of it (scattered light escapes),
+for a thick one (0.999, ω = 0.5) ~4% more (the hot inner gas lights the gas further out); ω = 0.01 within 0.1%.
+**`comptonize`** and the **corona** (`corona: { kTe, tau }`, 'Corona', [kTe tau]): the whole picture's light over
+10⁻³–10³ keV (`EK`, 151 energies; each bit of gas a black body at g f_col T with its grey weight; `wide: true` without a
+corona), e^−τ of the photons pass and the rest spread as (E/E₀)^(1−Γ) e^(−E/kTe) per ln E above E₀ (Steiner's SIMPL,
+upward only, with a thermal cutoff), Γ = −½ + √(9/4 + 4/y), y = (4θ + 16θ²) max(τ, τ²); photons kept in number.
+`kerrDisc` gives E and X (E·F_E) as its 7th and 8th outputs; 'Temperature' now goes to 10⁸ K (stellar black holes'
+discs, ~10⁷ K). Example `physics11.m`. Tests (`physics-m547.test.ts`): the hull with points in a face and on an edge,
+'voxel' exact on an L, a U and the dented cube, a half ring within the tolerance, the disc transfer's three cases,
+Comptonization's photon count and slope, the corona's X-rays and the options in the language. Not built: V-HACD's
+hull per cube cluster (our parts stay exact cells met with the mesh), its symmetry term and non-axis planes in the cube
+search; the transfer in curved space with the gas's motion between its parts; Compton scattering down, and the corona's
+own geometry (a slab over the disc, not a sphere) and its light falling back on the disc.
+
+## M571 (27 Nov): Hyperion data centres: power demand from chip to campus
+
+The owner, 27 Nov ("build all of this in hyperion", with six of MathWorks' data-centre pages: hyperscalers, utilities,
+power converters, cooling, on-site generation and storage, high-speed interconnects). Built as six toolboxes, M571–M576,
+in the sciences group's pattern (pure `dc-*.ts`, the language in `dc-*-lab.ts`, imported from `sciences.ts`, help under
+"# Data centres" in `help-sciences.ts`, one example each in `examples-sciences.ts`). **Power demand**, `dc-power.ts`:
+a chip is idle + (TDP − idle)·u^exp (`CHIPS`: gpu700, gpu1000, gpu1200, tpu, cpu; generic, no makers' names); a server
+adds CPUs at a third of the load plus a tenth, a base (memory, network, disks) and fans by the cube of a speed set by
+the heat and +4%/K of inlet over 25 °C, behind a supply losing R(0.01 + 0.02x + 0.015x²) (96% at half load, 89% at a
+tenth). `workload`: training chips in step (`compute` share of `period` at `high`, the rest at `low`, 0.02 for
+`checkpointFor` s every `checkpointEvery`), or inference (a daily cosine peaking 14:00 with LCG noise). The facility:
+UPS rated(0.008 + 0.012x + 0.012x²), distribution 0.3% rated + 1.2% load, cooling `fanPump`·heat plus a chiller at
+`eta` of Carnot's COP (evaporator supply − 5, condenser air + approach; at most 12) on the `mechanicalShare` (0 when the
+air + approach is 2 K under the supply, 1 at 2 K over), other 1% of rated. `campus`: phases [year MW] each filling
+linearly over `fill` months to `utilisation`, ±5% daily wave, every hour of every year through the facility with
+`climate` (mean, seasonal cosine warmest day 205, daily warmest 15:00). Language: `dcServer` (a struct, Type
+'dcServer'; the supply sized at 1.25× full, rounded to 100 W), `dcServerPower` (with parts), `dcWorkload`,
+`dcFacility` (a stack and PUE drawn), `dcCampus`, `dcHeatFlow`. Tests: idle to TDP, the supply curve, ~10 kW for an
+8-accelerator server, fans faster in warm air, the training trace's levels and checkpoint, Carnot and free cooling, PUE
+1.05–1.6, the campus's capacity steps and gigawatt peak, heat flows. Not built: measured server power curves (SPECpower
+files), the network switches' power, a grid-tied UPS's battery, water-side economisers by hour of a real weather file.
+
+## M572 (27 Nov): Hyperion data centres: the grid
+
+The second of the owner's six data-centre pages ("Utility regulators and operators"), `dc-grid.ts`. **Voltage**: the
+exact two-bus solution V⁴ − (Vs² − 2(PR + QX))V² + (P² + Q²)(R² + X²) = 0, larger root, NaN past the nose;
+`voltageSeries` with a tap changer (0.625% a tap, ±16, a step after `delay` s continuously outside ±`band`, the timer
+reset after each step and whenever the voltage is back inside). **Hosting capacity**: the nose by doubling then
+bisecting on "the root exists", then bisection for V = vmin, capped by a thermal limit (`limitedBy` 'voltage',
+'thermal' or 'nose'). **Frequency**: the low-order system frequency response model, 2H dΔf/dt = ΔPm + ΔPb − ΔPL − DΔf,
+first-order governors with droop R (output capped by `reserve`) and an optional battery with 1% droop, a time constant
+and a power cap; RK4 with steps of at most 10 ms (and tb/4), the load held over each output interval; nadir, its time,
+the largest RoCoF between outputs, the settled value. **Harmonics**: typical spectra (`RECTIFIERS`: 6-pulse with a 3%
+reactor, 12-pulse, active front end, PFC server supplies; zero-weighted kinds leave their orders out), added in phase
+(the worst case) by the mix's shares, through the admittances of the source (R√h + jhX on the load's base, X = load/ssc,
+R = X/XR), the capacitor bank (jh/Xc) and the linear load's conductance (`linear`, default 0.3 of the load: without it a
+bank near a characteristic order gave ~45% THDv, real buses are damped by their other loads); IEEE 519-2014's TDD by
+Isc/IL and voltage limits by kV. **ITIC**: the lower edge 0 V to 20 ms, 0.7 to 0.5 s, 0.8 to 10 s, then 0.9; the upper
+2 to 1 ms, 1.4 to 3 ms, 1.2 to 0.5 s, then 1.1. Language: `dcGridVoltage`, `dcHostingCapacity`, `dcFrequency`,
+`dcHarmonics` (bars against the limit and an impedance scan), `itic` (events on the curve). Tests: the power-flow
+equation holds, the lossless nose Vs²/2X, voltage-limited capacity lands on 0.95, the tap changer ends inside its band,
+the settled Δf = ΔP/(D + 1/R), the first RoCoF ΔP/2H, a battery raising the nadir, the 5th harmonic's voltage by hand,
+resonance at √(ssc/cap) amplifying it more than fivefold, active front ends passing, ITIC points. Not built:
+unbalanced (per-phase) flows and negative sequence, flicker (Pst), a full network's harmonic load flow, EMT-level
+converter control during faults (the converters are M573's), UFLS relays.
+
+## M573 (27 Nov): Hyperion data centres: the 800 V solid-state transformer
+
+The third data-centre page ("Power converter developers"), `dc-convert.ts`: one module of an 800 V DC solid-state
+transformer. **The DAB**: P = V1·nV2·φ(π − |φ|)/(2π² fs L) (n = N1/N2), `dabPhase` its inverse (the smaller root,
+NaN past π/2), `dabDesign` (n = V1/V2, L from P at φ, π/6 by default). `dabWaveform`: v_L = V1·s1(t) − nV2·s1(t − φ/2π)
+integrated over `m` samples, mean removed (half-wave symmetry makes the steady-state current zero-mean); zero-voltage
+switching when the current is ≤ 0 at the primary's rising edge and ≥ 0 at the secondary's; the power read back as
+mean(v1·i) (within 1% of the formula at 2000 samples). `dabLosses`: conduction 2·I²rms·Rds a bridge (the secondary
+n times the current), switching four transitions a period a bridge, E scaled by |I|/iref and V/vref, turn-on added only
+off zero voltage; core and winding. `DEVICES` typical 1200 V / 650–900 V SiC (16 mΩ, 4 mΩ, 0.6 mJ off, 1.5 mJ on at
+1200 V 50 A; a first try at 80 mΩ made light load the most efficient). **The closed loop** (`sstSimulate`): the PFC as
+a power source lagging its reference by tauI, the reference the DAB's power ÷ ηPFC fed forward plus a PI on the link
+(without the feedforward a 100 kW step sagged the 1600 V link by 160 V at 20 Hz); the DAB's PI on the bus sets φ
+(clamped ±π/2, integrators clamped); both sampled every ts with the previous sample's reading (a one-sample delay),
+held between. `sstGains`: Kp1 = ω1·C1·V1 (the link's energy loop), Kp2 = ω2·C2/(∂I2/∂φ at the phase of half the
+rating), Ki = Kp·ω/5. Average value integrates by Euler at min(ts/20, 10 µs); 'switching' integrates the inductor
+current at 200 steps a period (≤ 5,000 periods a run), the DAB power for the feedforward filtered over 20 periods; it
+starts on the steady-state current. **Code**: `controllerCode` writes the PI as C (float, anti-windup) or Verilog
+(signed Q15.16 by default, products in 64 bits shifted back). Language: `dabDesign` (a struct, Type 'dab'),
+`dabPower`, `dabWaveform`, `dabEfficiency`, `sstSimulate`, `dcControllerCode`. Tests: the rating at the design phase,
+Pmax's ratio, the inverse, the waveform's power, ZVS at unity gain and lost at light load off-gain, efficiency 97–99.9%
+mid-load and lower at light load, a 100 kW step held and back to 800 V with the grid power at load/η², switching
+against average within 5 V, both codes. Not built: the PFC's own switching and grid currents (its THD is M572's
+`dcHarmonics` 'afe'), cascaded modules with voltage balancing, the transformer's leakage and magnetising design,
+thermal models of the devices, hardware-in-the-loop (another branch builds real-time runs, M564), extended phase
+shift modulation.
+
+## M574 (27 Nov): Hyperion data centres: cooling
+
+The fourth data-centre page ("Cooling system equipment developers"), `dc-cool.ts` (it reuses M571's `carnotCOP` and
+`mechanicalShare`). **The three architectures** (`cooling`, one hour; `compare`, many): air (24 °C supply on 14 °C
+chilled water, 12 K across, 600 Pa at 55%, chip = 36 + 0.05 K/W·P; workable to 50 kW a rack and 90 °C), single-phase
+cold plates (80% to a secondary loop 3 K over the facility water with 10 K rise, 250 + 150 kPa at 60%, chip = loop + 5
++ 0.02 K/W·P), two-phase (85% boiling 6 K over the facility water, 160 kJ/kg at 70% exit quality, chip = Tsat + 0.012
+K/W·P); the rest of each by air. Heat rejection: the chiller makes up the `mechanicalShare` with the wet bulb + tower
+approach against the supply (chilled 14 °C or facility water), COP at half Carnot; tower fans 0.8% of the heat
+rejected; evaporation at 2.43 MJ/kg × cycles/(cycles − 1). `wetBulb`: Stull 2011. **Chiller**: rated COP at 30 °C
+condenser scaled by the Carnot ratio, part-load input 0.2 + 0.2·PLR + 0.6·PLR² (a variable-speed curve; COP peaks
+mid-load). **Pumps and fans**: constant speed (full power), variable speed holding ≥ 40% of full head at the far end,
+pressure reset on the system curve (stat + (1 − stat)x²) times x. **The loop** (`loop`): two lumped temperatures, the
+chips (C) and the coolant (M), R = R0(0.5 + 0.5(m0/m)^0.8), the CDU at ε = 1 − e^(−UA/(m cp)) to the facility water
+(the facility side taken as the larger stream), RK4 at 0.5 s, starting in steady state (2,000 s settled at the first
+load); pump speed by a clamped PI on the coolant (anti-windup by clamping the integrator), flow n × the running
+pumps' share (a spare keeps it at full); fouling a linear loss of UA over the run; pump power Pfull·n³. **Maintenance**:
+`hxUA` from LMTD (equal differences handled), `foulingTrend` fits 1/UA linearly against time (a fouling resistance
+builds up linearly) and solves for the clean threshold. Language: `coolingCompare` (stacked bars and the hottest chip
+against 90 °C), `chillerPower`, `pumpPower`, `coolingLoop`, `hxUA`, `foulingTrend`, `wetBulb`. Tests: Stull's values,
+air failing at 130 kW while both liquids work with a lower pPUE, warm water needing no chiller at an 18 °C wet bulb, WUE
+1–3 L/kWh, chiller hours, the chiller's COP at rating, part load and cool water, the cube law, the PI raising speed and
+holding 42 °C with the heat removed, a pump failure overheating only without a spare, fouling warming a fixed-speed
+loop, UA by hand and the trend's clean date exactly. Not built: refrigerant property tables (two-phase pressure drop and
+dry-out), rack-by-rack air recirculation (CFD), immersion tanks, adiabatic dry coolers, a chiller plant's sequencing.
+
+## M575 (27 Nov): Hyperion data centres: power on site
+
+The fifth data-centre page ("Power generation equipment and energy storage developers"), `dc-gen.ts`. **Gas
+turbine**: η(x) = ηfull·x/(x + k(1 − x)), k 0.35 (40% → 29.6% at half, ~20% at a quarter), capacity × (1 − 0.007(T −
+15)), at most 1.05; heat rate 3412.14/η Btu/kWh, fuel P·HR/1000 MMBtu/h, CO₂ 53.06 kg/MMBtu. **Fuel cell**: Larminie
+and Dicks' V = Eoc − r·i − A·ln i − m·e^(n·i) (i in mA/cm², r in kΩ·cm²; their PEM constants, an SOFC set with a lower
+activation loss), clamped to [0, Eoc]; LHV efficiency V/1.253; hydrogen I·cells/(2F)·2.016 g/mol. **Genset**:
+2H dΔf/dt = Pm − PL − DΔf, the engine's torque lagging an isochronous PI governor by tau (turbo lag), output clamped to
+[0, 1.1]; RK4 at 1 ms; ISO 8528-5 classes by the largest dip and the time after the last step to stay inside the band
+(G1 15%/10 s/2.5%, G2 10%/5 s/1.5%, G3 7%/3 s/0.5%; our simplification of the standard's separate dip and band
+figures). **Hybrid dispatch** (`dispatch`): rule-based, one pass: grid to its limit, turbines aim at the rest plus
+(0.5 − SoC)·E/2 h, committed as the fewest units that carry it (fewer if each would sit under its minimum), ramped at
+`ramp` MW/min a unit, starting at the first sample's need; the battery takes the difference within its power and
+charge (√RTE each way, SoC 10–95%); the remainder unserved or curtailed. Fuel cost from the turbines' part-load
+efficiency at the gas price; grid energy at its price and CO₂ factor. A first version started the turbines at zero and
+left a cold start unserved. Language: `gasTurbine`, `fuelCell`, `gensetStep`, `hybridPower`. The example's digital-twin
+part runs a CUSUM by hand on measured ÷ modelled heat rate (the examples' test loads only the sciences, not M423's
+`cusum`). Tests: the turbine's efficiencies, derating, heat rate, fuel and CO₂; the PEM's voltages and Faraday's
+hydrogen; a bigger block dipping deeper, the classes and isochronous recovery; the battery carrying a 120 MW swing the
+turbines can't ramp to, the energy balance to 1e-9, the grid limit and SoC floor. Not built: an optimal (LP or MILP)
+dispatch with prices through the day, turbine start-up times and costs, battery ageing in dispatch (M433's
+`batteryAge` exists), fuel cell transients and stack heat, synchronous machine voltage control.
+
+## M576 (27 Nov): Hyperion data centres: signal and power integrity
+
+The sixth data-centre page ("High-speed digital interconnect developers"), `si.ts`. **Channels**: `gamma` must be
+causal or the pulse response grows false pre-cursors no DFE can cancel (the first version had loss with a linear phase:
+a 16 dB PAM4 channel stayed shut with CTLE + DFE; now DFE alone opens it): the skin effect R = √(πfμ0ρ)/w with its equal
+internal reactance, α_c(1 + j), α_c = R/2Z0; the dielectric as a constant loss tangent consistent with Kramers–Kronig,
+ε = Dk(jf/1 GHz)^(−2Df/π), γ_d = jk0√ε (loss ≈ πf√Dk·Df/c: 0.9 dB/inch at 10 GHz for Dk 3.7, Df 0.01, 127 µm).
+ABCD cascades (line, an open stub in shunt, line), S from ABCD with Z0 held constant (`shortcut:`-level: Z0's own
+frequency dependence left out). `touchstone`: v1 only (v2 keywords refused), MA/DB/RI, Hz–GHz, 2-ports in column order
+(S11 S21 S12 S22), larger row by row; the port count from the lines' shape (3, 9, 9 then 8s, 7 then 6s), else the
+largest n whose 1 + 2n² divides the numbers; `writeTouchstone` RI. `sdd21` = ½(S31 − S32 − S41 + S42). **Pulse**:
+2^⌈log2(spu·512)⌉ points, the channel resampled (linear magnitude, unwrapped linear phase, 0 phase at DC, an octave's
+roll-off past the data), a one-UI rectangle (optionally a Gaussian edge), cursor at the peak. **Eye**: PRBS from the
+standard polynomials (7, 9, 11, 15, 23, 31), NRZ ±1 or Gray PAM4; transmit FFE convolved into the pulse; the pulse cut
+8 UI before to 80 after; NEXT as a scaled edge derivative, FEXT as the derivative of the channel's pulse, separate
+seeded aggressors; DFE taps = the post cursors, subtracted over each UI with correct decisions; jitter per symbol (RJ
+Gaussian, DJ dual Dirac) as a trace shift; inner height per phase, BER by Q() of the distance to each neighbouring
+threshold with jitter as a phase shift and noise σ, per bit (÷2 for PAM4); width = open share − DJ − 2Q⁻¹(BER)·RJ; the
+bathtub's width at the target; a diamond mask. 'auto' CTLE sweeps DC gain 0 to −18 dB (zero at Nyquist·10^(dc/20),
+poles at Nyquist and 4× it) on 600 symbols; 'auto' FFE is zero-forcing least squares over the UI samples, normalised to
+Σ|c| = 1. **PDN**: parts in parallel (VRM R + jωL, groups (ESR + jωESL + 1/jωC)/count, plane and die), peaks, the band
+over target, the droop by IFFT of Z·I on 2^15 points (the step a long pulse so the window wraps; DC from the VRM's R).
+**IR drop**: square-cell resistor mesh (gx = σt·hy/hx), regulator cells fixed, loads spread over their cells, voids
+removed, conjugate gradients to 1e-12 relative; J from central differences. Language: `sparamLine`, `sparameters` (a
+file in the person's files or the text), `rfparam` (also 'sdd21'), `touchstoneWrite`, `ctleResponse`, `pulseResponse`,
+`eyeDiagram` (traces as one NaN-broken line and the bathtub), `pdnImpedance`, `irDrop`. Tests: dB/inch, matched and
+quarter-wave reflections, passivity, the stub's notch, Touchstone MA/DB round trip, PRBS7's period and balance, open
+short eye, DFE more than doubling a lossy eye, FFE widening it, PAM4's three eyes at ~⅓ height, crosstalk shrinking it,
+an MLCC group's series resonance = ESR/n, droop, the strip's ρL/(wt) and current density exactly, a void raising the
+drop. Not built: IBIS-AMI models (the vendors' compiled DLLs can't run in a browser), mixed-mode conversion of
+arbitrary port orders, COM (IEEE 802.3's channel operating margin), coupled-line crosstalk from geometry, plane cavity
+resonances, via field solving, AC current density.
+
+## M577 (27 Nov): Hyperion: IBIS-AMI models in the computer app
+
+The owner, 27 Nov, on M576's "left out on purpose: IBIS-AMI models (the vendors' compiled DLLs can't run in a
+browser)": "make the 1st one for the Hyperion download app which can do it". **How the engine reaches the app**: the
+language runs synchronously in a worker, which can neither await IPC nor block on the page without cross-origin
+isolation, so it makes a **synchronous XMLHttpRequest** (allowed in workers) to a private privileged scheme the app
+registers, `hyperion-native://app/ami?t=<token>` (`protocol.registerSchemesAsPrivileged` with corsEnabled and
+supportFetchAPI, `protocol.handle` on the default session). Trap: **Electron's `protocol.handle` gets no Origin header
+and an empty referrer** (checked in the real app), so the gate is a per-launch 24-byte token (timing-safe compare),
+handed out only by `ipcMain.handle('hyperion:native')` under M470's `trusted` (the window's main frame on Hyperion's
+origin); responses carry `Access-Control-Allow-Origin: ORIGIN`, so only the site reads them. The body is text/plain
+JSON (a simple request: no preflight). The site's CSP needs `hyperion-native:` in connect-src (`security-headers.ts`;
+measured: blocked without it). The page (`LabApp`) asks `hyperionDesktop.native()` when it starts the worker and posts
+`{ native: { url, token } }`; the worker (`lab.worker.ts`) sets `setNative(xhrNative(url, token))` (`native.ts`;
+`native()` throws "run only in Hyperion's computer app" without a bridge; `amiAvailable()` says which). **The app**:
+`ami.js` checks sizes (rows × (1 + aggressors) × 8 bytes, dt > 0, ui ≥ dt, ≤ 4 M samples, a library ≤ 200 MB named
+.dll/.so/.dylib), takes the library's bytes from Hyperion's files (≤ 50 MB, the file store's limit) or an absolute
+path, writes bytes to a private temp folder per sha256 (0700), and runs one session in `ami-host.js` in Electron's
+**utility process** (`utilityProcess.fork`; a Node `fork` outside Electron, for the tests), killed after 2 minutes; a
+crash returns "the model crashed" instead of taking the app down. `main.js` asks before loading (`mayLoad`: once per
+fingerprint, or every model until closing with the box ticked). `ami-host.js` uses **koffi 3.3.7** (MIT; no compiler;
+its native part is one `@koromix/koffi-<os>-<cpu>` package per system): `AMI_Init(double*, long, long, double, double,
+const char*, char**, void**, char**)` with `_Inout_`/`_Out_` (typed arrays are passed by pointer, a `subarray` at its
+offset; `long` is the platform's C long, 32-bit on Windows as the standard means), `AMI_GetWave` optional (missing
+export = GetWave_Exists False) in blocks of 128 UI with `clock_times` filled with −1 and read to the first negative,
+`AMI_Close`; a wrong-architecture library gets "built for another kind of computer". **The language** (`ami.ts`):
+`.ami` files parsed (parentheses, quoted strings, `|` comments), leaves are nodes with Usage/Type/Format children,
+Reserved_Parameters give Init_Returns_Impulse (or the old Use_Init_Output), GetWave_Exists, Ignore_Bits, Modulation;
+Model_Specific leaves (nested branches kept as paths) with Default > Value > Range typ > List first, the older `(Format
+Range typ min max)` / `(Format List …)` / `(Format Value …)` too; `paramString` writes `(root (name value) (branch
+(name value)))` for In/InOut leaves, strings quoted, choices by name or dotted path checked against List / Range /
+Integer, unknown names refused. Flows (`flow`): statistical h → Tx Init (used when it returns an impulse) → Rx Init;
+time-domain: the stimulus (±swing/2 rectangles) through Tx GetWave (or Tx Init's impulse as part of the channel), FFT
+convolution with the channel (× dt), Rx Init on what it receives then Rx GetWave (or its Init impulse convolved). The
+impulse response for AMI_Init is in V/s (`si.impulseResponse`: the IFFT ÷ dt, cut where it has died to 1e-5 of its
+peak, at least 32 UI). `si.eye` was split into the waveform builder and `measure` (reused for a received waveform);
+`alignWave` finds the delay by correlation with the symbols and the main cursor by least squares; the models' first
+Ignore_Bits symbols are left out. Language: `amiModel(lib, ami, name, value…)` (a struct, Type 'amiModel'; without an
+output it lists the settings), `amiSimulate`, `amiAvailable`, `eyeDiagram(…, 'TxModel', 'RxModel', 'Flow')` (up to
+100,000 symbols with models; e.AMI holds the flow, wave, delay, clocks, messages, output settings; time-domain leaves
+the person's FFE and DFE out: the receiver's own equaliser replaces them). App 1.2.0; the workflow runs `npm test` and
+on the Mac adds both processors' koffi packages for the universal app (`x64ArchFiles` covers them). Tests: the desktop
+runner with a tiny C model (`desktop/hyperion/test/ami-test-model.c`, a 2-tap FFE; `npm test` builds it with gcc):
+Init and GetWave across blocks exactly, bad requests, a non-AMI library, junk; the website side with a stand-in
+bridge and, on Linux with the desktop's koffi installed, the real runner end to end from a Hyperion script (the eye
+opened by the model, the receiver's clocks); and by hand the real Electron app under xvfb with Playwright: a page's
+blob worker posting synchronously, the model run in the utility process, asked once, a wrong token 403, and the CSP
+with and without the scheme. Not built: aggressor columns (crosstalk impulse responses into AMI_Init), IBIS file
+parsing ([Algorithmic Model] lines), AMI_Resolve / back-channel training (IBIS 7), Table-type parameters, DLL_Path and
+DLL_ID, PAM4 thresholds given by the model, 32-bit models (koffi in a 64-bit app can't load them).
+
+## M578 (27 Nov): Hyperion IBIS-AMI: crosstalk into the models, IBIS files
+
+The owner sent M577's left-outs back (27 Nov); this item takes two of them. **Crosstalk into the models**: AMI_Init
+takes an impulse matrix, the victim's response then one column per aggressor (rows × (1 + aggressors), column-major),
+at most the model's `Max_Init_Aggressors` (reserved parameter; 16 if not given: columns beyond it come back as they
+went in). `ami.session` now takes and returns columns; `flow(…, aggs)` carries `Aggressor { h, x? }` through Tx Init
+and Rx Init (statistical: `aggRx`, the receiver's equalised aggressor responses) and, in the time-domain flow, adds
+each aggressor's signal convolved with its (Tx Init-equalised, when the Tx has no GetWave) coupling to what reaches the
+receiver's pins (the aggressors' own transmitters taken as plain drivers: `shortcut:`-level, stated in the doc
+comment). `aggressorsOf` builds them from 'Crosstalk' [kNext kFext] like M576's eye: NEXT as an edge (kn·spu/4/dt,
+−same next sample), FEXT as the channel's impulse differentiated × kf·spu/4, signals with seeds +77, +151 (the eye's
+own). `si.eye(pulse, e, agg)` uses given aggressor pulses (on the victim's time base, cut at its cursor) instead of
+its own NEXT/FEXT. `amiSimulate` takes 'Crosstalk' and returns `AggressorsRx`; eyeDiagram's e.AMI.Aggressors counts
+them. **IBIS files**: `readIbis` (keywords in brackets, [Comment Char] honoured, [Model] then [Algorithmic Model] …
+[End Algorithmic Model], `Executable`, `Executable_Tx`, `Executable_Rx` lines: platform `OS_Compiler_Bits`, library,
+.ami); `pickExecutable` takes the app's `platform` (win32 → windows, linux, darwin → mac/macos/osx) now sent with the
+native token (`hyperion:native` returns `process.platform` and `process.arch`; `setNative(bridge, info)`,
+`nativePlatform()`), 64-bit first, a role for repeaters; in a browser the first entry, so settings still list.
+`amiModel('chip.ibs', 'model', 'Folder', path, 'Role', 'rx', …)`: the library from Hyperion's files by its base name,
+or `Folder/<name>` on the computer; the .ami must be in the files; struct field `Platform`. `ibisModels('chip.ibs')`
+lists them. Tests: three columns sent and two for a model limited to one aggressor, crosstalk lowering both flows'
+eyes, `AggressorsRx` rows; an .ibs with a changed comment character, 32/64-bit Windows and Linux lines and a repeater,
+the pick per system, mac refused with the list, amiModel from the .ibs with a folder, the missing-library message.
+Not built: reading the .ibs's buffer models ([Model] I-V tables) for the analog front end.
+
+## M579 (27 Nov): Hyperion IBIS-AMI: back-channel link training
+
+The third of M577's left-outs: IBIS 6.1's back-channel interface (BCI), where a receiver model trains the transmitter
+model (sets its FFE taps) while the link runs, by messages in files named with a BCI_ID the tool gives both ends.
+**Reading it**: reserved parameters are now kept as `Param`s too (`reservedParams`) and those with Usage In/InOut go
+into the string AMI_Init gets (before the model-specific ones); `info.bci` = { protocol (BCI_Protocol), interval
+(BCI_Message_Interval_UI, 1024 if missing), training (BCI_Training_UI, 0) }; BCI_ID is written as "hyperion_link"
+unless the person chose one (one shared folder per run keeps names apart). **When**: the time-domain flow with a Tx and
+an Rx whose protocols match (case-insensitive) and both have GetWave goes to the app's `/link` instead of two
+sessions (checked before the Tx's own session; otherwise the ordinary flow). **The app**: `main.js` prepares both
+libraries and asks about each (`mayLoad`); `ami.link` makes a private `hyperion-bci-*` folder (removed afterwards) and
+sends `{ op: 'link' }` to `ami-host.js`, which loads both with `open` (the loader shared with `session` now),
+`process.chdir`s into the folder (the utility process is a process of its own), calls both Inits on the channel's
+impulse, then in turns: Tx GetWave on a block, the channel by overlap-add (its own radix-2 FFT, the tail carried
+between blocks), crosstalk already summed at the pins (`extra`, convolved in the engine), Rx GetWave; blocks of
+the larger interval while training (the larger training length), then of 128 UI; it returns the received wave, the Rx
+clocks, the history (each block's UI and both models' output parameter strings), the files they wrote, both Inits'
+messages and parameters. The flow's result has `bci`; eyeDiagram's e.AMI.BCI holds Protocol, UI, TxParams, RxParams,
+Files. Test models: `desktop/hyperion/test/ami-test-bci.c`, one library for both ends ((role tx) a 2-tap FFE reading
+its tap from `<BCI_ID>.rx2tx`; (role rx) passing the wave, a clock per UI, and on its second call writing "tap -0.35").
+Tests: the runner (blocks of 32 UI then 128, the tap -0.1 then -0.35 after the second block, the one file, 400
+clocks), the website (BCI settings read, the tool's BCI_ID, `link` chosen only for matching protocols), and on Linux
+the real pair from a Hyperion script through `eyeDiagram` (first block tap -0.1, last -0.35, the file, the clocks).
+Not built: a BCI link with 32-bit models (M580's helper runs one model), aggressors' own transmitters training, more
+than one Tx–Rx pair (repeaters' redriver chains).
+
+## M580 (27 Nov): Hyperion IBIS-AMI: 32-bit models
+
+The last of M577's left-outs: older 32-bit models. A 64-bit process (the app, koffi) can't load a 32-bit library, so
+the app ships a small 32-bit helper program, `desktop/hyperion/host32/ami-host32.c` (plain C: `dlopen` on Linux,
+`LoadLibraryW` with a UTF-8 path on Windows), run per session: the request as bytes on its standard input ("AMI1",
+path, parameters, rows, aggressors, dt, ui, the impulse matrix, the wave, the block), the answer on its output ("AMR1",
+status, error, Init's return, its parameters and message, GetWave there or not, the impulse, the wave, the clock
+times, GetWave's last parameters; texts u32-prefixed, numbers little-endian); it copies the model's strings before
+AMI_Close (they belong to the model's memory). `ami.js`: `bitsOf` reads the library's header (ELF class; the PE
+header's machine 0x14c = 32-bit, 0x8664 / 0xaa64 = 64; Mach-O magics) and `run` hands 32-bit ones to `run32` (the same
+2-minute limit; the answer shaped like ami-host.js's, plus `bits: 32`). `helper32()` finds `bin/ami-host32-linux` or
+`bin/ami-host32-win32.exe` beside the code, `app.asar` swapped for `app.asar.unpacked` in the installed app
+(package.json `asarUnpack: bin/**`, `files` bin/**); missing → "no 32-bit helper" (Mac: "Macs have not run 32-bit
+programs since macOS 10.15"); Linux without 32-bit libraries (no /lib/ld-linux.so.2, /usr/lib32 or /lib32) → how to
+install them. A back-channel link with a 32-bit model is refused (both models must share one process). Built by
+`host32/build.sh` (gcc -m32 with gcc-multilib; i686-w64-mingw32-gcc -static) and by the workflow: on the Linux runner
+the Linux helper, on the Windows runner with MSYS2's mingw32 gcc (`pacman -S mingw-w64-i686-gcc`); `bin/` is
+gitignored. App 1.3.0. Tests (`npm test`): a 32-bit build of the test model through the helper (Init and GetWave
+across blocks exactly as the 64-bit path, 10 clocks, `bits` 32) and a 32-bit library without AMI_Init refused; the
+helper's Windows build cross-compiled here but not run (no Windows machine or Wine). Not built: a 32-bit Mac path
+(impossible), 32-bit back-channel links, ARM Windows (a 64-bit x86 model there would need Windows' own emulation).
+
+## M581 (27 Nov): Hyperion IBIS-AMI: back-channel training with 32-bit models
+
+M580's left-out (the owner, 27 Nov: the list of left-outs pasted back). A link's two ends no longer need one process:
+the driver in `ami-host.js` calls each end in turns through one small interface (`init`, `wave(block)`, `close`), a
+64-bit end loaded with koffi there (`local`), a 32-bit end in the 32-bit helper's new **stepping mode** (`remote`):
+"AMS1", path, parameters, rows, aggressors, dt, ui, the impulse → "AMR2", status, error, Init's return, its parameters
+and message, GetWave there or not, the impulse; then 'W' + u32 n + samples → status, the samples, the clocks, GetWave's
+parameters; 'C' or the input closing → AMI_Close. The helper runs with its working folder set to the link's shared
+folder (`spawn` `cwd`), as `process.chdir` does for the 64-bit ends, so files named by BCI_ID meet. `ami.js`: `need32()`
+(the helper and Linux's 32-bit libraries, the old messages), `link` marks a 32-bit side with `helper`. `link` and
+`session` in ami-host.js now return promises (`answer` is async; the tests' scripts `.then` them). If the app is
+stopped after 2 minutes, the helpers see their input close and end. App 1.4.0 (`package.json`; the lock file's own
+version line was already stale, left alone). Tests: the BCI pair as 32+32, 32+64 and 64+32, each giving exactly the
+all-64-bit wave, the tap -0.1 then -0.35, one file, 400 clocks; a 32-bit receiver's refusing Init reported.
+
+## M582 (27 Nov): Hyperion IBIS-AMI: the neighbouring lines' own transmitters trained
+
+M579's left-out. In a back-channel link, each crosstalk line (`aggressorsOf`: 'Crosstalk', [next fext]) is now a link of
+its own: its own Tx and Rx instances of the same models, Init on the same channel, BCI_ID renamed `<id>_a1`, `_a2` …
+(`laneId`, a regex on `(BCI_ID "…")` in both parameter strings) so their files never mix, trained over the through
+channel by their own receiver; each block its transmitter's output goes through its coupling (overlap-add, as the
+channel) into the victim's pins before the victim's receiver runs. The engine sends `aggs: [{ wave, h }]` (signal and
+coupling as they are) in place of M579's pre-summed `extra`; `ami.js` checks sizes (at most 16, waves as long as the
+victim's, couplings `rows` long). The answer's `lanes` (each neighbour's last Tx and Rx parameters) → `e.AMI.BCI.
+AggressorTxParams`. Without a back-channel, in the time-domain flow with a Tx that has GetWave, each neighbour's signal
+now goes through a session of its own of that Tx (one app call per neighbour); with Init only, its column was already
+equalised by the Tx's Init. Not built: crosstalk from the victim into the neighbours' receivers (their links hear only
+themselves), lanes when the model has no BCI_ID parameter (they would share files; the test model refuses then).
+Tests: a coupled neighbour trained to tap -0.35 with its own file `link1_a1.rx2tx` and changing the victim's wave by its
+tenth; bad sizes refused; in a Hyperion script `e.AMI.BCI.Files` lists `hyperion_link_a1.rx2tx`; the fake flow's
+neighbour through the FFE.
+
+## M583 (27 Nov): Hyperion IBIS-AMI: the .ibs file's analog buffers
+
+M578's left-out. `ibis-analog.ts`: `readAnalog(text, model, corner)` reads the [Model]'s Model_type, C_comp,
+[Voltage Range], [Ramp] dV/dt_r (the 20–80% time, ÷ 0.6 for a linear edge), [Pull-up] / [Pull-down] (the driver's
+resistance: the I-V slope near 0 V, the two averaged), [GND Clamp] / [POWER Clamp] (the termination: their conductance
+at mid-supply; over 10 kΩ or missing → 50 Ω with a note) and the component's [Package] R_pkg L_pkg C_pkg; corners as
+typ/min/max columns, NA → typ; `ibisNum` (scale letters, M mega, m milli). Section names fold spaces, hyphens and
+underscores. `txGain` / `rxGain`: the ends as small networks around the 50 Ω reference (Tx: source R, C_comp, package
+R+L, C_pkg at the pin, a ramp as a sinc delayed by half itself so it stays causal; Rx: C_pkg, R+L, C_comp beside the
+termination, the line's wave doubled), each 1 for an ideal matched end. `throughFrontEnds` applies them to an impulse by
+FFT (zero-padded ×2). `amiModel` from an .ibs reads it ('Corner', 'Analog', 0 to leave it out) into `m.Analog`
+(Driver, Termination, Ccomp, Rpkg, Lpkg, Cpkg, Rise, ModelType, Corner, Notes); `modelOf` reads it back as
+`Model.analog`; `ami.flow` wraps h and the aggressors' couplings in the Tx's and Rx's buffers first (both flows, links
+too) and says so in the messages. shortcut: linear around the operating point, and the reflections between two
+mismatched ends aren't bounced along the line (the channel stays a matched two-port). Tests: the numbers per corner, an
+ideal end = 1, the DC gains (40 Ω + 0.2 into 50; 25 Ω behind 0.2), a slow edge spreading the impulse, `m.Analog` and the
+flow's message. Not built: the I-V curves' non-linear behaviour, [Rising/Falling Waveform] tables, the line's
+multiple reflections.
+
+## M584 (27 Nov): Hyperion IBIS-AMI: the neighbours hear the victim; each line in its own folder
+
+Two of M582's left-outs (the owner, 27 Nov: "do all of this"). `ami-host.js` `link`: every block, all the transmitters
+(victim and neighbours) run first; then the victim's receiver hears its line plus each neighbour through its coupling
+(`into`), and each neighbour's receiver its own line plus the victim's transmitter through the same coupling (`from`;
+reciprocal coupling taken, neighbours not coupled to each other: one on each side). Each overlap-add channel keeps
+its own tail. **Folders:** the victim runs in the link's folder, neighbour j in `a<j>/` under it, so the models keep
+their own BCI_ID and their files never meet, whether or not the model has a BCI_ID parameter (M582's `laneId`
+renaming removed). A 64-bit end `chdir`s to its folder before every call (`local(file, dir)`); a 32-bit end's helper
+is started there. `files` lists every file under the link's folder, the neighbours' as `a1/…`. Test model
+`ami-test-bci.c`: the receiver now reports `(peak V)`, the highest voltage it has seen. Tests: files
+`a1/link1.rx2tx`, `link1.rx2tx`; with the victim held at +0.4 V the neighbour's receiver peaks 0.4 × 2/3 × 0.1 higher
+than with no coupling; in a Hyperion script `e.AMI.BCI.Files` is `a1/hyperion_link.rx2tx, hyperion_link.rx2tx`.
+
+## M585 (27 Nov): Hyperion IBIS-AMI: the buffers in time, non-linear, with echoes
+
+The other two of M583's left-outs. `ibis-sim.ts` `analogImpulse(ports, n, dt, z0, tx, rx)`: the channel's step
+responses with the chips' own buffers, as IBIS-AMI tools characterise the analog channel. Ports: s11, s12, s21, s22
+per sample (`si.sampled`: the resampled response IFFT'd on impulseResponse's grid, not divided by dt, not cut); a
+4-port's differential ones (`si.sddPair(m, P, Q)`, `sdd21` now built on it) with the single-ended reference per leg
+(odd mode). Each end: die node (C_comp, the buffer's current from its tables: `-(ku·Ipu(Vcc−V) + kd·Ipd(V) + Igc(V) +
+Ipc(Vcc−V))`, IBIS currents into the pin), package R+L to the pin, C_pkg there; the line at the pin a Norton
+(I = g·Vp − j from s_pp[0] and what's already travelling, K); backward Euler, the pad voltage by Newton with
+bisection as a fallback (`solveEnd`; dt = Infinity gives the steady state). The transmitter's switching: ku 0→1 over
+the [Ramp]'s rise (falling the reverse over dV/dt_f, `Analog.fall`). Before the edge the steady state (port waves
+iterated with the responses summed); waves before 0 held (tail sums), so no warm-up run. The cross term s12[0]·a2 is
+lagged a sample (the line's delay makes it ~0). Output: the receiver's pad voltage minus its steady value, per edge;
+the impulse = its difference ÷ dt ÷ (Vcc/2) (an ideal matched pair gives the line), falling negated, `h` their
+average. `idealEnd(z0, 'tx' | 'rx')` stands in for the end without an IBIS buffer. **Signs:** a pull-up or power
+clamp table sources current: I = −V/r for a resistor to the supply (M583's fixture had it wrong; slopes used abs so
+nothing broke then). `Analog` gains `fall`, `vcc`, `pu`, `pd`, `gc`, `pc`; `m.Analog` carries them (PullUp, PullDown,
+GndClamp, PowerClamp, Fall, Vcc). `si-lab.ts` `analogChannel`: when either model has a buffer, n = 3 × the matched
+response (room for echoes, trimmed after), any CTLE applied after (`filterImpulse`), messages (each buffer, how much
+the edges differ); amiEye and amiSimulate use it (ImpulseRise, ImpulseFall); `ami.flow` no longer touches the
+buffers. The near-end coupling edge still goes through the linear `throughFrontEnds`. Cost: about n² × 2 per edge in
+the browser (n a few thousand samples). Tests: an ideal pair = the line, both edges the same; 25 Ω into 100 Ω on a
+delayed line: first arrival (1 − Γs)(1 + ΓL) = 16/9, then −1/9 and 1/81 of it every round trip, nothing between; a
+weak pull-up rising ≥ 8 samples later than the strong pull-down falls, the same area; a slow edge with pad and
+package spreading the response and keeping its area; `iv` past its ends; amiSimulate's ImpulseRise and messages.
+Not built: [Rising/Falling Waveform] tables (the ramp switches the curves instead), the two legs of a differential
+pair as separate non-linear buffers (one leg's half-circuit, mirrored), crosstalk couplings' own echoes.
+
+
+## M586 (27 Nov): Hyperion IBIS-AMI: waveform tables, two-leg pairs, crosstalk echoes, faster
+
+M585's four left-outs (the owner pasted the list, 27 Nov). `ibis-sim.ts` is now one engine, `run(S, n, dt, z0, ends,
+drive, inject)`, for any number of ports (S[p][q] from q into p): ports solved in turn each step, a port's own s_pp[0]
+implicitly, a port solved before it this step exactly, one after it a sample late. **Faster:** the sums over what has
+travelled split as audio engines do (uniformly partitioned overlap-save): lags under B summed per step, the rest a
+block at a time by FFT (`Input` keeps a port's wave and its two-block window spectra, `Past` one response's partition
+spectra; B a power of two near √(2L), 16–256; `fftPow2` now exported from `fft.ts`): 8,000 samples 349 → 136 ms,
+32,000 about 0.5 s (was growing with n²); results equal to 1e-13. **Waveform tables:** `readAnalog` reads [Rising
+Waveform] / [Falling Waveform] (R_fixture, V_fixture, V_fixture_min/max, rows t V at the corner); `switching(a, waves)`
+solves ku·Ipu(Vcc−V) + kd·Ipd(V) = (Vfix−V)/Rfix − C_comp·dV/dt − clamps at each moment (two fixtures: both weights,
+the two most different fixtures if more; one: kd = 1 − ku), clamped to −0.2…1.2, rows [t ku kd] in `Analog.kr` /
+`kf`, `m.Analog.RisingK` / `FallingK`; the edge then follows them (`schedule`; before the edge the table's first row).
+Needs both driver tables. shortcut: the fixture's L/C and the package (R_dut…) are left out of the extraction.
+**Two legs:** a 4-port runs its sixteen single-ended responses with [tx, tx, rx, rx], the legs switching opposite ways,
+the receiver's pads differenced and scaled by the whole supply (`sddPair` no longer used here). **Crosstalk echoes:**
+`arrivalResponse` is the receiver's (differential) pad voltage per unit wave arriving at its pin (a step of 1 mV
+injected, the driver held low and high, averaged); `analogChannel`'s `near` (worked out on first use) is the aggressor's
+Tx front end, then that, then any CTLE (the near-end aggressor now goes through the CTLE too, as the channel does).
+FEXT already carried the victim's echoes (the channel's own response differentiated). `convolve` (FFT) added. Tests:
+block sums against a plain recursion on 700-sample dense responses with 30 Ω / 80 Ω ends; a 40 Ω driver's 30 ps ramp
+recovered from two and from one fixture, read from an .ibs and spreading the edge with the same area; an uneven driver
+on a 4-port gives equal rising and falling edges (single-ended it doesn't); the near-end wave's first arrival 1 + ΓL,
+then ΓL·Γs a round trip later; `RisingK` in a script and the 4-port's message. Not built: the fixture's L/C and
+package in the extraction, the legs' differential coupling at the same end solved together (it's a sample late, like
+s12[0]), several neighbours each their own echo path (one shared receiver response).
+
+## M587 (27 Nov): Hyperion IBIS-AMI: the fixture and package taken out, a pair's legs solved together, each neighbour its own echoes
+
+M586's three left-outs (the owner pasted the list, 27 Nov). **De-embedding:** IBIS measures the waveform tables at the
+die pad (the IBIS ATM's "How to measure VT curves", 2014: fixture and package de-embedded), so `readAnalog` now reads
+L_fixture, C_fixture, R_dut, L_dut, C_dut into `Wave` (`l`, `c`, `rd`, `ld`, `cd`), and `fixtureCurrent(wave, V, h)`
+solves die → R_dut + L_dut → node b (C_dut) → L_fixture → node c (C_fixture) → R_fixture → V_fixture, driven by the
+table's voltage, backward Euler on `switching`'s grid (a tridiagonal 3×3, Thomas), from its DC state at V(0); a missing
+L a 1 µΩ short, a missing C open; with no parasitics the exact (Vfix − V)/R as before. `switching` uses that current in
+place of (Vfix − V)/R. **Legs solved together:** `run` sums what has travelled once per port per step (`base`), then
+sweeps the ports until their waves agree (Gauss–Seidel on the instant couplings s_pq[0], at most 60 sweeps, 1e-13;
+one sweep when no s_pq[0] is non-zero), every port starting from the step's previous state (`nst`). **Neighbours:**
+`Eye.xtalk` is now rows `[kNext, kFext, side?]`, one per neighbouring line (`crosstalkOf` in `si-lab.ts`: [kNext kFext],
+or N×2 / N×3; with several rows and no side they alternate 1, −1); `si.eye` gives each row its own PRBS (row 0's seeds
+as before, later rows +1000·i); `aggressorsOf` loops the rows. `arrivalResponse(…, side)`: on a 4-port 0 = a
+neighbouring pair (±eps/2 on both legs, as M586), 1 = eps on the first receiver leg alone, −1 = −eps on the second
+(signed so an ideal end hears the same differential wave); `analogChannel`'s `near(x, side)` keeps one response per
+side (a 2-port's neighbours all reach the same pin: one response, physically right). Tests: the fixture current for R,
+R‖C and series L against their equations; a 40 Ω driver measured through R_dut, L_dut, C_dut, L_fixture, C_fixture (RK4
+at 0.01 ps) recovered within 0.03 of its ramp (M586's extraction off by more than 0.15), also from an .ibs; legs of 5
+and 6 samples coupled at the driven end give the same answer listed either way (the old one-sample lag fails it by
+far); legs of 6 and 7 samples: a neighbour beside the first echoes at 12 samples, beside the second at 14; 'Crosstalk'
+rows close the eye more, a bad side refused. Not built: a neighbour coupling partway along the line (all arrive at the
+pin), neighbours coupled to each other, the fixture network's own time step finer than the table's grid (backward
+Euler there damps a fixture's LC ringing slightly).
+
+## M588 (27 Nov): Hyperion IBIS-AMI: a neighbour partway along, neighbours side by side, the fixture in fine steps
+
+M587's three left-outs (the owner pasted the list, 27 Nov). **Partway along:** 'Crosstalk' rows take a fourth column
+`at` (0 the receiver's end, as before; 1 the transmitter's). `nextPath` (`si-lab.ts`): the channel's own transfer raised
+to 2·at (|H|^2a, the unwrapped phase × 2a: a uniform line's loss and delay over that part, there and back), its impulse
+per sample; whole symbols of delay dropped (the neighbour's pattern is independent, only the part of a symbol and the
+loss matter), so it stays inside the eye's window. `pathsOf` gives `Eye.xtalkPath` (one per row, undefined at 0);
+`si.eye` convolves that row's NEXT with it (`way`), `aggressorsOf` the NEXT edge before `near`. FEXT is unchanged
+(it builds along the whole line). **Side by side:** `aggressorsOf` sets `Aggressor.inner`, the index of the line just
+inside on the same side (rows on one side stack outwards in order; NEXT and FEXT of a row both point at the inner
+row's first aggressor); `ami.flow` maps it to the link's lane numbers (`inner`, 1-based, only for lanes with
+signals), `ami.js` passes it, `ami-host.js` `link` builds `pairs`: the two lanes hear each other through the inner
+lane's own coupling (equal spacing), two overlap-add channels each; lines on opposite sides are not coupled (the
+victim between them). A bad `inner` is refused. **Fine steps:** `fixtureCurrent` sub-steps each table step so the
+shortest of the network's times (√(LC), L/R, R·C) gets 200 steps (at most 1000 per table step), V straight between
+samples. Tests: the series-L fixture against the exact ramp answer to 1e-5; the measured driver now recovered within
+1% (was 3%); halfway down a 0.2 m line the NEXT changes the eye's height by more than 1 mV against the receiver's end;
+a link told [-, -, 1, 2] for two lines per side; in the computer app a second neighbour just outside the first hears
+it (held at 0.4 V: peak up 0.4 × 2/3 × 0.1), an `inner` of itself refused. Not built: the victim hearing a neighbour
+through another (k², second order); neighbours across the victim; distributed coupling (each row couples at one place).
+
+
+## M589 (27 Nov): Hyperion IBIS-AMI: a neighbour through another, neighbours across the victim, a neighbour all along a stretch
+
+M588's three left-outs (the owner pasted the list, 27 Nov). **Who sits where:** `si.crosstalkRows(xtalk)` gives each
+row's `inner` (the row just inside it on the same side; only rows with some coupling count, as M588) and `across` (the
+first row on side 1 and the first on side −1 point at each other; side 0 has none); `aggressorsOf` and `si.eye` both use
+it. **Through another (second order):** an outer line leaks into the inner one as the inner one leaks into the victim
+(equal spacing), and the inner line's own coefficient of it goes on: the inner row's same-kind response × its k, added
+with the outer row's own pattern (NEXT through NEXT, FEXT through FEXT; a lumped rule, not the four-way NEXT/FEXT mix of
+real coupled lines). In `si.eye` it is added to the outer row's response; for the AMI flows `aggressorsOf` appends it as
+its own `Aggressor` with `of` = the outer entry's index (always after every first-order entry): the time-domain flow
+reuses the outer line's transmitted wave (`aggSent[of]`), the statistical eye adds its pulse to the outer line's, and a
+link leaves it out (`used` skips `of`), because there the lanes really hear each other (M588). **Across:** in a link
+only (to the victim's eye it is third order): `Aggressor.across` and `share` (its k), `ami.flow` maps them to lanes, the
+computer app's `link` adds a pair: lane j hears lane k through k's leak into the victim × j's share, and back; both must
+name each other, or it is refused. **A stretch:** 'Crosstalk' takes a fifth column `to` (≥ `at`): `nextPath` averages
+the near-end waves of 24 places along it (the coupling spread evenly, the same total), whole symbols dropped before the
+nearest place's peak; FEXT is unchanged (its total builds the same wherever it couples). Tests: `crosstalkRows`; two
+rows stacked on one side change the eye by more than 1e-5 V but less than 0.3 of their own bite against the same two on
+opposite sides; a neighbour spread from the receiver's end to halfway bites less than one lumped at the end; a stretch
+backwards refused; the link told `across`/`share` and no `of` lanes; in the computer app a lane across the victim hears
+the other (held at 0.4 V) at 0.4 × 2/3 × 0.1 × its share, one not named back refused. Not built: the four-way mix of
+NEXT and FEXT in second order (each kind goes on as itself); a line across the victim heard by the victim (third order);
+coupling that changes along a stretch (spread evenly).
+
+## M590 (28 Nov): Hyperion IBIS-AMI: every mix of NEXT and FEXT through another line, the victim hearing a line across, a coupling that changes along a stretch
+
+M589's three left-outs (the owner pasted the list, 28 Nov). **Which way waves run:** `si.hopCoefs(start, hops)` follows a
+coupled wave line by line: running one way, it leaks into the next line as a near-end wave running back (that line's
+kNext) and a far-end wave running on (its kFext); a NEXT pattern starts running away from the receiver ('T'), a FEXT
+pattern towards it ('R'); only waves reaching the victim running towards its receiver are heard, through the last
+line's NEXT response the share running away (`n`), its FEXT response the share running towards (`f`). This replaces
+M589's "NEXT through NEXT, FEXT through FEXT" (which sent a NEXT pattern's NEXT-of-NEXT to the transmitter's end, really):
+a NEXT pattern through an inner line is kFext·its NEXT response + kNext·its FEXT response, a FEXT pattern kNext·NEXT +
+kFext·FEXT. Shapes stay lumped (the first hops scalars, the last hop the line's own response). **Third order:** the first
+line on each side reaches the victim through the victim and the line across it: hops [its own k, the other's k], then
+the other's response (in `si.eye` added to its response; in `aggressorsOf` another `of` entry). **A link** now hears
+the `of` paths too: M589 left them out believing the lanes carried them, but the victim's receiver only hears each
+lane's transmitted wave, so `ami.flow` sends `heard: [{ of: lane, h }]` and the computer app's `link` adds each path's
+coupling of that lane's wave to the victim's pins (`ami.js` checks sizes, the host the lane number). **A coupling that
+changes:** 'Crosstalk' takes a sixth column, the coupling at the stretch's further end over the nearer (1 even, 0 or more):
+`nextPath` weighs its 24 places in a straight line between, scaled to the same total; FEXT unchanged. Tests: `hopCoefs`;
+an outer FEXT-only line through an inner NEXT-only one changes the eye (M589 had no path for it); the line across changes
+it by less than 0.05 of the first-order bite; a coupling growing to 5× at the far end bites less than one fading to 0,
+taper 1 equals none, a negative one refused; the link sent `heard` with lane numbers; in the computer app the victim hears
+a held lane once more through `heard`, a bad lane refused. Not built: shapes for the inner hops (they are scalars, the
+lines equally spaced), paths beyond third order, the first line's second order through the line across (fourth order),
+couplings that change along a stretch other than in a straight line.
