@@ -68,15 +68,17 @@ a = arcTest(); on = a.Onset;`);
   });
   it('the plate drawn, and the gas and fire after venting (M573b)', () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: new FileStore() });
-    lab.run(`c = ecmCell(1); p = packBuild(c, 2, 3, 'Columns', 3, 'Coolant', [], 'Gas', [170 1.5 0.05 0]); p = packFault(p, 2, 'heater', 0, 40);
+    lab.run(`c = ecmCell(1); p = packBuild(c, 2, 3, 'Columns', 3, 'Coolant', [], 'Gas', [1 1.5 0.05 0]); p = packFault(p, 2, 'heater', 0, 40);
 r = packSimulate(p, zeros(1, 2400), 1, 1); v = r.Vented(1); lf = r.TimeToLFL; L = numel(r.GasVolume);
 s = packPlate(p, r); y = s.Y(4); packPlate(p, r, 600); packSimulate(p, zeros(1, 300), 1, 1);
-q = packBuild(c, 2, 3, 'Columns', 3, 'Coolant', [], 'Fire', 0.1); q = packFault(q, 2, 'heater', 0, 40); f = packSimulate(q, zeros(1, 2400), 1, 1); w = max(f.HeatRelease);`);
+q = packBuild(c, 2, 3, 'Columns', 3, 'Coolant', [], 'Fire', 0.1); q = packFault(q, 2, 'heater', 0, 40); f = packSimulate(q, zeros(1, 2400), 1, 1); w = max(f.HeatRelease); packPlate(q, f, 1500, '3d'); pr = max(f.Pressure(:));
+z = packBuild(c, 2, 2, 'Vent', [2 1.5], 'Oxygen', 0.1, 'Gas', [1.5 1.5 0.2 0]);`);
     const g = (k: string) => toMat(lab.vars.get(k)!).d[0];
     expect(g('v')).toBe(2);
     expect(g('lf')).toBeGreaterThan(0);
     expect(g('y')).toBe(2);
     expect(g('w')).toBeGreaterThan(100);
+    expect(g('pr')).toBeGreaterThan(5e5);
     expect(() => lab.run("packBuild(c, 2, 2, 'Fire', 2)")).toThrow(/0 \(no fire\) to 0.25/);
   });
 });
@@ -101,9 +103,37 @@ describe('the plate and venting (M573b)', () => {
     expect(shut.vented[0]).toBe(0);
     expect(shut.gas.at(-1)!).toBeGreaterThan(5);
     expect(shut.timeToLfl).toBeGreaterThan(shut.ventTime[0] - 1);
-    const fire = packSim(packSpec(cell, 2, 2, { ...base, gas: { ...NMC_GAS, volume: 0.05, fire: 0.2 } }), new Array(2400).fill(0), 1, 1);
+    const fire = packSim(packSpec(cell, 2, 2, { ...base, gas: { ...NMC_GAS, volume: 1, fire: 0.2 } }), new Array(2400).fill(0), 1, 1);
     expect(Number.isNaN(fire.timeToLfl)).toBe(true);
     expect(Math.max(...fire.hrr)).toBeGreaterThan(100);
     expect(fire.ventTime[1]).toBeLessThan(shut.ventTime[1] ?? Infinity);
+  });
+});
+
+import { canPressure } from './pack';
+describe('inside the can, the jet and the air (M573c)', () => {
+  const heat = { coolant: null, cols: 2, faults: [{ cell: 0, kind: 'heater' as const, at: 0, value: 40 }] };
+  it("the can's pressure from its gas and the electrolyte's vapour", () => {
+    expect(canPressure(NMC_GAS, 0, 363)).toBeCloseTo(101_325, 0);
+    expect(canPressure(NMC_GAS, 0, 453)).toBeGreaterThan(canPressure(NMC_GAS, 0, 400));
+    expect(canPressure(NMC_GAS, 1e-3, 300) - canPressure(NMC_GAS, 0, 300)).toBeCloseTo((1e-3 * 8.314462618 * 300) / 2e-6, -3);
+  });
+  it('the pressure builds until the vent bursts, then a choked jet leaves', () => {
+    const r = packSim(packSpec(cell, 2, 2, heat), new Array(2400).fill(0), 1, 1);
+    const k = r.t.findIndex((t) => t >= r.ventTime[0]);
+    expect(Math.max(...r.pressure[0].slice(0, k))).toBeLessThan(1e6 * 1.05);
+    expect(Math.max(...r.pressure[0].slice(0, k))).toBeGreaterThan(3e5);
+    expect(Math.max(...r.jetSpeed)).toBeGreaterThan(100);
+    expect(Math.max(...r.jet[0])).toBeGreaterThan(0.05);
+  });
+  it('a fire in a small closed case runs out of oxygen and goes out; airing keeps it burning', () => {
+    const shut = packSim(packSpec(cell, 2, 2, { ...heat, gas: { ...NMC_GAS, volume: 0.01, fire: 0.1 } }), new Array(2400).fill(0), 1, 1);
+    expect(Number.isFinite(shut.fireOut)).toBe(true);
+    expect(Math.min(...shut.oxygen)).toBeLessThan(0.12);
+    expect(Number.isFinite(shut.timeToLfl)).toBe(true); // the gas gathers once the flames are out
+    const big = (ach: number) => packSim(packSpec(cell, 2, 2, { ...heat, gas: { ...NMC_GAS, volume: 0.3, fire: 0.1, ach } }), new Array(2400).fill(0), 1, 1);
+    const closed = big(0), aired = big(60);
+    expect(Number.isNaN(aired.fireOut)).toBe(true);
+    expect(Math.min(...aired.oxygen)).toBeGreaterThan(Math.min(...closed.oxygen));
   });
 });

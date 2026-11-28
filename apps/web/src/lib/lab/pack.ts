@@ -2,6 +2,7 @@
 // assemblies, modules and packs, cooling plates with their fluid path, cell-to-cell temperature, ageing per cell and
 // injected faults; the ARC thermal-runaway test). Written fresh. M573b: the cells laid out on the plate in rows, and
 // the gas a cell gives off once its vent opens: its flammable limit in the pack's enclosure, or the fire it feeds.
+// M573c: the pressure in the can before the vent bursts, the jet through it, and the enclosure's oxygen running out.
 //
 // A pack is s groups in series, each of p cells in parallel, every cell its own EcmCell with a spread of capacity, R0
 // and starting SOC (drawn from a seeded generator so a run repeats). In a parallel group the cells share one voltage,
@@ -25,17 +26,35 @@ export const NMC_RUNAWAY: Runaway = { A: 1.6e12, Ea: 150_000, H: 7e5 };
 export interface Coolant { inlet: number; flow: number; cp: number } // °C, kg/s, J/kg·K
 export const GLYCOL: Coolant = { inlet: 25, flow: 0.01, cp: 3400 };
 
-/** What a cell gives off once it vents (M573b): the vent opens at ventT (°C), the decomposition's gas leaves as it is made
- * (litres at 0 °C and 1 atm per Ah of capacity over the whole reaction), in a typical NMC share by volume. The gas
- * fills an enclosure of `volume` m³ aired `ach` times an hour; with `fire` above 0 it lights at the vent instead and
- * that share of the flame's heat lands on each neighbour on the plate. */
-export interface VentGas { ventT: number; litresPerAh: number; mix: Record<GasName, number>; volume: number; ach: number; fire: number }
+/** What a cell gives off (M573b, M573c): the decomposition makes gas (litres at 0 °C and 1 atm per Ah of capacity over
+ * the whole reaction, a typical NMC share by volume), held in the can's free space (`free` m³) where it and the
+ * electrolyte's vapour (boiling at `boil` K, `hvap` J/mol) build the pressure; at `burst` Pa the vent (`vent` m across)
+ * opens and the gas leaves through it, choked while the can is well above the air's pressure. It fills an enclosure of
+ * `volume` m³ aired `ach` times an hour; with `fire` above 0 it lights at the vent and that share of the flame's heat
+ * lands on each neighbour, while the enclosure's oxygen lasts (above `loc`, the limiting oxygen share). */
+export interface VentGas {
+  litresPerAh: number; mix: Record<GasName, number>; volume: number; ach: number; fire: number;
+  free: number; burst: number; vent: number; boil: number; hvap: number; loc: number;
+}
 export type GasName = 'H2' | 'CO' | 'CO2' | 'CH4' | 'C2H4';
 /** Lower flammable limits (volume share in air) and lower heats of combustion (J/mol). */
 export const GAS_LFL: Record<GasName, number> = { H2: 0.04, CO: 0.125, CO2: Infinity, CH4: 0.05, C2H4: 0.027 };
 export const GAS_HEAT: Record<GasName, number> = { H2: 241.8e3, CO: 283.0e3, CO2: 0, CH4: 802.3e3, C2H4: 1323e3 };
-export const NMC_GAS: VentGas = { ventT: 170, litresPerAh: 1.5, mix: { H2: 0.3, CO: 0.25, CO2: 0.25, CH4: 0.08, C2H4: 0.12 }, volume: 0.2, ach: 0, fire: 0 };
-const MOLAR_L = 22.414; // litres per mole at 0 °C, 1 atm
+/** O₂ (mol) to burn a mole of each, and molar masses (kg/mol). */
+export const GAS_O2: Record<GasName, number> = { H2: 0.5, CO: 0.5, CO2: 0, CH4: 2, C2H4: 3 };
+export const GAS_M: Record<GasName, number> = { H2: 0.002016, CO: 0.02801, CO2: 0.04401, CH4: 0.01604, C2H4: 0.02805 };
+/** A 21700 can: 2 mL free, a 3 mm vent bursting at 1 MPa, DMC-like electrolyte (boils at 90 °C, 34 kJ/mol). */
+export const NMC_GAS: VentGas = {
+  litresPerAh: 1.5, mix: { H2: 0.3, CO: 0.25, CO2: 0.25, CH4: 0.08, C2H4: 0.12 }, volume: 0.2, ach: 0, fire: 0,
+  free: 2e-6, burst: 1e6, vent: 0.003, boil: 363, hvap: 34_000, loc: 0.11,
+};
+const MOLAR_L = 22.414, P_AIR = 101_325, GAMMA = 1.3, CD = 0.7, M_AIR = 0.02897; // L/mol at 0 °C, Pa, —, —, kg/mol
+const share = (mix: Record<GasName, number>, f: Record<GasName, number>) => { const all = Object.values(mix).reduce((a, b) => a + b, 0); return (Object.keys(mix) as GasName[]).reduce((s, g) => s + (mix[g] / all) * f[g], 0); };
+/** The pressure in a closed can (Pa): the gas by the ideal-gas law plus the electrolyte's vapour (Clausius–Clapeyron). */
+export const canPressure = (gs: VentGas, mol: number, tempK: number) => (mol * R_GAS * tempK) / gs.free + P_AIR * Math.exp((-gs.hvap / R_GAS) * (1 / tempK - 1 / gs.boil));
+/** A free jet's reach (m) to a mass share Y of the gas: the centreline falls as 5·ds/x, ds the jet's air-equivalent
+ * diameter from its mass flow and speed (Thring and Newby). */
+const jetReach = (mdot: number, u: number, Y: number) => (mdot > 0 && u > 0 ? (5 * 2 * Math.sqrt(mdot / (Math.PI * 1.2 * u))) / Y : 0);
 /** The mix's lower flammable limit, as a share of the whole gas in air (Le Chatelier over the burnable part; the inert
  * CO₂ only dilutes it). shortcut: the inert's own narrowing of the limits is left out. */
 export function mixLfl(mix: Record<GasName, number>) {
@@ -44,7 +63,6 @@ export function mixLfl(mix: Record<GasName, number>) {
   if (!(f > 0)) return Infinity;
   return f / burn.reduce((s, g) => s + mix[g] / GAS_LFL[g], 0) / (f / all);
 }
-const mixHeat = (mix: Record<GasName, number>) => { const all = Object.values(mix).reduce((a, b) => a + b, 0); return (Object.keys(mix) as GasName[]).reduce((s, g) => s + (mix[g] / all) * GAS_HEAT[g], 0); };
 
 /** Where each cell sits on the plate: rows of `cols` cells, the coolant snaking through them in cell order (row 1 left
  * to right, row 2 back, …), and each cell's neighbours on the grid. One row (cols = N) is the plain line of M573. */
@@ -85,6 +103,10 @@ export interface PackRun {
   vented: number[]; ventTime: number[]; // cells in the order they vented, and when (s)
   gas: number[]; lfl: number[]; hrr: number[]; // sampled: litres vented so far, the enclosure's burnable gas as a share of its LFL, the flames' heat (W)
   timeToLfl: number; // s, NaN if never
+  // M573c: inside the can, the jet and the enclosure's air
+  pressure: number[][]; jet: number[][]; // [cell][sample]: the can's pressure (Pa); the jet's reach to its LFL, or its flame's length (m)
+  jetSpeed: number[]; oxygen: number[]; // sampled: the fastest vent's speed (m/s), the enclosure's oxygen share
+  fireOut: number; // s, when the flames went out for want of oxygen (NaN if never)
   stopped?: string;
 }
 
@@ -98,11 +120,14 @@ export function packSim(sp: PackSpec, current: ArrayLike<number>, dt: number, so
   const vrc = Array.from({ length: N }, () => new Array(np).fill(0));
   const T = new Array(N).fill(sp.t0 ?? sp.ambient), alpha = new Array(N).fill(0), through = new Array(N).fill(0);
   const every = Math.max(1, Math.ceil(current.length / 2000));
-  const run: PackRun = { t: [], v: [], cellV: Array.from({ length: N }, () => []), cellI: Array.from({ length: N }, () => []), soc: Array.from({ length: N }, () => []), temp: Array.from({ length: N }, () => []), coolantOut: [], capacity: cap, r0: rf.map((f) => f * lookup(c.soc, c.r0, soc0)), maxTemp: T[0], runaway: [], throughput: through, vented: [], ventTime: [], gas: [], lfl: [], hrr: [], timeToLfl: NaN };
+  const run: PackRun = { t: [], v: [], cellV: Array.from({ length: N }, () => []), cellI: Array.from({ length: N }, () => []), soc: Array.from({ length: N }, () => []), temp: Array.from({ length: N }, () => []), coolantOut: [], capacity: cap, r0: rf.map((f) => f * lookup(c.soc, c.r0, soc0)), maxTemp: T[0], runaway: [], throughput: through, vented: [], ventTime: [], gas: [], lfl: [], hrr: [], timeToLfl: NaN, pressure: Array.from({ length: N }, () => []), jet: Array.from({ length: N }, () => []), jetSpeed: [], oxygen: [], fireOut: NaN };
   const th = sp.thermal, mc = th.mass * th.cp, rx = sp.runaway, nb = plateLayout(N, sp.cols).nb;
-  const gs = sp.gas, lfl = mixLfl(gs.mix), heatPerMol = mixHeat(gs.mix), burnShare = 1 - gs.mix.CO2 / Object.values(gs.mix).reduce((a, b) => a + b, 0);
-  const molOf = cap.map((q) => (gs.litresPerAh * q) / MOLAR_L), open = new Array(N).fill(false), flame = new Array(N).fill(0);
-  let vented = 0, conc = 0, hrr = 0; // litres, the enclosure's burnable volume share, W
+  const gs = sp.gas, lfl = mixLfl(gs.mix), heatPerMol = share(gs.mix, GAS_HEAT), burnShare = 1 - gs.mix.CO2 / Object.values(gs.mix).reduce((a, b) => a + b, 0);
+  const M = share(gs.mix, GAS_M), o2Need = share(gs.mix, GAS_O2), nBox = (gs.volume * 1000) / MOLAR_L, area = (Math.PI * gs.vent * gs.vent) / 4;
+  const massShare = (x: number) => (x * M) / (x * M + (1 - x) * M_AIR), yLfl = massShare(lfl), yStoich = 1 / (1 + ((o2Need / 0.21) * M_AIR) / M);
+  const chokeK = Math.pow(2 / (GAMMA + 1), (GAMMA + 1) / (2 * (GAMMA - 1)));
+  const molOf = cap.map((q) => (gs.litresPerAh * q) / MOLAR_L), open = new Array(N).fill(false), held = new Array(N).fill(0), pIn = new Array(N).fill(P_AIR), jet = new Array(N).fill(0);
+  let vented = 0, conc = 0, hrr = 0, o2 = 0.21, speed = 0; // litres, the enclosure's burnable share, W, its oxygen share, m/s
   const I = new Array(N).fill(0), V = new Array(N).fill(0), dead = new Array(N).fill(false);
   for (let k = 0; k < current.length; k++) {
     const t = k * dt, active = sp.faults.filter((f) => t >= f.at);
@@ -128,8 +153,8 @@ export function packSim(sp: PackSpec, current: ArrayLike<number>, dt: number, so
     }
     if (run.stopped) break;
     if (k % every === 0) {
-      run.t.push(t); run.v.push(pack); run.gas.push(vented); run.lfl.push(conc / (lfl * burnShare)); run.hrr.push(hrr);
-      for (let i = 0; i < N; i++) { run.cellV[i].push(V[i]); run.cellI[i].push(I[i]); run.soc[i].push(z[i]); run.temp[i].push(T[i]); }
+      run.t.push(t); run.v.push(pack); run.gas.push(vented); run.lfl.push(conc / (lfl * burnShare)); run.hrr.push(hrr); run.jetSpeed.push(speed); run.oxygen.push(o2);
+      for (let i = 0; i < N; i++) { run.pressure[i].push(pIn[i]); run.jet[i].push(jet[i]); run.cellV[i].push(V[i]); run.cellI[i].push(I[i]); run.soc[i].push(z[i]); run.temp[i].push(T[i]); }
     }
     // Charge, RC pairs, heat.
     let coolant = sp.coolant?.inlet ?? sp.ambient;
@@ -151,21 +176,41 @@ export function packSim(sp: PackSpec, current: ArrayLike<number>, dt: number, so
       const rate = T.map((Ti, i) => rx.A * Math.exp(-rx.Ea / (R_GAS * (Ti + 273.15))) * (1 - alpha[i]));
       const dTdt = T.map((Ti, i) => {
         let q = heat[i] + rx.H * th.mass * rate[i] - th.hAir * (Ti - sp.ambient);
-        for (const j of nb[i]) q += gs.fire * flame[j] - th.kNeighbour * (Ti - T[j]);
+        for (const j of nb[i]) q -= th.kNeighbour * (Ti - T[j]);
         return q / mc;
       });
       const h = Math.min(left, ...dTdt.map((d) => (Math.abs(d) > 1e-12 ? 1 / Math.abs(d) : Infinity)), ...rate.map((r) => (r > 1e-12 ? 0.05 / r : Infinity)));
-      // Gas: a cell keeps its gas in until the vent opens (then lets out what it held), then gives it off as it's made.
-      let litres = 0; hrr = 0;
+      // Gas: held in the can (its pressure from the gas and the electrolyte's vapour) until the vent bursts, then let
+      // out through it. Choked flow is proportional to the gas held, so the excess over the air's pressure empties
+      // exactly over the sub-step (time constant tau) while the reaction refills it. shortcut: the subsonic tail is
+      // treated as choked, and a burst shorter than the sub-step is averaged over it.
+      let litres = 0, burnt = 0; hrr = 0; speed = 0;
+      const lit = gs.fire > 0 && o2 > gs.loc;
+      if (gs.fire > 0 && !lit && !Number.isFinite(run.fireOut) && jet.some((x) => x > 0)) run.fireOut = t + dt - left;
       for (let i = 0; i < N; i++) {
         T[i] += h * dTdt[i]; const a0 = alpha[i]; alpha[i] = Math.min(1, alpha[i] + h * rate[i]);
-        if (!open[i] && T[i] >= gs.ventT) { open[i] = true; run.vented.push(i); run.ventTime.push(t + dt - left + h); litres += a0 * molOf[i] * MOLAR_L; if (gs.fire > 0) for (const j of nb[i]) T[j] += (gs.fire * a0 * molOf[i] * heatPerMol) / mc; }
-        if (open[i]) { const mol = (alpha[i] - a0) * molOf[i]; litres += mol * MOLAR_L; flame[i] = gs.fire > 0 ? (mol * heatPerMol) / h : 0; hrr += flame[i]; }
+        const made = (alpha[i] - a0) * molOf[i], Tk = T[i] + 273.15;
+        if (!open[i]) {
+          pIn[i] = canPressure(gs, held[i] + made, Tk);
+          if (pIn[i] < gs.burst) { held[i] += made; jet[i] = 0; continue; }
+          open[i] = true; run.vented.push(i); run.ventTime.push(t + dt - left + h);
+        }
+        const nEq = (P_AIR * gs.free) / (R_GAS * Tk), tau = gs.free / (CD * area * chokeK * Math.sqrt((GAMMA * R_GAS * Tk) / M)), g = made / h;
+        const ex = Math.max(0, held[i] - nEq), exNew = Math.max(0, g * tau + (ex - g * tau) * Math.exp(-h / tau)), out = Math.max(0, ex + made - exNew);
+        held[i] = Math.min(held[i], nEq) + exNew; pIn[i] = Math.max(P_AIR, (held[i] * R_GAS * Tk) / gs.free);
+        litres += out * MOLAR_L;
+        const mdot = (out * M) / h, u = Math.min(Math.sqrt((GAMMA * R_GAS * Tk * 2) / ((GAMMA + 1) * M)), mdot / ((P_AIR * M) / (R_GAS * Tk) * CD * area));
+        speed = Math.max(speed, out > 0 ? u : 0);
+        jet[i] = jetReach(mdot, u, lit ? yStoich : yLfl);
+        if (lit) { const q = out * heatPerMol; hrr += q / h; burnt += out; for (const j of nb[i]) T[j] += (gs.fire * q) / mc; }
       }
       vented += litres;
-      // The enclosure: well mixed, aired at ach an hour; burnt at the vent, the gas adds nothing that could explode.
-      const k = gs.ach / 3600, add = gs.fire > 0 ? 0 : (litres * burnShare) / 1000 / gs.volume, e = Math.exp(-k * h);
-      conc = conc * e + (k > 0 ? (add / h) * ((1 - e) / k) : add);
+      // The enclosure: well mixed, the gas coming in pushing the mix out, aired at ach an hour. A fire burns its gas at
+      // the vent (using the air's oxygen) and leaves nothing that could explode; once the oxygen is below loc it goes
+      // out and the gas gathers again.
+      const inMol = litres / MOLAR_L, keep = nBox / (nBox + inMol), e = Math.exp((-gs.ach / 3600) * h);
+      o2 = Math.max(0, 0.21 + (o2 * keep - 0.21) * e - (burnt * o2Need) / nBox);
+      conc = conc * keep * e + (lit ? 0 : (inMol * burnShare) / nBox);
       if (!Number.isFinite(run.timeToLfl) && conc >= lfl * burnShare) run.timeToLfl = t + dt - left + h;
       // The coolant runs past the cells in order, taking heat and warming (exact for a fixed coolant temperature over h).
       if (sp.coolant) {

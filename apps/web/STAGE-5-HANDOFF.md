@@ -15717,3 +15717,13 @@ The owner pasted M573's left-outs (a drawn layout of the cells on the plate; gas
 - **Fix to M573 (rule for code that builds on it):** a cell past 200 °C is open: no current, no short, none taken from its parallel neighbours. Before, its siblings kept pushing current through a near-zero resistance and temperatures ran to ~780,000 °C; now ~900–1,000 °C. If every cell of a group has run away under a current, the run stops ("the pack is open").
 - Not done: the vent's jet as a flow (the gas only fills a box or burns), oxygen running out in a closed pack, the pressure inside the can before the vent, a 3D plate.
 
+## M573c: M573b's left-outs: the can's pressure, the vent's jet, oxygen, a 3D plate (28 Nov)
+
+The owner pasted M573b's left-outs. All in `pack.ts`, `battsys-lab.ts`, `help-battery.ts`; tests in `pack.test.ts`.
+
+- **Pressure:** a cell's gas stays in the can's free space (`free`, 2 mL) until `canPressure` (ideal gas plus the electrolyte's vapour by Clausius–Clapeyron, DMC-like: boils 363 K, 34 kJ/mol) reaches `burst` (1 MPa); the vent then opens (`ventT` is gone: **`'Gas'`'s first value is now the burst pressure in MPa**). Run field `Pressure` (each can, Pa).
+- **Jet:** choked flow through the vent (3 mm, Cd 0.7, γ 1.3, the mix's molar mass) is proportional to the gas held, so the excess over the air's pressure empties exactly over a sub-step while the reaction refills it (**shortcut:** the subsonic tail treated as choked; a burst shorter than a sub-step averaged over it, so peak flows read low). Speed capped at sonic (`JetSpeed`); `Jet` is each vent's reach to its LFL (unlit) or its flame's length (lit), from a free jet's centreline falling as 5·ds/x (Thring–Newby air-equivalent diameter). **Shortcut:** buoyancy left out, so flames read short.
+- **Oxygen:** the enclosure holds `volume`·1000/22.4 mol, the incoming gas pushes the mix out, airing pulls O₂ back to 21 %, burning uses `GAS_O2` per mole (~0.8 mol O₂ a mole of gas: 31 L of gas needs ~117 L of air). Below `loc` (0.11, `'Oxygen'`) the flames go out (`FireOut`) and the gas gathers unburnt again (so `TimeToLFL` can follow a fire). Flame heat now goes straight to the neighbours as energy (`fire` share of each mole burnt), no longer as a power carried to the next sub-step.
+- **3D plate:** `packPlate(p, r, t, '3d')`: 21700 cylinders (21 × 70 mm, 23 mm apart) on a translucent plate, coloured by temperature, the channel under them, each vent's jet (grey) or flame (orange) drawn to its length in mm; up to 400 cells. Checked as SVG.
+- Not done: buoyant flames and the jet's direction (always drawn straight up), the gathered gas lighting again when air returns (a backdraft), the electrolyte vapour leaving with the gas.
+

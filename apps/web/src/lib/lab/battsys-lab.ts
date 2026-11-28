@@ -220,7 +220,7 @@ const packOf = (v: Value | undefined, what: string) => { const p = v && v.k === 
 def('packBuild', (a) => {
   const c = ecmOf(a[0], 'packBuild'), s = Math.round(n0(a[1], NaN)), p = Math.round(n0(a[2], NaN));
   if (!(s >= 1 && p >= 1 && s * p <= 2000)) throw new LabError('packBuild(cell, series, parallel, …): 1–2,000 cells.');
-  const o = opts(a, 3, ['Spread', 'Seed', 'Coolant', 'Ambient', 'Cooling', 'Temperature', 'Columns', 'Gas', 'Fire'], 'packBuild');
+  const o = opts(a, 3, ['Spread', 'Seed', 'Coolant', 'Ambient', 'Cooling', 'Temperature', 'Columns', 'Gas', 'Fire', 'Vent', 'Oxygen'], 'packBuild');
   const spec = pk.packSpec(c, s, p);
   if (o.has('Spread')) { const x = vec(o.get('Spread'), 'Spread'); if (x.length !== 3 || x.some((y) => !(y >= 0 && y < 0.5))) throw new LabError("'Spread' is [capacity R0 SOC], one-sigma shares from 0 to 0.5."); spec.spread = { capacity: x[0], r0: x[1], soc: x[2] }; }
   if (o.has('Seed')) spec.seed = n0(o.get('Seed'), 1);
@@ -233,7 +233,9 @@ def('packBuild', (a) => {
   }
   if (o.has('Cooling')) { const x = vec(o.get('Cooling'), 'Cooling'); if (x.length !== 3 || x.some((y) => !(y >= 0))) throw new LabError("'Cooling' is [to the coolant, to the air, to each neighbour] in W/K."); spec.thermal = { ...pk.CELL_THERMAL, hCool: x[0], hAir: x[1], kNeighbour: x[2] }; }
   if (o.has('Columns')) { const x = n0(o.get('Columns'), NaN); if (!(x >= 1)) throw new LabError("'Columns' is how many cells a row of the plate holds (1 or more)."); spec.cols = Math.round(x); }
-  if (o.has('Gas')) { const x = vec(o.get('Gas'), 'Gas'); if (x.length !== 4 || !(x[0] > 0 && x[1] >= 0 && x[2] > 0 && x[3] >= 0)) throw new LabError("'Gas' is [vent °C, litres per Ah, enclosure m³, air changes an hour]."); spec.gas = { ...spec.gas, ventT: x[0], litresPerAh: x[1], volume: x[2], ach: x[3] }; }
+  if (o.has('Gas')) { const x = vec(o.get('Gas'), 'Gas'); if (x.length !== 4 || !(x[0] > 0.2 && x[1] >= 0 && x[2] > 0 && x[3] >= 0)) throw new LabError("'Gas' is [vent bursts at MPa (above 0.2), litres per Ah, enclosure m³, air changes an hour]."); spec.gas = { ...spec.gas, burst: x[0] * 1e6, litresPerAh: x[1], volume: x[2], ach: x[3] }; }
+  if (o.has('Vent')) { const x = vec(o.get('Vent'), 'Vent'); if (x.length !== 2 || !(x[0] > 0 && x[1] > 0)) throw new LabError("'Vent' is [the vent's diameter in mm, the can's free space in mL]."); spec.gas = { ...spec.gas, vent: x[0] / 1000, free: x[1] * 1e-6 }; }
+  if (o.has('Oxygen')) { const x = n0(o.get('Oxygen'), NaN); if (!(x >= 0 && x < 0.21)) throw new LabError("'Oxygen' is the share of oxygen below which the flames go out, 0 to 0.21."); spec.gas = { ...spec.gas, loc: x }; }
   if (o.has('Fire')) { const x = n0(o.get('Fire'), NaN); if (!(x >= 0 && x <= 0.25)) throw new LabError("'Fire' is the share of a vent's flame that heats each neighbour, 0 (no fire) to 0.25."); spec.gas = { ...spec.gas, fire: x }; }
   return [packValue(spec)];
 });
@@ -253,7 +255,8 @@ def('packSimulate', (a, nout, lab) => {
   const r = pk.packSim(p, I, dt, z0);
   const out = S([['Time', row(r.t)], ['Voltage', row(r.v)], ['CellVoltage', rows(r.cellV)], ['CellCurrent', rows(r.cellI)], ['SOC', rows(r.soc)], ['Temperature', rows(r.temp)],
     ['CoolantOut', row(r.coolantOut)], ['MaxTemperature', num(r.maxTemp)], ['Runaway', row(r.runaway.map((i) => i + 1))], ['CellCapacity', row(r.capacity)],
-    ['Vented', row(r.vented.map((i) => i + 1))], ['VentTime', row(r.ventTime)], ['GasVolume', row(r.gas)], ['LFLShare', row(r.lfl)], ['TimeToLFL', num(r.timeToLfl)], ['HeatRelease', row(r.hrr)]]);
+    ['Vented', row(r.vented.map((i) => i + 1))], ['VentTime', row(r.ventTime)], ['GasVolume', row(r.gas)], ['LFLShare', row(r.lfl)], ['TimeToLFL', num(r.timeToLfl)], ['HeatRelease', row(r.hrr)],
+    ['Pressure', rows(r.pressure)], ['Jet', rows(r.jet)], ['JetSpeed', row(r.jetSpeed)], ['Oxygen', row(r.oxygen)], ['FireOut', num(r.fireOut)]]);
   lastRun.set(out, r);
   if (nout > 0) return [out];
   const t = row(r.t.map((x) => x / 60));
@@ -267,7 +270,7 @@ def('packSimulate', (a, nout, lab) => {
   call(lab, 'legend', str('Lowest cell'), str('Highest cell')); call(lab, 'ylabel', str('SOC (%)')); call(lab, 'grid', str('on'));
   if (n === 4) {
     call(lab, 'subplot', num(4), num(1), num(4));
-    if (p.gas.fire > 0) { call(lab, 'plot', t, row(r.hrr.map((w) => w / 1000))); call(lab, 'ylabel', str('Flames (kW)')); }
+    if (p.gas.fire > 0) { call(lab, 'plot', t, row(r.hrr.map((w) => w / 1000))); call(lab, 'ylabel', str('Flames (kW)')); call(lab, 'title', str(Number.isFinite(r.fireOut) ? `Out of oxygen at ${(r.fireOut / 60).toFixed(1)} min (${(100 * Math.min(...r.oxygen)).toFixed(0)} % O₂)` : `Oxygen down to ${(100 * Math.min(...r.oxygen)).toFixed(0)} %`)); }
     else { call(lab, 'plot', t, row(r.lfl.map((x) => 100 * x))); call(lab, 'ylabel', str('Gas (% of LFL)')); call(lab, 'title', str(Number.isFinite(r.timeToLfl) ? `Flammable at ${(r.timeToLfl / 60).toFixed(1)} min` : `${r.gas.at(-1)!.toFixed(1)} L vented, below its flammable limit`)); }
     call(lab, 'grid', str('on'));
   }
@@ -276,12 +279,14 @@ def('packSimulate', (a, nout, lab) => {
 });
 // M573b: the plate drawn from above, each cell coloured by its temperature at time t (the end by default), the
 // coolant's channel snaking through them, cells that vented ringed and those that ran away crossed.
-def('packPlate', (a, nout, lab) => {
+def('packPlate', (all, nout, lab) => {
+  const in3d = all.some((v) => v.k === 'str' && /^3d$/i.test(v.v)), a = all.filter((v) => !(v.k === 'str' && /^3d$/i.test(v.v)));
   const p = packOf(a[0], 'packPlate'), N = p.series * p.parallel, L = pk.plateLayout(N, p.cols), r = a[1] && a[1].k === 'struct' ? lastRun.get(a[1]) : undefined;
   if (a[1] && !r) throw new LabError('packPlate(pack, run, t): run is what packSimulate gave for this pack.');
   const k = r ? (a[2] ? r.t.reduce((b, x, i) => (Math.abs(x - n0(a[2], 0)) < Math.abs(r.t[b] - n0(a[2], 0)) ? i : b), 0) : r.t.length - 1) : -1;
   const T = Array.from({ length: N }, (_, i) => (r ? r.temp[i][k] : p.t0 ?? p.ambient));
   if (nout > 0) return [S([['X', row(L.x.map((x) => x + 1))], ['Y', row(L.y.map((y) => y + 1))], ['Temperature', row(T)]])];
+  if (in3d) { plate3d(lab, p, L, T, r, k); return []; }
   const grid = mat(L.rows, L.cols, new Array(L.rows * L.cols).fill(NaN));
   T.forEach((v, i) => { grid.d[L.x[i] * L.rows + L.y[i]] = v; });
   call(lab, 'imagesc', grid); call(lab, 'colorbar'); call(lab, 'axis', str('equal')); call(lab, 'hold', str('on'));
@@ -294,6 +299,31 @@ def('packPlate', (a, nout, lab) => {
   call(lab, 'title', str(`${p.coolant ? 'Coolant in at cell 1, out at cell ' + N : 'No coolant'}${r ? ` · ${(r.t[k] / 60).toFixed(1)} min · hottest ${Math.max(...T).toFixed(0)} °C` : ''}`));
   return [];
 });
+// M573c: the plate in 3D: 21700 cells (21 mm across, 70 mm tall, 23 mm apart) standing on it, coloured by
+// temperature, the coolant's channel under them, and each venting cell's jet drawn to its reach (grey, to its LFL) or
+// its flame's length (orange), in mm.
+function plate3d(lab: Lab, p: pk.PackSpec, L: ReturnType<typeof pk.plateLayout>, T: number[], r: pk.PackRun | undefined, k: number) {
+  const N = T.length, pitch = 23, rad = 10.5, H = 70, n = 16;
+  if (N > 400) throw new LabError("packPlate(…, '3d') draws up to 400 cells; use the flat plate for more.");
+  const th = Array.from({ length: n + 1 }, (_, j) => (2 * Math.PI * j) / n), lo = Math.min(...T), hi = Math.max(...T);
+  call(lab, 'cla'); call(lab, 'hold', str('on'));
+  const W = L.cols * pitch, D = L.rows * pitch;
+  call(lab, 'surf', mat(2, 2, [0, 0, W, W]), mat(2, 2, [0, D, 0, D]), mat(2, 2, [0, 0, 0, 0]), mat(2, 2, [lo, lo, lo, lo]), str('EdgeColor'), str('none'), str('FaceAlpha'), num(0.35));
+  T.forEach((v, i) => {
+    const cx = (L.x[i] + 0.5) * pitch, cy = (L.y[i] + 0.5) * pitch, C = mat(2, n + 1, new Array(2 * (n + 1)).fill(v));
+    const X = mat(2, n + 1, th.flatMap((a) => [cx + rad * Math.cos(a), cx + rad * Math.cos(a)])), Y = mat(2, n + 1, th.flatMap((a) => [cy + rad * Math.sin(a), cy + rad * Math.sin(a)]));
+    call(lab, 'surf', X, Y, mat(2, n + 1, th.flatMap(() => [0, H])), C, str('EdgeColor'), str('none'));
+    call(lab, 'surf', mat(2, n + 1, th.flatMap((a) => [cx, cx + rad * Math.cos(a)])), mat(2, n + 1, th.flatMap((a) => [cy, cy + rad * Math.sin(a)])), mat(2, n + 1, new Array(2 * (n + 1)).fill(H)), C, str('EdgeColor'), str('none'));
+  });
+  if (p.coolant) call(lab, 'plot3', row(L.x.map((x) => (x + 0.5) * pitch)), row(L.y.map((y) => (y + 0.5) * pitch)), row(L.x.map(() => 1)), str('Color'), str('#38bdf8'), str('LineWidth'), num(3));
+  if (r) r.vented.forEach((i) => {
+    const len = 1000 * r.jet[i][k];
+    if (len > 0) call(lab, 'plot3', row([(L.x[i] + 0.5) * pitch, (L.x[i] + 0.5) * pitch]), row([(L.y[i] + 0.5) * pitch, (L.y[i] + 0.5) * pitch]), row([H, H + Math.min(len, 2000)]), str('Color'), str(p.gas.fire > 0 && r.hrr[k] > 0 ? '#f97316' : '#a1a1aa'), str('LineWidth'), num(4));
+  });
+  call(lab, 'hold', str('off')); call(lab, 'colorbar'); call(lab, 'axis', str('equal')); call(lab, 'view', num(3));
+  call(lab, 'xlabel', str('mm')); call(lab, 'ylabel', str('mm')); call(lab, 'zlabel', str('mm'));
+  call(lab, 'title', str(`${r ? `${(r.t[k] / 60).toFixed(1)} min · ` : ''}hottest ${hi.toFixed(0)} °C${r && r.jetSpeed[k] > 0 ? ` · vent jet ${r.jetSpeed[k].toFixed(0)} m/s` : ''}`));
+}
 def('packAging', (a) => {
   const p = packOf(a[0], 'packAging'), r = a[1] && a[1].k === 'struct' ? lastRun.get(a[1]) : undefined, n = n0(a[2], NaN);
   if (!r) throw new LabError('packAging(pack, run, cycles): run is what packSimulate gave for this pack.');

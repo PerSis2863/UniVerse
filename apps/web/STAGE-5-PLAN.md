@@ -1248,6 +1248,7 @@ Battery systems (`cellfit.ts`, `socest.ts`, `battsys-lab.ts`, `help-battery.ts`)
 - M573 packs: cells with spread in series and parallel (current sharing), cooling plates and their fluid path,
   cell-to-cell temperature, ageing per cell, faults (added resistance, internal short, thermal runaway as an ARC test). Done.
   M573b, its left-outs: the plate drawn in rows with the coolant's channel, venting gas (flammable limit) and fire. Done.
+  M573c, theirs: the can's pressure and its vent bursting, the jet, oxygen running out in a closed pack, a 3D plate. Done.
 - M574 the BMS closed loop: monitoring and protection, contactors and precharge (a state chart), CC-CV and fast
   charging, passive and active balancing, the bar-delta filter for a pack's SOC.
 - M575 data-driven SOC (a small neural network trained on simulated drives) and SOC on a microcontroller (C).
@@ -2023,6 +2024,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M572 | Hyperion battery systems: the single particle model with electrolyte (28 Nov) | **Done** (branch) | spmeCell (Chen 2020 LG M50), spmeSimulate, spmeFit (grouped: diffusion times, reaction scale, contact resistance) |
 | M573 | Hyperion battery systems: packs, cooling and faults (28 Nov) | **Done** (branch) | packBuild (cell spread), packFault (resistance, short, heater), packSimulate (parallel sharing, cooling plate, runaway spreading), packAging, arcTest |
 | M573b | M573's left-outs: the plate drawn, venting gas and fire (28 Nov) | **Done** (branch) | packPlate, 'Columns' (grid neighbours), 'Gas' (LFL in the enclosure, Le Chatelier), 'Fire' (flames heating neighbours); fix: a cell that ran away carries no current |
+| M573c | M573b's left-outs: the can's pressure, the vent's jet, oxygen running out, a 3D plate (28 Nov) | **Done** (branch) | canPressure (gas + electrolyte vapour), choked vent flow, jet reach and flame length, the enclosure's oxygen (flames out below 'Oxygen'), packPlate(…, '3d') |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
