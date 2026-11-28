@@ -42,6 +42,7 @@ import { builtinNames } from './matlab-lang';
 import { LANGS, langOf } from '@/lib/lab/langs';
 import { LangRunner, type LangEvent } from './lang-runner';
 import { SCIENCE_EXAMPLES } from '@/lib/lab/examples-sciences';
+import { watchWorker } from '@/lib/error-monitor';
 
 /** Figures from the other languages (M466–) are numbered from here and shown as pictures, never put into the page. */
 const OTHER_FIG = 1_000_000;
@@ -253,6 +254,9 @@ export function LabApp() {
   };
   const start = () => {
     const w = new Worker(new URL('./lab.worker.ts', import.meta.url));
+    // In Hyperion's computer app the engine may run IBIS-AMI models (M577): it gets the app's private address and token.
+    const desk = (window as Window & { hyperionDesktop?: { native?: () => Promise<{ url: string; token: string; platform?: string; arch?: string }> } }).hyperionDesktop;
+    if (desk?.native) void desk.native().then((n) => w.postMessage({ native: n } satisfies ToLab)).catch(() => { /* an older app: no AMI models */ });
     w.onmessage = (e: MessageEvent<FromLab>) => {
       const m = e.data;
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
@@ -317,6 +321,7 @@ export function LabApp() {
       if (next !== null) { queued.current = null; if (next.startsWith(NOTE_ALL)) { const [k, ...rest] = next.slice(NOTE_ALL.length).split('\u0000'); runNotes(rest.join('\u0000'), Number(k)); } else run(next, 'live'); }
       else nextNote();
     };
+    watchWorker(w, 'hyperion', (msg) => { print({ k: 'err', t: `${msg}\n` }); pending.current = null; busyNow.current = false; queued.current = null; setBusy(false); });
     worker.current = w;
     // A restarted engine (after Stop) gets the files again.
     if (fileData.current.size) w.postMessage({ upload: [...fileData.current.values()] } satisfies ToLab);

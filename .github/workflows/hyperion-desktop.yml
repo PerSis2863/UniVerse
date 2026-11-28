@@ -33,6 +33,24 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --no-audit --no-fund
+      # The 32-bit IBIS-AMI helper (M580): built on Linux for Linux and, cross-compiled, for Windows; Macs can't run
+      # 32-bit programs, so theirs is left out.
+      - name: The 32-bit model helper
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q gcc-multilib && sh host32/build.sh linux
+      - name: The 32-bit model helper (Windows, cross-built)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\pacman.exe -S --noconfirm --needed mingw-w64-i686-gcc
+          New-Item -ItemType Directory -Force bin | Out-Null
+          C:\msys64\mingw32\bin\gcc.exe -O2 -Wall -static -o bin/ami-host32-win32.exe host32/ami-host32.c
+      - run: npm test
+      # IBIS-AMI (M577): koffi's native part comes as one package per system; the Mac app is universal (Apple chips and
+      # Intel), so it carries both Mac parts.
+      - name: Both Mac processors' koffi
+        if: runner.os == 'macOS'
+        run: npm install --no-save --force --no-audit --no-fund @koromix/koffi-darwin-arm64@3.3.7 @koromix/koffi-darwin-x64@3.3.7
       - name: Build (signed when the certificates are set)
         env:
           WIN_CERT: ${{ secrets.HYPERION_WIN_CERT }}

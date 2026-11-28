@@ -7,6 +7,14 @@ the app the moment it is on the website.
 
 This folder is not part of the website's build (it is outside the pnpm workspace).
 
+## Chip and circuit simulators (M569)
+
+`simulators.js` runs a simulator already installed on the computer on files Hyperion wrote: Verilator, Cadence Xcelium
+(`xrun`), Synopsys VCS or Siemens Questa (`qrun`) on a `dpigen` testbench; ngspice, Xyce, Cadence Spectre or Synopsys
+HSPICE on a netlist (its raw results file comes back to Hyperion). Found on the PATH only (no licence is checked out to
+look); the person is asked before each run, as for a program. In a script: `cosim` lists them, `cosim('verilator',
+'name_tb')` runs one.
+
 ## Julia, C++ and Rust (M470)
 
 In the app, Hyperion's Code window also runs `.jl`, `.cpp` and `.rs` scripts with the tools installed on the computer
@@ -16,6 +24,22 @@ deletes the folder. Only Hyperion's own site, in the window's main frame, may as
 and the person is asked before each new program runs (or ticks "Don't ask again for … until Hyperion is closed").
 When a tool is missing, Hyperion says how to install it for that system. Python and R need nothing installed: they run
 inside Hyperion itself, sealed off from the site (`public/sandbox/run.html` in the website).
+
+## IBIS-AMI models (M577)
+
+Chip makers ship their SerDes equalisers as IBIS-AMI models: a compiled library (`.dll`, `.so`, `.dylib`) and an `.ami`
+settings file. A browser can't run them; the app can. In a script, `amiModel('rx.dll', 'rx.ami')` and
+`eyeDiagram(S, rate, 'TxModel', tx, 'RxModel', rx)` (or `amiSimulate`). How it works: the engine's worker asks the app
+synchronously at its private address `hyperion-native://` with this launch's secret token (given only to Hyperion's
+own site in the main frame); `ami.js` checks the request and asks the person before a model loads (once per model,
+by its fingerprint); `ami-host.js` loads it with koffi (a foreign-function library, no compiler needed) in Electron's
+utility process, so a crashing or hanging model (stopped after 2 minutes) never takes the app down. The model must be
+built for the computer's processor (on Apple chips an ARM build). Older 32-bit models (M580) run through a small
+32-bit helper, `bin/ami-host32-*` (source `host32/ami-host32.c`, built by `host32/build.sh` and the workflow; Linux
+needs the 32-bit system libraries; Macs can't run 32-bit programs). Back-channel links (M579) run both models in one
+process in turns, in a private shared folder. Tests: `npm test` (builds the tiny model in
+`test/` with gcc). When the Mac app is signed, its entitlements need `com.apple.security.cs.disable-library-validation`
+so it may load makers' libraries signed by someone else.
 
 ## Build the installers
 

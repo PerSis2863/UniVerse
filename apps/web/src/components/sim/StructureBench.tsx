@@ -20,6 +20,7 @@ import { HarmonicPanel } from './HarmonicPanel';
 import { SimSetupAsk } from './SimSetupAsk';
 import { HARMONIC_START } from '@/lib/sim/modal';
 import type { Analysis, FromSim, ToSim } from './sim.worker';
+import { watchWorker } from '@/lib/error-monitor';
 
 // Hyperion Simulate → Structures (M404): the workbench, laid out like engineering software. On the left the outline of
 // the study (the part, its material, the mesh, the supports, the loads, the solution) and the details of what is
@@ -75,6 +76,7 @@ export function StructureBench() {
       waiting.current = null;
       if (next) send(next); else setBusy(false);
     };
+    watchWorker(w, 'structures', (msg) => { running.current = false; waiting.current = null; setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

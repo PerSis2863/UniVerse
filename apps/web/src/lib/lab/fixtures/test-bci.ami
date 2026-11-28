@@ -1,0 +1,12 @@
+| A back-channel test model's settings (M579), beside desktop/hyperion/test/ami-test-bci.c. One file for both ends.
+(test_bci
+  (Reserved_Parameters
+    (Init_Returns_Impulse (Usage Info) (Type Boolean) (Value False))
+    (GetWave_Exists (Usage Info) (Type Boolean) (Value True))
+    (BCI_Protocol (Usage Info) (Type String) (Value "hyperion_test"))
+    (BCI_ID (Usage In) (Type String) (Value "unset"))
+    (BCI_Message_Interval_UI (Usage Info) (Type Integer) (Value 64))
+    (BCI_Training_UI (Usage Info) (Type Integer) (Value 512)))
+  (Model_Specific
+    (role (Usage In) (Type String) (List "tx" "rx") (Default "tx"))
+    (tap (Usage In) (Type Float) (Range -0.1 -0.5 0))))

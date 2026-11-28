@@ -144,6 +144,21 @@ export function clearErrors(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+/**
+ * A background worker that failed (the owner, 27 Nov: Machine health stuck on "computing…"). A worker whose script
+ * never loaded (an open tab after a deploy: its old file is gone) fires a bare `error` with no message: handled like
+ * any old chunk (the page reloads once to the new version). One that crashed is reported. Either way `failed` hears
+ * it, so the page stops waiting and says so.
+ */
+export function watchWorker(w: Worker, name: string, failed: (message: string) => void): void {
+  w.addEventListener('error', (e) => {
+    e.preventDefault();
+    if (!e.message) captureError(new Error(`ChunkLoadError: the ${name} worker did not start`), 'chunk');
+    else captureError(new Error(`${name} worker: ${e.message}`), 'runtime', { filename: e.filename, lineno: e.lineno });
+    failed(e.message ? `The calculation stopped: ${e.message}` : 'The calculation couldn’t start (this page may be from an older version). Reload the page.');
+  });
+}
+
 let installed = false;
 
 /** Install global error listeners. Call once at app startup. */

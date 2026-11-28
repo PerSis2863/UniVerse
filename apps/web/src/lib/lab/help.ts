@@ -4,6 +4,7 @@
 import { SCIENCES_HELP } from './help-sciences';
 
 import { MACHINES_HELP } from './help-machines';
+import { MIXSIG_HELP } from './help-mixsig';
 
 const TEXT = `
 # Numbers and arithmetic
@@ -541,7 +542,7 @@ queuesim | r = queuesim({'exp', 2}, {{'Desk', 2, {'exp', 3}}, {'Pay', 1, {'const
 mmcqueue | q = mmcqueue(lambda, mu, c) | Erlang's exact M/M/c answers: q.Rho (busy share), q.PWait, q.Lq and q.Wq (queue length and wait), q.L and q.W (in the system).
 
 # Embedded code and fixed point
-codegen | codegen('myfilter', {zeros(1, 64), 0.5}) | Turns a function of the script into plain C99 (myfilter.c and myfilter.h in Hyperion's files): the example inputs fix every size and type (double, single, int8 … uint64, logical, and fi: fixed-point C on whole-number types, each value its stored integer, sums and products growing as fi's do, ./, divide(T, a, b), A \\ B and B / A by any matrix (exact elimination on whole numbers, least squares for a non-square or singular one, each answer rounded once; past 128 bits worked in 32-bit pieces, to 65,536 bits; lsqminnorm(A, B, T) gives the smallest answer; of plain numbers, lsqminnorm(A, B, tol) through the SVD), fimath's rounding methods, Wrap and product and sum modes, types up to 62 bits in 64-bit integers and up to 126 bits in 128-bit ones (__int128 on 64-bit computers; on small chips without it, or with HYPERION_FX_PORTABLE defined, two 64-bit halves giving the same answers), y(:) = … and fi(x, s, w, f) rounding and saturating as MATLAB's); loops, if, while, switch, element-wise maths, the matrix product, sum / prod / mean / min / max of vectors, sqrt, exp, sin… and calls to the script's other functions. No memory is allocated while it runs; arrays are stored column by column. What can't become fixed-size C is refused with the reason. With an output, gives a struct with the C and H texts.
+codegen | codegen('myfilter', {zeros(1, 64), 0.5}) | Turns a function of the script into plain C99 (myfilter.c and myfilter.h in Hyperion's files): the example inputs fix every size and type (double, single, int8 … uint64, logical, and fi: fixed-point C on whole-number types, each value its stored integer, sums and products growing as fi's do, ./, divide(T, a, b), A \\ B and B / A by any matrix (exact elimination on whole numbers, least squares for a non-square or singular one, each answer rounded once; past 128 bits worked in 32-bit pieces, to 65,536 bits; lsqminnorm(A, B, T) gives the smallest answer; of plain numbers, lsqminnorm(A, B, tol) through the SVD), fimath's rounding methods, Wrap and product and sum modes, types up to 62 bits in 64-bit integers and up to 126 bits in 128-bit ones (__int128 on 64-bit computers; on small chips without it, or with HYPERION_FX_PORTABLE defined, two 64-bit halves giving the same answers), y(:) = … and fi(x, s, w, f) rounding and saturating as MATLAB's); loops, if, while, switch, element-wise maths, the matrix product, sum / prod / mean / min / max of vectors, sqrt, exp, sin… and calls to the script's other functions. No memory is allocated while it runs; arrays are stored column by column. What can't become fixed-size C is refused with the reason. With an output, gives a struct with the C and H texts. Deployment (M580): codegen(…, 'Target', 'ROS 2', 'Rate', 50) also writes a ROS 2 package (name_ros.zip: a C++ node subscribing to one topic per input, running the function at that rate once every input has arrived, publishing one topic per output; colcon builds it); 'Target', 'AUTOSAR' writes a Classic software component (NameSwc.zip: the runnable, its ARXML description, a stand-in RTE to test on a computer); 'Name' names the package or component.
 fi | a = fi(v, signed, wordLength, fractionLength) | A fixed-point number, as an embedded chip or FPGA holds it: rounded to the nearest step of 2^-fractionLength and held in range (fi(v) is signed 16-bit with the best fraction length); fi(v, s, w, f, F) or fi(v, s, w, f, 'RoundingMethod', 'Floor', 'OverflowAction', 'Wrap') rounds and overflows another way (fimath). A \\ B and B / A solve exactly with any fi matrix: a square one directly, a non-square or singular one by least squares (an unknown that can't be told apart is 0); mldivide(A, B, T) chooses the answer's type. + − .* * grow the word so nothing is lost; a ./ b keeps the larger word with a's fraction less b's (divide(T, a, b) for another type), rounded to the nearest, dividing by zero giving the top or bottom of the range; a.WordLength, a.FractionLength. a(i) keeps the type; a(i) = v and a(:) = v round and hold the range (how a loop keeps an accumulator's type); fi(b, …) of a fi recasts it; −a and comparisons work.
 storedInteger | n = storedInteger(a) | The whole numbers a fi value is stored as (what the chip holds).
 bin | s = bin(a) | A fi value's stored bits, most significant first (two's complement).
@@ -861,7 +862,7 @@ assumeAlso | assumeAlso(cond) | Accepted and noted, as assume.
 nthroot | nthroot(x, n) | The real n-th root.
 
 # Control systems
-tf | tf(num, den), tf('s') | A transfer function from its numerator and denominator (highest power first); tf('s') is s itself, so (s + 1)/(s^2 + 2*s + 1) works.
+tf | tf(num, den), tf('s'), tf(num, den, 'InputDelay', T) | A transfer function from its numerator and denominator (highest power first); tf('s') is s itself, so (s + 1)/(s^2 + 2*s + 1) works. A delay of T seconds is folded in as its 4th-order Padé approximation.
 zpk | zpk(zeros, poles, gain) | A transfer function from its zeros, poles and gain.
 ss | ss(A, B, C, D) | A system from state-space matrices (one input, one output), shown as its transfer function.
 pid | pid(Kp, Ki, Kd, Tf) | A PID controller: Kp + Ki/s + Kd·s/(Tf·s + 1).
@@ -875,6 +876,9 @@ tzero | tzero(G) | The zeros (as zero).
 dcgain | dcgain(G) | The steady value for a step of 1 (G at s = 0).
 isstable | isstable(G) | True when every pole is in the left half-plane.
 damp | damp(G) | Each pole's natural frequency and damping.
+pidtune | pidtune(G, type), pidtune(G, type, wc, opts), [C, info] = pidtune(…) | A tuned PID for plant G: type 'P', 'I', 'PI', 'PD', 'PID' or 'PIDF'; wc the crossover frequency (rad/s, chosen when not given); info has Kp, Ki, Kd, Tf, CrossoverFrequency, PhaseMargin, Stable.
+pade | pade(T, N) | A delay of T seconds as a transfer function of order N (4 when not given), good while frequency × T stays under about N + 2.
+pidtuneOptions | pidtuneOptions('PhaseMargin', 45, 'N', 10) | Options for pidtune: the phase margin (degrees, 60 by default) and the derivative filter's N.
 stepinfo | stepinfo(G) | Rise time, settling time (2 %), overshoot (%), peak and peak time, steady state.
 step | step(G), step(G, T), [y, t] = step(G) | The response to a step of 1, drawn or returned.
 impulse | impulse(G), [y, t] = impulse(G) | The response to an impulse.
@@ -1128,7 +1132,7 @@ pkg | pkg load | (Every package is already loaded.)
 nargin | nargin | How many inputs the function was given.
 nargout | nargout | How many outputs were asked for.
 exist | exist('name') | 1 a variable, 2 a file, 5 a function, 0 nothing.
-` + MACHINES_HELP;
+` + MACHINES_HELP + MIXSIG_HELP;
 
 export interface Entry { name: string; syntax: string; text: string; section: string }
 export const HELP = new Map<string, Entry>();

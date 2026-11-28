@@ -36,6 +36,8 @@ export function CrashView({ car }: { car: Vehicle }) {
   const [braked, setBraked] = useState(false);
   // M486zb: this car's driver not braking, its wheels rolling along it.
   const [rolling, setRolling] = useState(false);
+  // M486zc: how long this car's driver takes to brake (s).
+  const [react, setReact] = useState(1);
   const [front, setFront] = useState<keyof typeof FRONTS>('typical');
   const [sideSeat, setSideSeat] = useState<SideSeat>('near');
   // M486p: the back seat and a blow at an angle.
@@ -45,7 +47,7 @@ export function CrashView({ car }: { car: Vehicle }) {
   const [sideAim, setSideAim] = useState<SideAim>('front');
   const cv = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
   const c = useMemo(() => frontalCrash(car, kmh / 3.6, { into, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', overlap: into === 'mpdb' ? 0.5 : Number(overlap), seat: seat === 'rear' ? 'rear' : 'front', behind: seat === 'pushed' ? 'unbelted' : 'none', front }), [car, kmh, into, guard, overlap, seat, front]);
-  const sc = useMemo(() => sideCrash(car, kmh / 3.6, { into: sideInto, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', seat: sideSeat === 'near' ? 'near' : 'far', beside: sideSeat === 'beside', row: sideRow, angle: Number(sideAngle), hitAt: SEAT_X[sideAim], braked, rolling }), [car, kmh, sideInto, guard, sideSeat, sideRow, sideAngle, sideAim, braked, rolling]);
+  const sc = useMemo(() => sideCrash(car, kmh / 3.6, { into: sideInto, belt: guard === 'belt' || guard === 'both', bags: guard === 'bag' || guard === 'both', seat: sideSeat === 'near' ? 'near' : 'far', beside: sideSeat === 'beside', row: sideRow, angle: Number(sideAngle), hitAt: SEAT_X[sideAim], braked, rolling, react }), [car, kmh, sideInto, guard, sideSeat, sideRow, sideAngle, sideAim, braked, rolling, react]);
   const rear = seat === 'rear', side = kind === 'side', d = side ? sc : c;
 
   const draw = useEffectEvent(() => {
@@ -164,6 +166,9 @@ export function CrashView({ car }: { car: Vehicle }) {
           <Segmented<SideInto> label="Hit by" value={sideInto} onChange={setSideInto} segments={[{ value: 'car', label: 'A car like it' }, { value: 'pole', label: 'Sliding into a pole' }]} />
           {sideInto === 'car' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={braked} onChange={(e) => setBraked(e.target.checked)} className="h-4 w-4 accent-violet-600" />The other driver was already braking</label>}
           <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={rolling} onChange={(e) => setRolling(e.target.checked)} className="h-4 w-4 accent-violet-600" />This car’s driver wasn’t braking (its wheels roll)</label>
+          {rolling && <label className={`${label} w-56`}>Brakes after <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{react.toFixed(1)} s</span>
+            <input type="range" min={0} max={3} step={0.1} value={react} onChange={(e) => setReact(Number(e.target.value))} className="mt-1 w-full accent-violet-600" />
+          </label>}
         </div> : <div className="space-y-1"><span className={label}>Into</span>
           <Segmented<Into> label="Into" value={into} onChange={setInto} segments={[{ value: 'wall', label: 'A wall' }, { value: 'barrier', label: 'A soft barrier (Euro NCAP)' }, { value: 'mpdb', label: 'A moving barrier (Euro NCAP)' }, { value: 'car', label: 'A car like it, head on' }]} />
         </div>}

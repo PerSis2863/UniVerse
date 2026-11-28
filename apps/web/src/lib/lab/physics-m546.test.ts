@@ -50,6 +50,6 @@ describe('the disc scattering (M546)', () => {
     expect([d('S').r, d('S').c, d('S').p]).toEqual([16, 16, 17]);
     expect([...d('lam').d].slice(0, 2)).toEqual([380, 405]);
     expect(d('np').d[0]).toBe(1);
-    expect(() => lang("V = [0 0 0; 1 0 0; 0 1 0; 0 0 1]; F = [1 3 2; 1 2 4; 2 3 4; 3 1 4]; convexSplit(V, F, 'Search', 'deep')")).toThrow(/true, false or 'full'/);
+    expect(() => lang("V = [0 0 0; 1 0 0; 0 1 0; 0 0 1]; F = [1 3 2; 1 2 4; 2 3 4; 3 1 4]; convexSplit(V, F, 'Search', 'deep')")).toThrow(/true, false, 'full' or 'voxel'/);
   }, 30000);
 });

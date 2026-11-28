@@ -103,3 +103,26 @@ answers('camera', async (body) => {
   for (let i = 0, j = 0; i < px.length; i += 4, j += 3) { rgb[j] = px[i]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i + 2]; }
   return { w, h, rgb };
 });
+
+// M569: chip and circuit simulators on this computer, through Hyperion's computer app (desktop/hyperion/simulators.js):
+// the engine's cosim asks, the app asks the person, runs the simulator and gives back what it printed and its results.
+interface SimDesktop {
+  simulators(): Promise<Record<string, { name: string; kind: string }>>;
+  simulate(id: string, files: Record<string, string>, top: string): Promise<{ ok: boolean; exitCode?: number; error?: string; missing?: boolean; cancelled?: boolean; ms?: number; raw?: string | null }>;
+  onOutput(cb: (text: string, isError: boolean) => void): () => void;
+}
+const simDesktop = () => (window as Window & { hyperionDesktop?: Partial<SimDesktop> }).hyperionDesktop;
+const NEED_APP = 'Running a simulator needs Hyperion’s computer app (Install Hyperion, on a computer): it uses the simulators installed there.';
+answers('cosimtools', async () => {
+  const d = simDesktop();
+  if (!d?.simulators) throw new Error(NEED_APP);
+  return d.simulators();
+});
+answers('cosim', async (body) => {
+  const d = simDesktop();
+  if (!d?.simulate || !d.onOutput) throw new Error(NEED_APP);
+  const b = body as { id: string; files: Record<string, string>; top: string };
+  let out = '';
+  const stop = d.onOutput((t) => { if (out.length < 1_000_000) out += t; });
+  try { return { ...(await d.simulate(b.id, b.files, b.top)), out }; } finally { stop(); }
+});

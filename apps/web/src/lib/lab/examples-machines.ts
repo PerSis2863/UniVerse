@@ -333,4 +333,37 @@ for s = {'ac25', 'ac25at'}
   fprintf('%s: lowest %.1f kV, %.0f kWh from the grid, %.0f s coasting through neutral sections\\n', s{1}, ac.MinVoltage/1000, ac.FromSubstationsKWh, ac.NeutralSeconds)
 end
 ` },
+  { name: 'deploy.m', code: `% Deploying to a car (M580): a speed controller as plain C, then as a ROS 2 node and an AUTOSAR component.
+% The example inputs fix the sizes and types; the .zip files appear in Hyperion's files.
+codegen('speedcontrol', {0, 0, 0}, 'Target', 'ROS 2', 'Rate', 50)
+codegen('speedcontrol', {0, 0, 0}, 'Target', 'AUTOSAR', 'Rate', 100)
+[a, b] = speedcontrol(20, 25, 30)
+
+function [accel, brake] = speedcontrol(speed, target, gap)
+  accel = 0.5 * (target - speed);
+  if gap < 2 * speed
+    accel = min(accel, -1.5);
+  end
+  accel = max(min(accel, 2), -6);
+  brake = accel < -3;
+end
+` },
+  { name: 'drivetests.m', code: `% Testing against requirements (M581): following a slower car, at several speeds and starting gaps
+R = requirements();
+R = addRequirement(R, 'R1', 'Never collides', @(m) ~m.Collided);
+R = addRequirement(R, 'R2', 'Keeps at least 2 s to collision', @(m) m.MinTTC >= 2);
+R = addRequirement(R, 'R3', 'Keeps at least 1 s of headway', @(m) m.MinHeadway >= 1);
+[v, g] = meshgrid([12 16 20], [40 60 80]);
+res = verifyScenarios(R, @(p) follow(p(1), p(2)), [v(:) g(:)]);
+fprintf('%d of %d checks passed\\n', res.Passed, res.Passed + res.Failed)
+disp(res.Results(~res.Results.Passed, :))
+testReport(res, 'following.html', 'Title', 'Following a slower car')
+
+function s = follow(speed, gap)
+  s = drivingScenario('StopTime', 6);
+  s = road(s, [0 0; 600 0], 'Lanes', 2);
+  [s, e] = vehicle(s, 'Position', [0 -1.8]); s = trajectory(s, e, [0 -1.8; 600 -1.8], speed);
+  [s, l] = vehicle(s, 'Position', [gap -1.8]); s = trajectory(s, l, [gap -1.8; 600 -1.8], 10);
+end
+` },
 ];

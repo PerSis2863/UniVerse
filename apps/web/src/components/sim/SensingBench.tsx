@@ -8,6 +8,8 @@ import { useMedia } from '@/lib/use-media';
 import type { Pose } from '@/lib/lab/robot-motion';
 import { ui } from './bench-ui';
 import type { SenseOut, ToMachines } from './machines.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Machines → Sensing (M484): a robot with a lidar drives across a building. On the left it
 // doesn't know where it starts: Monte Carlo localisation spreads particles everywhere and they close in as the scans
@@ -37,6 +39,7 @@ export function SensingBench() {
     const w = new Worker(new URL('./machines.worker.ts', import.meta.url));
     // With Reduce Motion the run is shown at its end, not replayed.
     w.onmessage = (e: MessageEvent<SenseOut>) => { if (e.data.id === seq.current) { setOut(e.data); setBusy(false); setK(stillNow.current ? e.data.truth.length - 1 : 0); setPlaying(!stillNow.current); } };
+    watchWorker(w, 'sensing', (msg) => { setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

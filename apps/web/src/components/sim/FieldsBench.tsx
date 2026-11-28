@@ -9,6 +9,8 @@ import { mapOf } from '@/lib/lab/colormap';
 import { FIELD_PRESETS, newRegionId, type FieldMode, type FieldModel, type Region, type RegionKind } from '@/lib/sim/fields';
 import { NumField, ui } from './bench-ui';
 import type { FromFields, ToFields } from './fields.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Fields (M548): the electromagnetics workbench. On the left the study (magnetic or electric, a
 // ready-made start, the parts: coils, magnets, iron, electrodes, dielectrics, each a box or a disc you size by numbers
@@ -74,6 +76,7 @@ export function FieldsBench() {
       waiting.current = null;
       if (next) send(next); else setBusy(false);
     };
+    watchWorker(w, 'fields', (msg) => { running.current = false; waiting.current = null; setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);

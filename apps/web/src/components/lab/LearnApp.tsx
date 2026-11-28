@@ -10,6 +10,7 @@ import { csvColumns, csvData, irisData, LEARNER_IDS, LEARNERS, MADE, madeData, s
 import { shareFragment } from '@/lib/lab/share';
 import { NumField, ui } from '@/components/sim/bench-ui';
 import type { FromLearn, ToLearn } from './learn.worker';
+import { watchWorker } from '@/lib/error-monitor';
 
 // Hyperion Learn (M421, the owner: "make everything ultra smooth"): a learner window. Pick data (the iris flowers,
 // made-up shapes or a CSV), the models to compare and how to test them; every model trains in a worker with k-fold
@@ -45,6 +46,7 @@ function useLatestWorker(onMessage: (m: FromLearn) => void) {
       w.current?.terminate();
       w.current = new Worker(new URL('./learn.worker.ts', import.meta.url));
       w.current.onmessage = (e: MessageEvent<FromLearn>) => { if ('done' in e.data) busy.current = false; handler.current(e.data); };
+      watchWorker(w.current, 'learn', () => { busy.current = false; handler.current({ id: job.id, done: true }); });
     }
     busy.current = true;
     w.current.postMessage(job);

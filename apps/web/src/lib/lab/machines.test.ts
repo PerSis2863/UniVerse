@@ -5,11 +5,13 @@ import './plot3d';
 import './signal';
 import './machines-lab';
 import { MACHINE_EXAMPLES } from './examples-machines';
+import './codegen-lab';
+import { FileStore } from './files';
 
 describe('the machines and vehicles examples (M482–M491)', () => {
   for (const ex of MACHINE_EXAMPLES) it(`${ex.name} runs`, { timeout: 60_000 }, () => {
     // A failing line throws, so running it through is the check.
-    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: new FileStore() });
     expect(() => lab.run(ex.code)).not.toThrow();
   });
 });

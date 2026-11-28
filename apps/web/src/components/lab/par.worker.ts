@@ -14,6 +14,7 @@ import '@/lib/lab/octtest-lab';
 import '@/lib/lab/maint-lab';
 import '@/lib/lab/energy-lab';
 import '@/lib/lab/grid-lab';
+import '@/lib/lab/mixsig-lab';
 import '@/lib/lab/comms-lab';
 import '@/lib/lab/image-lab';
 import '@/lib/lab/radar-lab';
