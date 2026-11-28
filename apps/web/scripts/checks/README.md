@@ -171,3 +171,6 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `stormfall-ui.mjs` | M41 STORMFALL on the built Worker: on a computer the /play card, the 16+ question, the Unity download and start with no Content-Security-Policy blocks or page errors (a screenshot of the game goes to the temp folder); on a phone no card, a notice instead, nothing downloaded. Ridgeline Ops gone. Axe light/dark. |
 | `opens-smooth.mjs` | M355: presses every button that opens something on the main pages (student and teacher, phone and computer) and lists any whose menu, drop-down or section appears without moving in. |
 | `smooth-rest-ui.mjs` | M566: Internships' Filters panel slides in from the edge (transform only) on the search window's timing and closes quicker. |
+| `arxml-check.py` | M582: Hyperion's AUTOSAR files through autosar-data's strict check (elements, values, order, references). Python, not the browser. |
+| `ros2-check.py` | M582: drives Hyperion's gainpeak ROS 2 node on a real ROS 2 (rclpy) and prints what it published and how often. |
+| `arxml-official.py` | M583: the official AUTOSAR schema (`--xsd`) or a paid tool's command (`--tool`); off (SKIPPED) until given. |

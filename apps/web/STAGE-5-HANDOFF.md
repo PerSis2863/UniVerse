@@ -16088,3 +16088,19 @@ The owner's "please do this" on M580's "not tested for real".
 - Both are tests in `deploy.test.ts` that run only where the tools are (`HYP_PYTHON` names the Python with
   autosar-data or rclpy; for ROS, source ROS first so `colcon` is on the path); CI skips them.
 
+## M583: AUTOSAR's official checks, ready and off (28 Nov)
+
+The owner, on M582's left-outs (the paid AUTOSAR tools, the official schema): "just make it and keep it there but i wont
+pay until i want to".
+- **`scripts/checks/arxml-official.py`**: `--xsd FILE` validates each ARXML against the official AUTOSAR schema with lxml
+  (`AUTOSAR_00049.xsd` for R20-11, from autosar.org's `AUTOSAR_MMOD_XMLSchema` download; autosar.org was not reachable
+  from the cloud machine, so the real file has not been tried: if it imports `xml.xsd` from the web, lxml may need it
+  saved beside it); `--tool "CMD {file}"` runs a paid tool's own command-line check or import (Vector DaVinci, EB tresos:
+  the command is whatever that tool's manual gives) and counts exit 0 as passed. With neither it prints SKIPPED.
+- **`deploy.test.ts`**: two tests run only when `AUTOSAR_XSD` or `AUTOSAR_TOOL_CMD` is set (HYP_PYTHON with lxml for the
+  schema); one more (wherever lxml is) proves the connection with a stand-in schema and a stand-in program: a good file
+  passes, a wrong one is caught, exit codes right.
+- **[owner]**: nothing to pay now. When wanted: download the schema (free with an AUTOSAR account) and run
+  `AUTOSAR_XSD=/path/AUTOSAR_00049.xsd pnpm vitest run src/lib/lab/deploy.test.ts`; with a tool licence, set
+  `AUTOSAR_TOOL_CMD` the same way.
+
