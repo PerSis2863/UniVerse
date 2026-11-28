@@ -1,7 +1,8 @@
 // Hyperion's FFT (M378; moved here in M465 so pure methods use it without loading the language): radix-2 for powers of
 // two, Bluestein's chirp-z for any other length.
 
-function fftPow2(re: Float64Array, im: Float64Array, inverse: boolean) {
+/** In place, unscaled both ways: a power-of-two length only. */
+export function fftPow2(re: Float64Array, im: Float64Array, inverse: boolean) {
   const n = re.length;
   for (let i = 1, j = 0; i < n; i++) {
     let bit = n >> 1;

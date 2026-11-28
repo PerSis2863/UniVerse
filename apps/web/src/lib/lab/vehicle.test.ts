@@ -434,6 +434,18 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     lab.run("[~, a] = vehicleSideCrash(vehicle(), 50/3.6, 'Angle', 30, 'HitAt', -0.6, 'StruckRolling', 1);");
     expect(toMat((lab.vars.get('a') as unknown as { f: Map<string, never> }).f.get('SlideDistance')!).d[0]).toBeCloseTo(ro.path.distance, 9);
   });
+  it('the struck driver\'s reaction time (M486zc)', { timeout: 60_000 }, () => {
+    const car = vd.CAR_DEFAULT, go = (o: Parameters<typeof vd.sideCrash>[2]) => vd.sideCrash(car, 50 / 3.6, { hitAt: vd.SEAT_X.rear, angle: 30, ...o });
+    // 1 s is the old fixed delay; braking at once skids like the default; a slower driver coasts further.
+    expect(go({ rolling: true, react: 1 }).path.distance).toBeCloseTo(go({ rolling: true }).path.distance, 9);
+    expect(go({ rolling: true, react: 0 }).path.distance).toBeCloseTo(go({}).path.distance, 6);
+    expect(go({ rolling: true, react: 2 }).path.distance).toBeGreaterThan(go({ rolling: true }).path.distance);
+    expect(go({ into: 'pole', rolling: true, react: 2 }).path.distance).toBeGreaterThanOrEqual(go({ into: 'pole', rolling: true }).path.distance);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, a] = vehicleSideCrash(vehicle(), 50/3.6, 'Angle', 30, 'HitAt', -0.6, 'StruckReact', 2);");
+    expect(toMat((lab.vars.get('a') as unknown as { f: Map<string, never> }).f.get('SlideDistance')!).d[0]).toBeCloseTo(go({ rolling: true, react: 2 }).path.distance, 9);
+    expect(() => lab.run("vehicleSideCrash(vehicle(), 50/3.6, 'StruckReact', 5)")).toThrow(/StruckReact/);
+  });
   it('Euro NCAP\'s moving barrier (M486r)', { timeout: 60_000 }, () => {
     const car = vd.CAR_DEFAULT, go = (v: typeof car, o: Parameters<typeof vd.frontalCrash>[2] = {}) => vd.frontalCrash(v, 50 / 3.6, { into: 'mpdb', ...o });
     const c = go(car);

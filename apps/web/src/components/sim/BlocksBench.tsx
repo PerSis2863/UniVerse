@@ -5,20 +5,32 @@ import { Trash2 } from 'lucide-react';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import { tfInline } from '@/lib/lab/lti-text';
-import { blockId, coeffs, EXAMPLES, KINDS, MAX_STEPS, newBlock, readDiagram, type Block, type BlockKind, type Diagram } from '@/lib/sim/blocks';
+import { blockId, chartOf, coeffs, EXAMPLES, KINDS, MAX_STEPS, newBlock, readDiagram, type Block, type BlockKind, type Diagram } from '@/lib/sim/blocks';
 import { NumField, ui } from './bench-ui';
+import { fmt, ScopePlot } from './scope-plot';
+import { BlocksTune } from './BlocksTune';
+import { BlocksLogic } from './BlocksLogic';
+import { BlocksLive } from './BlocksLive';
+import { BlocksCode } from './BlocksCode';
+import { BlocksVerify } from './BlocksVerify';
+import { Segmented } from '@/components/ui/Segmented';
 import type { FromBlocks, ToBlocks } from './blocks.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Blocks (M415): model-based design. Add blocks from the library, drag them about, drag from a
 // block's output (the dot on its right) to another's input to wire them (or choose each input in the panel); the
 // diagram runs as you build it (src/lib/sim/blocks.ts, in a worker) and every Scope block draws its inputs below.
 
 const KEEP = 'uv-sim-blocks';
+type Tool = 'scopes' | 'tune' | 'logic' | 'live' | 'code' | 'verify';
 const VW = 760, VH = 340, BW = 88, SNAP = 10;
-const height = (b: Block) => Math.max(54, 18 * (KINDS[b.kind].ins(b.p) + 1));
+const height = (b: Block) => Math.max(54, 18 * (Math.max(KINDS[b.kind].ins(b.p), KINDS[b.kind].outs(b.p)) + 1));
 const inPort = (b: Block, i: number) => ({ x: b.x, y: b.y + (height(b) * (i + 1)) / (KINDS[b.kind].ins(b.p) + 1) });
-const outPort = (b: Block) => ({ x: b.x + BW, y: b.y + height(b) / 2 });
-const GROUPS = ['Sources', 'Maths', 'Continuous', 'Sinks'];
+const outPort = (b: Block, k = 0) => ({ x: b.x + BW, y: b.y + (height(b) * (k + 1)) / (KINDS[b.kind].outs(b.p) + 1) });
+/** A chart's input and output names (empty while its text has a mistake). */
+const ports = (b: Block) => { if (b.kind !== 'chart') return { ins: [], outs: [] }; try { const c = chartOf(b); return { ins: c.inputs, outs: c.outputs }; } catch { return { ins: [], outs: [] }; } };
+const GROUPS = ['Sources', 'Maths', 'Continuous', 'Logic', 'Hardware', 'Sinks'];
 const LIGHT = ['#7c3aed', '#0e7490', '#b45309', '#047857'], DARK = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399'];
 
 type Field = { key: string; label: string; unit?: string; text?: string };
@@ -35,10 +47,13 @@ const FIELDS: Record<BlockKind, Field[]> = {
   integrator: [{ key: 'initial', label: 'Starts at' }],
   tf: [{ key: 'num', label: 'Numerator', text: 'powers of s, highest first: 1 2 = s + 2' }, { key: 'den', label: 'Denominator', text: '1 3 2 = s² + 3s + 2' }],
   pid: [{ key: 'Kp', label: 'Kp (proportional)' }, { key: 'Ki', label: 'Ki (integral)' }, { key: 'Kd', label: 'Kd (derivative)' }, { key: 'N', label: 'Derivative filter N' }],
+  chart: [],
+  delay: [{ key: 'time', label: 'Delay', unit: 's' }, { key: 'initial', label: 'Output before then' }],
+  boardIn: [{ key: 'pin', label: 'Analog pin', text: 'A0 to A5' }, { key: 'scale', label: 'Full scale (the value at 1023)' }, { key: 'test', label: 'Value with no board' }],
+  boardOut: [{ key: 'pin', label: 'Pin (PWM: 3, 5, 6, 9, 10, 11)' }, { key: 'lo', label: 'Input for 0' }, { key: 'hi', label: 'Input for full (255, or on)' }],
   scope: [],
 };
 
-const fmt = (v: number) => (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : String(+v.toPrecision(4)));
 function summary(b: Block): string {
   const p = b.p, v = (k: string) => fmt(Number(p[k]));
   switch (b.kind) {
@@ -53,6 +68,10 @@ function summary(b: Block): string {
     case 'integrator': return `starts at ${v('initial')}`;
     case 'tf': return tfInline(coeffs(p.num), coeffs(p.den));
     case 'pid': return `Kp ${v('Kp')}, Ki ${v('Ki')}, Kd ${v('Kd')}`;
+    case 'chart': try { return `${chartOf(b).states.length} states`; } catch { return 'a chart with a mistake'; }
+    case 'delay': return `${v('time')} s later`;
+    case 'boardIn': return `pin ${String(p.pin)}`;
+    case 'boardOut': return `pin ${String(p.pin)}, ${p.mode === 'digital' ? 'on/off' : 'PWM'}`;
     case 'scope': return `${KINDS.scope.ins(p)} input${KINDS.scope.ins(p) > 1 ? 's' : ''}`;
     default: return '';
   }
@@ -73,6 +92,10 @@ function Glyph({ b }: { b: Block }) {
     case 'sum': return big('Σ', 24);
     case 'product': return big('×', 24);
     case 'pid': return big('PID', 15);
+    case 'delay': return <><text x={0} y={5} fontSize={14} textAnchor="middle" fill="currentColor" className="font-mono">e⁻ˢᵀ</text></>;
+    case 'boardIn': return <><rect x={-16} y={-12} width={32} height={24} rx={3} {...line} strokeWidth={1.4} /><text x={0} y={5} fontSize={11} textAnchor="middle" fill="currentColor" className="font-mono">{String(b.p.pin)}</text><path d="M-26,0 H-16" {...line} /></>;
+    case 'boardOut': return <><rect x={-16} y={-12} width={32} height={24} rx={3} {...line} strokeWidth={1.4} /><text x={0} y={5} fontSize={11} textAnchor="middle" fill="currentColor" className="font-mono">D{String(b.p.pin)}</text><path d="M16,0 H26" {...line} /></>;
+    case 'chart': return <><rect x={-24} y={-13} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><rect x={4} y={1} width={20} height={12} rx={4} {...line} strokeWidth={1.4} /><path d="M-4,-7 C6,-7 14,-6 14,0" {...line} strokeWidth={1.4} /><path d="M11,-3 L14,1 L17,-3" {...line} strokeWidth={1.4} /></>;
     case 'integrator': return <><text x={0} y={-4} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">1</text><line x1={-10} y1={0} x2={10} y2={0} stroke="currentColor" strokeWidth={1.2} /><text x={0} y={14} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">s</text></>;
     case 'tf': {
       const cut = (t: string) => (t.length > 12 ? `${t.slice(0, 11)}…` : t);
@@ -83,54 +106,15 @@ function Glyph({ b }: { b: Block }) {
   }
 }
 
-/** Nice round tick values from lo to hi. */
-function ticks(lo: number, hi: number, count = 5) {
-  if (!(hi > lo)) { hi = lo + 1; lo -= 1; }
-  const raw = (hi - lo) / count, p = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].map((k) => k * p).find((k) => k >= raw) ?? raw;
-  const out: number[] = [];
-  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(+v.toPrecision(12));
-  return out;
-}
-
-function ScopePlot({ title, t, traces, colours }: { title: string; t: number[]; traces: { label: string; v: number[] }[]; colours: string[] }) {
-  const PW = 900, PH = 240, L = 58, R = 14, T = 10, Bt = 40;
-  const all = traces.flatMap((tr) => tr.v.filter(Number.isFinite));
-  const lo0 = all.length ? Math.min(...all) : -1, hi0 = all.length ? Math.max(...all) : 1, padY = (hi0 - lo0) * 0.08 || Math.abs(hi0) * 0.1 || 1;
-  const yt = ticks(lo0 - padY, hi0 + padY), lo = Math.min(yt[0], lo0 - padY), hi = Math.max(yt.at(-1)!, hi0 + padY);
-  const tEnd = t.at(-1) ?? 1, xt = ticks(0, tEnd, 6).filter((v) => v <= tEnd + 1e-9);
-  const X = (tt: number) => L + (tt / (tEnd || 1)) * (PW - L - R), Y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (PH - T - Bt);
-  return (
-    <figure className="min-w-0 rounded-lg border border-zinc-200 p-2 dark:border-white/10">
-      <figcaption className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-300">
-        <span className="font-semibold text-zinc-900 dark:text-white">{title}</span>
-        {traces.map((tr, i) => {
-          const v = tr.v.filter(Number.isFinite);
-          return <span key={i} className="inline-flex items-center gap-1"><span className="h-2 w-3 rounded-sm" style={{ background: colours[i] }} aria-hidden />{tr.label}{v.length > 0 && <span className="font-mono tabular-nums text-zinc-500 dark:text-zinc-400">ends {fmt(v.at(-1)!)}, peak {fmt(Math.max(...v))}</span>}</span>;
-        })}
-      </figcaption>
-      <svg viewBox={`0 0 ${PW} ${PH}`} className="h-auto w-full" role="img" aria-label={`${title}: ${traces.map((tr) => { const v = tr.v.filter(Number.isFinite); return `${tr.label} ${v.length ? `ends at ${fmt(v.at(-1)!)}` : 'not wired'}`; }).join('; ')}`}>
-        {yt.map((v) => <g key={`y${v}`}><line x1={L} x2={PW - R} y1={Y(v)} y2={Y(v)} className={v === 0 ? 'stroke-zinc-400 dark:stroke-zinc-500' : 'stroke-zinc-200 dark:stroke-white/10'} strokeWidth={1} /><text x={L - 6} y={Y(v) + 4} fontSize={12} textAnchor="end" className="fill-zinc-600 font-mono dark:fill-zinc-300">{fmt(v)}</text></g>)}
-        {xt.map((v) => <g key={`x${v}`}><line x1={X(v)} x2={X(v)} y1={T} y2={PH - Bt} className="stroke-zinc-200 dark:stroke-white/10" strokeWidth={1} /><text x={X(v)} y={PH - Bt + 16} fontSize={12} textAnchor="middle" className="fill-zinc-600 font-mono dark:fill-zinc-300">{fmt(v)}</text></g>)}
-        <text x={(L + PW - R) / 2} y={PH - 3} fontSize={12} textAnchor="middle" className="fill-zinc-500 dark:fill-zinc-400">time (s)</text>
-        {traces.map((tr, i) => {
-          // At most ~1,200 points drawn (the run keeps up to ~2,000).
-          const every = Math.max(1, Math.ceil(t.length / 1200)), pts: string[] = [];
-          for (let k = 0; k < t.length; k += every) if (Number.isFinite(tr.v[k])) pts.push(`${X(t[k]).toFixed(1)},${Y(Math.max(lo, Math.min(hi, tr.v[k]))).toFixed(1)}`);
-          return <polyline key={i} points={pts.join(' ')} fill="none" stroke={colours[i]} strokeWidth={1.8} strokeLinejoin="round" />;
-        })}
-      </svg>
-    </figure>
-  );
-}
-
 export function BlocksBench() {
   const dark = useDarkMode(), colours = dark ? DARK : LIGHT;
   const [dg, setDgNow] = useState<Diagram>(() => { try { return readDiagram(JSON.parse(localStorage.getItem(KEEP) ?? 'null')); } catch { return EXAMPLES[0].make(); } });
   const [chosen, setChosen] = useState<string | null>(null);
-  const [drag, setDrag] = useState<{ move: string; dx: number; dy: number } | { from: string; x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<{ move: string; dx: number; dy: number } | { from: string; out: number; x: number; y: number } | null>(null);
   const [result, setResult] = useState<FromBlocks | null>(null);
   const [text, setText] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(0);
+  const [tool, setTool] = useState<Tool>('scopes');
   const svg = useRef<SVGSVGElement>(null), keepTimer = useRef(0), worker = useRef<Worker | null>(null), asked = useRef(0);
   const setDg = (f: (d: Diagram) => Diagram) => setDgNow((d) => {
     const next = f(d);
@@ -142,6 +126,7 @@ export function BlocksBench() {
   useEffect(() => {
     const w = new Worker(new URL('./blocks.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromBlocks>) => { if (e.data.id === asked.current) setResult(e.data); };
+    watchWorker(w, 'blocks', (msg) => { setPending(0); toast.error(msg); });
     worker.current = w;
     return () => w.terminate();
   }, []);
@@ -168,7 +153,7 @@ export function BlocksBench() {
     return { x: q.x, y: q.y };
   };
   const place = (b: Block, x: number, y: number) => ({ ...b, x: Math.max(0, Math.min(VW - BW, Math.round(x / SNAP) * SNAP)), y: Math.max(0, Math.min(VH - height(b) - 18, Math.round(y / SNAP) * SNAP)) });
-  const connect = (from: string, to: string, port: number) => setDg((d) => ({ ...d, wires: [...d.wires.filter((w) => !(w.to === to && w.in === port)), { id: blockId('w'), from, out: 0, to, in: port }] }));
+  const connect = (from: string, out: number, to: string, port: number) => setDg((d) => ({ ...d, wires: [...d.wires.filter((w) => !(w.to === to && w.in === port)), { id: blockId('w'), from, out, to, in: port }] }));
   const unwire = (to: string, port: number) => setDg((d) => ({ ...d, wires: d.wires.filter((w) => !(w.to === to && w.in === port)) }));
 
   const move = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -187,7 +172,7 @@ export function BlocksBench() {
         const b = dg.blocks.find((bb) => q.x >= bb.x && q.x <= bb.x + BW && q.y >= bb.y && q.y <= bb.y + height(bb) && KINDS[bb.kind].ins(bb.p) > 0);
         if (b) { const n = KINDS[b.kind].ins(b.p), free = Array.from({ length: n }, (_, i) => i).find((i) => !dg.wires.some((w) => w.to === b.id && w.in === i)); best = { b, i: free ?? 0, d: 0 }; }
       }
-      if (best) connect(drag.from, best.b.id, best.i);
+      if (best) connect(drag.from, drag.out, best.b.id, best.i);
     }
     setDrag(null);
   };
@@ -206,8 +191,10 @@ export function BlocksBench() {
   const setParam = (id: string, key: string, value: number | string) => setDg((d) => {
     const blocks = d.blocks.map((b) => (b.id === id ? { ...b, p: { ...b.p, [key]: value } } : b)), b = blocks.find((bb) => bb.id === id)!;
     // Fewer inputs (a sum's signs, a scope's inputs): wires into the ones gone go too.
-    return { ...d, blocks, wires: d.wires.filter((w) => w.to !== id || w.in < KINDS[b.kind].ins(b.p)) };
+    // (A chart's wires stay while its text is edited: a half-typed line would drop them.)
+    return { ...d, blocks, wires: key === 'chart' ? d.wires : d.wires.filter((w) => w.to !== id || w.in < KINDS[b.kind].ins(b.p)) };
   });
+  const setParams = (id: string, p: Record<string, number>) => setDg((d) => ({ ...d, blocks: d.blocks.map((b) => (b.id === id ? { ...b, p: { ...b.p, ...p } } : b)) }));
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -232,7 +219,7 @@ export function BlocksBench() {
     for (const w of dg.wires) {
       const a = byId.get(w.from), b = byId.get(w.to);
       if (!a || !b) continue;
-      const p = outPort(a), q = inPort(b, w.in), skip = [a.id, b.id], x0 = Math.min(p.x, q.x) - 20, x1 = Math.max(p.x, q.x) + 20;
+      const p = outPort(a, w.out), q = inPort(b, w.in), skip = [a.id, b.id], x0 = Math.min(p.x, q.x) - 20, x1 = Math.max(p.x, q.x) + 20;
       const spanned = boxes.filter((bx) => bx.x1 > x0 && bx.x0 < x1);
       if (q.x - p.x >= 10) {
         const mx = Math.round((p.x + q.x) / 2);
@@ -276,12 +263,28 @@ export function BlocksBench() {
                   onChange={(e) => {
                     const v = e.target.value;
                     setText((t) => ({ ...t, [`${sel.id}:${f.key}`]: v }));
-                    const ok = f.key === 'signs' ? /^[+-]{1,6}$/.test(v.replace(/−/g, '-').replace(/\s/g, '')) : v.trim() !== '' && v.trim().split(/[\s,]+/).every((x) => Number.isFinite(Number(x)));
-                    if (ok) setParam(sel.id, f.key, f.key === 'signs' ? v.replace(/−/g, '-').replace(/\s/g, '') : v.trim().slice(0, 80));
+                    const ok = f.key === 'pin' ? /^A[0-5]$/.test(v.trim().toUpperCase()) : f.key === 'signs' ? /^[+-]{1,6}$/.test(v.replace(/−/g, '-').replace(/\s/g, '')) : v.trim() !== '' && v.trim().split(/[\s,]+/).every((x) => Number.isFinite(Number(x)));
+                    if (ok) setParam(sel.id, f.key, f.key === 'pin' ? v.trim().toUpperCase() : f.key === 'signs' ? v.replace(/−/g, '-').replace(/\s/g, '') : v.trim().slice(0, 80));
                   }}
                   onBlur={() => setText((t) => { const next = { ...t }; delete next[`${sel.id}:${f.key}`]; return next; })} />
               </label>
             ) : <NumField key={f.key} label={f.label} unit={f.unit} value={Number(sel.p[f.key])} onChange={(v) => setParam(sel.id, f.key, v)} />)}
+            {sel.kind === 'chart' && (() => {
+              let problem = '';
+              try { chartOf(sel); } catch (err) { problem = (err as Error).message; }
+              return (
+                <label className={label}>The chart <span className="font-normal text-zinc-500 dark:text-zinc-400">(inputs:, outputs:, state Name [in Outer] [parallel], entry: / during: / exit: actions, A -&gt; B: condition after seconds / actions)</span>
+                  <textarea value={String(sel.p.chart)} rows={14} spellCheck={false} translate="no" className="input mt-1 w-full font-mono text-xs leading-relaxed"
+                    onChange={(e) => setParam(sel.id, 'chart', e.target.value.slice(0, 4000))} aria-invalid={!!problem} aria-describedby={problem ? 'uv-chart-problem' : undefined} />
+                  {problem && <span id="uv-chart-problem" className="mt-1 block text-xs font-normal text-red-700 dark:text-red-400">{problem}</span>}
+                </label>
+              );
+            })()}
+            {sel.kind === 'boardOut' && (
+              <label className={label}>Drives the pin as
+                <select value={String(sel.p.mode)} onChange={(e) => setParam(sel.id, 'mode', e.target.value)} className="input mt-1 w-full"><option value="pwm">PWM (0–255)</option><option value="digital">On or off</option></select>
+              </label>
+            )}
             {sel.kind === 'scope' && (
               <label className={label}>Inputs
                 <select value={KINDS.scope.ins(sel.p)} onChange={(e) => setParam(sel.id, 'inputs', Number(e.target.value))} className="input mt-1 w-full">{[1, 2, 3, 4].map((v) => <option key={v} value={v}>{v}</option>)}</select>
@@ -291,9 +294,9 @@ export function BlocksBench() {
               const w = dg.wires.find((ww) => ww.to === sel.id && ww.in === i);
               return (
                 <label key={i} className={label}>Input {i + 1}{sel.kind === 'sum' ? ` (${String(sel.p.signs)[i] === '-' ? 'minus' : 'plus'})` : ''} comes from
-                  <select value={w?.from ?? ''} onChange={(e) => (e.target.value ? connect(e.target.value, sel.id, i) : unwire(sel.id, i))} className="input mt-1 w-full">
+                  <select value={w ? `${w.from}#${w.out}` : ''} onChange={(e) => { const [from, out] = e.target.value.split('#'); if (from) connect(from, Number(out) || 0, sel.id, i); else unwire(sel.id, i); }} className="input mt-1 w-full">
                     <option value="">Nothing (0)</option>
-                    {dg.blocks.filter((b) => KINDS[b.kind].outs > 0).map((b) => <option key={b.id} value={b.id}>{names.get(b.id)}</option>)}
+                    {dg.blocks.flatMap((b) => Array.from({ length: KINDS[b.kind].outs(b.p) }, (_, k) => <option key={`${b.id}#${k}`} value={`${b.id}#${k}`}>{names.get(b.id)}{KINDS[b.kind].outs(b.p) > 1 ? `: ${ports(b).outs[k] ?? `output ${k + 1}`}` : ''}</option>))}
                   </select>
                 </label>
               );
@@ -339,7 +342,7 @@ export function BlocksBench() {
               );
             })}
             {dg.blocks.map((b) => {
-              const h = height(b), on = b.id === chosen, ins = KINDS[b.kind].ins(b.p), o = outPort(b);
+              const h = height(b), on = b.id === chosen, ins = KINDS[b.kind].ins(b.p);
               return (
                 <g key={b.id}>
                   <g role="button" tabIndex={0} aria-label={`${names.get(b.id)}: ${summary(b)}`} aria-pressed={on} className="cursor-grab outline-none"
@@ -349,7 +352,7 @@ export function BlocksBench() {
                     <text x={b.x + BW / 2} y={b.y + h + 14} fontSize={11} textAnchor="middle" className="fill-zinc-600 dark:fill-zinc-300">{names.get(b.id)}</text>
                   </g>
                   {/* The picture sits outside the button, so its name is the block's name alone. */}
-                  <g transform={`translate(${b.x + BW / 2} ${b.y + h / 2})`} className="pointer-events-none text-zinc-800 dark:text-zinc-100" aria-hidden><Glyph b={b} /></g>
+                  <g transform={`translate(${b.x + BW / 2} ${b.y + h / 2})`} opacity={b.kind === 'chart' ? 0.35 : 1} className="pointer-events-none text-zinc-800 dark:text-zinc-100" aria-hidden><Glyph b={b} /></g>
                   {Array.from({ length: ins }, (_, i) => {
                     const p = inPort(b, i);
                     return <g key={i} aria-hidden>
@@ -357,25 +360,36 @@ export function BlocksBench() {
                       {b.kind === 'sum' && <text x={p.x + 8} y={p.y + 4} fontSize={12} className="fill-zinc-700 font-mono dark:fill-zinc-200">{String(b.p.signs)[i] === '-' ? '−' : '+'}</text>}
                     </g>;
                   })}
-                  {KINDS[b.kind].outs > 0 && (
-                    <g aria-hidden className="cursor-crosshair" onPointerDown={(e) => { e.stopPropagation(); svg.current?.setPointerCapture(e.pointerId); const q = toWorld(e); setDrag({ from: b.id, x: q.x, y: q.y }); }}>
-                      <circle cx={o.x} cy={o.y} r={11} fill="transparent" />
-                      <circle cx={o.x} cy={o.y} r={4.5} className="fill-violet-600 dark:fill-violet-400" />
-                    </g>
-                  )}
+                  {Array.from({ length: KINDS[b.kind].outs(b.p) }, (_, k) => {
+                    const o = outPort(b, k);
+                    return (
+                      <g key={`o${k}`} aria-hidden className="cursor-crosshair" onPointerDown={(e) => { e.stopPropagation(); svg.current?.setPointerCapture(e.pointerId); const q = toWorld(e); setDrag({ from: b.id, out: k, x: q.x, y: q.y }); }}>
+                        <circle cx={o.x} cy={o.y} r={11} fill="transparent" />
+                        <circle cx={o.x} cy={o.y} r={4.5} className="fill-violet-600 dark:fill-violet-400" />
+                      </g>
+                    );
+                  })}
+                  {b.kind === 'chart' && (() => {
+                    // A chart's input and output names beside its ports.
+                    const pn = ports(b), cut = (t: string) => (t.length > 7 ? `${t.slice(0, 6)}…` : t);
+                    return <g aria-hidden className="pointer-events-none fill-zinc-600 dark:fill-zinc-300" fontSize={9.5}>
+                      {pn.ins.map((nm, i) => <text key={`i${nm}`} x={b.x + 7} y={inPort(b, i).y + 3.5}>{cut(nm)}</text>)}
+                      {pn.outs.map((nm, k) => <text key={`o${nm}`} x={b.x + BW - 7} y={outPort(b, k).y + 3.5} textAnchor="end">{cut(nm)}</text>)}
+                    </g>;
+                  })()}
                 </g>
               );
             })}
-            {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!).x},${outPort(byId.get(drag.from)!).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
+            {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!, drag.out).x},${outPort(byId.get(drag.from)!, drag.out).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
           </svg>
         </div>
-        <div role="region" aria-label="Scopes" tabIndex={0} className="max-h-[48%] shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10" data-no-motion>
-          <p className="mb-2 flex flex-wrap items-center gap-x-3 text-xs text-zinc-600 dark:text-zinc-300">
-            <span className="font-semibold text-zinc-900 dark:text-white">Scopes</span>
-            {result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
-            {stale && pending > 0 && <span>running…</span>}
-          </p>
-          {scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
+        <div role="region" aria-label={{ scopes: 'Scopes', tune: 'PID tuner', logic: 'State chart logic', live: 'Real time run', code: 'Generated code', verify: 'Verification' }[tool]} tabIndex={0} className={cn('shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10', tool === 'scopes' ? 'max-h-[48%]' : 'max-h-[64%]')} data-no-motion>
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-600 dark:text-zinc-300">
+            <Segmented<Tool> label="Tools" value={tool} onChange={setTool} segments={[{ value: 'scopes', label: 'Scopes' }, { value: 'tune', label: 'Tune' }, { value: 'logic', label: 'Logic' }, { value: 'live', label: 'Real time' }, { value: 'code', label: 'Code' }, { value: 'verify', label: 'Verify' }]} />
+            {tool === 'scopes' && result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
+            {tool === 'scopes' && stale && pending > 0 && <span>running…</span>}
+          </div>
+          {tool === 'tune' ? <BlocksTune dg={dg} names={names} colours={colours} setParams={setParams} /> : tool === 'verify' ? <BlocksVerify dg={dg} names={names} setReqs={(reqs) => setDg((d) => ({ ...d, reqs }))} setProve={(chart, r) => setDg((d) => ({ ...d, prove: { ...d.prove, [chart]: r } }))} /> : tool === 'code' ? <BlocksCode dg={dg} /> : tool === 'live' ? <BlocksLive dg={dg} names={names} colours={colours} /> : tool === 'logic' ? <BlocksLogic dg={dg} names={names} result={result?.id === pending ? result : null} /> : scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               {scopes.map((s) => {
                 const traces = Array.from({ length: KINDS.scope.ins(s.p) }, (_, i) => {

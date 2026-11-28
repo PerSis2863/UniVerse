@@ -373,6 +373,22 @@ figure; plot(lam, s0 / max(s0), lam, s1 / max(s1)); xlabel('wavelength (nm)'); y
 legend('no scattering', '99% scattering'); title('Scattering hardens a disc''s light')
 figure; kerrDisc(0.5, 60, 'Pixels', 70, 'Colour', 'temperature', 'Scattering', 0.99)
 ` },
+  { name: 'physics11.m', code: `% Physics: V-HACD's search on cubes; light scattered across a disc; a hot corona boosting it to X-rays
+% 1. A cube with a pyramid pushed into its top, split by the plain search and by 'voxel' (planes chosen on cubes)
+V = [0 0 0; 1 0 0; 1 1 0; 0 1 0; 0 0 1; 1 0 1; 1 1 1; 0 1 1; 0.5 0.5 0.2];
+F = [4 3 2 1; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8; 5 6 9 NaN; 6 7 9 NaN; 7 8 9 NaN; 8 5 9 NaN];
+p1 = convexSplit(V, F); p2 = convexSplit(V, F, 'Search', 'voxel');
+fprintf('Dented cube: %d parts plain, %d with the voxel search\\n', numel(p1), numel(p2))
+% 2. A thick see-through disc whose gas mostly scatters: each point's light as in a flat slab, then from all of the disc
+I1 = kerrDisc(0.5, 70, 'Pixels', 40, 'Thickness', 0.2, 'Opacity', 0.999, 'Scattering', 0.5);
+I2 = kerrDisc(0.5, 70, 'Pixels', 40, 'Thickness', 0.2, 'Opacity', 0.999, 'Scattering', 0.5, 'Transfer', 'disc');
+fprintf('Light from all of the disc: %.3f of the slab''s\\n', sum(I2(:)) / sum(I1(:)))
+% 3. A stellar black hole's disc (10 million K) under a corona of 100 keV electrons: the X-ray tail
+[~, ~, ~, ~, ~, ~, E, X0] = kerrDisc(0.5, 60, 'Pixels', 30, 'Temperature', 1e7);
+[~, ~, ~, ~, ~, ~, ~, X1] = kerrDisc(0.5, 60, 'Pixels', 30, 'Temperature', 1e7, 'Corona', [100 1]);
+figure; loglog(E, X0, E, X1); xlabel('energy (keV)'); ylabel('E F_E'); ylim([1e-4 1] * max(X1))
+legend('the disc', 'with the corona'); title('Compton up-scattering: a power law to about kT_e')
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north
@@ -585,5 +601,198 @@ demand = 400:25:1200;
 [Pd, lam] = economicDispatch([7.92 7.85 7.97], [0.001562 0.00194 0.00482], [150 100 50], [600 400 200], demand);
 figure; area(demand, Pd); legend('Unit 1', 'Unit 2', 'Unit 3'); xlabel('Demand (MW)'); ylabel('Output (MW)'); title('Who runs as demand grows'); grid on
 fprintf('Solar farm LCOE: %.3f a kWh\\n', lcoe(8e5, 1.5e4, 1.6e6, 0.07, 25, 'Degradation', 0.005))
+` },
+  { name: 'datacenter_power.m', code: `% Data centres: from one accelerator to a gigawatt campus
+% 1. An AI server and how its power follows the work
+s = dcServer('Chips', 8, 'Chip', 'gpu1000');
+u = 0:0.1:1;
+[P, parts] = dcServerPower(s, u, 'Inlet', 27);
+fprintf('Server: %.1f kW idle, %.1f kW flat out (peak in hot air %.1f kW)\\n', P(1)/1e3, P(end)/1e3, s.Peak/1e3)
+figure; plot(u, P/1e3, 'LineWidth', 2); xlabel('Accelerator utilisation'); ylabel('Wall power (kW)'); grid on; title('One server')
+% 2. A training job across a hall of 10,000 servers: power swings in step
+t = 0:0.05:120;
+w = dcWorkload(t, 'Checkpoint', [60 6], 'Period', 3);
+hall = dcServerPower(s, w) * 10000 / 1e6;    % MW
+figure; plot(t, hall); xlabel('Time (s)'); ylabel('Hall IT power (MW)'); grid on
+title(sprintf('Swings of %.0f MW within a second', max(hall) - min(hall)))
+% 3. The whole facility through a summer day: cooling and PUE
+h = 0:23;
+Tout = 24 + 8*cos(2*pi*(h - 15)/24);
+Pit = mean(hall) * ones(size(h));
+f = dcFacility(Pit, Tout, 'Rated', 120, 'Supply', 22);
+fprintf('PUE from %.2f at night to %.2f in the afternoon\\n', min(f.PUE), max(f.PUE))
+figure; dcFacility(Pit, Tout, 'Rated', 120, 'Supply', 22)
+% 4. A gigawatt campus built in four phases (year it opens, IT MW)
+phases = [1 250; 2 250; 3 300; 4 400];
+c = dcCampus(phases, 6, 'Fill', 15, 'Climate', [16 10 6]);
+fprintf('Year %d: peak %.0f MW, %.1f TWh a year\\n', [c.Year c.PeakMW c.EnergyGWh/1e3]')
+figure; dcCampus(phases, 6, 'Fill', 15, 'Climate', [16 10 6])
+% 5. How much air or water carries a 130 kW rack's heat away
+fprintf('A 130 kW rack: %.1f m3/s of air at 12 K, or %.0f L/min of water at 10 K\\n', dcHeatFlow(130e3, 12, 'air'), dcHeatFlow(130e3, 10, 'water'))
+` },
+  { name: 'datacenter_grid.m', code: `% Data centres on the grid: voltage, hosting capacity, frequency, harmonics and ride-through
+% 1. A 300 MW campus on a 132 kV line (system base 1000 MVA): its load swings with training jobs
+t = 0:1:600;
+P = 0.3*(0.75 + 0.2*(mod(t, 120) < 90));       % pu: compute bursts and pauses
+Q = 0.06*ones(size(t));
+figure; dcGridVoltage(P, Q, 'Z', [0.02 0.15], 'Tap', true, 'Delay', 20)
+% 2. How much more could the connection host?
+h = dcHostingCapacity([0.02 0.15], 'PF', 0.98, 'Vmin', 0.95);
+fprintf('Hosting capacity %.0f MW (limited by %s); the nose at %.0f MW\\n', 1000*h.Capacity, h.LimitedBy, 1000*h.Nose)
+% 3. The campus trips off all at once (a fault it fails to ride through): frequency rises
+tt = 0:0.05:40;
+dP = -0.03*(tt >= 1);            % 3% of a 10 GW system lost in a second
+[df, s] = dcFrequency(tt, dP, 'H', 3.5, 'F0', 50);
+[dfb, sb] = dcFrequency(tt, dP, 'H', 3.5, 'F0', 50, 'Battery', [0.01 0.1]);
+figure; plot(tt, 50 + df, tt, 50 + dfb, 'LineWidth', 1.5); legend('Without storage', 'With a 100 MW battery'); grid on
+xlabel('Time (s)'); ylabel('Frequency (Hz)'); title(sprintf('Peak %.3f Hz, %.3f Hz with the battery', 50 + s.Nadir, 50 + sb.Nadir))
+% 4. Harmonics at the 34.5 kV bus: old 6-pulse rectifiers against active front ends, with a capacitor bank
+H6 = dcHarmonics(120, 34.5, 3000, 'Rectifier', '6pulse', 'Capacitor', 30);
+Ha = dcHarmonics(120, 34.5, 3000, 'Rectifier', 'afe', 'Capacitor', 30);
+fprintf('THDv: %.2f%% with 6-pulse (resonance at order %.1f), %.2f%% with active front ends\\n', H6.THDv, H6.Resonance, Ha.THDv)
+figure; dcHarmonics(120, 34.5, 3000, 'Rectifier', [0.3 0.2 0.3 0.2], 'Capacitor', 30)
+% 5. Last year's voltage sags at the bus: which did the servers ride through?
+V = [0.1 0.55 0.72 0.85 0.6 0.0];  dur = [0.01 0.05 0.3 2 0.8 0.03];
+figure; itic(V, dur)
+` },
+  { name: 'datacenter_sst.m', code: `% Data centres: an 800 V DC solid-state transformer for AI racks
+% 1. Design the dual active bridge: 1600 V link to the 800 V bus, 250 kW at 50 kHz
+d = dabDesign(1600, 800, 250e3, 50e3);
+fprintf('n = %.2f, L = %.1f uH, at most %.0f kW\\n', d.n, 1e6*d.L, d.Pmax/1e3)
+phi = linspace(-pi/2, pi/2, 101);
+figure; plot(phi*180/pi, dabPower(1600, 800, d.n, d.L, d.fs, phi)/1e3, 'LineWidth', 2); grid on
+xlabel('Phase shift (degrees)'); ylabel('Power (kW)'); title('Power set by the phase shift')
+% 2. One switching period: is it soft-switching?
+figure; dabWaveform(1600, 800, d.n, d.L, d.fs, pi/6)
+% 3. Efficiency across the load with silicon-carbide switches
+P = linspace(20e3, 250e3, 24);
+figure; dabEfficiency(1600, 800, d.n, d.L, d.fs, P, 'Rds', [0.016 0.004])
+% 4. The closed loop against an AI training load that swings 120 to 220 kW every 4 ms
+t = 0:2e-5:0.04;
+load = 170e3 + 50e3*sign(sin(2*pi*t/8e-3));
+bw = 300;      % slider 50 800
+figure; sstSimulate(d, t, load, 'Bandwidth', [20 bw])
+r = sstSimulate(d, t, load, 'Bandwidth', [20 bw]);
+fprintf('Bus held within %.1f V; tuned Kp = %.3g rad/V, Ki = %.3g rad/(V s)\\n', max(abs(r.V2 - 800)), r.Kp(2), r.Ki(2))
+% 5. The same converter switching for real, 2 ms: the bus ripple at 100 kHz
+ts = 0:2e-6:2e-3;
+s = sstSimulate(d, ts, 200e3, 'Fidelity', 'switching');
+figure; plot(ts*1e3, s.V2); xlabel('Time (ms)'); ylabel('Bus (V)'); grid on; title('Ideal switching: ripple on the bus')
+% 6. The controller as code for the processor and for an FPGA
+disp(dcControllerCode(r.Kp(2), r.Ki(2), 2e-5, 800))
+v = dcControllerCode(r.Kp(2), r.Ki(2), 2e-5, 800, 'Language', 'verilog');
+fprintf('Verilog: %d lines\\n', numel(strfind(v, char(10))))
+` },
+  { name: 'datacenter_cooling.m', code: `% Data centres: cooling 130 kW AI racks
+% 1. A year of hourly weather for a hot, humid site (made up but typical)
+h = 15:24:8759;                                   % 3 pm each day keeps it quick
+dry = 27 + 6*cos(2*pi*(h/24 - 200)/365) + 5*cos(2*pi*(mod(h, 24) - 15)/24);
+wet = wetBulb(dry, 60);
+% 2. Air against single-phase and two-phase liquid for a 20 MW hall
+figure; coolingCompare(20000, 130, 'Chip', 1200, 'Dry', dry, 'Wet', wet, 'FacilityWater', 32)
+c = coolingCompare(20000, 130, 'Chip', 1200, 'Dry', dry, 'Wet', wet, 'FacilityWater', 32);
+names = {'Air', 'Single-phase', 'Two-phase'};
+for k = 1:3
+  fprintf('%-12s pPUE %.3f, chip %.0f C, chiller %3d of %d days, %.2f L/kWh\\n', names{k}, c.pPUE(k), c.ChipMax(k), c.ChillerHours(k), numel(h), c.WUE(k))
+end
+% 3. The chiller at part load and pump control strategies
+plr = 0.1:0.05:1;
+[~, cop] = chillerPower(2000, 6, plr, 28);
+q = linspace(0.2, 1, 50);
+figure; subplot(1, 2, 1); plot(plr, cop, 'LineWidth', 2); xlabel('Part load'); ylabel('COP'); grid on; title('Chiller')
+subplot(1, 2, 2); plot(q, pumpPower(q, 1, 15, 'Strategy', 'constant'), q, pumpPower(q, 1, 15), q, pumpPower(q, 1, 15, 'Strategy', 'dpreset'), 'LineWidth', 1.5)
+legend('Constant speed', 'Variable speed', 'Pressure reset'); xlabel('Flow (share)'); ylabel('Pump power (kW)'); grid on
+% 4. One rack through a training job's start, a pump failure at 20 minutes, with and without a spare
+t = 0:10:3600;
+P = 60e3 + 70e3*(t > 300);
+figure; coolingLoop(t, P, 'FailAt', 1200, 'Pumps', [2 1])
+bad = coolingLoop(t, P, 'FailAt', 1200, 'Pumps', [2 0]);
+fprintf('Without a spare pump the chips reach %.0f C (%.0f s over 85 C)\\n', bad.Peak, bad.SecondsOver)
+% 5. Predictive maintenance: the CDU's exchanger fouling, read from its temperatures each week
+wk = 0:7:140;
+Thi = 45 + 0.002*wk; Tho = 35 + 0.006*wk; Tci = 30*ones(size(wk)); Tco = Tci + (Thi - Tho);
+UA = hxUA(Thi, Tho, Tci, Tco, 3.2);
+figure; foulingTrend(wk, UA, 0.8)
+f = foulingTrend(wk, UA, 0.8);
+fprintf('Clean the exchanger on day %.0f\\n', f.CleanAt)
+` },
+  { name: 'datacenter_onsite.m', code: `% Data centres: power on site when the grid can't give enough
+% 1. Gas turbines in a hot summer: part load costs efficiency
+figure; gasTurbine(0.5, 'Rated', 50, 'Ambient', 35)
+g = gasTurbine([0.4 0.7 1], 'Rated', 50, 'Ambient', 35, 'Price', 3.5);
+fprintf('At 40/70/100%%: %.1f/%.1f/%.1f%% efficient, $%.0f/MWh of fuel at full load\\n', 100*g.Efficiency, g.Cost(3)/g.Power(3))
+% 2. A generator set taking the cooling plant's start-up in two blocks
+t = 0:0.01:12;
+figure; gensetStep(t, [0 0.15; 1 0.45; 6 0.8])
+[~, s] = gensetStep(t, [0 0.15; 1 0.45]);
+fprintf('A 30%% block: dip %.1f%%, ISO 8528-5 class %s\\n', s.Dip, s.Classes)
+% 3. A fuel cell stack for clean back-up (a dozen of these make a megawatt)
+figure; fuelCell(300, 'Type', 'pem', 'Cells', 400, 'Area', 600)
+[V, P, f] = fuelCell(500, 'Cells', 400, 'Area', 600);
+fprintf('At 500 mA/cm2: %.2f V a cell, %.0f kW, %.0f%% efficient, %.1f kg of hydrogen an hour\\n', V, P, 100*f.Efficiency, f.H2)
+% 4. A day minute by minute: a 300 MW AI campus, 150 MW from the grid, turbines, a battery and solar
+m = 0:1439;
+load = 260 + 40*sign(sin(2*pi*m/15)) .* (mod(m, 240) < 200);      % training bursts, pauses every 4 h
+pv = max(0, 80*sin(pi*(m/60 - 6)/12));
+mwh = 120;     % slider 0 400
+figure; hybridPower(load, 1/60, 'Grid', 150, 'Turbines', [4 50 0.3 6], 'Battery', [mwh mwh/2 0.88], 'Solar', pv)
+h = hybridPower(load, 1/60, 'Grid', 150, 'Turbines', [4 50 0.3 6], 'Battery', [mwh mwh/2 0.88], 'Solar', pv);
+fprintf('Served all but %.2f MWh; %.0f t CO2; the battery cycled %.1f times\\n', h.UnservedMWh, h.CO2, h.Cycles)
+% 5. A digital twin for condition monitoring: measured heat rate against the model, CUSUM finds the drift
+rng(4); days = 1:120;
+model = gasTurbine(0.8*ones(size(days)), 'Rated', 50).HeatRate;
+meas = model .* (1 + 0.004*randn(size(days)) + 0.02*(days > 70).*(days - 70)/50);   % fouled compressor from day 70
+r = (meas./model - 1)/0.004;          % the residual in standard deviations
+S = 0; alarm = NaN;
+for k = days                           % a one-sided CUSUM, slack 0.5, limit 5 (cusum() does the same)
+  S = max(0, S + r(k) - 0.5);
+  if S > 5 && isnan(alarm), alarm = k; end
+end
+fprintf('Heat rate drifting up, flagged on day %d: wash the compressor\\n', alarm)
+` },
+  { name: 'datacenter_interconnect.m', code: `% Data centres: signal and power integrity for AI accelerator links
+% 1. A 30 cm board trace between accelerators, and the same with a 3 mm via stub
+f = 1e8:1e8:5e10;
+S = sparamLine(f, 'Length', 0.3, 'Dk', 3.5, 'Df', 0.006, 'Width', 150e-6);
+Sv = sparamLine(f, 'Length', 0.3, 'Dk', 3.5, 'Df', 0.006, 'Width', 150e-6, 'Stub', [0.003 0.5 50]);
+figure; plot(f/1e9, 20*log10(abs(rfparam(S, 2, 1))), f/1e9, 20*log10(abs(rfparam(Sv, 2, 1))), 'LineWidth', 1.5); grid on
+xlabel('Frequency (GHz)'); ylabel('Insertion loss (dB)'); legend('Trace', 'With a via stub'); title('The channel')
+% 2. Its pulse response at 56 GBd: inter-symbol interference
+figure; pulseResponse(S, 56e9)
+% 3. PAM4 at 56 GBd (112 Gb/s): no equalisation, then CTLE + 6-tap DFE, with jitter and crosstalk
+figure; eyeDiagram(S, 56e9, 'Modulation', 'PAM4', 'Symbols', 1500, 'RJ', 0.01, 'DJ', 0.03)
+figure; eyeDiagram(S, 56e9, 'Modulation', 'PAM4', 'CTLE', 'auto', 'DFE', 6, 'Symbols', 1500, 'RJ', 0.01, 'DJ', 0.03, 'Noise', 0.002, 'Crosstalk', [0.01 0.02], 'Mask', [0.2 0.02])
+e = eyeDiagram(S, 56e9, 'Modulation', 'PAM4', 'CTLE', 'auto', 'DFE', 6, 'Symbols', 1500, 'RJ', 0.01, 'DJ', 0.03, 'Noise', 0.002);
+fprintf('Equalised PAM4 eye: %.0f mV x %.2f UI, BER %.1e; CTLE %.1f dB\\n', 1000*e.Height, e.Width, e.BER, e.CTLE(1))
+% 4. Transmit FFE chosen by zero forcing for 28 GBd NRZ
+n = eyeDiagram(S, 28e9, 'FFE', 'auto', 'FFETaps', [1 3], 'Symbols', 1000);
+fprintf('FFE taps: %s\\n', mat2str(n.FFETaps, 3))
+% 5. Power integrity: the accelerator's 0.8 V rail, 400 A, 3% ripple
+target = 0.8*0.03/200;                         % a 200 A load step
+fz = logspace(3, 9, 300);
+caps = [12 470e-6 4e-3 1.2e-9; 80 22e-6 3e-3 0.35e-9; 200 1e-6 6e-3 0.25e-9];
+figure; pdnImpedance(fz, 'VRM', [0.2e-3 5e-9], 'Caps', caps, 'Plane', [80e-9 0.2e-3 15e-12], 'Die', [400e-9 0.5e-3 1e-12], 'Target', target, 'Step', [200 2e-9 20e-6])
+% 6. DC drop across the 0.8 V planes (three 2-oz layers): regulators on the left, the package in the middle, a void for a connector
+figure; irDrop('Size', [0.08 0.06], 'Grid', [80 60], 'Copper', 6, 'VRM', [0 0.01 0.008 0.04 0.8], 'Loads', [0.045 0.02 0.02 0.02 200], 'Voids', [0.025 0.035 0.01 0.025], 'Limit', 2)
+r = irDrop('Size', [0.08 0.06], 'Grid', [80 60], 'Copper', 6, 'VRM', [0 0.01 0.008 0.04 0.8], 'Loads', [0.045 0.02 0.02 0.02 200], 'Voids', [0.025 0.035 0.01 0.025], 'Limit', 2);
+fprintf('The package sees %.3f V (%.1f mV lost); %d cells over 2%%\\n', r.LoadV, 1000*(0.8 - r.LoadV), r.CellsOverDrop)
+` },
+  { name: 'ibis_ami.m', code: `% IBIS-AMI: a chip maker's own equaliser models on your channel (in Hyperion's computer app)
+% Put the maker's files in Files (or give the library's full path), then fill in their names below.
+S = sparamLine(1e8:1e8:4e10, 'Length', 0.3);
+if amiAvailable()
+  tx = amiModel('tx_model.dll', 'tx_model.ami');      % the transmitter's library and settings file
+  rx = amiModel('rx_model.dll', 'rx_model.ami');      % the receiver's
+  amiModel('rx_model.dll', 'rx_model.ami')            % lists the settings you can choose
+  figure; eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 20000, 'RJ', 0.01)
+  e = eyeDiagram(S, 28e9, 'TxModel', tx, 'RxModel', rx, 'Symbols', 20000);
+  fprintf('With the makers'' models: %.0f mV x %.2f UI, BER %.1e\\n', 1000*e.Height, e.Width, e.BER)
+  disp(e.AMI.Messages)
+else
+  disp('IBIS-AMI models are compiled programs: they run in Hyperion''s computer app (the Install button).')
+  disp('Here is the same channel with Hyperion''s own equalisers instead:')
+  e = eyeDiagram(S, 28e9, 'CTLE', 'auto', 'DFE', 6, 'Symbols', 1500);
+  fprintf('%.0f mV x %.2f UI\\n', 1000*e.Height, e.Width)
+end
 ` },
 ];

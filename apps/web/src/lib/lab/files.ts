@@ -77,10 +77,10 @@ const store = (lab: Lab): FileStore => {
 /** A file's text, and writing one, for the toolboxes' own readers and writers (M512: FASTA, GenBank). */
 export const fileText = (lab: Lab, name: string) => store(lab).text(name);
 export const writeFileText = (lab: Lab, name: string, text: string) => store(lab).putText(name, text);
-/** A file's bytes, and writing bytes (M557: the data-file formats in data-lab.ts). */
+/** A file's bytes, writing bytes (M557: data-file formats in data-lab.ts), and whether it is there (M577: an IBIS-AMI model's library). */
 export const fileBytes = (lab: Lab, name: string) => store(lab).get(name).bytes;
 export const writeFileBytes = (lab: Lab, name: string, bytes: Uint8Array) => store(lab).put(name, { bytes });
-export const hasFile = (lab: Lab, name: string) => store(lab).has(name);
+export const hasFile = (lab: Lab, name: string) => { try { return store(lab).has(name); } catch { return false; } };
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const ext = (name: string) => (/\.([^./]+)$/.exec(name)?.[1] ?? '').toLowerCase();
 /** Name–value options: opt(a, 'Sheet'). */

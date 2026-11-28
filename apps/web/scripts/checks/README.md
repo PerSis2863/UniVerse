@@ -173,4 +173,4 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `smooth-rest-ui.mjs` | M566: Internships' Filters panel slides in from the edge (transform only) on the search window's timing and closes quicker. |
 | `arxml-check.py` | M582: Hyperion's AUTOSAR files through autosar-data's strict check (elements, values, order, references). Python, not the browser. |
 | `ros2-check.py` | M582: drives Hyperion's gainpeak ROS 2 node on a real ROS 2 (rclpy) and prints what it published and how often. |
-| `arxml-official.py` | M583: the official AUTOSAR schema (`--xsd`) or a paid tool's command (`--tool`); off (SKIPPED) until given. |
+| `arxml-official.py` | M591: the official AUTOSAR schema (`--xsd`) or a paid tool's command (`--tool`); off (SKIPPED) until given. |

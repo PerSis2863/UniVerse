@@ -9,6 +9,8 @@ import { pathLength, sampleMap, type Grid, type Pose } from '@/lib/lab/robot-mot
 import { CAR, parkingMap } from '@/lib/lab/car-path';
 import { ui } from './bench-ui';
 import type { FromMachines, Method, ToMachines } from './machines.worker';
+import { watchWorker } from '@/lib/error-monitor';
+import { toast } from 'sonner';
 
 // Hyperion Simulate → Machines → Planner (M483): a map to draw on (walls and erasing with the mouse), a start and a
 // goal, and a planner: A* over the cells, RRT (a random tree, the first way found) or RRT* (the tree keeps rewiring
@@ -45,6 +47,7 @@ export function PlannerBench() {
   useEffect(() => {
     const w = new Worker(new URL('./machines.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromMachines>) => { if (e.data.id === seq.current) { setOut(e.data); setBusy(false); setFrame(-1); } };
+    watchWorker(w, 'planner', (msg) => { setBusy(false); toast.error(msg); });
     worker.current = w;
     return () => { w.terminate(); cancelAnimationFrame(raf.current); };
   }, []);

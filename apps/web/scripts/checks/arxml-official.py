@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# M583: checks Hyperion's AUTOSAR files (M580) with the official tools, once the owner has them. Off until then: with
+# M591: checks Hyperion's AUTOSAR files (M580) with the official tools, once the owner has them. Off until then: with
 # neither option it only says what it would need.
 #   --xsd FILE   the official AUTOSAR schema (AUTOSAR_00049.xsd for R20-11, from autosar.org's
 #                AUTOSAR_MMOD_XMLSchema download). Needs lxml (pip install lxml).

@@ -75,7 +75,7 @@ describe('Hyperion deployment: ROS 2 and AUTOSAR (M580)', () => {
     const out = execFileSync(PY, [join(__dirname, '../../../scripts/checks/arxml-check.py'), join(dir, 'GainpeakSwc/GainpeakSwc.arxml'), join(dir, 'ClampcSwc/ClampcSwc.arxml')]).toString();
     expect(out).toContain('ALL OK');
   });
-  // The official checks (M583), kept ready and off until the owner has them: AUTOSAR_XSD names the official schema file
+  // The official checks (M591), kept ready and off until the owner has them: AUTOSAR_XSD names the official schema file
   // (AUTOSAR_00049.xsd), AUTOSAR_TOOL_CMD a paid tool's command with {file} for the ARXML. Without them these are skipped.
   const arxmls = () => {
     const { l, files } = lab();

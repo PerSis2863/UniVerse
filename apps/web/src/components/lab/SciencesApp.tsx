@@ -9,6 +9,7 @@ import { SCI_APPS, defaults, otherText, resultsOf, scriptFor, type Values } from
 import { shareFragment } from '@/lib/lab/share';
 import { ui } from '@/components/sim/bench-ui';
 import type { FigOut, FromLab, ToLab } from './lab.worker';
+import { watchWorker } from '@/lib/error-monitor';
 
 // Hyperion Learn → Sciences (M508, the owner, 23 Nov: point-and-click windows for "all of them"): every science and
 // industry toolbox (M492–M505) without writing code. Pick a toolbox, move its sliders and menus; the window writes the
@@ -49,6 +50,7 @@ export function SciencesApp() {
   useEffect(() => {
     const w = new Worker(new URL('./lab.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromLab>) => onMessage(e.data);
+    watchWorker(w, 'sciences', (msg) => { running.current = false; queued.current = null; setBusy(false); setError(msg); });
     w.postMessage({ figure: -1, w: 760, h: 520 } satisfies ToLab);
     worker.current = w;
     return () => { w.terminate(); worker.current = null; running.current = false; };
