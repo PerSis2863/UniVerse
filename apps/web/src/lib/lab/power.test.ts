@@ -151,3 +151,17 @@ g = gridInverterSim('Tend', 0.15, 'Steps', [0 4e3 1e3]); P = g.P(end);
     expect([...g('Ps')]).toEqual([5e3, 5e3]);
   });
 });
+
+describe('induction motors and the rectifier in the language (M566)', () => {
+  it('inductionMotor, inductionSim, torqueSpeed, rectifier3', () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: new FileStore() });
+    lab.run(`m = inductionMotor();
+r = inductionSim(m, 'foc', 'Speed', @(t) 80*(t > 0.1), 'Tend', 0.8); w = r.Speed(end);
+T = torqueSpeed(m, [0.05 0.2 1]);
+b = rectifier3('Ld', 20e-3, 'Cycles', 40); h5 = b.Harmonics(5);`);
+    const g = (k: string) => toMat(lab.vars.get(k)!).d;
+    expect(g('w')[0]).toBeCloseTo(80, 0);
+    expect(g('T').length).toBe(3);
+    expect(g('h5')[0]).toBeGreaterThan(0.1);
+  });
+});

@@ -15630,3 +15630,13 @@ Part 3 of the owner's power-electronics ask (MathWorks' "power conversion contro
 - **`droopShare`**: steady-state frequency–power droop sharing, units at their limits held there.
 - Not done (a closed model can't stand in for them): Stateflow-style supervisory logic, HIL and code generation for a real controller (Hyperion's own `codegen` covers scripts).
 - Tests: `powerctl.test.ts`, `power.test.ts`.
+
+## M566: Hyperion power electronics: induction motors and the six-pulse rectifier (28 Nov)
+
+Part 4 of the owner's power-electronics ask (MathWorks' "motor drives and traction motors" page: induction motors, sensorless FOC; the "circuit design" page's three-phase rectifier harmonics), written fresh in **`src/lib/lab/induction.ts`**.
+
+- **`inductionMotor`** (a 4 kW, 400 V, 50 Hz four-pole machine unless given), **`inductionSim`** (the two-axis model in the stator frame, stator and rotor fluxes as states, on an ideal averaged inverter): 'vf' (scalar, with a 3 % voltage boost), 'foc' (indirect rotor-flux orientation: id for rated flux, slip Lm·iq/(τr·ψr), current PIs at 1 kHz with decoupling and back-EMF feed-forward, a speed PI at 10 Hz, current limited), 'sensorless' (the same on a model-reference adaptive observer's speed). Speed and load are numbers or handles of time; the result is thinned to every 10th step.
+- **The observer (trap):** the voltage model can't integrate purely (it drifts), so it runs through a 2 Hz low-pass; that is the true flux through s/(s + ωc), so the current model is passed through the same high-pass before the two are compared (cross product), or the estimate is biased. Adaptation gains 300 and 3·10⁴ on the error over ψr²: it tracks the measured speed within about 0.5 rad/s, also through a load step.
+- **`torqueSpeed`**: the equivalent circuit's steady torque at each slip (Thévenin form).
+- **`rectifier3`**: a six-pulse bridge (ideal diodes, no source inductance) into a choke, capacitor and load, sub-stepped for the LC's own resonance; phase a's current, harmonics 1–25 (5th, 7th, 11th, 13th; no even or triple ones once settled: 40 cycles by default, as the LC rings at ~35 Hz), THD, power factor.
+- Tests: `induction.test.ts`, `power.test.ts`.

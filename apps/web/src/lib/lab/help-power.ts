@@ -31,4 +31,10 @@ mpptSim | r = mpptSim('po', G, 'T', 25, 'Step', 0.2, 'Series', 1) | Maximum powe
 svpwm | [da, db, dc, sector] = svpwm(valpha, vbeta, Vdc) | Space vector modulation: each phase's duty (0–1) for the reference vector on the DC link, and its sector (1–6).
 gridInverterSim | r = gridInverterSim('Vgrid', 400, 'f', 50, 'Vdc', 700, 'L', 5e-3, 'fsw', 10e3, 'Tend', 0.2, 'Steps', [0 5e3 0; 0.1 10e3 3e3]) | A three-phase inverter feeding the grid: a synchronous-frame PLL, dq current control with the cross-coupling cancelled, following the [t P Q] steps; r holds P, Q, Id, Iq, Ia and the PLL's angle error.
 droopShare | [P, f, info] = droopShare(load, m, Pmax, f0) | How inverters with frequency droops m (Hz/W) share a load: each unit's power and the common frequency; a unit at its limit holds there.
+
+# Power electronics: induction motors and rectifiers
+inductionMotor | m = inductionMotor('Rs', 1.405, 'Rr', 1.395, 'Lls', 5.8e-3, 'Llr', 5.8e-3, 'Lm', 0.172, 'PolePairs', 2, 'J', 0.0131, 'B', 0.003, 'Vll', 400, 'f', 50) | An induction machine as a struct (a 4 kW, 400 V, 50 Hz four-pole machine unless given).
+inductionSim | r = inductionSim(m, 'foc', 'Speed', @(t) 100*(t > 0.2), 'Load', @(t) 20*(t > 0.8), 'Tend', 1.2) | The machine on an ideal inverter: 'vf' (scalar volts per hertz), 'foc' (indirect rotor-flux-oriented control with a speed loop) or 'sensorless' (the same, its speed from a model-reference adaptive observer). r holds t, Speed (rad/s), Torque, Ia, the rotor Flux and the observer's SpeedEstimate.
+torqueSpeed | T = torqueSpeed(m, slip, Vll, f) | The steady-state torque at each slip on a sine supply, from the equivalent circuit: plot((1 - s)*synchronous speed, T) for the classic curve.
+rectifier3 | r = rectifier3('Vll', 400, 'f', 50, 'Ld', 5e-3, 'C', 1000e-6, 'R', 50, 'Cycles', 40) | A six-pulse diode bridge with a DC choke and capacitor: the DC voltage and current, phase a's line current, its Harmonics (1 to 25, the fundamental 1: the 5th, 7th, 11th, 13th… show), THD and power factor.
 `;

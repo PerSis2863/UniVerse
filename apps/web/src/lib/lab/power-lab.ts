@@ -5,6 +5,8 @@ import { cmat, mat, num, str, toMat, type Struct, type Value } from './values';
 import { makeTf, tfOf } from './control';
 import * as pw from './power';
 import * as pwc from './powerctl';
+import * as im from './induction';
+import type { Lab } from './interp';
 
 // Hyperion's power electronics in the language (M563–, from MathWorks' power-electronics pages: circuit design, motor
 // drives, power conversion control; written fresh). Part 1, losses and heat: powerDevice, conductionLoss,
@@ -273,4 +275,50 @@ def('droopShare', (a) => {
   if (!(load >= 0) || m.length !== pmax.length || !m.every((x) => x > 0)) throw new LabError('droopShare(load, m, Pmax, f0): the load (W), each unit\'s droop (Hz per W, above 0) and limit.');
   const r = pwc.droopShare(load, m, pmax, f0);
   return [row(r.P), num(r.f), S([['Overloaded', { ...num(r.overloaded ? 1 : 0), logical: true }]])];
+});
+
+// ——— M566: induction motors and the rectifier ———
+const IM_FIELDS: [keyof im.Induction, string][] = [['rs', 'Rs'], ['rr', 'Rr'], ['lls', 'Lls'], ['llr', 'Llr'], ['lm', 'Lm'], ['pp', 'PolePairs'], ['J', 'J'], ['B', 'B'], ['vll', 'Vll'], ['f', 'f']];
+def('inductionMotor', (a) => {
+  const p = pairs(a, 0, IM_FIELDS.map(([, n]) => n), 'inductionMotor');
+  const m = S([['Type', str('Induction')], ...IM_FIELDS.map(([k, n]) => [n, p.get(n) ?? num(im.IM4KW[k])] as [string, Value])]);
+  imOf(m);
+  return [m];
+});
+function imOf(v: Value | undefined): im.Induction {
+  if (!v || v.k !== 'struct' || !v.f.has('Lm') || !v.f.has('PolePairs')) throw new LabError('Give a machine from inductionMotor.');
+  const m = {} as im.Induction;
+  for (const [k, n] of IM_FIELDS) { const x = toMat(v.f.get(n)!).d[0]; if (!(x > 0)) throw new LabError(`The machine's ${n} must be above 0.`); m[k] = x; }
+  return m;
+}
+/** A number, or a handle of time sampled every 0.1 ms. */
+function ofT(lab: Lab, v: Value | undefined, d: number, what: string): (t: number) => number {
+  if (!v) return () => d;
+  if (v.k !== 'fn') { const x = toMat(v).d[0]; return () => x; }
+  const cache = new Map<number, number>();
+  return (t) => { const k = Math.round(t * 1e4); let y = cache.get(k); if (y === undefined) { y = toMat(lab.callFn(v, [num(k / 1e4)])[0], what).d[0]; cache.set(k, y); } return y; };
+}
+def('inductionSim', (a, _n, lab) => {
+  const m = imOf(a[0]), mode = (a[1] ? textOf(a[1]) : 'foc').toLowerCase();
+  if (mode !== 'vf' && mode !== 'foc' && mode !== 'sensorless') throw new LabError("inductionSim(m, 'foc', 'Speed', 100, 'Load', @(t) 10*(t > 0.5), 'Tend', 1): 'vf', 'foc' or 'sensorless'.");
+  const p = pairs(a, 2, ['Speed', 'Load', 'Tend', 'dt'], 'inductionSim'), tEnd = n0(p.get('Tend'), 1), dt = n0(p.get('dt'), 2e-5);
+  if (!(tEnd > 0 && dt > 0 && tEnd / dt <= 2e6)) throw new LabError('inductionSim: Tend and dt above 0, at most two million steps.');
+  const r = im.inductionRun(m, { mode, speed: ofT(lab, p.get('Speed'), 100, 'The speed'), load: ofT(lab, p.get('Load'), 0, 'The load'), tEnd, dt });
+  // Every 10th step is plenty to plot.
+  const thin = (x: Float64Array) => series(x.filter((_, i) => i % 10 === 0));
+  return [S([['t', thin(r.t)], ['Speed', thin(r.speed)], ['Torque', thin(r.torque)], ['Ia', thin(r.ia)], ['Flux', thin(r.flux)], ['SpeedEstimate', thin(r.estimate)]])];
+});
+def('torqueSpeed', (a) => {
+  const m = imOf(a[0]), s = toMat(a[1] ?? num(NaN));
+  if (!s.d.every((x) => x > 0 && x <= 2)) throw new LabError('torqueSpeed(m, slip): slips above 0 (1 is standstill, 0 synchronous speed).');
+  const T = im.torqueSpeed(m, [...s.d], n0(a[2], m.vll), n0(a[3], m.f));
+  return [{ ...s, d: Float64Array.from(T) }];
+});
+def('rectifier3', (a) => {
+  const p = pairs(a, 0, ['Vll', 'f', 'Ld', 'C', 'R', 'Cycles'], 'rectifier3'), d = im.RECT;
+  const cfg: im.Rect = { vll: n0(p.get('Vll'), d.vll), f: n0(p.get('f'), d.f), Ld: n0(p.get('Ld'), d.Ld), C: n0(p.get('C'), d.C), R: n0(p.get('R'), d.R), cycles: Math.round(n0(p.get('Cycles'), 40)) };
+  if (!(cfg.cycles >= 2 && cfg.cycles <= 500)) throw new LabError('rectifier3: Cycles from 2 to 500.');
+  let r: ReturnType<typeof im.rectifier3>;
+  try { r = im.rectifier3(cfg); } catch (e) { throw new LabError(e instanceof Error ? e.message : String(e)); }
+  return [S([['Vdc', series(r.vdc)], ['Id', series(r.id)], ['Ia', series(r.ia)], ['Harmonics', row(r.harmonics)], ['THD', num(r.thd)], ['PowerFactor', num(r.pf)], ['Vmean', num(r.vmean)]])];
 });
