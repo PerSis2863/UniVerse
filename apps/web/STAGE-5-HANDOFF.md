@@ -16067,3 +16067,24 @@ The owner's automated-driving page, "integrate and test": the last part of the p
 - Not yet: requirements kept in a file of their own (ReqIF), coverage of the code, tests that drive a controller in the
   loop (the scenarios' actors follow set paths; a controller would need the closed loop).
 
+## M582: deploying, tested for real: ROS 2 and AUTOSAR (28 Nov)
+
+The owner's "please do this" on M580's "not tested for real".
+- **AUTOSAR**: `scripts/checks/arxml-check.py` loads the ARXML with **autosar-data** (`pip install autosar-data`, a Rust
+  ARXML library generated from the AUTOSAR schemas) in strict mode: every element known to the file's release (R20-11,
+  AUTOSAR_00049), values in their formats, references' DEST kinds; it then checks the element order inside every
+  sequence (autosar-data's load does not) and that every reference resolves, with a stand-in `/AUTOSAR_Platform`
+  package of the standard types (real tools bring their own). Both M580 components pass; checked to catch an unknown
+  element, a bad number and two siblings swapped. Not done: Vector's or EB's own tools (paid), and the official XSD itself
+  (it needs an AUTOSAR account): autosar-data is the nearest free stand-in.
+- **ROS 2**: ROS 2 Jazzy from RoboStack (conda, `robostack-jazzy` + `conda-forge`: `ros-jazzy-ros-core`,
+  `ros-jazzy-std-msgs`, `ros-jazzy-ament-cmake`, `ros-jazzy-launch-ros`, `colcon-common-extensions`, `compilers`, `cmake`;
+  micromamba from conda-forge; packages.ros.org and Docker were not reachable here). `colcon build` builds
+  `gainpeak_ros` cleanly; `ros2 launch` starts it; `scripts/checks/ros2-check.py` (rclpy) sends a wrong-sized x (warned,
+  nothing published), x alone (nothing), then k: y `[3 12 6 15 9 18]` with layout columns 3 / rows 2, peak 18, at 20.0 a
+  second. Also by hand: `clampc_ros` (int16) with `-p rate_hz:=50.0` gives 100 at 50 a second.
+- **Fixed**: the CMakeLists asked for CMake 3.8, which CMake 4 (RoboStack's) warns about; now 3.10 (Humble's 3.22 and
+  Jazzy's 3.28 fine).
+- Both are tests in `deploy.test.ts` that run only where the tools are (`HYP_PYTHON` names the Python with
+  autosar-data or rclpy; for ROS, source ROS first so `colcon` is on the path); CI skips them.
+

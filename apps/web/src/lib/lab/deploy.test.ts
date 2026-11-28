@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -27,7 +27,9 @@ end
 function c = clampc(v)
   c = min(max(v, int16(-100)), int16(100));
 end`;
-const has = (cmd: string) => { try { execFileSync(cmd, ['--version'], { stdio: 'ignore' }); return true; } catch { return false; } };
+const has = (cmd: string, arg = '--version') => { try { execFileSync(cmd, [arg], { stdio: 'ignore' }); return true; } catch { return false; } };
+const PY = process.env.HYP_PYTHON ?? 'python3';
+const hasPy = (mod: string) => { try { execFileSync(PY, ['-c', `import ${mod}`], { stdio: 'ignore' }); return true; } catch { return false; } };
 const lab = () => { const files = new FileStore(); const l = new Lab({ out: () => {}, files }); l.run(SRC); return { l, files }; };
 const unpack = (files: FileStore, zip: string, dir: string) => { const u = unzipSync(files.get(zip).bytes); for (const [k, v] of Object.entries(u)) { mkdirSync(dirname(join(dir, k)), { recursive: true }); writeFileSync(join(dir, k), v); } return Object.fromEntries(Object.entries(u).map(([k, v]) => [k, strFromU8(v)])); };
 
@@ -62,6 +64,17 @@ describe('Hyperion deployment: ROS 2 and AUTOSAR (M580)', () => {
     expect(() => l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Target', 'Simulink')")).toThrow(/ROS 2/);
     expect(() => l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Rate', -1)")).toThrow(/Rate/);
   });
+  // A real ARXML check (autosar-data, built from the AUTOSAR schemas): only where it is installed (pip install autosar-data;
+  // HYP_PYTHON names the Python that has it). Strict: every element known to R20-11, values in their formats, element order
+  // in every sequence, and every reference resolving once AUTOSAR_Platform's types are there.
+  it.runIf(hasPy('autosar_data'))('the AUTOSAR files pass autosar-data’s strict check', () => {
+    const { l, files } = lab();
+    l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Target', 'AUTOSAR'); codegen('clampc', {int16(0)}, 'Target', 'AUTOSAR');");
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-arxml-'));
+    unpack(files, 'GainpeakSwc.zip', dir); unpack(files, 'ClampcSwc.zip', dir);
+    const out = execFileSync(PY, [join(__dirname, '../../../scripts/checks/arxml-check.py'), join(dir, 'GainpeakSwc/GainpeakSwc.arxml'), join(dir, 'ClampcSwc/ClampcSwc.arxml')]).toString();
+    expect(out).toContain('ALL OK');
+  });
   it.runIf(has('cc'))('the AUTOSAR component builds and runs through its RTE with Hyperion’s answers', () => {
     const { l, files } = lab();
     l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Target', 'AUTOSAR'); codegen('clampc', {int16(0)}, 'Target', 'AUTOSAR'); [y, p] = gainpeak([1 2 3; 4 5 6], -2.5); c = clampc(int16(250));");
@@ -87,6 +100,25 @@ int main(void) {
     execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-I.', '-o', 'run', 'test.c', 'ClampcSwc.c', 'Rte_ClampcSwc.c', 'clampc.c', '-lm'], { cwd: d2 });
     expect(Number(execFileSync(join(d2, 'run')).toString())).toBe(toMat(l.vars.get('c')!).d[0]);
   });
+  // On a real ROS 2 (only where `colcon` and rclpy are on the path, with ROS sourced): colcon builds the package, the node runs,
+  // and scripts/checks/ros2-check.py talks to it over real topics.
+  it.runIf(has('colcon', '-h') && hasPy('rclpy'))('the ROS 2 package builds with colcon and the node answers on real topics', () => {
+    const { l, files } = lab();
+    l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Target', 'ROS 2', 'Rate', 20);");
+    const ws = mkdtempSync(join(tmpdir(), 'hyp-ros2-'));
+    unpack(files, 'gainpeak_ros.zip', join(ws, 'src'));
+    const built = execFileSync('colcon', ['build', '--event-handlers', 'console_direct+'], { cwd: ws }).toString();
+    expect(built).not.toMatch(/warning/i);
+    const node = spawn(join(ws, 'install/gainpeak_ros/lib/gainpeak_ros/gainpeak_node'), [], { env: { ...process.env, LD_LIBRARY_PATH: `${join(ws, 'install/gainpeak_ros/lib')}:${process.env.LD_LIBRARY_PATH ?? ''}` } });
+    try {
+      const out = execFileSync(PY, [join(__dirname, '../../../scripts/checks/ros2-check.py')], { timeout: 60_000 }).toString();
+      expect(out).toContain('after wrong-size x only: 0 0');
+      expect(out).toContain('after x, before k: 0 0');
+      expect(out).toContain("y [3.0, 12.0, 6.0, 15.0, 9.0, 18.0] layout [('columns', 3, 6), ('rows', 2, 2)]");
+      expect(out).toContain('peak 18.0');
+      expect(out).toMatch(/rate (19\.\d|20\.\d) a second/);
+    } finally { node.kill('SIGINT'); }
+  }, 300_000);
   it.runIf(has('c++') && has('cc'))('the ROS 2 node waits for every input, then publishes Hyperion’s answers at its rate', () => {
     const { l, files } = lab();
     l.run("codegen('gainpeak', {zeros(2, 3), 1}, 'Target', 'ROS 2', 'Rate', 25); [y, p] = gainpeak([1 2 3; 4 5 6], 3);");

@@ -95,7 +95,7 @@ int main(int argc, char ** argv) {
   return 0;
 }
 `;
-  const cmake = `cmake_minimum_required(VERSION 3.8)
+  const cmake = `cmake_minimum_required(VERSION 3.10)
 project(${pkg} C CXX)
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
