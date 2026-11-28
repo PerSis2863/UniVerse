@@ -12,4 +12,15 @@ fosterNet | n = fosterNet(R, tau) | A Foster thermal network: the datasheet's Zt
 zth | Z = zth(n, t) | The network's thermal impedance at times t: Σ R (1 − e^(−t/τ)).
 foster2cauer | [R, C] = foster2cauer(n) | The same network as a Cauer ladder (each layer's resistance and heat capacity), to stack onto a heatsink's.
 junctionTemp | Tj = junctionTemp(n, P, dt, 'Ambient', 25, 'Sink', [Rth tau]) | The junction's temperature over a power profile P (W, a sample every dt s), on a case held at the ambient or through a heatsink stage.
+
+# Power electronics: converter design
+converterModel | [op, G] = converterModel('buck', 'Vin', 48, 'Vout', 12, 'L', 22e-6, 'C', 100e-6, 'R', 1.2, 'fsw', 200e3, 'ESR', 0) | A converter's averaged model ('buck', 'boost', 'buckboost'): op holds the duty, CCM or DCM (K = 2L/(R·Ts) against its critical value), the ratio, the ripple; G is the duty-to-output transfer function (the boost's right-half-plane zero included), for bode, margin, step and pidtune. 'Duty' in place of 'Vout'.
+llcGain | M = llcGain(fn, Ln, Q) | An LLC resonant converter's voltage gain by first-harmonic approximation over normalised frequency fn = f/fr, for Ln = Lm/Lr and each quality factor in Q (one row each).
+dabPower | P = dabPower(V1, V2, n, phi, fsw, L) | A dual active bridge's power with single phase shift phi (rad): V1·n·V2·φ(π − |φ|)/(2π²·fsw·L).
+buckDesign | [best, all] = buckDesign(Vin, Vout, Iout, 'Inductors', [L DCR cost; …], 'Capacitors', [C ESR cost; …], 'Fsw', [100e3 200e3], 'MaxRipple', 0.4, 'MaxVoutRipple', 0.01, 'MinEfficiency', 0.9, 'Goal', 'efficiency') | Picks real parts: every frequency, inductor and capacitor from your lists, kept when they meet the limits, best first by efficiency (or 'cost'). all's columns: fsw L DCR C ESR efficiency ripple VoutRipple cost.
+monteCarlo | [Y, info] = monteCarlo(@(p) f(p), nominal, tol, N, 'Dist', 'uniform', 'Spec', [lo hi]) | A tolerance study: N runs with each parameter moved within its tolerance (a fraction; 'normal' takes it as 3σ); info holds the first output's mean, spread, range and, with 'Spec', the share inside it (the yield).
+prbs | u = prbs(n, len, amp) | A maximal-length pseudo-random binary sequence (±amp) from an n-bit register (2–16), period 2ⁿ − 1, to excite a system for frequency-response estimation.
+idinput | u = idinput(N, 'prbs', band, [lo hi]) | An identification input: a PRBS ('prbs') or random binary ('rbs') sequence of N samples between the two levels.
+frestimate | [H, w] = frestimate(u, y, Ts, w) | A frequency response estimated from a simulation's or test's input and output (sample time Ts) at frequencies w (rad/s): complex values, abs(H) and angle(H) for a Bode plot.
+pidtune | [C, info] = pidtune(G, 'PI', wc, 'PhaseMargin', 60) | P, PI or PID gains for plant G with the loop crossing over at wc (rad/s; chosen when left out) with that phase margin. C is the controller as a transfer function; info holds Kp, Ki, Kd, the crossover and the margin reached (more than asked when the plant lags little).
 `;

@@ -15605,3 +15605,15 @@ The owner, 28 Nov: "see all the 3 links here and built it in hyperion" (MathWork
 - **New, `src/lib/lab/power.ts`** (maths) and **`power-lab.ts`** (the language), help in **`help-power.ts`** (joined onto `help.ts` like `help-machines.ts`): `powerDevice` (a MOSFET or IGBT with its diode from datasheet numbers and Eon/Eoff/Err tables against current at a test voltage), `conductionLoss`, `switchingLoss` (energies read at the current, scaled by voltage, times fsw), `buckLosses` (a buck's loss breakdown, CCM or DCM worked out from the ripple, synchronous or diode), `efficiencyMap` (over Vin × Iout), `fosterNet`, `zth`, `foster2cauer` (continued fraction of 1/Z(s); the test checks both impedances agree at four frequencies), `junctionTemp` (each Foster stage stepped exactly, an optional heatsink stage).
 - In DCM the body diode doesn't recover (the current reaches zero first), so `ReverseRecovery` is 0 there.
 - Tests: `power.test.ts`.
+
+## M564: Hyperion power electronics: converter design (28 Nov)
+
+Part 2 of the owner's power-electronics ask (MathWorks' "circuit design" and "power conversion control" pages), written fresh in `power.ts` / `power-lab.ts`, help in `help-power.ts`.
+
+- **`converterModel`**: the averaged buck, boost and buck-boost: the mode from K = 2L/(R·Ts) against its critical value (so a light load is DCM), the duty that gives the asked Vout (solved in DCM too), ripple, inductor current, and the duty-to-output transfer function as a Hyperion transfer function (the CCM second-order forms with the boost's and buck-boost's right-half-plane zero; DCM's one-pole forms; the capacitor's ESR zero). `bode`, `margin`, `step` and `pidtune` work on it.
+- **`llcGain`** (first-harmonic approximation, 1 at resonance), **`dabPower`** (single phase shift).
+- **`buckDesign`**: picks real parts from the person's lists ([L DCR cost], [C ESR cost]) over switching frequencies, keeps those meeting ripple, output-ripple and efficiency limits (losses from M563's `buckLoss`), best first by efficiency or cost.
+- **`monteCarlo`**: any function of a parameter vector, each parameter moved within its tolerance (uniform, or 'normal' with the tolerance as 3σ), with the yield inside a spec; uses Hyperion's seeded `rand` (`rng`).
+- **`prbs`**, **`idinput`** (PRBS from a maximal-length shift register, taps for 2–16 bits), **`frestimate`** (cross spectrum over input spectrum, Hann-windowed half-overlapping segments, complex answer).
+- **`pidtune`**: P, PI or PID for a crossover wc and phase margin (Ti = 4·Td for the PID). A plant that lags little leaves a PI more margin than asked: the integral's corner then sits a decade below wc, and `info.PhaseMargin` says what was reached. A PI asked for phase lead it can't give is an error that suggests 'PID'.
+- Tests: `power.test.ts` (the tuned loop's |C·G| = 1 and its margin at wc; frestimate against a known first-order lag).

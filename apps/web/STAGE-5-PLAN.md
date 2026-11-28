@@ -1976,6 +1976,7 @@ function packages; the rest (the website, Docker images, CI, Vim syntax, package
 | M546 | Hyperion physics: M545's left-outs (a fuller split search, scattering in the disc, its spectrum out) | **Done** (on `claude/hyperion-sciences-industries`) | `convexSplit(…, 'Search', 'full')`: one cut ahead at every cut (the best 4, each side's best fold cut or axis halving) and V-HACD's merge of neighbouring parts while their joint hull stays solid (a 24-step half ring 12 parts at 1.0073 against 14, ~5× slower). Measured and dropped: planes in 13 directions at 5 places (never closer, 5–15× slower, smooth blobs refused). `discImage`'s `scatter` ω (Eddington two-stream: ε, ε_eff = 2√ε/(1+√ε), colour correction f_col = ε_eff^−¼, slab source εB + (1−ε)J), `kerrDisc`'s 'Scattering' and outputs S (n × n × 17) and lam. Example `physics10.m`. Tests `physics-m546.test.ts`. |
 | M562 | Ghidra's add-on retrained: 85% → 94% on the exam (26 Nov) | **Done** (branch) | ghidra-20261126-0926, 28 skills in ADDON_SKILLS; the owner sets GHIDRA_LORA |
 | M563 | Hyperion power electronics: losses and heat (26–28 Nov) | **Done** (branch) | powerDevice, buckLosses, efficiencyMap, fosterNet, foster2cauer, junctionTemp (power.ts, power-lab.ts, help-power.ts) |
+| M564 | Hyperion power electronics: converter design (28 Nov) | **Done** (branch) | converterModel (CCM/DCM, Gvd), llcGain, dabPower, buckDesign, monteCarlo, prbs, idinput, frestimate, pidtune |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 

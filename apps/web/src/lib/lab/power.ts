@@ -135,3 +135,151 @@ export function junctionTemp(f: Foster, p: ArrayLike<number>, dt: number, tAmb =
   }
   return tj;
 }
+
+// ——— M564: converter design ———
+export type Topology = 'buck' | 'boost' | 'buckboost';
+export interface Averaged {
+  topology: Topology; duty: number; ratio: number; mode: 'CCM' | 'DCM'; k: number; kCrit: number;
+  ripple: number; vout: number; iL: number;
+  /** The control-to-output transfer function (duty → output voltage), coefficients from the highest power down. */
+  num: number[]; den: number[];
+}
+/** The textbook averaged model of a converter at the duty that gives `vout` (or at `duty` when vout is NaN):
+ *  which conduction mode it runs in (K = 2L/(R·Ts) against its critical value), the duty, the ripple, and its small-
+ *  signal control-to-output response. CCM: the classical second-order forms with the boost's and buck-boost's right-
+ *  half-plane zero; DCM: the single-pole forms that remain when the inductor current returns to zero each cycle. */
+export function averaged(top: Topology, vin: number, vout: number, duty: number, L: number, C: number, R: number, fsw: number, esr = 0): Averaged {
+  if (!(vin > 0 && L > 0 && C > 0 && R > 0 && fsw > 0)) throw new Error('Vin, L, C, R and fsw must all be above 0.');
+  const K = (2 * L * fsw) / R;
+  const kCrit = (D: number) => (top === 'buck' ? 1 - D : top === 'boost' ? D * (1 - D) ** 2 : (1 - D) ** 2);
+  const ccmRatio = (D: number) => (top === 'buck' ? D : top === 'boost' ? 1 / (1 - D) : D / (1 - D));
+  const dcmRatio = (D: number) => (top === 'buck' ? 2 / (1 + Math.sqrt(1 + (4 * K) / (D * D))) : top === 'boost' ? (1 + Math.sqrt(1 + (4 * D * D) / K)) / 2 : D / Math.sqrt(K));
+  let D = duty, M: number;
+  if (Number.isFinite(vout)) {
+    M = vout / vin;
+    if (top === 'buck' && !(M > 0 && M < 1)) throw new Error('A buck makes less than its input: Vout between 0 and Vin.');
+    if (top === 'boost' && !(M > 1)) throw new Error('A boost makes more than its input: Vout above Vin.');
+    if (top === 'buckboost' && !(M > 0)) throw new Error('Give the buck-boost\'s output as a size (above 0).');
+    D = top === 'buck' ? M : top === 'boost' ? 1 - 1 / M : M / (1 + M);
+    if (K < kCrit(D)) D = top === 'buck' ? Math.sqrt((4 * K) / ((2 / M - 1) ** 2 - 1)) : top === 'boost' ? Math.sqrt((K * ((2 * M - 1) ** 2 - 1)) / 4) : M * Math.sqrt(K);
+  } else {
+    if (!(D > 0 && D < 1)) throw new Error('The duty is between 0 and 1.');
+    M = K < kCrit(D) ? dcmRatio(D) : ccmRatio(D);
+  }
+  const dcm = K < kCrit(D), Vo = M * vin, Ts = 1 / fsw;
+  // Inductor ripple: from the on-time's volt-seconds.
+  const vOn = top === 'buck' ? vin - Vo : vin, ripple = (vOn * D * Ts) / L;
+  const iL = top === 'buck' ? Vo / R : (Vo / R) * (top === 'boost' ? M : (1 + M) / M);
+  let num: number[], den: number[];
+  const z = [C * esr, 1];
+  if (!dcm) {
+    const Dp = 1 - D;
+    if (top === 'buck') { num = [vin]; den = [L * C, L / R, 1]; }
+    else if (top === 'boost') { num = [(-vin / (Dp * Dp)) * (L / (R * Dp * Dp)), vin / (Dp * Dp)]; den = [(L * C) / (Dp * Dp), L / (R * Dp * Dp), 1]; }
+    else { const g = vin / (Dp * Dp); num = [-g * ((D * L) / (R * Dp * Dp)), g]; den = [(L * C) / (Dp * Dp), L / (R * Dp * Dp), 1]; }
+  } else {
+    let g: number, wp: number;
+    if (top === 'buck') { g = ((2 * Vo) / D) * ((1 - M) / (2 - M)); wp = (2 - M) / ((1 - M) * R * C); }
+    else if (top === 'boost') { g = ((2 * Vo) / D) * ((M - 1) / (2 * M - 1)); wp = (2 * M - 1) / ((M - 1) * R * C); }
+    else { g = Vo / D; wp = 2 / (R * C); }
+    num = [g]; den = [1 / wp, 1];
+  }
+  if (esr > 0) { const out = new Array(num.length + 1).fill(0); num.forEach((x, i) => { out[i] += x * z[0]; out[i + 1] += x * z[1]; }); num = out; }
+  return { topology: top, duty: D, ratio: M, mode: dcm ? 'DCM' : 'CCM', k: K, kCrit: kCrit(D), ripple, vout: Vo, iL, num, den };
+}
+
+/** An LLC converter's voltage gain by first-harmonic approximation, at normalised frequency fn = f/fr, inductance
+ *  ratio Ln = Lm/Lr and quality factor Q = √(Lr/Cr)/Rac. */
+export function llcGain(fn: number, Ln: number, Q: number): number {
+  const f2 = fn * fn, re = (Ln + 1) * f2 - 1, im = (f2 - 1) * fn * Q * Ln;
+  return (Ln * f2) / Math.hypot(re, im);
+}
+/** A dual active bridge's power with single phase shift φ (rad, −π…π): V1·V2'·φ(π − |φ|)/(2π²·fsw·L), V2' = n·V2. */
+export const dabPower = (v1: number, v2: number, n: number, phi: number, fsw: number, L: number) => (v1 * n * v2 * phi * (Math.PI - Math.abs(phi))) / (2 * Math.PI ** 2 * fsw * L);
+
+// ——— Identification and tuning ———
+const TAPS: Record<number, number[]> = { 2: [2, 1], 3: [3, 2], 4: [4, 3], 5: [5, 3], 6: [6, 5], 7: [7, 6], 8: [8, 6, 5, 4], 9: [9, 5], 10: [10, 7], 11: [11, 9], 12: [12, 11, 10, 4], 13: [13, 12, 11, 8], 14: [14, 13, 12, 2], 15: [15, 14], 16: [16, 15, 13, 4] };
+/** A maximal-length pseudo-random binary sequence (±1) from an n-bit shift register: period 2ⁿ − 1. */
+export function prbs(n: number, len: number): Float64Array {
+  const taps = TAPS[n];
+  if (!taps) throw new Error('prbs takes a register of 2 to 16 bits.');
+  let reg = (1 << n) - 1;
+  const out = new Float64Array(len);
+  for (let k = 0; k < len; k++) {
+    out[k] = reg & 1 ? 1 : -1;
+    let bit = 0;
+    for (const t of taps) bit ^= (reg >> (n - t)) & 1;
+    reg = (reg >> 1) | (bit << (n - 1));
+  }
+  return out;
+}
+/** A frequency response estimated from input u and output y sampled every Ts, at frequencies w (rad/s): the cross
+ *  spectrum over the input's, averaged over half-overlapping Hann-windowed segments. */
+export function frestimate(u: ArrayLike<number>, y: ArrayLike<number>, Ts: number, w: number[], segs = 8) {
+  const N = Math.min(u.length, y.length), L = Math.max(16, Math.floor((2 * N) / (segs + 1))), hop = Math.floor(L / 2);
+  const win = Array.from({ length: L }, (_, k) => 0.5 - 0.5 * Math.cos((2 * Math.PI * k) / (L - 1)));
+  const re = new Float64Array(w.length), im = new Float64Array(w.length);
+  w.forEach((wi, j) => {
+    let syuR = 0, syuI = 0, suu = 0;
+    for (let s = 0; s + L <= N; s += hop) {
+      let ur = 0, ui = 0, yr = 0, yi = 0;
+      for (let k = 0; k < L; k++) {
+        const a = -wi * k * Ts, c = Math.cos(a), sn = Math.sin(a), wk = win[k];
+        ur += wk * u[s + k] * c; ui += wk * u[s + k] * sn; yr += wk * y[s + k] * c; yi += wk * y[s + k] * sn;
+      }
+      syuR += yr * ur + yi * ui; syuI += yi * ur - yr * ui; suu += ur * ur + ui * ui;
+    }
+    re[j] = syuR / suu; im[j] = syuI / suu;
+  });
+  return { re, im };
+}
+const cpoly = (p: number[], w: number): [number, number] => { let r = 0, i = 0; for (const c of p) { const nr = r * 0 - i * w + c, ni = r * w + i * 0; r = nr; i = ni; } return [r, i]; };
+/** G(jω) for a transfer function's coefficients. */
+export function resp(num: number[], den: number[], w: number): [number, number] {
+  const [a, b] = cpoly(num, w), [c, d] = cpoly(den, w), m = c * c + d * d;
+  return [(a * c + b * d) / m, (b * c - a * d) / m];
+}
+/** PI, PID or P gains that put the loop's crossover at wc with the phase margin pm (degrees), from the plant's
+ *  response there: the controller's phase makes up what the plant lacks, its gain makes |C·G| = 1. With no wc, the
+ *  frequency where the plant's phase allows it (or ten times its bandwidth, for plants that never lag that far). */
+export function pidtune(num: number[], den: number[], type: 'P' | 'PI' | 'PID', wc?: number, pm = 60) {
+  const phase = (w: number) => { const [r, i] = resp(num, den, w); return Math.atan2(i, r); };
+  const mag = (w: number) => Math.hypot(...resp(num, den, w));
+  if (!wc) {
+    // Unwrapped phase over a wide sweep; the target is where a PI's lag (or a PID's lead) closes the gap.
+    const want = ((-180 + pm + (type === 'PI' ? 20 : type === 'PID' ? -30 : 0)) * Math.PI) / 180;
+    let prev = phase(1e-6), un = prev;
+    for (let e = -6; e <= 9; e += 0.01) {
+      const w = 10 ** e, p = phase(w);
+      let d = p - prev; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+      un += d; prev = p;
+      if (un <= want) { wc = w; break; }
+    }
+    if (!wc) {
+      const g0 = mag(1e-6);
+      for (let e = -6; e <= 9; e += 0.01) if (mag(10 ** e) <= g0 / Math.SQRT2) { wc = 10 * 10 ** e; break; }
+      wc ??= 1;
+    }
+  }
+  const g = mag(wc), phiC = -Math.PI + (pm * Math.PI) / 180 - phase(wc);
+  // The controller's phase is wrapped to (−π, π].
+  const need = Math.atan2(Math.sin(phiC), Math.cos(phiC));
+  let Kp = 0, Ki = 0, Kd = 0;
+  // A plant that lags little there leaves more margin than asked: the integral's corner then sits a decade below wc.
+  const lagOnly = need <= -Math.PI / 2 + 0.1;
+  if (type === 'P') Kp = 1 / g;
+  else if (type === 'PI' || lagOnly) {
+    if (!(need < 0)) throw new Error(`A PI controller can't give ${pm}° of phase margin at ${wc.toPrecision(3)} rad/s (it needs ${(need * 180 / Math.PI).toFixed(0)}° of lead from the controller): try a lower crossover or 'PID'.`);
+    const Ti = lagOnly ? 10 / wc : 1 / (wc * Math.tan(-need));
+    Kp = 1 / (g * Math.hypot(1, 1 / (wc * Ti))); Ki = Kp / Ti;
+  } else {
+    if (!(need < Math.PI / 2)) throw new Error(`A PID controller can't give ${pm}° of phase margin at ${wc.toPrecision(3)} rad/s.`);
+    // Ti = 4·Td; x = ωc·Td from x − 1/(4x) = tan φ.
+    const t = Math.tan(need), x = (t + Math.sqrt(t * t + 1)) / 2, Td = x / wc, Ti = 4 * Td;
+    Kp = 1 / (g * Math.hypot(1, x - 1 / (4 * x))); Ki = Kp / Ti; Kd = Kp * Td;
+  }
+  // The margin the loop really has at wc.
+  const [gr, gi] = resp(num, den, wc), cr = Kp, ci = Kd * wc - Ki / wc;
+  const got = 180 + (Math.atan2(gr * ci + gi * cr, gr * cr - gi * ci) * 180) / Math.PI;
+  return { Kp, Ki, Kd, wc, pm: got };
+}

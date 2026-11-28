@@ -1,7 +1,8 @@
 import { LabError } from './parse';
-import { BUILTINS, type Builtin } from './builtins';
+import { BUILTINS, random, type Builtin } from './builtins';
 import { textOf } from './interp';
-import { mat, num, str, toMat, type Struct, type Value } from './values';
+import { cmat, mat, num, str, toMat, type Struct, type Value } from './values';
+import { makeTf, tfOf } from './control';
 import * as pw from './power';
 
 // Hyperion's power electronics in the language (M563–, from MathWorks' power-electronics pages: circuit design, motor
@@ -117,3 +118,102 @@ def('junctionTemp', (a) => {
   const tj = pw.junctionTemp(f, P.d, dt, n0(p.get('Ambient'), 25), sink ? { r: sink[0], tau: sink[1] } : undefined);
   return [P.r === 1 ? row(tj) : col(tj)];
 });
+
+// ——— M564: converter design ———
+const TOPS: Record<string, pw.Topology> = { buck: 'buck', boost: 'boost', buckboost: 'buckboost', 'buck-boost': 'buckboost' };
+def('converterModel', (a) => {
+  const top = TOPS[a[0] ? textOf(a[0]).toLowerCase() : ''];
+  if (!top) throw new LabError("converterModel('buck', 'Vin', 48, 'Vout', 12, 'L', 22e-6, 'C', 100e-6, 'R', 1.2, 'fsw', 200e3): 'buck', 'boost' or 'buckboost'; 'Duty' in place of 'Vout'; 'ESR' for the capacitor.");
+  const p = pairs(a, 1, ['Vin', 'Vout', 'Duty', 'L', 'C', 'R', 'fsw', 'ESR'], 'converterModel');
+  let m: pw.Averaged;
+  try { m = pw.averaged(top, n0(p.get('Vin'), 48), p.has('Vout') ? n0(p.get('Vout'), NaN) : NaN, n0(p.get('Duty'), p.has('Vout') ? NaN : 0.5), n0(p.get('L'), 22e-6), n0(p.get('C'), 100e-6), n0(p.get('R'), 10), n0(p.get('fsw'), 100e3), n0(p.get('ESR'), 0)); }
+  catch (e) { throw new LabError(e instanceof Error ? e.message : String(e)); }
+  const op = S([['Topology', str(top)], ['Mode', str(m.mode)], ['Duty', num(m.duty)], ['Ratio', num(m.ratio)], ['Vout', num(m.vout)], ['InductorCurrent', num(m.iL)], ['Ripple', num(m.ripple)], ['K', num(m.k)], ['Kcrit', num(m.kCrit)]]);
+  return [op, makeTf(m.num, m.den)];
+});
+def('llcGain', (a) => {
+  const fn = vec(a[0], 'fn'), Ln = n0(a[1], 5), Qs = vec(a[2] ?? num(0.4), 'Q');
+  if (!(Ln > 0) || !Qs.every((q) => q >= 0)) throw new LabError('llcGain(fn, Ln, Q): normalised frequency f/fr, Ln = Lm/Lr above 0, Q 0 or more.');
+  const out = new Float64Array(Qs.length * fn.length);
+  Qs.forEach((q, i) => fn.forEach((f, j) => { out[j * Qs.length + i] = pw.llcGain(f, Ln, q); }));
+  return [mat(Qs.length, fn.length, out)];
+});
+def('dabPower', (a) => {
+  const [v1, v2, n] = [0, 1, 2].map((i) => n0(a[i], NaN)), phi = toMat(a[3] ?? num(NaN)), fsw = n0(a[4], NaN), L = n0(a[5], NaN);
+  if (!(v1 > 0 && v2 > 0 && n > 0 && fsw > 0 && L > 0)) throw new LabError('dabPower(V1, V2, n, phi, fsw, L): voltages, turns ratio, phase shift (rad), frequency, series inductance.');
+  return [{ ...phi, d: phi.d.map((x) => pw.dabPower(v1, v2, n, x, fsw, L)) }];
+});
+def('buckDesign', (a) => {
+  const vin = n0(a[0], NaN), vout = n0(a[1], NaN), iout = n0(a[2], NaN);
+  const p = pairs(a, 3, ['Inductors', 'Capacitors', 'Fsw', 'MaxRipple', 'MaxVoutRipple', 'MinEfficiency', 'Device', 'Goal'], 'buckDesign');
+  const parts = (k: string, what: string) => { const m = p.get(k) ? toMat(p.get(k)!) : null; if (!m || m.c < 2) throw new LabError(`buckDesign needs '${k}': one row per part, [${what} cost] (cost may be left out).`); return Array.from({ length: m.r }, (_, i) => [m.d[i], m.d[i + m.r], m.c > 2 ? m.d[i + 2 * m.r] : 0]); };
+  const Ls = parts('Inductors', 'L DCR'), Cs = parts('Capacitors', 'C ESR'), fs = p.has('Fsw') ? vec(p.get('Fsw'), 'Fsw') : [100e3, 200e3, 400e3];
+  const maxRip = n0(p.get('MaxRipple'), 0.4), maxV = n0(p.get('MaxVoutRipple'), 0.01), minEff = n0(p.get('MinEfficiency'), 0);
+  const dev = p.has('Device') ? devOf(p.get('Device')) : pw.MOSFET, goal = p.has('Goal') ? textOf(p.get('Goal')!).toLowerCase() : 'efficiency';
+  const rows: number[][] = [];
+  for (const f of fs) for (const [L, dcr, cl] of Ls) for (const [C, esr, cc] of Cs) {
+    let r: pw.BuckLoss;
+    try { r = pw.buckLoss(vin, vout, iout, f, L, dcr, dev); } catch (e) { throw new LabError(e instanceof Error ? e.message : String(e)); }
+    const vr = r.ripple * (esr + 1 / (8 * f * C));
+    if (r.ripple / iout <= maxRip && vr / vout <= maxV && r.efficiency >= minEff) rows.push([f, L, dcr, C, esr, r.efficiency, r.ripple, vr, cl + cc]);
+  }
+  if (!rows.length) throw new LabError('No pair of parts meets those limits: allow more ripple, add parts or try other frequencies.');
+  rows.sort((x, y) => (goal === 'cost' ? x[8] - y[8] || y[5] - x[5] : y[5] - x[5] || x[8] - y[8]));
+  const b = rows[0];
+  const best = S([['fsw', num(b[0])], ['L', num(b[1])], ['DCR', num(b[2])], ['C', num(b[3])], ['ESR', num(b[4])], ['Efficiency', num(b[5])], ['Ripple', num(b[6])], ['VoutRipple', num(b[7])], ['Cost', num(b[8])]]);
+  const all = new Float64Array(rows.length * 9);
+  rows.forEach((r, i) => r.forEach((x, j) => { all[j * rows.length + i] = x; }));
+  return [best, mat(rows.length, 9, all)];
+});
+def('monteCarlo', (a, _n, lab) => {
+  const fn = a[0];
+  if (fn?.k !== 'fn') throw new LabError('monteCarlo(@(p) f(p), nominal, tol, N, \'Dist\', \'uniform\', \'Spec\', [lo hi]): a function of the parameter vector.');
+  const nom = vec(a[1], 'nominal'), tolv = vec(a[2], 'tol'), N = Math.round(n0(a[3], 1000));
+  const tol = tolv.length === 1 ? nom.map(() => tolv[0]) : tolv;
+  if (tol.length !== nom.length || !(N >= 2 && N <= 1e6)) throw new LabError('monteCarlo: one tolerance (a fraction, 0.05 for ±5 %) per parameter, or one for all; N from 2 to a million.');
+  const p = pairs(a, 4, ['Dist', 'Spec'], 'monteCarlo'), dist = p.has('Dist') ? textOf(p.get('Dist')!).toLowerCase() : 'uniform';
+  const spec = p.has('Spec') ? vec(p.get('Spec'), 'Spec') : null;
+  const gauss = () => { let u = 0, v = 0; while (u === 0) u = random(); while (v === 0) v = random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  let outs = 0;
+  const ys: number[][] = [];
+  for (let k = 0; k < N; k++) {
+    // Normal: the tolerance is three standard deviations (99.7 % of parts inside it).
+    const x = nom.map((v, i) => v * (1 + tol[i] * (dist === 'normal' ? gauss() / 3 : 2 * random() - 1)));
+    const y = [...toMat(lab.callFn(fn, [mat(1, x.length, x)])[0], 'The function\'s answer').d];
+    if (!outs) outs = y.length;
+    ys.push(y);
+  }
+  const Y = new Float64Array(N * outs);
+  ys.forEach((y, i) => y.forEach((v, j) => { Y[j * N + i] = v; }));
+  const c0 = ys.map((y) => y[0]), mean = c0.reduce((s, v) => s + v, 0) / N, sd = Math.sqrt(c0.reduce((s, v) => s + (v - mean) ** 2, 0) / (N - 1));
+  const info = S([['Mean', num(mean)], ['Std', num(sd)], ['Min', num(Math.min(...c0))], ['Max', num(Math.max(...c0))], ...(spec ? [['Yield', num(c0.filter((v) => v >= spec[0] && v <= spec[1]).length / N)] as [string, Value]] : [])]);
+  return [mat(N, outs, Y), info];
+});
+def('prbs', (a) => {
+  const n = Math.round(n0(a[0], 10)), len = Math.round(n0(a[1], 2 ** n - 1)), amp = n0(a[2], 1);
+  try { return [col(pw.prbs(n, len).map((x) => x * amp))]; } catch (e) { throw new LabError(e instanceof Error ? e.message : String(e)); }
+});
+def('idinput', (a) => {
+  const N = Math.round(n0(a[0], 255)), type = a[1] ? textOf(a[1]).toLowerCase() : 'prbs', lv = a[3] ? vec(a[3], 'levels') : [-1, 1];
+  if (type !== 'prbs' && type !== 'rbs') throw new LabError("idinput(N, 'prbs', band, levels): 'prbs' or 'rbs'.");
+  const bits = Math.min(16, Math.max(2, Math.ceil(Math.log2(N + 1))));
+  const s = type === 'prbs' ? pw.prbs(bits, N) : Float64Array.from({ length: N }, () => (random() < 0.5 ? -1 : 1));
+  return [col(s.map((x) => (x > 0 ? lv[1] : lv[0])))];
+});
+def('frestimate', (a) => {
+  const u = toMat(a[0] ?? num(NaN)).d, y = toMat(a[1] ?? num(NaN)).d, Ts = n0(a[2], NaN), w = vec(a[3], 'w (rad/s)');
+  if (!(Ts > 0) || u.length !== y.length || u.length < 64) throw new LabError('frestimate(u, y, Ts, w): input and output of the same length (64 samples or more), the sample time, frequencies in rad/s.');
+  const { re, im } = pw.frestimate(u, y, Ts, w);
+  return [cmat(w.length, 1, re, im), col(w)];
+});
+def('pidtune', (a) => {
+  const g = tfOf(a[0] ?? num(NaN), 'The plant'), type = (a[1] ? textOf(a[1]) : 'PI').toUpperCase();
+  if (type !== 'P' && type !== 'PI' && type !== 'PID') throw new LabError("pidtune(G, 'PI', wc): 'P', 'PI' or 'PID'; wc the crossover in rad/s (left out: chosen).");
+  const p = pairs(a, a[2] && a[2].k !== 'str' ? 3 : 2, ['PhaseMargin'], 'pidtune');
+  let r: ReturnType<typeof pw.pidtune>;
+  try { r = pw.pidtune(g.n, g.d, type, a[2] && a[2].k !== 'str' ? n0(a[2], NaN) : undefined, n0(p.get('PhaseMargin'), 60)); }
+  catch (e) { throw new LabError(e instanceof Error ? e.message : String(e)); }
+  const C = BUILTINS.pid([num(r.Kp), num(r.Ki), num(r.Kd)], 1, undefined as never)[0];
+  return [C, S([['Kp', num(r.Kp)], ['Ki', num(r.Ki)], ['Kd', num(r.Kd)], ['Crossover', num(r.wc)], ['PhaseMargin', num(r.pm)]])];
+});
+
